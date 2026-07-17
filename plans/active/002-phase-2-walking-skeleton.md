@@ -176,7 +176,8 @@ tests/                     cross-service, security, load, E2E
 - [ ] M3 / P2-04 durable deterministic run.
   - [x] Strict ARQ envelope/transport codec, generated typed result schema, and deterministic no-egress mock.
   - [x] Frozen run/outbox database authority, worker-only helper ACL, local reset proof, and hosted ordered migration.
-  - [ ] Queue adapter/target-queue confirmation, dispatcher, worker execution, run/result APIs, and end-to-end duplicate/crash proof.
+  - [x] Queue adapter/target-queue confirmation, dispatcher, role-pinned worker gateway, and lease-bound deterministic worker execution.
+  - [ ] Run/result APIs and end-to-end duplicate/crash proof.
 - [ ] M4 / P2-05 trustworthy result experience.
 - [ ] M5 / P2-06 cancellation and recovery.
 - [ ] M6 / P2-07 integrated quality gate.

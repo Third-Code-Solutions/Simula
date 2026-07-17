@@ -1,4 +1,4 @@
-"""Payload-inert worker lifecycle shell for P2-01."""
+"""Strict ARQ worker lifecycle and deterministic run execution handler."""
 
 from __future__ import annotations
 
@@ -12,16 +12,27 @@ from uuid import UUID
 import structlog
 from arq.worker import Retry
 from pydantic import ValidationError
-from simula_core.arq_codec import ArqCodecError, RunJobV1, parse_job_id
+from simula_core.arq_codec import (
+    ARQ_QUEUE_NAME,
+    ArqCodecError,
+    RunJobV1,
+    arq_json_dumps,
+    arq_json_loads,
+    parse_job_id,
+)
+from simula_core.queue_runtime import create_queue_client
 from simula_core.runtime import RuntimeMetadata
 from simula_core.simulation import (
     AudienceCell,
+    DeterministicMockProvider,
     ProviderRequest,
     SimulationProvider,
     SimulationResultV1,
 )
 
-from simula_worker.database import WorkerExecutionGateway
+from simula_worker.config import WorkerSettings
+from simula_worker.database import WorkerDatabase, WorkerExecutionGateway
+from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
 
 logger = structlog.get_logger()
 
@@ -30,8 +41,24 @@ def _signals() -> Iterable[signal.Signals]:
     return (signal.SIGINT, signal.SIGTERM)
 
 
+async def _dispatch_forever(dispatcher: RunDispatcher, stop: asyncio.Event) -> None:
+    """Poll durable intent; errors leave claims unconfirmed for lease expiry/redrive."""
+
+    while not stop.is_set():
+        try:
+            await dispatcher.dispatch_once()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("run_dispatch_pass_failed")
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=1.0)
+        except TimeoutError:
+            continue
+
+
 async def serve() -> None:
-    """Remain alive without consuming jobs until P2-04 installs the worker contract."""
+    """Run the strict worker with bounded dependencies and graceful signal shutdown."""
 
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
@@ -42,12 +69,59 @@ async def serve() -> None:
             # Signal handlers are unavailable on some local Windows loops and child threads.
             continue
 
+    settings = WorkerSettings.from_environment()
     metadata = RuntimeMetadata.from_environment(service="worker")
-    logger.info("service_started", payload_contract="disabled", **metadata.model_dump())
+    database = WorkerDatabase(settings)
+    await database.open()
+    redis = create_queue_client(settings.redis_url, max_connections=8)
+    worker = None
+    worker_task: asyncio.Task[None] | None = None
+    dispatcher_task: asyncio.Task[None] | None = None
     try:
-        await stop.wait()
+        from arq.worker import Worker
+
+        worker = Worker(
+            functions=[process_run_v1],
+            queue_name=ARQ_QUEUE_NAME,
+            redis_pool=redis,
+            handle_signals=False,
+            max_jobs=4,
+            max_tries=5,
+            job_timeout=30,
+            poll_delay=0.25,
+            job_serializer=arq_json_dumps,
+            job_deserializer=arq_json_loads,
+            ctx={
+                "database": database,
+                "provider": DeterministicMockProvider(),
+            },
+        )
+        dispatcher = RunDispatcher(database, RedisRunQueue(cast(RedisDispatchClient, redis)))
+        worker_task = asyncio.create_task(worker.async_run(), name="arq-worker")
+        dispatcher_task = asyncio.create_task(
+            _dispatch_forever(dispatcher, stop), name="run-dispatcher"
+        )
+        logger.info("service_started", payload_contract="run_v1", **metadata.model_dump())
+        stop_task = asyncio.create_task(stop.wait(), name="worker-stop")
+        done, pending = await asyncio.wait(
+            {stop_task, worker_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        if worker_task in done:
+            await worker_task
     finally:
-        logger.info("service_stopped", payload_contract="disabled", **metadata.model_dump())
+        if dispatcher_task is not None:
+            dispatcher_task.cancel()
+            await asyncio.gather(dispatcher_task, return_exceptions=True)
+        if worker_task is not None and not worker_task.done():
+            worker_task.cancel()
+            await asyncio.gather(worker_task, return_exceptions=True)
+        if worker is not None:
+            await worker.close()
+        await database.close()
+        logger.info("service_stopped", payload_contract="run_v1", **metadata.model_dump())
 
 
 def _context_dependency(ctx: Mapping[str, object], name: str) -> object:
@@ -127,18 +201,33 @@ async def process_run_v1(
     ):
         return None
 
-    request = _provider_request(
-        run_id=context_run_id,
-        claim_attempt_id=claim.attempt_id,
-        frozen_manifest=claim.frozen_manifest,
-        frozen_manifest_sha256=claim.frozen_manifest_sha256,
-        deterministic_seed=claim.deterministic_seed,
-    )
-    result: SimulationResultV1 = provider.run(request)
-    await database.complete_execution(
+    try:
+        request = _provider_request(
+            run_id=context_run_id,
+            claim_attempt_id=claim.attempt_id,
+            frozen_manifest=claim.frozen_manifest,
+            frozen_manifest_sha256=claim.frozen_manifest_sha256,
+            deterministic_seed=claim.deterministic_seed,
+        )
+        result: SimulationResultV1 = provider.run(request)
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        logger.exception("run_execution_provider_failed", run_id=str(context_run_id))
+        await database.fail_execution(
+            context_run_id,
+            claim.attempt_id,
+            claim.lease_token,
+            "execution_provider_failure",
+            False,
+        )
+        return None
+    completed = await database.complete_execution(
         context_run_id,
         claim.attempt_id,
         claim.lease_token,
         result.model_dump(mode="json"),
     )
+    if not completed:
+        logger.warning("run_execution_completion_rejected", run_id=str(context_run_id))
     return None

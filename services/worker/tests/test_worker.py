@@ -1,13 +1,12 @@
-import asyncio
 from collections.abc import Mapping
 from uuid import UUID
 
 import pytest
 from arq.worker import Retry
 from simula_core.runtime import RuntimeMetadata
-from simula_core.simulation import ProviderRequest, SimulationResultV1
+from simula_core.simulation import DeterministicMockProvider, ProviderRequest, SimulationResultV1
 from simula_worker.database import ExecutionClaim
-from simula_worker.main import process_run_v1, serve
+from simula_worker.main import process_run_v1
 
 
 def test_worker_metadata_is_private_service() -> None:
@@ -16,26 +15,12 @@ def test_worker_metadata_is_private_service() -> None:
     assert metadata.service == "worker"
 
 
-async def test_worker_shell_is_payload_inert(monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    waits = 0
-
-    async def stop_immediately(_: asyncio.Event) -> bool:
-        nonlocal waits
-        waits += 1
-        return True
-
-    monkeypatch.setattr(asyncio.Event, "wait", stop_immediately)
-
-    await serve()
-
-    assert waits == 1
-
-
 class RecordingDatabase:
     def __init__(self, claim: ExecutionClaim) -> None:
         self.claim = claim
         self.claim_calls: list[tuple[UUID, int, str]] = []
         self.completions: list[tuple[UUID, UUID, UUID, Mapping[str, object]]] = []
+        self.failures: list[tuple[UUID, UUID, UUID, str, bool]] = []
 
     async def claim_execution(self, run_id: UUID, generation: int, job_id: str) -> ExecutionClaim:
         self.claim_calls.append((run_id, generation, job_id))
@@ -50,6 +35,21 @@ class RecordingDatabase:
     ) -> bool:
         self.completions.append((run_id, attempt_id, lease_token, artifact))
         return True
+
+    async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:
+        del run_id, attempt_id, lease_token
+        return True
+
+    async def fail_execution(
+        self,
+        run_id: UUID,
+        attempt_id: UUID,
+        lease_token: UUID,
+        safe_error_code: str,
+        retryable: bool,
+    ) -> str:
+        self.failures.append((run_id, attempt_id, lease_token, safe_error_code, retryable))
+        return "failed"
 
 
 class RecordingProvider:
@@ -69,6 +69,26 @@ def _claim(*, status: str) -> ExecutionClaim:
         frozen_manifest=None,
         frozen_manifest_sha256=None,
         deterministic_seed=None,
+    )
+
+
+def _claimed_run() -> tuple[UUID, ExecutionClaim]:
+    run_id = UUID("00000000-0000-4000-8000-0000000000b3")
+    return (
+        run_id,
+        ExecutionClaim(
+            status="claimed",
+            attempt_id=UUID("00000000-0000-4000-8000-0000000000b4"),
+            lease_token=UUID("00000000-0000-4000-8000-0000000000b5"),
+            frozen_manifest={
+                "stimulus": {"content": "Test the deterministic execution path."},
+                "audience": {
+                    "manifest": {"audience_cells": [{"key": "authored_demo", "weight": 1.0}]}
+                },
+            },
+            frozen_manifest_sha256="a" * 64,
+            deterministic_seed=42,
+        ),
     )
 
 
@@ -104,3 +124,47 @@ async def test_worker_unconfirmed_dispatch_defers_without_manifest_or_provider_w
     assert database.claim_calls == [(run_id, 1, f"run:{run_id}:dispatch:1")]
     assert database.completions == []
     assert provider.requests == []
+
+
+async def test_worker_completes_a_claimed_deterministic_run() -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim)
+
+    await process_run_v1(
+        {"job_id": f"run:{run_id}:dispatch:1"},
+        {"schema_version": 1, "run_id": str(run_id)},
+        database=database,
+        provider=DeterministicMockProvider(),
+    )
+
+    assert database.failures == []
+    assert len(database.completions) == 1
+    _, attempt_id, lease_token, artifact = database.completions[0]
+    assert attempt_id == claim.attempt_id
+    assert lease_token == claim.lease_token
+    assert artifact["schema_version"] == "1.0.0"
+    assert artifact["run_id"] == str(run_id)
+
+
+async def test_worker_records_a_safe_terminal_failure_for_provider_error() -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim)
+    provider = RecordingProvider()
+
+    await process_run_v1(
+        {"job_id": f"run:{run_id}:dispatch:1"},
+        {"schema_version": 1, "run_id": str(run_id)},
+        database=database,
+        provider=provider,
+    )
+
+    assert database.completions == []
+    assert database.failures == [
+        (
+            run_id,
+            claim.attempt_id,
+            claim.lease_token,
+            "execution_provider_failure",
+            False,
+        )
+    ]
