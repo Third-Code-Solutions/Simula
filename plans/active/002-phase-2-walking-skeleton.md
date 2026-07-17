@@ -45,7 +45,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 
 - Real model/provider calls, real Philippine population claims, official/microdata ingestion, scraping, uploads, calibrated or predictive output.
 - Membership management, exports/shares, realtime subscriptions, billing, customer data, hosted analytics.
-- Paid resource creation, hosted Supabase/Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user later authorized only the named Supabase schema migration; it remains blocked pending authenticated CLI access and remote-history dry run.
+- Paid resource creation, hosted Supabase/Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user authorized and completed only the named Supabase P2-03 schema migration; no seed, fixture, or production data was applied.
 - Phase 3 methodology expansion, Phase 4 MVP breadth, and any representativeness/survey-replacement claim.
 
 # 5. Proposed Design
@@ -138,7 +138,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-17 — ACCEPTED: Phase 1 final independent review passed 0 Critical / 0 High / 0 Medium; Phase 2 may start.
 - 2026-07-17 — ACCEPTED: execute P2-01 through P2-07 in order; each gate must pass before dependent scope.
 - 2026-07-17 — ACCEPTED: local/disposable services only; no hosted resource or production mutation is authorized.
-- 2026-07-18 — ACCEPTED: user authorized schema migration of Supabase project `ywiwmczccktwzqyhzhiz`. CLI link failed before mutation because no access token is configured; remote history must be inspected and `db push --linked --include-roles --dry-run` must pass before a seed-free push.
+- 2026-07-18 — OBSERVED: MCP-authorized access as `kurtgav` confirmed active project `ywiwmczccktwzqyhzhiz` (Simula), bootstrapped the four runtime/owner roles, and applied all three checked-in P2-03 migrations seed-free. Remote history was reconciled to the checked-in versions and reports 9 `api` plus 5 `private` empty RLS tables (E-5011). The unlinked CLI must compare history and inspect a dry-run before future migrations.
 - 2026-07-17 — ACCEPTED: strict Phase 1 ADRs and resource/control matrices are implementation specifications, not suggestions.
 - 2026-07-17 — ACCEPTED: R-020 does not block the local prototype but blocks Phase 6 until the Phase 5 queue exit-plan gate passes.
 - 2026-07-17 — ACCEPTED: M0 uses Vite 8 native TS-path resolution instead of the redundant deprecated plugin and overrides Next's vulnerable PostCSS transitive to accepted 8.5.19; clean build/test/audit proves compatibility.
@@ -148,7 +148,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-17 — ACCEPTED: `pnpm verify:m0-runtime` is the single local M0 runtime command. It sanitizes routing, accepts only a validated local socket/pipe Docker context, refuses linked/occupied/pre-existing/cross-clone-concurrent state before mutation, uses per-run owned namespaces, suppresses both Supabase output streams, contains command trees, uses direct loopback health, and attempts exact cleanup after failure, timeout, or catchable interruption; SIGTERM cleanup is a POSIX guarantee (E-4030–E-4033).
 - 2026-07-17 — OBSERVED: user host remediation restored Docker 29.6.1; the exact M0 gate now passes. Canonical Compose validation requires loopback-only Redis publication on a non-internal local DNS bridge. R-021 is Mitigated and P2-02 is unlocked (E-5008).
 - 2026-07-17 — ACCEPTED: M1 / P2-02 passes its exact local gate. The first migration owns all application DDL; `roles.sql` is the privileged local/CI global bootstrap; runtime passwords remain injected and absent from source; browser roles cannot reach application schemas; complete organization writes remain helper-only (E-5009).
-- 2026-07-18 — OBSERVED: P2-03/M2 passes its final local and independent-review gate (E-5010). Two clean resets, lint, 32 pgTAP, 26 API tests, five integrations, generated type/contract checks, full repository quality/SCA, immutable-version browser proof, review-remediated Redis/auth/audit/media/CORS controls, and two final clean independent reviews are complete. M3/P2-04 is unlocked; hosted migration remains unperformed pending Supabase CLI authentication.
+- 2026-07-18 — OBSERVED: P2-03/M2 passes its final local and independent-review gate (E-5010). Two clean resets, lint, 32 pgTAP, 26 API tests, five integrations, generated type/contract checks, full repository quality/SCA, immutable-version browser proof, review-remediated Redis/auth/audit/media/CORS controls, and two final clean independent reviews are complete. M3/P2-04 is unlocked; its first strict ARQ codec slice is committed after a green repository gate.
 
 # 9. Progress
 

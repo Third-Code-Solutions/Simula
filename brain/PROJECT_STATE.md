@@ -18,7 +18,7 @@ source_of_truth: true
 
 ## Current objective
 
-Implement P2-04 durable deterministic run on the verified P2-03 vertical, then continue P2-05 through P2-07 in order. Prove one tenant-safe asynchronous deterministic demo result without real-provider egress or representativeness claims. Hosted Supabase migration is explicitly authorized, but no remote change occurs until authenticated CLI access is available.
+Implement P2-04 durable deterministic run on the verified P2-03 vertical, then continue P2-05 through P2-07 in order. Prove one tenant-safe asynchronous deterministic demo result without real-provider egress or representativeness claims. The approved hosted P2-03 schema is now applied without fixture data; all future schema changes remain ordered migrations with history review.
 
 ## Repository state
 
@@ -27,7 +27,7 @@ Implement P2-04 durable deterministic run on the verified P2-03 vertical, then c
 - OBSERVED 2026-07-17: brain/ is the authoritative Obsidian-readable vault.
 - OBSERVED 2026-07-17 Phase 0 close: 33/33 required notes/YAML, 36/36 Home targets, 49/49 vault wikilinks, 53 evidence IDs defined, 49 referenced, 0 undefined, and 0 application scaffold directories.
 - OBSERVED 2026-07-17: system defaults remain Node 24.16, pnpm 9.15, and Python 3.14.5. Verified user-local bootstrap provides exact Node 24.18.0, pnpm 11.13.1, Python 3.14.6, uv 0.11.19, and Supabase CLI 2.109.1 without loosening manifests.
-- OBSERVED 2026-07-18: the hosted Supabase target is `ywiwmczccktwzqyhzhiz`; `supabase link` is blocked before mutation because no Supabase access token is present. No hosted migration, seed, or data change occurred.
+- OBSERVED 2026-07-18: the hosted Supabase target is `ywiwmczccktwzqyhzhiz` (Simula, active). MCP-authorized access as `kurtgav` bootstrapped the four least-privilege roles and applied the three checked-in P2-03 migrations without seed data. Remote migration history now matches the checked-in versions; 9 `api` and 5 `private` empty RLS tables were verified (E-5011).
 
 ## Phase 0 outcome
 
@@ -69,7 +69,7 @@ Initial M4 audit found 0 Critical/6 High. Iterative review then exposed and corr
 - Phase 2 uses authored, non-representative demo synthetic data and deterministic mock provider.
 - Numerical/calibrated, model, heuristic, qualitative, and recommendation outputs remain typed and visibly separate.
 - Server authorization and RLS are defense in depth; neither substitutes for the other.
-- No external provisioning, paid terms, production data, or production deployment without authority. The user authorized only the named hosted Supabase schema migration; credentials and dry-run review remain mandatory before it runs.
+- No external provisioning, paid terms, production data, or production deployment without authority. The user authorized and completed only the named hosted Supabase P2-03 schema migration; fixture data was not applied.
 
 ## Highest risks
 
@@ -78,5 +78,5 @@ See [[RISK_REGISTER|Risk Register]]. Critical themes: false precision/representa
 ## Blockers
 
 - Human/design-partner evidence remains absent. It does not block an explicitly experimental local walking skeleton; it blocks Phase 6 staging acceptance/customer-facing release.
-- Hosted Supabase migration is authorized but blocked on authenticated CLI access. Once linked, inspect remote migration history, run `supabase db push --linked --include-roles --dry-run`, then push without seed data; future schema changes use ordered migrations and the same dry-run/review path.
+- Hosted Supabase P2-03 migration is applied. The local CLI remains unlinked; before future hosted changes, authenticate the CLI, compare remote history with `supabase migration list --linked`, inspect a seed-free `supabase db push --linked --include-roles --dry-run`, then apply the checked-in ordered migration exactly once.
 - R-020: ARQ maintenance-only status requires exact Phase 2 proof and a tested Phase 5 exit decision before Phase 6.
