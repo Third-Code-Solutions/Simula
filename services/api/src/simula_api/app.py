@@ -6,6 +6,7 @@ import os
 import re
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from hashlib import sha256
 from time import perf_counter
 from typing import cast
 from uuid import UUID, uuid4
@@ -33,6 +34,7 @@ from simula_api.problems import (
     http_problem_handler,
     validation_problem_handler,
 )
+from simula_api.rate_limits import RedisRateLimiter
 from simula_api.routes import router
 from simula_api.services import AppServices
 
@@ -43,6 +45,8 @@ ALLOWED_ENVIRONMENTS = frozenset({"local", "test", "preview", "staging", "produc
 ALLOWED_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 MAX_BODY_BYTES = 64 * 1024
 MAX_HEADER_BYTES = 16 * 1024
+JSON_COMMAND_METHODS = frozenset({"POST", "PATCH"})
+CORS_EXPOSE_HEADERS = ("ETag", "Idempotent-Replayed", "Retry-After", "X-Correlation-ID")
 
 logger = structlog.get_logger()
 
@@ -116,6 +120,19 @@ def _safe_problem(
     }
 
 
+def _allowed_cors_headers(scope: Scope) -> dict[str, str]:
+    origin = Headers(scope=scope).get("origin")
+    application = scope.get("app")
+    allowed_origins = getattr(getattr(application, "state", None), "cors_origins", ())
+    if not isinstance(origin, str) or origin not in allowed_origins:
+        return {}
+    return {
+        "Access-Control-Allow-Origin": origin,
+        "Access-Control-Expose-Headers": ", ".join(CORS_EXPOSE_HEADERS),
+        "Vary": "Origin",
+    }
+
+
 class CorrelationMiddleware:
     """Bound headers/body, add correlation, and emit payload-free request logs."""
 
@@ -128,8 +145,13 @@ class CorrelationMiddleware:
             return
 
         request_headers = Headers(scope=scope)
-        correlation_id = _correlation_id(request_headers.get(CORRELATION_HEADER))
-        scope.setdefault("state", {})["correlation_id"] = correlation_id
+        existing_correlation_id = scope.setdefault("state", {}).get("correlation_id")
+        correlation_id = (
+            existing_correlation_id
+            if isinstance(existing_correlation_id, str)
+            else _correlation_id(request_headers.get(CORRELATION_HEADER))
+        )
+        scope["state"]["correlation_id"] = correlation_id
         context_tokens = bind_contextvars(correlation_id=correlation_id)
         metadata = _runtime_metadata()
         method = scope.get("method", "UNKNOWN")
@@ -177,6 +199,7 @@ class CorrelationMiddleware:
                     ),
                     media_type="application/problem+json",
                     status_code=status_code,
+                    headers=_allowed_cors_headers(scope),
                 )
                 await response(scope, receive_limited, send_with_correlation)
                 return
@@ -195,6 +218,7 @@ class CorrelationMiddleware:
                 ),
                 media_type="application/problem+json",
                 status_code=413,
+                headers=_allowed_cors_headers(scope),
             )
             await response(scope, receive_limited, send_with_correlation)
         except Exception as error:
@@ -222,6 +246,7 @@ class CorrelationMiddleware:
                 ),
                 media_type="application/problem+json",
                 status_code=500,
+                headers=_allowed_cors_headers(scope),
             )
             await response(scope, receive_limited, send_with_correlation)
         finally:
@@ -235,6 +260,120 @@ class CorrelationMiddleware:
                 status=status_code,
             )
             reset_contextvars(**context_tokens)
+
+
+class JsonCommandMediaTypeMiddleware:
+    """Reject unsupported command bodies before FastAPI parses them."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        method = scope.get("method", "")
+        if not path.startswith("/api/v1/") or method not in JSON_COMMAND_METHODS:
+            await self.app(scope, receive, send)
+            return
+
+        raw_content_type = Headers(scope=scope).get("content-type", "")
+        content_type = raw_content_type.split(";", maxsplit=1)[0].strip().lower()
+        if content_type == "application/json":
+            await self.app(scope, receive, send)
+            return
+
+        correlation_id = scope.get("state", {}).get("correlation_id", "unavailable")
+        response = JSONResponse(
+            _safe_problem(
+                correlation_id=correlation_id,
+                status=415,
+                code="unsupported_media_type",
+                title="Unsupported media type",
+                detail="SIMULA command routes accept application/json only.",
+            ),
+            media_type="application/problem+json",
+            status_code=415,
+            headers=_allowed_cors_headers(scope),
+        )
+        await response(scope, receive, send)
+
+
+class PreAuthRateLimitMiddleware:
+    """Charge unverified API requests before parsing, auth, or route dispatch."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        path = scope.get("path", "")
+        if path != "/api/v1" and not path.startswith("/api/v1/"):
+            await self.app(scope, receive, send)
+            return
+
+        application = scope.get("app")
+        services = getattr(getattr(application, "state", None), "domain_services", None)
+        if not isinstance(services, AppServices):
+            await self.app(scope, receive, send)
+            return
+
+        state = scope.setdefault("state", {})
+        if not isinstance(state.get("correlation_id"), str):
+            state["correlation_id"] = _correlation_id(Headers(scope=scope).get(CORRELATION_HEADER))
+        client = scope.get("client")
+        peer = (
+            client[0]
+            if isinstance(client, tuple) and client and isinstance(client[0], str)
+            else "unknown"
+        )
+        ip_hash = sha256(peer.encode()).hexdigest()
+        try:
+            await services.rate_limiter.require_unauthenticated(ip_hash=ip_hash)
+        except AppProblem as error:
+            correlation_id = state["correlation_id"]
+            headers = {CORRELATION_HEADER: correlation_id}
+            if error.retry_after is not None:
+                headers["Retry-After"] = str(error.retry_after)
+            headers.update(_allowed_cors_headers(scope))
+            logger.info(
+                "api_request_denied",
+                code=error.code,
+                correlation_id=correlation_id,
+                route_template=_route_template(scope),
+                status=error.status,
+            )
+            logger.info(
+                "http_request_completed",
+                **_runtime_metadata(),
+                correlation_id=correlation_id,
+                duration_ms=0.0,
+                method=scope.get("method", "UNKNOWN"),
+                route_template=_route_template(scope),
+                status=error.status,
+            )
+            response = JSONResponse(
+                _safe_problem(
+                    correlation_id=correlation_id,
+                    status=error.status,
+                    code=error.code,
+                    title=error.title,
+                    detail=error.detail,
+                ),
+                media_type="application/problem+json",
+                status_code=error.status,
+                headers=headers,
+            )
+            await response(scope, receive, send)
+            return
+
+        state["pre_auth_rate_limit_ip_hash"] = ip_hash
+        await self.app(scope, receive, send)
 
 
 def _health_response(status: str) -> HealthResponse:
@@ -253,6 +392,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
         metadata = RuntimeMetadata.from_environment(service="api")
         owned_client: httpx.AsyncClient | None = None
         owned_database: DatabaseGateway | None = None
+        owned_rate_limiter: RedisRateLimiter | None = None
         app.state.domain_services = services
         app.state.domain_ready = services is not None
         logger.info("service_started", **metadata.model_dump())
@@ -261,11 +401,14 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
                 settings = ApiSettings.from_environment()
                 owned_client = httpx.AsyncClient(timeout=httpx.Timeout(2.0), follow_redirects=False)
                 owned_database = DatabaseGateway(settings)
+                owned_rate_limiter = RedisRateLimiter.from_settings(settings)
                 await owned_database.open()
+                await owned_rate_limiter.open()
                 app.state.domain_services = AppServices(
                     verifier=SupabaseTokenVerifier(settings, owned_client),
                     database=owned_database,
                     cursors=CursorCodec(settings.cursor_secret),
+                    rate_limiter=owned_rate_limiter,
                 )
                 app.state.domain_ready = await owned_database.ready()
             except (AppProblem, ConfigurationError) as error:
@@ -275,6 +418,8 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
         try:
             yield
         finally:
+            if owned_rate_limiter is not None:
+                await owned_rate_limiter.close()
             if owned_database is not None:
                 await owned_database.close()
             if owned_client is not None:
@@ -295,11 +440,13 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
     )
     app.state.domain_services = services
     app.state.domain_ready = services is not None
+    app.state.cors_origins = ()
     try:
         settings = ApiSettings.from_environment()
     except ConfigurationError:
         settings = None
     if settings is not None:
+        app.state.cors_origins = settings.cors_origins
         app.add_middleware(
             CORSMiddleware,
             allow_origins=list(settings.cors_origins),
@@ -312,10 +459,12 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
                 "If-Match",
                 "X-Correlation-ID",
             ],
-            expose_headers=["ETag", "Idempotent-Replayed", "X-Correlation-ID"],
+            expose_headers=list(CORS_EXPOSE_HEADERS),
             max_age=600,
         )
+    app.add_middleware(JsonCommandMediaTypeMiddleware)
     app.add_middleware(CorrelationMiddleware)
+    app.add_middleware(PreAuthRateLimitMiddleware)
     app.add_exception_handler(AppProblem, app_problem_handler)
     app.add_exception_handler(RequestValidationError, validation_problem_handler)
     app.add_exception_handler(StarletteHTTPException, http_problem_handler)

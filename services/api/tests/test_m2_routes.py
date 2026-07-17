@@ -18,7 +18,8 @@ from simula_api.models import (
     ProjectResponse,
     ProjectStatus,
 )
-from simula_api.problems import unauthenticated
+from simula_api.problems import AppProblem, unauthenticated
+from simula_api.rate_limits import RateLimiter
 from simula_api.services import AppServices
 
 OWNER_ID = UUID("00000000-0000-4000-8000-000000000001")
@@ -85,13 +86,62 @@ class FakeDatabase:
             updated_at=NOW,
         )
 
+    async def organization_for_project(self, _: VerifiedIdentity, *, project_id: UUID) -> UUID:
+        assert project_id == PROJECT_ID
+        return ORGANIZATION_ID
 
-def app_with_fakes() -> tuple[FastAPI, FakeDatabase]:
+
+class FakeRateLimiter:
+    async def require_unauthenticated(self, *, ip_hash: str) -> None:
+        assert ip_hash
+
+    async def release_unauthenticated(self, *, ip_hash: str) -> None:
+        assert ip_hash
+
+    async def require_general(
+        self,
+        *,
+        user_id: UUID,
+        idempotency_key: str | None = None,
+        idempotency_scope: str | None = None,
+    ) -> None:
+        assert user_id == OWNER_ID
+        assert (idempotency_key is None) == (idempotency_scope is None)
+
+    async def require_organization_create(
+        self,
+        *,
+        user_id: UUID,
+        idempotency_key: str,
+        idempotency_scope: str,
+    ) -> None:
+        assert user_id == OWNER_ID
+        assert idempotency_key
+        assert idempotency_scope
+
+    async def require_organization_mutation(
+        self,
+        *,
+        user_id: UUID,
+        organization_id: UUID,
+        idempotency_key: str | None = None,
+        idempotency_scope: str | None = None,
+    ) -> None:
+        assert (user_id, organization_id) == (OWNER_ID, ORGANIZATION_ID)
+        assert (idempotency_key is None) == (idempotency_scope is None)
+
+
+def app_with_fakes(
+    *,
+    rate_limiter: RateLimiter | None = None,
+    verifier: SupabaseTokenVerifier | None = None,
+) -> tuple[FastAPI, FakeDatabase]:
     database = FakeDatabase()
     services = AppServices(
-        verifier=cast(SupabaseTokenVerifier, FakeVerifier()),
+        verifier=verifier or cast(SupabaseTokenVerifier, FakeVerifier()),
         database=cast(DatabaseGateway, database),
         cursors=CursorCodec(b"c" * 32),
+        rate_limiter=rate_limiter or cast(RateLimiter, FakeRateLimiter()),
     )
     return create_app(services=services), database
 
@@ -117,7 +167,15 @@ async def test_authenticated_organization_create_trims_labels_and_emits_safe_hea
 
 
 async def test_protected_route_fails_closed_without_a_bearer_token() -> None:
-    app, _ = app_with_fakes()
+    class RecordingRateLimiter(FakeRateLimiter):
+        def __init__(self) -> None:
+            self.ip_hashes: list[str] = []
+
+        async def require_unauthenticated(self, *, ip_hash: str) -> None:
+            self.ip_hashes.append(ip_hash)
+
+    rate_limiter = RecordingRateLimiter()
+    app, _ = app_with_fakes(rate_limiter=cast(RateLimiter, rate_limiter))
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/api/v1/organizations")
 
@@ -125,6 +183,117 @@ async def test_protected_route_fails_closed_without_a_bearer_token() -> None:
     assert response.headers["www-authenticate"] == "Bearer"
     assert response.headers["content-type"] == "application/problem+json"
     assert response.json()["code"] == "unauthenticated"
+    assert len(rate_limiter.ip_hashes) == 1
+
+
+async def test_pre_auth_rate_limit_stops_over_limit_malformed_bearers_before_verifier() -> None:
+    class CountingVerifier:
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def verify(self, _: str) -> VerifiedIdentity:
+            self.calls += 1
+            raise unauthenticated()
+
+    class BurstLimiter(FakeRateLimiter):
+        def __init__(self) -> None:
+            self.attempts = 0
+
+        async def require_unauthenticated(self, *, ip_hash: str) -> None:
+            assert ip_hash
+            self.attempts += 1
+            if self.attempts > 10:
+                raise AppProblem(
+                    status=429,
+                    code="rate_limited",
+                    title="Rate limit reached",
+                    detail="Retry later.",
+                    retry_after=7,
+                )
+
+    limiter = BurstLimiter()
+    verifier = CountingVerifier()
+    app, _ = app_with_fakes(
+        rate_limiter=cast(RateLimiter, limiter),
+        verifier=cast(SupabaseTokenVerifier, verifier),
+    )
+    app.state.cors_origins = ("https://console.example.test",)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        responses = [
+            await client.get(
+                "/api/v1/organizations",
+                headers={
+                    "Authorization": "Bearer malformed",
+                    "Origin": "https://console.example.test",
+                },
+            )
+            for _ in range(11)
+        ]
+
+    assert [response.status_code for response in responses[:-1]] == [401] * 10
+    assert responses[-1].status_code == 429
+    assert responses[-1].headers["retry-after"] == "7"
+    assert responses[-1].headers[CORRELATION_HEADER]
+    assert responses[-1].headers["access-control-allow-origin"] == "https://console.example.test"
+    assert "Retry-After" in responses[-1].headers["access-control-expose-headers"]
+    assert CORRELATION_HEADER in responses[-1].headers["access-control-expose-headers"].lower()
+    assert verifier.calls == 10
+
+
+async def test_rate_limit_problem_includes_retry_after_header() -> None:
+    class DenyingRateLimiter:
+        async def require_unauthenticated(self, *, ip_hash: str) -> None:
+            assert ip_hash
+
+        async def release_unauthenticated(self, *, ip_hash: str) -> None:
+            assert ip_hash
+
+        async def require_general(
+            self,
+            *,
+            user_id: UUID,
+            idempotency_key: str | None = None,
+            idempotency_scope: str | None = None,
+        ) -> None:
+            assert user_id == OWNER_ID
+            assert idempotency_key is None
+            assert idempotency_scope is None
+            raise AppProblem(
+                status=429,
+                code="rate_limited",
+                title="Rate limit reached",
+                detail="Retry later.",
+                retry_after=7,
+            )
+
+        async def require_organization_create(
+            self,
+            *,
+            user_id: UUID,
+            idempotency_key: str,
+            idempotency_scope: str,
+        ) -> None:
+            raise AssertionError((user_id, idempotency_key, idempotency_scope))
+
+        async def require_organization_mutation(
+            self,
+            *,
+            user_id: UUID,
+            organization_id: UUID,
+            idempotency_key: str | None = None,
+            idempotency_scope: str | None = None,
+        ) -> None:
+            raise AssertionError((user_id, organization_id, idempotency_key, idempotency_scope))
+
+    app, _ = app_with_fakes(rate_limiter=cast(RateLimiter, DenyingRateLimiter()))
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            "/api/v1/me", headers={"Authorization": f"Bearer {TEST_BEARER}"}
+        )
+
+    assert response.status_code == 429
+    assert response.headers["retry-after"] == "7"
+    assert response.json()["code"] == "rate_limited"
 
 
 async def test_unknown_command_fields_are_rejected_as_rfc9457_problem() -> None:
@@ -143,6 +312,36 @@ async def test_unknown_command_fields_are_rejected_as_rfc9457_problem() -> None:
     assert response.headers["content-type"] == "application/problem+json"
     assert response.json()["code"] == "validation_error"
     assert response.json()["errors"] == [{"field": "unknown", "code": "extra_forbidden"}]
+
+
+async def test_command_routes_reject_multipart_before_auth_or_domain_processing() -> None:
+    class RecordingRateLimiter(FakeRateLimiter):
+        def __init__(self) -> None:
+            self.pre_auth_attempts = 0
+
+        async def require_unauthenticated(self, *, ip_hash: str) -> None:
+            assert ip_hash
+            self.pre_auth_attempts += 1
+
+    rate_limiter = RecordingRateLimiter()
+    app, database = app_with_fakes(rate_limiter=cast(RateLimiter, rate_limiter))
+    app.state.cors_origins = ("https://console.example.test",)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/organizations",
+            headers={
+                "Authorization": f"Bearer {TEST_BEARER}",
+                "Origin": "https://console.example.test",
+            },
+            files={"name": (None, "Fictional Studio")},
+        )
+
+    assert response.status_code == 415
+    assert response.headers["content-type"] == "application/problem+json"
+    assert response.json()["code"] == "unsupported_media_type"
+    assert response.headers["access-control-allow-origin"] == "https://console.example.test"
+    assert database.organization_names == []
+    assert rate_limiter.pre_auth_attempts == 1
 
 
 async def test_project_patch_requires_strong_if_match_and_sets_new_etag() -> None:
@@ -167,7 +366,17 @@ async def test_project_patch_requires_strong_if_match_and_sets_new_etag() -> Non
 
 
 async def test_actual_oversized_body_is_rejected_before_domain_processing() -> None:
-    app, database = app_with_fakes()
+    class RecordingRateLimiter(FakeRateLimiter):
+        def __init__(self) -> None:
+            self.pre_auth_attempts = 0
+
+        async def require_unauthenticated(self, *, ip_hash: str) -> None:
+            assert ip_hash
+            self.pre_auth_attempts += 1
+
+    rate_limiter = RecordingRateLimiter()
+    app, database = app_with_fakes(rate_limiter=cast(RateLimiter, rate_limiter))
+    app.state.cors_origins = ("https://console.example.test",)
     oversized = b'{"name":"' + b"a" * (64 * 1024) + b'"}'
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
@@ -176,6 +385,7 @@ async def test_actual_oversized_body_is_rejected_before_domain_processing() -> N
                 "Authorization": f"Bearer {TEST_BEARER}",
                 "Content-Type": "application/json",
                 "Idempotency-Key": "m2-organization-key-0003",
+                "Origin": "https://console.example.test",
             },
             content=oversized,
         )
@@ -183,4 +393,6 @@ async def test_actual_oversized_body_is_rejected_before_domain_processing() -> N
     assert response.status_code == 413
     assert response.headers["content-type"] == "application/problem+json"
     assert response.json()["code"] == "request_too_large"
+    assert response.headers["access-control-allow-origin"] == "https://console.example.test"
+    assert rate_limiter.pre_auth_attempts == 1
     assert database.organization_names == []

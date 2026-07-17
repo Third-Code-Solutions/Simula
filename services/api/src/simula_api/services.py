@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from simula_api.auth import SupabaseTokenVerifier
 from simula_api.cursor import CursorCodec
 from simula_api.database import DatabaseGateway
+from simula_api.rate_limits import RateLimiter
 
 
 @dataclass(frozen=True)
@@ -14,3 +15,4 @@ class AppServices:
     verifier: SupabaseTokenVerifier
     database: DatabaseGateway
     cursors: CursorCodec
+    rate_limiter: RateLimiter

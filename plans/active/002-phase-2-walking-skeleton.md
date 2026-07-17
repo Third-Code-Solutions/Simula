@@ -45,7 +45,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 
 - Real model/provider calls, real Philippine population claims, official/microdata ingestion, scraping, uploads, calibrated or predictive output.
 - Membership management, exports/shares, realtime subscriptions, billing, customer data, hosted analytics.
-- Paid resource creation, hosted Supabase/Railway/Vercel mutation, staging/production deployment, or production data. Those require later gates and explicit authority.
+- Paid resource creation, hosted Supabase/Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user later authorized only the named Supabase schema migration; it remains blocked pending authenticated CLI access and remote-history dry run.
 - Phase 3 methodology expansion, Phase 4 MVP breadth, and any representativeness/survey-replacement claim.
 
 # 5. Proposed Design
@@ -138,6 +138,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-17 — ACCEPTED: Phase 1 final independent review passed 0 Critical / 0 High / 0 Medium; Phase 2 may start.
 - 2026-07-17 — ACCEPTED: execute P2-01 through P2-07 in order; each gate must pass before dependent scope.
 - 2026-07-17 — ACCEPTED: local/disposable services only; no hosted resource or production mutation is authorized.
+- 2026-07-18 — ACCEPTED: user authorized schema migration of Supabase project `ywiwmczccktwzqyhzhiz`. CLI link failed before mutation because no access token is configured; remote history must be inspected and `db push --linked --include-roles --dry-run` must pass before a seed-free push.
 - 2026-07-17 — ACCEPTED: strict Phase 1 ADRs and resource/control matrices are implementation specifications, not suggestions.
 - 2026-07-17 — ACCEPTED: R-020 does not block the local prototype but blocks Phase 6 until the Phase 5 queue exit-plan gate passes.
 - 2026-07-17 — ACCEPTED: M0 uses Vite 8 native TS-path resolution instead of the redundant deprecated plugin and overrides Next's vulnerable PostCSS transitive to accepted 8.5.19; clean build/test/audit proves compatibility.
@@ -147,7 +148,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-17 — ACCEPTED: `pnpm verify:m0-runtime` is the single local M0 runtime command. It sanitizes routing, accepts only a validated local socket/pipe Docker context, refuses linked/occupied/pre-existing/cross-clone-concurrent state before mutation, uses per-run owned namespaces, suppresses both Supabase output streams, contains command trees, uses direct loopback health, and attempts exact cleanup after failure, timeout, or catchable interruption; SIGTERM cleanup is a POSIX guarantee (E-4030–E-4033).
 - 2026-07-17 — OBSERVED: user host remediation restored Docker 29.6.1; the exact M0 gate now passes. Canonical Compose validation requires loopback-only Redis publication on a non-internal local DNS bridge. R-021 is Mitigated and P2-02 is unlocked (E-5008).
 - 2026-07-17 — ACCEPTED: M1 / P2-02 passes its exact local gate. The first migration owns all application DDL; `roles.sql` is the privileged local/CI global bootstrap; runtime passwords remain injected and absent from source; browser roles cannot reach application schemas; complete organization writes remain helper-only (E-5009).
-- 2026-07-18 — OBSERVED: Docker 29.6.1 and exact Node 24.18.0/pnpm 11.13.1 gates are restored. M2 reset-driven database/Auth/API tests, generated types/contracts, web quality/build, and a real browser sign-in-to-Version-2 immutable-stimulus journey pass. Windows Uvicorn uses `asyncio.Runner` with a selector loop for psycopg and Vitest uses one fork. Independent review remains a closing requirement (E-5010).
+- 2026-07-18 — OBSERVED: P2-03/M2 passes its final local and independent-review gate (E-5010). Two clean resets, lint, 32 pgTAP, 26 API tests, five integrations, generated type/contract checks, full repository quality/SCA, immutable-version browser proof, review-remediated Redis/auth/audit/media/CORS controls, and two final clean independent reviews are complete. M3/P2-04 is unlocked; hosted migration remains unperformed pending Supabase CLI authentication.
 
 # 9. Progress
 
@@ -165,12 +166,12 @@ tests/                     cross-service, security, load, E2E
   - [x] First ordered migration, authored Auth fixtures, exact runtime/owner roles, non-exposed schemas, 14 constrained tables, forced RLS, 16 policies, composite tenant FKs, and complete idempotent organization helper.
   - [x] Two consecutive resets, database lint, 32/32 pgTAP catalog assertions, Data API denial, real-role claims/pool-reset/direct-DML/cross-tenant/idempotency/late-failure/deletion-skeleton tests, and generated database-type drift pass (E-5009).
   - [x] Full repository quality, 5/5 combined integration, 157-file secret baseline, and Moderate-blocking npm/Python SCA pass.
-- [ ] M2 / P2-03 organization/project/stimulus vertical.
+- [x] M2 / P2-03 organization/project/stimulus vertical.
   - [x] API/database/web implementation: authenticated organization/project/stimulus-version commands, generated contracts, immutable hashes, API RFC 9457/idempotency/version behavior, and accessible Auth-only web forms/lists/detail states.
-  - [x] Static implementation checks: API unit 19/19; web unit 5/5; strict Python and web TypeScript/lint/format; Next production build.
+  - [x] Static implementation checks: API unit 26/26; web unit 5/5; strict Python and web TypeScript/lint/format; Next production build.
   - [x] Reset-driven local API/database integration and generated database-type drift under exact Node 24.18.0/pnpm 11.13.1.
   - [x] Sign-in-to-stimulus Playwright E2E, including a second immutable version with a distinct checksum.
-  - [ ] Independent M2 review.
+  - [x] Independent M2 review: remediation loop and two final reviewers reported no actionable findings.
 - [ ] M3 / P2-04 durable deterministic run.
 - [ ] M4 / P2-05 trustworthy result experience.
 - [ ] M5 / P2-06 cancellation and recovery.

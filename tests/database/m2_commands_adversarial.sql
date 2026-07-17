@@ -296,9 +296,44 @@ begin
         raise exception 'viewer denial was not explicit forbidden: %', sqlerrm;
       end if;
   end;
+
+  perform api.record_privileged_denial(
+    tested_organization_id,
+    'project.update_denied',
+    'project',
+    project_id,
+    '20000000-0000-4000-8000-00000000000e'::uuid
+  );
 end
 $test$;
 
+reset session authorization;
+do $test$
+declare
+  tested_organization_id uuid := (
+    select resource_id from pg_temp.m2_state where label = 'organization_a'
+  );
+  project_id uuid := (
+    select resource_id from pg_temp.m2_state where label = 'project_a'
+  );
+begin
+  if not exists (
+    select 1
+    from private.audit_events as audit
+    where audit.organization_id = tested_organization_id
+      and audit.action = 'project.update_denied'
+      and audit.object_type = 'project'
+      and audit.object_id = project_id
+      and audit.outcome = 'denied'
+      and audit.source_service = 'api'
+      and audit.metadata = '{"reason":"insufficient_organization_role"}'::jsonb
+  ) then
+    raise exception 'privileged denial did not produce complete safe audit evidence';
+  end if;
+end
+$test$;
+
+set session authorization simula_api;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-4000-8000-000000000003","role":"authenticated","iss":"http://127.0.0.1:54321/auth/v1","aud":"authenticated","exp":4102444800}';
 
@@ -427,6 +462,21 @@ begin
       )
   ) <> 4 then
     raise exception 'M2 command audit graph is incomplete';
+  end if;
+
+  if exists (
+    select 1
+    from private.audit_events as audit
+    where audit.organization_id = tested_organization_id
+      and audit.action in (
+        'project.created',
+        'project.updated',
+        'stimulus.created',
+        'stimulus.version_appended'
+      )
+      and (audit.outcome <> 'success' or audit.source_service <> 'api')
+  ) then
+    raise exception 'successful M2 audit events lack outcome or source service';
   end if;
 
   if exists (

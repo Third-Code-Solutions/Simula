@@ -51,6 +51,7 @@ router = APIRouter(
         404: _problem_response("The resource is absent or not visible to the caller."),
         409: _problem_response("The request conflicts with current durable state."),
         413: _problem_response("The request exceeds the API body limit."),
+        415: _problem_response("Only JSON command bodies are supported."),
         422: _problem_response("The request is invalid or outside the supported scope."),
         429: _problem_response("A durable quota or rate limit was reached."),
         503: _problem_response("A required dependency is temporarily unavailable."),
@@ -89,6 +90,35 @@ async def current_identity(
     return await _services(request).verifier.verify(credentials.credentials)
 
 
+async def rate_limited_identity(
+    request: Request,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+) -> VerifiedIdentity:
+    services = _services(request)
+    identity = await current_identity(request, credentials)
+    pre_auth_ip_hash = request.scope.get("state", {}).pop("pre_auth_rate_limit_ip_hash", None)
+    if isinstance(pre_auth_ip_hash, str):
+        await services.rate_limiter.release_unauthenticated(ip_hash=pre_auth_ip_hash)
+    idempotency_key = _rate_idempotency_key(request)
+    await services.rate_limiter.require_general(
+        user_id=identity.user_id,
+        idempotency_key=idempotency_key,
+        idempotency_scope=_idempotency_scope(request) if idempotency_key is not None else None,
+    )
+    return identity
+
+
+def _rate_idempotency_key(request: Request) -> str | None:
+    value = request.headers.get("idempotency-key")
+    if value is None or re.fullmatch(IDEMPOTENCY_PATTERN, value) is None:
+        return None
+    return value
+
+
+def _idempotency_scope(request: Request) -> str:
+    return f"{request.method}:{request.url.path}"
+
+
 def _correlation_id(request: Request) -> UUID:
     value = getattr(request.state, "correlation_id", None)
     if not isinstance(value, str):
@@ -117,6 +147,33 @@ def _record_replay(*, route: str, replayed: bool, request: Request) -> None:
     )
 
 
+async def _record_privileged_denial(
+    *,
+    request: Request,
+    identity: VerifiedIdentity,
+    organization_id: UUID,
+    action: str,
+    object_type: str,
+    object_id: UUID | None,
+) -> None:
+    try:
+        await _services(request).database.record_privileged_denial(
+            identity,
+            organization_id=organization_id,
+            action=action,
+            object_type=object_type,
+            object_id=object_id,
+            correlation_id=_correlation_id(request),
+        )
+    except AppProblem as error:
+        logger.error(
+            "audit_evidence_incomplete",
+            action=action,
+            correlation_id=str(_correlation_id(request)),
+            error_code=error.code,
+        )
+
+
 def _require_if_match(value: str | None) -> int:
     match = ETAG_PATTERN.fullmatch(value or "")
     if match is None:
@@ -131,7 +188,7 @@ def _require_if_match(value: str | None) -> int:
 
 
 @router.get("/me", operation_id="get_current_identity", response_model=MeResponse)
-async def me(identity: Annotated[VerifiedIdentity, Depends(current_identity)]) -> MeResponse:
+async def me(identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)]) -> MeResponse:
     return MeResponse(user_id=identity.user_id)
 
 
@@ -146,9 +203,15 @@ async def create_organization(
     response: Response,
     body: OrganizationCreate,
     idempotency_key: IdempotencyKey,
-    identity: Annotated[VerifiedIdentity, Depends(current_identity)],
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> OrganizationResponse:
-    organization, replayed = await _services(request).database.create_organization(
+    services = _services(request)
+    await services.rate_limiter.require_organization_create(
+        user_id=identity.user_id,
+        idempotency_key=idempotency_key,
+        idempotency_scope=_idempotency_scope(request),
+    )
+    organization, replayed = await services.database.create_organization(
         identity,
         name=body.name,
         idempotency_key=idempotency_key,
@@ -167,7 +230,7 @@ async def create_organization(
 )
 async def list_organizations(
     request: Request,
-    identity: Annotated[VerifiedIdentity, Depends(current_identity)],
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     cursor: str | None = None,
     page_size: PageSize = 25,
 ) -> OrganizationPage:
@@ -196,16 +259,38 @@ async def create_project(
     response: Response,
     body: ProjectCreate,
     idempotency_key: IdempotencyKey,
-    identity: Annotated[VerifiedIdentity, Depends(current_identity)],
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProjectResponse:
-    project, replayed = await _services(request).database.create_project(
-        identity,
-        organization_id=organization_id,
-        payload=body.model_dump(mode="json"),
-        idempotency_key=idempotency_key,
-        request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
-        correlation_id=_correlation_id(request),
+    services = _services(request)
+    organization_id = await services.database.visible_organization(
+        identity, organization_id=organization_id
     )
+    await services.rate_limiter.require_organization_mutation(
+        user_id=identity.user_id,
+        organization_id=organization_id,
+        idempotency_key=idempotency_key,
+        idempotency_scope=_idempotency_scope(request),
+    )
+    try:
+        project, replayed = await services.database.create_project(
+            identity,
+            organization_id=organization_id,
+            payload=body.model_dump(mode="json"),
+            idempotency_key=idempotency_key,
+            request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
+            correlation_id=_correlation_id(request),
+        )
+    except AppProblem as error:
+        if error.code == "forbidden":
+            await _record_privileged_denial(
+                request=request,
+                identity=identity,
+                organization_id=organization_id,
+                action="project.create_denied",
+                object_type="project",
+                object_id=None,
+            )
+        raise
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     response.headers["ETag"] = f'"{project.version}"'
     _record_replay(
@@ -224,7 +309,7 @@ async def create_project(
 async def list_projects(
     organization_id: UUID,
     request: Request,
-    identity: Annotated[VerifiedIdentity, Depends(current_identity)],
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     cursor: str | None = None,
     page_size: PageSize = 25,
 ) -> ProjectPage:
@@ -251,7 +336,7 @@ async def get_project(
     project_id: UUID,
     request: Request,
     response: Response,
-    identity: Annotated[VerifiedIdentity, Depends(current_identity)],
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProjectDetail:
     project = await _services(request).database.get_project(identity, project_id=project_id)
     response.headers["ETag"] = f'"{project.version}"'
@@ -266,16 +351,35 @@ async def update_project(
     request: Request,
     response: Response,
     body: ProjectPatch,
-    identity: Annotated[VerifiedIdentity, Depends(current_identity)],
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     if_match: Annotated[str | None, Header(alias="If-Match")] = None,
 ) -> ProjectResponse:
-    project = await _services(request).database.update_project(
-        identity,
-        project_id=project_id,
-        expected_version=_require_if_match(if_match),
-        patch=body,
-        correlation_id=_correlation_id(request),
+    services = _services(request)
+    organization_id = await services.database.organization_for_project(
+        identity, project_id=project_id
     )
+    await services.rate_limiter.require_organization_mutation(
+        user_id=identity.user_id, organization_id=organization_id
+    )
+    try:
+        project = await services.database.update_project(
+            identity,
+            project_id=project_id,
+            expected_version=_require_if_match(if_match),
+            patch=body,
+            correlation_id=_correlation_id(request),
+        )
+    except AppProblem as error:
+        if error.code == "forbidden":
+            await _record_privileged_denial(
+                request=request,
+                identity=identity,
+                organization_id=organization_id,
+                action="project.update_denied",
+                object_type="project",
+                object_id=project_id,
+            )
+        raise
     response.headers["ETag"] = f'"{project.version}"'
     return project
 
@@ -292,17 +396,39 @@ async def create_stimulus(
     response: Response,
     body: StimulusCreate,
     idempotency_key: IdempotencyKey,
-    identity: Annotated[VerifiedIdentity, Depends(current_identity)],
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> StimulusResponse:
-    stimulus, replayed = await _services(request).database.create_stimulus(
-        identity,
-        project_id=project_id,
-        name=body.name,
-        content=body.content,
-        idempotency_key=idempotency_key,
-        request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
-        correlation_id=_correlation_id(request),
+    services = _services(request)
+    organization_id = await services.database.organization_for_project(
+        identity, project_id=project_id
     )
+    await services.rate_limiter.require_organization_mutation(
+        user_id=identity.user_id,
+        organization_id=organization_id,
+        idempotency_key=idempotency_key,
+        idempotency_scope=_idempotency_scope(request),
+    )
+    try:
+        stimulus, replayed = await services.database.create_stimulus(
+            identity,
+            project_id=project_id,
+            name=body.name,
+            content=body.content,
+            idempotency_key=idempotency_key,
+            request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
+            correlation_id=_correlation_id(request),
+        )
+    except AppProblem as error:
+        if error.code == "forbidden":
+            await _record_privileged_denial(
+                request=request,
+                identity=identity,
+                organization_id=organization_id,
+                action="stimulus.create_denied",
+                object_type="stimulus",
+                object_id=None,
+            )
+        raise
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     _record_replay(
         route="/api/v1/projects/{project_id}/stimuli", replayed=replayed, request=request
@@ -322,16 +448,38 @@ async def append_stimulus_version(
     response: Response,
     body: StimulusVersionAppend,
     idempotency_key: IdempotencyKey,
-    identity: Annotated[VerifiedIdentity, Depends(current_identity)],
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> StimulusVersionResponse:
-    version, replayed = await _services(request).database.append_stimulus_version(
-        identity,
-        stimulus_id=stimulus_id,
-        content=body.content,
-        idempotency_key=idempotency_key,
-        request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
-        correlation_id=_correlation_id(request),
+    services = _services(request)
+    organization_id = await services.database.organization_for_stimulus(
+        identity, stimulus_id=stimulus_id
     )
+    await services.rate_limiter.require_organization_mutation(
+        user_id=identity.user_id,
+        organization_id=organization_id,
+        idempotency_key=idempotency_key,
+        idempotency_scope=_idempotency_scope(request),
+    )
+    try:
+        version, replayed = await services.database.append_stimulus_version(
+            identity,
+            stimulus_id=stimulus_id,
+            content=body.content,
+            idempotency_key=idempotency_key,
+            request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
+            correlation_id=_correlation_id(request),
+        )
+    except AppProblem as error:
+        if error.code == "forbidden":
+            await _record_privileged_denial(
+                request=request,
+                identity=identity,
+                organization_id=organization_id,
+                action="stimulus.version_append_denied",
+                object_type="stimulus_version",
+                object_id=stimulus_id,
+            )
+        raise
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     _record_replay(
         route="/api/v1/stimuli/{stimulus_id}/versions", replayed=replayed, request=request

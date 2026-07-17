@@ -2,7 +2,7 @@
 title: SIMULA Project State
 status: active
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 owner: Principal program and engineering lead
 classification: OBSERVED
 source_of_truth: true
@@ -18,7 +18,7 @@ source_of_truth: true
 
 ## Current objective
 
-Implement P2-03 organization/project/stimulus vertical on the verified P2-01 foundation and P2-02 tenant-safe database, then continue P2-04 through P2-07 in order. Prove one tenant-safe asynchronous deterministic demo result without real-provider egress or representativeness claims. No hosted/production deployment or external resource mutation without explicit authorization.
+Implement P2-04 durable deterministic run on the verified P2-03 vertical, then continue P2-05 through P2-07 in order. Prove one tenant-safe asynchronous deterministic demo result without real-provider egress or representativeness claims. Hosted Supabase migration is explicitly authorized, but no remote change occurs until authenticated CLI access is available.
 
 ## Repository state
 
@@ -27,6 +27,7 @@ Implement P2-03 organization/project/stimulus vertical on the verified P2-01 fou
 - OBSERVED 2026-07-17: brain/ is the authoritative Obsidian-readable vault.
 - OBSERVED 2026-07-17 Phase 0 close: 33/33 required notes/YAML, 36/36 Home targets, 49/49 vault wikilinks, 53 evidence IDs defined, 49 referenced, 0 undefined, and 0 application scaffold directories.
 - OBSERVED 2026-07-17: system defaults remain Node 24.16, pnpm 9.15, and Python 3.14.5. Verified user-local bootstrap provides exact Node 24.18.0, pnpm 11.13.1, Python 3.14.6, uv 0.11.19, and Supabase CLI 2.109.1 without loosening manifests.
+- OBSERVED 2026-07-18: the hosted Supabase target is `ywiwmczccktwzqyhzhiz`; `supabase link` is blocked before mutation because no Supabase access token is present. No hosted migration, seed, or data change occurred.
 
 ## Phase 0 outcome
 
@@ -58,10 +59,9 @@ Initial M4 audit found 0 Critical/6 High. Iterative review then exposed and corr
 - M1 observed green: `pnpm verify:m1-database` passes two zero-state resets, Supabase lint, 32 catalog-derived pgTAP assertions, Auth sign-in for three fixtures, anonymous plus authenticated Data API denial, real-session claim expiry/allowlist/pool-reset checks, direct-DML/owner-role denial, two-tenant RLS, idempotent replay/conflict, injected late-failure rollback, and the organization deletion-graph skeleton. Combined Redis/database integration is 5/5; full `pnpm check`, 157-file secret scan, and Moderate-blocking npm/Python SCA pass (E-5009).
 - M1 correction loop caught and fixed restricted-role bootstrap semantics, ineffective schema-scoped function default revocation, retained `PUBLIC EXECUTE`, qualified SQL grammar misuse, generated Auth identity email handling, post-owner ACL ordering, and an ambiguous correlated RLS predicate that incorrectly blocked a user’s second organization.
 - Current Obsidian integrity: 56/56 governed Markdown files have required frontmatter, 145/145 wikilinks resolve, 55 Home links resolve, 82 evidence IDs have zero duplicates or undefined references, and the active plan retains sections 1–11.
-- M2 / P2-03 is now the only active implementation milestone; M3–M6 remain pending in strict dependency order per [[QA/PHASE_2_BACKLOG|Phase 2 Backlog]].
-- M2 implementation is in progress: atomic project/stimulus-version commands and adversarial database coverage; FastAPI JWT/JWKS, pool/claims, RFC 9457, cursor, idempotency, and optimistic-version surfaces; generated OpenAPI/TypeScript contracts; and an accessible Supabase-Auth-only web journey are implemented. Browser domain calls go directly to FastAPI with the user bearer token; browser Data API access remains absent.
-- M2 local evidence is green: exact Node 24.18.0/pnpm 11.13.1 toolchain; two reset-driven database gates; Supabase lint; 32 pgTAP checks; 20 API tests; four Auth/API/database integration tests; generated database types and contracts; web TypeScript/lint; five web tests; Next production build; and a real browser journey from local sign-in through organization/project/stimulus creation and a second immutable stimulus version with distinct SHA-256 checksums. Windows API execution uses `asyncio.Runner` with a selector loop for psycopg compatibility, and Vitest uses one deterministic fork. M2 is not complete: independent review remains required.
-- Phase 3 remains blocked until Phase 2 implementation, evidence, and independent review pass.
+- M2 / P2-03 is complete. Atomic project/stimulus-version commands, generated contracts, Auth-only accessible web journey, JWT/JWKS/claim boundary, rate/CORS/media safeguards, and audit-denial evidence are implemented. Browser domain calls use FastAPI bearer auth only; browser Data API access remains absent.
+- M2 final local evidence: `pnpm verify:m2-api` passes two clean resets, lint, 32 pgTAP checks, 26 API tests, five database/Auth/API/Redis integrations, generated database/OpenAPI drift checks, and the full repository format/lint/type/web-test/web-build/secret/SCA gate. Review remediation added atomic Redis buckets, pre-auth IP protection with verified-request refunds, 24-hour idempotency replay bypass, DB-15 exact-key test cleanup, JSON-only command media, forged/expired/rotation proof, audit outcome/source/denial records, and browser-readable correlated CORS error headers. Two independent final reviews reported no remaining findings (E-5010).
+- M3 / P2-04 is the next implementation milestone. The P2-05–P2-07 sequence remains pending.
 
 ## Key constraints
 
@@ -69,7 +69,7 @@ Initial M4 audit found 0 Critical/6 High. Iterative review then exposed and corr
 - Phase 2 uses authored, non-representative demo synthetic data and deterministic mock provider.
 - Numerical/calibrated, model, heuristic, qualitative, and recommendation outputs remain typed and visibly separate.
 - Server authorization and RLS are defense in depth; neither substitutes for the other.
-- No external provisioning, paid terms, production data, or production deployment without authority.
+- No external provisioning, paid terms, production data, or production deployment without authority. The user authorized only the named hosted Supabase schema migration; credentials and dry-run review remain mandatory before it runs.
 
 ## Highest risks
 
@@ -78,5 +78,5 @@ See [[RISK_REGISTER|Risk Register]]. Critical themes: false precision/representa
 ## Blockers
 
 - Human/design-partner evidence remains absent. It does not block an explicitly experimental local walking skeleton; it blocks Phase 6 staging acceptance/customer-facing release.
-- Hosted credentials/provisioning are absent and unauthorized; local/disposable Phase 2 work must not mutate external resources.
+- Hosted Supabase migration is authorized but blocked on authenticated CLI access. Once linked, inspect remote migration history, run `supabase db push --linked --include-roles --dry-run`, then push without seed data; future schema changes use ordered migrations and the same dry-run/review path.
 - R-020: ARQ maintenance-only status requires exact Phase 2 proof and a tested Phase 5 exit decision before Phase 6.

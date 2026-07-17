@@ -385,6 +385,7 @@ select extensions.is(
     'api.create_project(uuid,text,text,text,text,text,text,text,uuid)',
     'api.create_stimulus(uuid,text,text,text,text,text,uuid)',
     'api.list_organizations()',
+    'api.record_privileged_denial(uuid,text,text,uuid,uuid)',
     'api.update_project(uuid,integer,text,text,text,text,text,uuid)',
     'private.append_stimulus_version_atomic(uuid,text,text,text,text,uuid)',
     'private.create_organization_atomic(text,text,text,uuid)',
@@ -393,6 +394,7 @@ select extensions.is(
     'private.has_org_role(uuid,uuid,api.organization_role[])',
     'private.is_org_member(uuid,uuid)',
     'private.is_verified_api_subject(uuid)',
+    'private.record_privileged_denial_atomic(uuid,text,text,uuid,uuid)',
     'private.update_project_atomic(uuid,integer,text,text,text,text,text,uuid)',
     'private.verified_subject()'
   ]::text[],
@@ -412,6 +414,7 @@ select extensions.ok(
           'create_stimulus_atomic',
           'has_org_role',
           'is_org_member',
+          'record_privileged_denial_atomic',
           'update_project_atomic'
         )
       )
@@ -428,6 +431,7 @@ select extensions.ok(
         'has_org_role',
         'is_org_member',
         'is_verified_api_subject',
+        'record_privileged_denial_atomic',
         'update_project_atomic',
         'verified_subject'
       )

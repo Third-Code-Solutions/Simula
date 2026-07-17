@@ -518,6 +518,16 @@ export type Database = {
           organization_status: Database["api"]["Enums"]["organization_status"]
         }[]
       }
+      record_privileged_denial: {
+        Args: {
+          requested_action: string
+          requested_correlation_id: string
+          requested_object_id: string
+          requested_object_type: string
+          requested_organization_id: string
+        }
+        Returns: undefined
+      }
       update_project: {
         Args: {
           requested_category: string
@@ -578,6 +588,8 @@ export type Database = {
           object_id: string | null
           object_type: string
           organization_id: string | null
+          outcome: string
+          source_service: string
         }
         Insert: {
           action: string
@@ -590,6 +602,8 @@ export type Database = {
           object_id?: string | null
           object_type: string
           organization_id?: string | null
+          outcome?: string
+          source_service?: string
         }
         Update: {
           action?: string
@@ -602,6 +616,8 @@ export type Database = {
           object_id?: string | null
           object_type?: string
           organization_id?: string | null
+          outcome?: string
+          source_service?: string
         }
         Relationships: []
       }
@@ -885,6 +901,16 @@ export type Database = {
       is_verified_api_subject: {
         Args: { expected_user_id: string }
         Returns: boolean
+      }
+      record_privileged_denial_atomic: {
+        Args: {
+          requested_action: string
+          requested_correlation_id: string
+          requested_object_id: string
+          requested_object_type: string
+          requested_organization_id: string
+        }
+        Returns: undefined
       }
       update_project_atomic: {
         Args: {

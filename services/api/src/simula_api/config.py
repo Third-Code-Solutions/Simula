@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlsplit
 
@@ -45,6 +46,8 @@ class ApiSettings:
     supabase_issuer: str
     supabase_jwks_url: str
     supabase_publishable_key: str
+    redis_url: str
+    rate_limit_key_prefix: str
     cursor_secret: bytes
     cors_origins: tuple[str, ...]
 
@@ -84,6 +87,22 @@ class ApiSettings:
         if not publishable_key.startswith("sb_publishable_"):
             raise ConfigurationError("only a Supabase publishable key is accepted")
 
+        redis_url = _required("SIMULA_REDIS_URL")
+        redis = urlsplit(redis_url)
+        if (
+            redis.scheme not in {"redis", "rediss"}
+            or not redis.hostname
+            or redis.query
+            or redis.fragment
+        ):
+            raise ConfigurationError("SIMULA_REDIS_URL must be a Redis URL")
+        if environment in {"local", "test"} and not _is_loopback(redis.hostname):
+            raise ConfigurationError("local/test Redis must remain on loopback")
+
+        rate_limit_key_prefix = os.getenv("SIMULA_RATE_LIMIT_KEY_PREFIX", "simula:rate:v1")
+        if not re.fullmatch(r"[a-z][a-z0-9:_-]{2,127}", rate_limit_key_prefix):
+            raise ConfigurationError("SIMULA_RATE_LIMIT_KEY_PREFIX is unsafe")
+
         cursor_secret = _required("SIMULA_CURSOR_SECRET")
         if len(cursor_secret.encode("utf-8")) < 32 or "replace" in cursor_secret.lower():
             raise ConfigurationError("SIMULA_CURSOR_SECRET must be an injected 32-byte secret")
@@ -108,6 +127,8 @@ class ApiSettings:
             supabase_issuer=issuer,
             supabase_jwks_url=jwks_url,
             supabase_publishable_key=publishable_key,
+            redis_url=redis_url,
+            rate_limit_key_prefix=rate_limit_key_prefix,
             cursor_secret=cursor_secret.encode("utf-8"),
             cors_origins=origins,
         )

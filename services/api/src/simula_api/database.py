@@ -254,6 +254,61 @@ class DatabaseGateway:
             rows = await cursor.fetchall()
         return [OrganizationResponse.model_validate(row) for row in rows]
 
+    async def visible_organization(
+        self, identity: VerifiedIdentity, *, organization_id: UUID
+    ) -> UUID:
+        async with self._transaction(identity) as connection:
+            cursor = await connection.execute(
+                "select id from api.organizations where id = %s", (organization_id,)
+            )
+            row = await cursor.fetchone()
+        if row is None:
+            raise _not_found()
+        return cast(UUID, row["id"])
+
+    async def organization_for_project(
+        self, identity: VerifiedIdentity, *, project_id: UUID
+    ) -> UUID:
+        async with self._transaction(identity) as connection:
+            cursor = await connection.execute(
+                "select organization_id from api.projects where id = %s", (project_id,)
+            )
+            row = await cursor.fetchone()
+        if row is None:
+            raise _not_found()
+        return cast(UUID, row["organization_id"])
+
+    async def organization_for_stimulus(
+        self, identity: VerifiedIdentity, *, stimulus_id: UUID
+    ) -> UUID:
+        async with self._transaction(identity) as connection:
+            cursor = await connection.execute(
+                "select organization_id from api.stimuli where id = %s", (stimulus_id,)
+            )
+            row = await cursor.fetchone()
+        if row is None:
+            raise _not_found()
+        return cast(UUID, row["organization_id"])
+
+    async def record_privileged_denial(
+        self,
+        identity: VerifiedIdentity,
+        *,
+        organization_id: UUID,
+        action: str,
+        object_type: str,
+        object_id: UUID | None,
+        correlation_id: UUID,
+    ) -> None:
+        try:
+            async with self._transaction(identity) as connection:
+                await connection.execute(
+                    "select api.record_privileged_denial(%s, %s, %s, %s, %s)",
+                    (organization_id, action, object_type, object_id, correlation_id),
+                )
+        except psycopg.Error as error:
+            raise _database_problem(error) from error
+
     async def create_project(
         self,
         identity: VerifiedIdentity,

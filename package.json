@@ -28,12 +28,12 @@
     "supabase:stop": "supabase stop --no-backup",
     "supabase:test": "supabase test db supabase/tests --local",
     "test": "turbo run test && uv run --frozen pytest -m \"not integration\"",
-    "test:integration": "uv run --frozen pytest -m integration",
+    "test:integration": "pnpm redis:up && uv run --frozen pytest -m integration",
     "toolchain:check": "uv run --frozen python -m scripts.check_toolchain",
     "typecheck": "turbo run typecheck && uv run --frozen mypy services packages/simula-core scripts tests",
     "verify:m0-runtime": "uv run --frozen python -m scripts.verify_m0_runtime",
     "verify:m1-database": "supabase db reset --local --yes && supabase db reset --local --yes && pnpm supabase:lint && pnpm supabase:test && uv run --frozen pytest tests/integration/test_database_boundary.py -m integration && pnpm database:types:check",
-    "verify:m2-api": "supabase db reset --local --yes && supabase db reset --local --yes && pnpm supabase:lint && pnpm supabase:test && uv run --frozen pytest services/api/tests -q && uv run --frozen pytest tests/integration/test_database_boundary.py tests/integration/test_api_m2.py -m integration && pnpm database:types:check && pnpm contracts:check"
+    "verify:m2-api": "pnpm redis:up && supabase db reset --local --yes && supabase db reset --local --yes && pnpm supabase:lint && pnpm supabase:test && uv run --frozen pytest services/api/tests -q && uv run --frozen pytest tests/integration/test_database_boundary.py tests/integration/test_api_m2.py tests/integration/test_rate_limits.py -m integration && pnpm database:types:check && pnpm contracts:check"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
