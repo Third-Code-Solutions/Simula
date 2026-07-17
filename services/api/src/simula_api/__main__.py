@@ -1,24 +1,31 @@
 import asyncio
 import os
-import warnings
 
 import uvicorn
 
 from simula_api.logging import configure_logging
 
 
-def _configure_event_loop_policy() -> None:
-    """Use the psycopg-compatible selector loop for local Windows execution."""
-    if os.name != "nt":
-        return
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+def _serve_windows() -> None:
+    """Run Uvicorn on a selector loop required by psycopg async on Windows."""
+    config = uvicorn.Config(
+        "simula_api.app:app",
+        host="0.0.0.0",  # noqa: S104 - container listener; publication is deployment-owned.
+        port=8000,
+        access_log=False,
+        log_config=None,
+        proxy_headers=False,
+        server_header=False,
+    )
+    with asyncio.Runner(loop_factory=asyncio.SelectorEventLoop) as runner:
+        runner.run(uvicorn.Server(config).serve())
 
 
 def main() -> None:
-    _configure_event_loop_policy()
     configure_logging()
+    if os.name == "nt":
+        _serve_windows()
+        return
     uvicorn.run(
         "simula_api.app:app",
         host="0.0.0.0",  # noqa: S104 - container listener; publication is deployment-owned.

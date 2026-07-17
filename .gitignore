@@ -19,6 +19,7 @@ dist/
 build/
 playwright-report/
 test-results/
+.playwright-cli/
 .DS_Store
 Thumbs.db
 .supabase/

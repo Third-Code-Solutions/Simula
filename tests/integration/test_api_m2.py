@@ -93,11 +93,11 @@ def _add_viewer_membership(organization_id: UUID) -> None:
     root_password = root_password_line.removeprefix("POSTGRES_PASSWORD=")
     viewer_id = LOCAL_USERS[VIEWER_A]
     owner_id = LOCAL_USERS[OWNER_A]
-    membership_sql = f"""
+    membership_sql = """
         insert into api.organization_memberships
           (organization_id, user_id, role, created_by)
         values
-          ('{organization_id}'::uuid, '{viewer_id}'::uuid, 'viewer', '{owner_id}'::uuid)
+          (:'organization_id'::uuid, :'viewer_id'::uuid, 'viewer', :'owner_id'::uuid)
         on conflict (organization_id, user_id) do nothing;
     """
     inserted = _run_captured(
@@ -120,10 +120,15 @@ def _add_viewer_membership(organization_id: UUID) -> None:
             "-X",
             "-v",
             "ON_ERROR_STOP=1",
-            "-c",
-            membership_sql,
+            "-v",
+            f"organization_id={organization_id}",
+            "-v",
+            f"viewer_id={viewer_id}",
+            "-v",
+            f"owner_id={owner_id}",
         ],
         environment={**os.environ, "PGPASSWORD": root_password},
+        input_text=membership_sql,
     )
     if inserted.returncode != 0:
         pytest.fail(
