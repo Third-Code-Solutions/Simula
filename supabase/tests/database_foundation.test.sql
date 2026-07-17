@@ -75,8 +75,11 @@ select extensions.is(
   ),
   array[
     'audience_versions_api_select',
+    'audience_versions_command_select',
     'audiences_api_select',
+    'audiences_command_select',
     'audit_events_command_insert',
+    'audit_events_worker_owner_insert',
     'idempotency_keys_command_insert',
     'idempotency_keys_command_select',
     'idempotency_keys_command_update',
@@ -85,12 +88,27 @@ select extensions.is(
     'organizations_api_select',
     'organizations_command_insert',
     'organizations_command_select',
+    'organizations_worker_owner_select',
     'projects_api_select',
     'projects_command_insert',
     'projects_command_select',
     'projects_command_update',
+    'run_attempts_worker_owner_insert',
+    'run_attempts_worker_owner_select',
+    'run_attempts_worker_owner_update',
+    'run_events_command_insert',
+    'run_events_worker_owner_insert',
+    'run_outbox_command_insert',
+    'run_outbox_worker_owner_select',
+    'run_outbox_worker_owner_update',
     'simulation_results_api_select',
+    'simulation_results_worker_owner_insert',
+    'simulation_results_worker_owner_select',
     'simulation_runs_api_select',
+    'simulation_runs_command_insert',
+    'simulation_runs_command_select',
+    'simulation_runs_worker_owner_select',
+    'simulation_runs_worker_owner_update',
     'stimuli_api_select',
     'stimuli_command_insert',
     'stimuli_command_select',
@@ -316,6 +334,8 @@ select extensions.is(
     'simula_api|api.simulation_runs|SELECT',
     'simula_api|api.stimuli|SELECT',
     'simula_api|api.stimulus_versions|SELECT',
+    'simula_command_owner|api.audience_versions|SELECT',
+    'simula_command_owner|api.audiences|SELECT',
     'simula_command_owner|api.organization_memberships|INSERT',
     'simula_command_owner|api.organization_memberships|SELECT',
     'simula_command_owner|api.organizations|INSERT',
@@ -323,6 +343,8 @@ select extensions.is(
     'simula_command_owner|api.projects|INSERT',
     'simula_command_owner|api.projects|SELECT',
     'simula_command_owner|api.projects|UPDATE',
+    'simula_command_owner|api.simulation_runs|INSERT',
+    'simula_command_owner|api.simulation_runs|SELECT',
     'simula_command_owner|api.stimuli|INSERT',
     'simula_command_owner|api.stimuli|SELECT',
     'simula_command_owner|api.stimulus_versions|INSERT',
@@ -330,7 +352,21 @@ select extensions.is(
     'simula_command_owner|private.audit_events|INSERT',
     'simula_command_owner|private.idempotency_keys|INSERT',
     'simula_command_owner|private.idempotency_keys|SELECT',
-    'simula_command_owner|private.idempotency_keys|UPDATE'
+    'simula_command_owner|private.idempotency_keys|UPDATE',
+    'simula_command_owner|private.run_events|INSERT',
+    'simula_command_owner|private.run_outbox|INSERT',
+    'simula_worker_owner|api.organizations|SELECT',
+    'simula_worker_owner|api.simulation_results|INSERT',
+    'simula_worker_owner|api.simulation_results|SELECT',
+    'simula_worker_owner|api.simulation_runs|SELECT',
+    'simula_worker_owner|api.simulation_runs|UPDATE',
+    'simula_worker_owner|private.audit_events|INSERT',
+    'simula_worker_owner|private.run_attempts|INSERT',
+    'simula_worker_owner|private.run_attempts|SELECT',
+    'simula_worker_owner|private.run_attempts|UPDATE',
+    'simula_worker_owner|private.run_events|INSERT',
+    'simula_worker_owner|private.run_outbox|SELECT',
+    'simula_worker_owner|private.run_outbox|UPDATE'
   ]::text[],
   'application table grant inventory is exact'
 );
@@ -358,13 +394,31 @@ select extensions.ok(
 select extensions.ok(
   not exists (
     select 1
-    from (values ('anon'), ('authenticated'), ('simula_worker')) as denied_roles(role_name)
+    from (values ('anon'), ('authenticated')) as browser_roles(role_name)
     cross join pg_catalog.pg_proc as functions
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
     where namespaces.nspname in ('api', 'private')
-      and pg_catalog.has_function_privilege(denied_roles.role_name, functions.oid, 'EXECUTE')
-  ),
-  'browser and worker roles cannot execute application functions'
+      and pg_catalog.has_function_privilege(browser_roles.role_name, functions.oid, 'EXECUTE')
+  )
+  and (
+    select pg_catalog.array_agg(
+      functions.oid::pg_catalog.regprocedure::text
+      order by functions.oid::pg_catalog.regprocedure::text
+    )
+    from pg_catalog.pg_proc as functions
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
+    where namespaces.nspname in ('api', 'private')
+      and pg_catalog.has_function_privilege('simula_worker', functions.oid, 'EXECUTE')
+  ) = array[
+    'private.claim_due_run_outbox(integer)',
+    'private.claim_run_execution(uuid,smallint,text)',
+    'private.complete_run_execution(uuid,uuid,uuid,jsonb)',
+    'private.confirm_run_dispatch(uuid,uuid)',
+    'private.fail_run_dispatch(uuid,uuid,text)',
+    'private.fail_run_execution(uuid,uuid,uuid,text,boolean)',
+    'private.heartbeat_run_execution(uuid,uuid,uuid)'
+  ]::text[],
+  'browser roles execute no application functions; worker has the exact helper allowlist'
 );
 
 -- 22
@@ -383,6 +437,7 @@ select extensions.is(
     'api.append_stimulus_version(uuid,text,text,text,text,uuid)',
     'api.create_organization(text,text,text,uuid)',
     'api.create_project(uuid,text,text,text,text,text,text,text,uuid)',
+    'api.create_simulation_run(uuid,uuid,text,text,uuid)',
     'api.create_stimulus(uuid,text,text,text,text,text,uuid)',
     'api.list_organizations()',
     'api.record_privileged_denial(uuid,text,text,uuid,uuid)',
@@ -390,6 +445,7 @@ select extensions.is(
     'private.append_stimulus_version_atomic(uuid,text,text,text,text,uuid)',
     'private.create_organization_atomic(text,text,text,uuid)',
     'private.create_project_atomic(uuid,text,text,text,text,text,text,text,uuid)',
+    'private.create_simulation_run_atomic(uuid,uuid,text,text,uuid)',
     'private.create_stimulus_atomic(uuid,text,text,text,text,text,uuid)',
     'private.has_org_role(uuid,uuid,api.organization_role[])',
     'private.is_org_member(uuid,uuid)',
@@ -405,17 +461,42 @@ select extensions.is(
 select extensions.ok(
   (
     select pg_catalog.bool_and(
-      owner_roles.rolname = 'simula_command_owner'
-      and functions.prosecdef = (
+      (
         functions.proname in (
-          'append_stimulus_version_atomic',
-          'create_organization_atomic',
-          'create_project_atomic',
-          'create_stimulus_atomic',
-          'has_org_role',
-          'is_org_member',
-          'record_privileged_denial_atomic',
-          'update_project_atomic'
+          'claim_due_run_outbox',
+          'claim_run_execution',
+          'complete_run_execution',
+          'confirm_run_dispatch',
+          'fail_run_dispatch',
+          'fail_run_execution',
+          'heartbeat_run_execution'
+        )
+        and owner_roles.rolname = 'simula_worker_owner'
+        and functions.prosecdef
+      )
+      or (
+        functions.proname not in (
+          'claim_due_run_outbox',
+          'claim_run_execution',
+          'complete_run_execution',
+          'confirm_run_dispatch',
+          'fail_run_dispatch',
+          'fail_run_execution',
+          'heartbeat_run_execution'
+        )
+        and owner_roles.rolname = 'simula_command_owner'
+        and functions.prosecdef = (
+          functions.proname in (
+            'append_stimulus_version_atomic',
+            'create_organization_atomic',
+            'create_project_atomic',
+            'create_simulation_run_atomic',
+            'create_stimulus_atomic',
+            'has_org_role',
+            'is_org_member',
+            'record_privileged_denial_atomic',
+            'update_project_atomic'
+          )
         )
       )
     )
@@ -427,7 +508,15 @@ select extensions.ok(
         'append_stimulus_version_atomic',
         'create_organization_atomic',
         'create_project_atomic',
+        'create_simulation_run_atomic',
         'create_stimulus_atomic',
+        'claim_due_run_outbox',
+        'claim_run_execution',
+        'complete_run_execution',
+        'confirm_run_dispatch',
+        'fail_run_dispatch',
+        'fail_run_execution',
+        'heartbeat_run_execution',
         'has_org_role',
         'is_org_member',
         'is_verified_api_subject',
@@ -436,7 +525,7 @@ select extensions.ok(
         'verified_subject'
       )
   ),
-  'private authorization and command helpers have exact owners and definer modes'
+  'private authorization, command, and worker helpers have exact owners and definer modes'
 );
 
 -- 24
@@ -586,8 +675,8 @@ select extensions.ok(
     + (select pg_catalog.count(*) from api.projects)
     + (select pg_catalog.count(*) from api.stimuli)
     + (select pg_catalog.count(*) from api.stimulus_versions)
-    + (select pg_catalog.count(*) from api.audiences)
-    + (select pg_catalog.count(*) from api.audience_versions)
+    + (select pg_catalog.count(*) from api.audiences where id <> '00000000-0000-4000-8000-0000000000d0'::uuid)
+    + (select pg_catalog.count(*) from api.audience_versions where id <> '00000000-0000-4000-8000-0000000000d1'::uuid)
     + (select pg_catalog.count(*) from api.simulation_runs)
     + (select pg_catalog.count(*) from api.simulation_results)
     + (select pg_catalog.count(*) from private.run_attempts)
@@ -595,8 +684,21 @@ select extensions.ok(
     + (select pg_catalog.count(*) from private.run_outbox)
     + (select pg_catalog.count(*) from private.idempotency_keys)
     + (select pg_catalog.count(*) from private.audit_events)
-  ) = 0,
-  'seed contains no organization, tenant, run, result, idempotency, or audit data'
+  ) = 0
+  and exists (
+    select 1
+    from api.audiences as audiences
+    join api.audience_versions as versions on versions.audience_id = audiences.id
+    where audiences.id = '00000000-0000-4000-8000-0000000000d0'::uuid
+      and audiences.organization_id is null
+      and audiences.is_public_demo
+      and versions.id = '00000000-0000-4000-8000-0000000000d1'::uuid
+      and versions.organization_id is null
+      and versions.kind = 'authored_demo'
+      and versions.admission_status = 'approved_demo'
+      and versions.is_non_representative
+  ),
+  'only the immutable global demo fixture is seeded; tenant and run data remain empty'
 );
 
 select * from extensions.finish();
