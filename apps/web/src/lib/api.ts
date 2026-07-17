@@ -1,5 +1,13 @@
 import type { components } from "@simula/contracts";
 
+import {
+  type SimulationProvenance,
+  type SimulationResult,
+  type SimulationRun,
+  parseSimulationProvenance,
+  parseSimulationResult,
+  parseSimulationRun,
+} from "@/features/runs/result-contract";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Schemas = components["schemas"];
@@ -11,6 +19,7 @@ export type ProjectDetail = Schemas["ProjectDetail"];
 export type ProjectPage = Schemas["ProjectPage"];
 export type Stimulus = Schemas["StimulusResponse"];
 export type StimulusVersion = Schemas["StimulusVersionResponse"];
+export type { SimulationProvenance, SimulationResult, SimulationRun };
 
 export type ApiProblemDocument = Readonly<{
   code: string;
@@ -173,6 +182,18 @@ function idempotencyHeaders(): HeadersInit {
   return { "Idempotency-Key": crypto.randomUUID() };
 }
 
+function parsedResponse<T>(parser: (value: unknown) => T, value: unknown): T {
+  try {
+    return parser(value);
+  } catch {
+    throw new ApiProblem(
+      502,
+      "invalid_api_response",
+      "SIMULA API returned an invalid response.",
+    );
+  }
+}
+
 export function listOrganizations(cursor?: string): Promise<OrganizationPage> {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   return request<OrganizationPage>(`/api/v1/organizations${query}`);
@@ -248,4 +269,36 @@ export function appendStimulusVersion(
     headers: idempotencyHeaders(),
     method: "POST",
   });
+}
+
+export function createSimulationRun(
+  projectId: string,
+  stimulusVersionId: string,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<SimulationRun> {
+  return request<unknown>(`/api/v1/projects/${projectId}/runs`, {
+    body: { stimulus_version_id: stimulusVersionId },
+    headers: { "Idempotency-Key": idempotencyKey },
+    method: "POST",
+  }).then((value) => parsedResponse(parseSimulationRun, value));
+}
+
+export function getSimulationRun(runId: string): Promise<SimulationRun> {
+  return request<unknown>(`/api/v1/runs/${runId}`).then((value) =>
+    parsedResponse(parseSimulationRun, value),
+  );
+}
+
+export function getSimulationResult(runId: string): Promise<SimulationResult> {
+  return request<unknown>(`/api/v1/runs/${runId}/result`).then((value) =>
+    parsedResponse(parseSimulationResult, value),
+  );
+}
+
+export function getSimulationProvenance(
+  runId: string,
+): Promise<SimulationProvenance> {
+  return request<unknown>(`/api/v1/runs/${runId}/provenance`).then((value) =>
+    parsedResponse(parseSimulationProvenance, value),
+  );
 }

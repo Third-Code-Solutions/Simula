@@ -1,0 +1,72 @@
+import type { SimulationRun } from "./result-contract";
+
+const stateCopy: Record<
+  SimulationRun["state"],
+  Readonly<{ detail: string; label: string }>
+> = {
+  queued: {
+    detail: "The durable queue has accepted this deterministic demo run.",
+    label: "Queued",
+  },
+  running: {
+    detail:
+      "The deterministic demo worker is producing the fixed typed result.",
+    label: "Running",
+  },
+  retrying: {
+    detail:
+      "A bounded retry is in progress. The method and frozen configuration do not change.",
+    label: "Retrying",
+  },
+  cancel_requested: {
+    detail:
+      "Cancellation was requested. The terminal state will be shown when durable processing closes.",
+    label: "Cancellation requested",
+  },
+  succeeded: {
+    detail: "The immutable experimental demo result is ready.",
+    label: "Complete",
+  },
+  failed: {
+    detail:
+      "Processing stopped without a result. Retry only after reviewing the recovery guidance.",
+    label: "Failed",
+  },
+  canceled: {
+    detail: "This run was canceled. No result is presented as a substitute.",
+    label: "Canceled",
+  },
+};
+
+export function RunStatusPanel({
+  isSlow,
+  run,
+}: Readonly<{ isSlow: boolean; run: SimulationRun | undefined }>) {
+  if (!run) {
+    return (
+      <section
+        aria-busy="true"
+        aria-live="polite"
+        className="panel status-panel"
+      >
+        <h2>Loading run status</h2>
+        <p>Checking the authorized durable run record.</p>
+      </section>
+    );
+  }
+
+  const copy = stateCopy[run.state];
+  return (
+    <section aria-live="polite" className="panel status-panel" role="status">
+      <p className="eyebrow">Run status</p>
+      <h2>{copy.label}</h2>
+      <p>{copy.detail}</p>
+      {isSlow ? (
+        <p className="field-note">
+          Taking longer than expected. SIMULA will continue checking at a slower
+          rate.
+        </p>
+      ) : null}
+    </section>
+  );
+}

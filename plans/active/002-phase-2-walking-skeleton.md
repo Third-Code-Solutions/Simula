@@ -183,7 +183,8 @@ tests/                     cross-service, security, load, E2E
   - [x] Disposable end-to-end duplicate/crash proof.
 - [ ] M4 / P2-05 trustworthy result experience.
   - [x] Additive authorized provenance contract, frozen release/limit snapshot, generated contract, and local integration proof.
-  - [ ] Browser run/result/provenance experience and accessibility/E2E gate.
+  - [x] Browser run launch, bounded shared polling, strict rendering decoder, semantic result/provenance views, and focused unit proof.
+  - [ ] Browser accessibility/E2E gate.
 - [ ] M5 / P2-06 cancellation and recovery.
 - [ ] M6 / P2-07 integrated quality gate.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.

@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ApiProblem,
   type ProjectDetail,
   type Stimulus,
   appendStimulusVersion,
+  createSimulationRun,
   createStimulus,
   getProject,
   updateProject,
@@ -38,12 +40,15 @@ function updateStimulusVersion(
 export function ProjectWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
+  const router = useRouter();
+  const runKeys = useRef(new Map<string, string>());
   const [project, setProject] = useState<ProjectDetail>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [savingProject, setSavingProject] = useState(false);
   const [savingStimulus, setSavingStimulus] = useState(false);
   const [versioningStimulus, setVersioningStimulus] = useState<string>();
+  const [startingRunVersion, setStartingRunVersion] = useState<string>();
 
   async function refreshProject() {
     setLoading(true);
@@ -179,6 +184,30 @@ export function ProjectWorkspace({
     }
   }
 
+  async function startRun(stimulusVersionId: string) {
+    if (!project) {
+      return;
+    }
+    const idempotencyKey =
+      runKeys.current.get(stimulusVersionId) ?? crypto.randomUUID();
+    runKeys.current.set(stimulusVersionId, idempotencyKey);
+    setError(undefined);
+    setStartingRunVersion(stimulusVersionId);
+    try {
+      const run = await createSimulationRun(
+        project.id,
+        stimulusVersionId,
+        idempotencyKey,
+      );
+      runKeys.current.delete(stimulusVersionId);
+      router.push(`/runs/${run.id}`);
+    } catch (runError) {
+      setError(problemMessage(runError));
+    } finally {
+      setStartingRunVersion(undefined);
+    }
+  }
+
   return (
     <main className="workspace-main">
       <header className="workspace-header">
@@ -301,6 +330,24 @@ export function ProjectWorkspace({
                         </code>
                       </div>
                       <p>{version.content}</p>
+                      <div className="run-launch">
+                        <div>
+                          <strong>Authored demo audience</strong>
+                          <p className="field-note">
+                            Experimental and non-representative. It estimates
+                            nobody.
+                          </p>
+                        </div>
+                        <button
+                          disabled={startingRunVersion === version.id}
+                          onClick={() => void startRun(version.id)}
+                          type="button"
+                        >
+                          {startingRunVersion === version.id
+                            ? "Starting run…"
+                            : `Run version ${version.version}`}
+                        </button>
+                      </div>
                     </li>
                   ))}
                 </ol>
