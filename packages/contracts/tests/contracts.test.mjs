@@ -29,10 +29,14 @@ test("P2-03 OpenAPI is generated from the FastAPI authority", async () => {
   assert.equal(document.components.schemas.HTTPValidationError, undefined);
 });
 
-test("result schema fails closed before P2-04", async () => {
+test("P2-04 result schema is generated from the deterministic result authority", async () => {
   const schema = JSON.parse(
     await readFile(new URL("../result.schema.json", import.meta.url), "utf8"),
   );
 
-  assert.deepEqual(schema.not, {});
+  assert.equal(schema.additionalProperties, false);
+  assert.equal(schema.properties.schema_version.const, "1.0.0");
+  assert.ok(schema.properties.outputs);
+  assert.ok(schema.properties.provenance);
+  assert.equal(schema.not, undefined);
 });

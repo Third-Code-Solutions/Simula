@@ -35,6 +35,13 @@ class RunJobV1(BaseModel):
     schema_version: Literal[1]
     run_id: UUID
 
+    @field_validator("schema_version", mode="before")
+    @classmethod
+    def exact_schema_version(cls, value: object) -> object:
+        if isinstance(value, bool) or value != 1:
+            raise ValueError("schema_version must be the integer 1")
+        return value
+
     @field_validator("run_id", mode="before")
     @classmethod
     def canonical_run_id(cls, value: object) -> object:
@@ -174,7 +181,7 @@ def _validate_result_envelope(value: Mapping[str, object]) -> dict[str, object]:
     run_id = UUID(str(cast_mapping(run_job[0])["run_id"]))
     if not isinstance(value["s"], bool):
         raise ArqCodecError("ARQ result success must be boolean")
-    if value["r"] not in {None, "unable to serialize result"}:
+    if value["r"] is not None and value["r"] != "unable to serialize result":
         raise ArqCodecError("ARQ result must be null or the ARQ failure sentinel")
     start = _require_int(
         value["st"], name="ARQ result start", minimum=0, maximum=MAX_UNIX_MILLISECONDS

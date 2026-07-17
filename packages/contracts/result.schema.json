@@ -1,6 +1,303 @@
 {
-  "$comment": "GENERATED: no result contract exists before P2-04",
+  "$defs": {
+    "DistributionCategory": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "enum": [
+            "clear",
+            "unclear",
+            "needs_human_review"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "value"
+      ],
+      "title": "DistributionCategory",
+      "type": "object"
+    },
+    "FixtureDistribution": {
+      "additionalProperties": false,
+      "properties": {
+        "categories": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "$ref": "#/$defs/DistributionCategory"
+            },
+            {
+              "$ref": "#/$defs/DistributionCategory"
+            },
+            {
+              "$ref": "#/$defs/DistributionCategory"
+            }
+          ],
+          "title": "Categories",
+          "type": "array"
+        },
+        "unit": {
+          "const": "share",
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "unit",
+        "categories"
+      ],
+      "title": "FixtureDistribution",
+      "type": "object"
+    },
+    "HumanResearchRecommendation": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "recommendation",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source_output_ids": {
+          "items": {
+            "const": "reaction_fixture",
+            "type": "string"
+          },
+          "title": "Source Output Ids",
+          "type": "array"
+        },
+        "text": {
+          "const": "Verify wording with appropriately recruited human participants before acting.",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "text",
+        "source_output_ids"
+      ],
+      "title": "HumanResearchRecommendation",
+      "type": "object"
+    },
+    "NotApplicableUncertainty": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "const": "authored deterministic fixture",
+          "title": "Reason",
+          "type": "string"
+        },
+        "status": {
+          "const": "not_applicable",
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "reason"
+      ],
+      "title": "NotApplicableUncertainty",
+      "type": "object"
+    },
+    "QualitativeObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "generated_qualitative",
+          "title": "Kind",
+          "type": "string"
+        },
+        "source_output_ids": {
+          "items": {
+            "const": "reaction_fixture",
+            "type": "string"
+          },
+          "title": "Source Output Ids",
+          "type": "array"
+        },
+        "synthetic": {
+          "const": true,
+          "title": "Synthetic",
+          "type": "boolean"
+        },
+        "text": {
+          "const": "A deterministic mock observation used only to test rendering.",
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "synthetic",
+        "text",
+        "source_output_ids"
+      ],
+      "title": "QualitativeObservation",
+      "type": "object"
+    },
+    "ResultOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "demo_fixture_distribution",
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "const": "Pipeline demo values",
+          "title": "Label",
+          "type": "string"
+        },
+        "limitations": {
+          "items": {
+            "const": "Estimates nobody and is not representative of any population.",
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "output_id": {
+          "const": "reaction_fixture",
+          "title": "Output Id",
+          "type": "string"
+        },
+        "uncertainty": {
+          "$ref": "#/$defs/NotApplicableUncertainty"
+        },
+        "value": {
+          "$ref": "#/$defs/FixtureDistribution"
+        }
+      },
+      "required": [
+        "output_id",
+        "kind",
+        "label",
+        "value",
+        "uncertainty",
+        "limitations"
+      ],
+      "title": "ResultOutput",
+      "type": "object"
+    },
+    "ResultProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic_seed": {
+          "title": "Deterministic Seed",
+          "type": "integer"
+        },
+        "frozen_manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Frozen Manifest Sha256",
+          "type": "string"
+        },
+        "method_version": {
+          "const": "phase2_demo_v1",
+          "title": "Method Version",
+          "type": "string"
+        },
+        "output_schema_version": {
+          "const": 1,
+          "title": "Output Schema Version",
+          "type": "integer"
+        },
+        "provider_id": {
+          "const": "deterministic_mock",
+          "title": "Provider Id",
+          "type": "string"
+        },
+        "provider_version": {
+          "const": 1,
+          "title": "Provider Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "method_version",
+        "provider_id",
+        "provider_version",
+        "frozen_manifest_sha256",
+        "deterministic_seed",
+        "output_schema_version"
+      ],
+      "title": "ResultProvenance",
+      "type": "object"
+    }
+  },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "not": {},
+  "additionalProperties": false,
+  "description": "Persisted terminal artifact for the single Phase 2 output schema.",
+  "properties": {
+    "limitations": {
+      "items": {
+        "const": "Estimates nobody and is not representative of any population.",
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "outputs": {
+      "items": {
+        "$ref": "#/$defs/ResultOutput"
+      },
+      "title": "Outputs",
+      "type": "array"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ResultProvenance"
+    },
+    "qualitative": {
+      "items": {
+        "$ref": "#/$defs/QualitativeObservation"
+      },
+      "title": "Qualitative",
+      "type": "array"
+    },
+    "recommendations": {
+      "items": {
+        "$ref": "#/$defs/HumanResearchRecommendation"
+      },
+      "title": "Recommendations",
+      "type": "array"
+    },
+    "run_id": {
+      "format": "uuid",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "1.0.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "validation_label": {
+      "const": "experimental",
+      "title": "Validation Label",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "validation_label",
+    "outputs",
+    "qualitative",
+    "recommendations",
+    "provenance",
+    "limitations"
+  ],
+  "title": "SimulationResultV1",
+  "type": "object",
   "x-generated-by": "scripts/generate_contracts.py"
 }

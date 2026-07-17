@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from simula_api.app import app
+from simula_core.simulation import SimulationResultV1
 
 GENERATED_BY = "scripts/generate_contracts.py"
 
@@ -25,15 +26,10 @@ def generate(output_directory: Path) -> None:
     openapi = app.openapi()
     openapi["x-generated-by"] = GENERATED_BY
     _write_json(output_directory / "openapi.json", openapi)
-    _write_json(
-        output_directory / "result.schema.json",
-        {
-            "$comment": "GENERATED: no result contract exists before P2-04",
-            "$schema": "https://json-schema.org/draft/2020-12/schema",
-            "not": {},
-            "x-generated-by": GENERATED_BY,
-        },
-    )
+    result_schema = SimulationResultV1.model_json_schema()
+    result_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    result_schema["x-generated-by"] = GENERATED_BY
+    _write_json(output_directory / "result.schema.json", result_schema)
 
 
 def main() -> None:

@@ -52,6 +52,29 @@ def test_arq_serializer_normalizes_only_the_runtime_argument_tuple() -> None:
     assert arq_json_loads(encoded) == _job_envelope()
 
 
+def test_arq_codec_rejects_boolean_schema_version_instead_of_normalizing_it() -> None:
+    envelope = _job_envelope()
+    envelope["a"] = [{"run_id": str(RUN_ID), "schema_version": True}]
+
+    with pytest.raises(ArqCodecError):
+        arq_json_dumps(envelope)
+
+
+def test_arq_codec_rejects_unhashable_wrong_result_payload_with_its_safe_error() -> None:
+    envelope = {
+        **_job_envelope(job_try=1),
+        "ft": 1_700_000_000_010,
+        "id": job_id_for(RUN_ID, generation=1),
+        "q": ARQ_QUEUE_NAME,
+        "r": [],
+        "s": False,
+        "st": 1_700_000_000_000,
+    }
+
+    with pytest.raises(ArqCodecError):
+        arq_json_dumps(envelope)
+
+
 @pytest.mark.parametrize(
     "payload",
     [
