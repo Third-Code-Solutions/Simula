@@ -18,7 +18,7 @@ source_of_truth: true
 
 ## Current objective
 
-Implement P2-04 durable deterministic run on the verified P2-03 vertical, then continue P2-05 through P2-07 in order. Prove one tenant-safe asynchronous deterministic demo result without real-provider egress or representativeness claims. The approved hosted P2-03 schema is now applied without fixture data; all future schema changes remain ordered migrations with history review.
+Implement the remaining P2-04 queue, worker, and API vertical on the verified durable-run database authority, then continue P2-05 through P2-07 in order. Prove one tenant-safe asynchronous deterministic demo result without real-provider egress or representativeness claims. Hosted P2-04 schema now includes the sole immutable authored-demo fixture; all future schema changes remain ordered migrations with history review.
 
 ## Repository state
 
@@ -28,6 +28,7 @@ Implement P2-04 durable deterministic run on the verified P2-03 vertical, then c
 - OBSERVED 2026-07-17 Phase 0 close: 33/33 required notes/YAML, 36/36 Home targets, 49/49 vault wikilinks, 53 evidence IDs defined, 49 referenced, 0 undefined, and 0 application scaffold directories.
 - OBSERVED 2026-07-17: system defaults remain Node 24.16, pnpm 9.15, and Python 3.14.5. Verified user-local bootstrap provides exact Node 24.18.0, pnpm 11.13.1, Python 3.14.6, uv 0.11.19, and Supabase CLI 2.109.1 without loosening manifests.
 - OBSERVED 2026-07-18: the hosted Supabase target is `ywiwmczccktwzqyhzhiz` (Simula, active). MCP-authorized access as `kurtgav` bootstrapped the four least-privilege roles and applied the three checked-in P2-03 migrations without seed data. Remote migration history now matches the checked-in versions; 9 `api` and 5 `private` empty RLS tables were verified (E-5011).
+- OBSERVED 2026-07-18: checked-in migration `20260718010000_phase2_runs_and_worker` was reset-tested locally and applied once to the same hosted project. It adds the immutable global authored-demo fixture, frozen run/outbox command authority, worker-owner RLS policies, and execute-only worker helpers. Remote history was reconciled to the Git timestamp; verification found one fixture audience/version, no tenant/run data, no direct worker run DML, and the expected worker claim helper grant (E-5012).
 
 ## Phase 0 outcome
 
@@ -61,7 +62,7 @@ Initial M4 audit found 0 Critical/6 High. Iterative review then exposed and corr
 - Current Obsidian integrity: 56/56 governed Markdown files have required frontmatter, 145/145 wikilinks resolve, 55 Home links resolve, 82 evidence IDs have zero duplicates or undefined references, and the active plan retains sections 1–11.
 - M2 / P2-03 is complete. Atomic project/stimulus-version commands, generated contracts, Auth-only accessible web journey, JWT/JWKS/claim boundary, rate/CORS/media safeguards, and audit-denial evidence are implemented. Browser domain calls use FastAPI bearer auth only; browser Data API access remains absent.
 - M2 final local evidence: `pnpm verify:m2-api` passes two clean resets, lint, 32 pgTAP checks, 26 API tests, five database/Auth/API/Redis integrations, generated database/OpenAPI drift checks, and the full repository format/lint/type/web-test/web-build/secret/SCA gate. Review remediation added atomic Redis buckets, pre-auth IP protection with verified-request refunds, 24-hour idempotency replay bypass, DB-15 exact-key test cleanup, JSON-only command media, forged/expired/rotation proof, audit outcome/source/denial records, and browser-readable correlated CORS error headers. Two independent final reviews reported no remaining findings (E-5010).
-- M3 / P2-04 is the next implementation milestone. The P2-05–P2-07 sequence remains pending.
+- M3 / P2-04 is underway. Strict ARQ codec/result-contract and durable run/outbox database slices are committed and hosted; queue transport, dispatcher, worker execution, and run/result APIs remain before a full asynchronous result proof. The P2-05–P2-07 sequence remains pending.
 
 ## Key constraints
 
@@ -69,7 +70,7 @@ Initial M4 audit found 0 Critical/6 High. Iterative review then exposed and corr
 - Phase 2 uses authored, non-representative demo synthetic data and deterministic mock provider.
 - Numerical/calibrated, model, heuristic, qualitative, and recommendation outputs remain typed and visibly separate.
 - Server authorization and RLS are defense in depth; neither substitutes for the other.
-- No external provisioning, paid terms, production data, or production deployment without authority. The user authorized and completed only the named hosted Supabase P2-03 schema migration; fixture data was not applied.
+- No external provisioning, paid terms, production data, or production deployment without authority. The user authorized the named hosted P2-03 and P2-04 schema migrations; the sole hosted fixture is a fixed, explicitly non-representative authored-demo record, not customer or production data.
 
 ## Highest risks
 
@@ -78,5 +79,5 @@ See [[RISK_REGISTER|Risk Register]]. Critical themes: false precision/representa
 ## Blockers
 
 - Human/design-partner evidence remains absent. It does not block an explicitly experimental local walking skeleton; it blocks Phase 6 staging acceptance/customer-facing release.
-- Hosted Supabase P2-03 migration is applied. The local CLI remains unlinked; before future hosted changes, authenticate the CLI, compare remote history with `supabase migration list --linked`, inspect a seed-free `supabase db push --linked --include-roles --dry-run`, then apply the checked-in ordered migration exactly once.
+- Hosted Supabase P2-04 migration is applied. The local CLI remains unlinked; before future hosted changes, compare MCP migration history to Git, reset/test the ordered migration locally, and apply the checked-in migration exactly once with the authorized MCP identity. Do not apply `seed.sql` or customer data.
 - R-020: ARQ maintenance-only status requires exact Phase 2 proof and a tested Phase 5 exit decision before Phase 6.
