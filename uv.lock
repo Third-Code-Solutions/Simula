@@ -1010,11 +1010,17 @@ name = "simula-core"
 version = "0.0.0"
 source = { editable = "packages/simula-core" }
 dependencies = [
+    { name = "arq" },
     { name = "pydantic" },
+    { name = "redis" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = "==2.13.4" }]
+requires-dist = [
+    { name = "arq", specifier = "==0.28.0" },
+    { name = "pydantic", specifier = "==2.13.4" },
+    { name = "redis", specifier = "==5.3.1" },
+]
 
 [[package]]
 name = "simula-worker"
