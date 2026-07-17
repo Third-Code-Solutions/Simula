@@ -1,0 +1,6 @@
+{
+  "$comment": "GENERATED: no result contract exists before P2-04",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "not": {},
+  "x-generated-by": "scripts/generate_contracts.py"
+}

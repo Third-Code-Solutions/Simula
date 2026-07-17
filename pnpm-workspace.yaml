@@ -1,0 +1,47 @@
+packages:
+  - apps/*
+  - packages/contracts
+
+autoInstallPeers: false
+engineStrict: true
+nodeVersion: 24.18.0
+pmOnFail: error
+resolutionMode: highest
+savePrefix: ""
+strictPeerDependencies: true
+
+overrides:
+  next>postcss: 8.5.19
+
+allowBuilds:
+  # Native installers required by the pinned Next.js and resolver toolchains.
+  sharp: true
+  unrs-resolver: true
+
+minimumReleaseAgeExclude:
+  - "@supabase/auth-js@2.110.7"
+  - "@supabase/functions-js@2.110.7"
+  - "@supabase/phoenix@0.4.5"
+  - "@supabase/postgrest-js@2.110.7"
+  - "@supabase/realtime-js@2.110.7"
+  - "@supabase/storage-js@2.110.7"
+  - "@supabase/supabase-js@2.110.7"
+  - "@tailwindcss/node@4.3.3"
+  - "@tailwindcss/oxide-android-arm64@4.3.3"
+  - "@tailwindcss/oxide-darwin-arm64@4.3.3"
+  - "@tailwindcss/oxide-darwin-x64@4.3.3"
+  - "@tailwindcss/oxide-freebsd-x64@4.3.3"
+  - "@tailwindcss/oxide-linux-arm-gnueabihf@4.3.3"
+  - "@tailwindcss/oxide-linux-arm64-gnu@4.3.3"
+  - "@tailwindcss/oxide-linux-arm64-musl@4.3.3"
+  - "@tailwindcss/oxide-linux-x64-gnu@4.3.3"
+  - "@tailwindcss/oxide-linux-x64-musl@4.3.3"
+  - "@tailwindcss/oxide-wasm32-wasi@4.3.3"
+  - "@tailwindcss/oxide-win32-arm64-msvc@4.3.3"
+  - "@tailwindcss/oxide-win32-x64-msvc@4.3.3"
+  - "@tailwindcss/oxide@4.3.3"
+  - "@tailwindcss/postcss@4.3.3"
+  - tailwindcss@4.3.3
+  - vite@8.1.5
+
+sharedWorkspaceLockfile: true

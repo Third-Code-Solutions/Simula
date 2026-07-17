@@ -1,0 +1,73 @@
+[project]
+name = "simula-workspace"
+version = "0.0.0"
+requires-python = "==3.14.6"
+dependencies = [
+    "simula-api==0.0.0",
+    "simula-core==0.0.0",
+    "simula-worker==0.0.0",
+]
+
+[tool.uv]
+default-groups = ["dev"]
+link-mode = "copy"
+package = false
+python-preference = "managed"
+required-version = "==0.11.19"
+
+[tool.uv.sources]
+simula-api = { workspace = true }
+simula-core = { workspace = true }
+simula-worker = { workspace = true }
+
+[tool.uv.workspace]
+members = ["packages/simula-core", "services/api", "services/worker"]
+
+[dependency-groups]
+dev = [
+    "coverage==7.15.2",
+    "mypy==2.3.0",
+    "pip-audit==2.10.1",
+    "pytest==9.1.1",
+    "pytest-asyncio==1.4.0",
+    "ruff==0.15.22",
+]
+
+[tool.pytest.ini_options]
+addopts = "--strict-config --strict-markers -ra"
+asyncio_mode = "auto"
+filterwarnings = ["error"]
+markers = [
+    "integration: requires a local disposable service",
+]
+testpaths = [
+    "packages/simula-core/tests",
+    "services/api/tests",
+    "services/worker/tests",
+    "tests",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+extend-exclude = ["packages/contracts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+exclude = ["packages/contracts"]
+
+[tool.coverage.run]
+branch = true
+source = ["simula_api", "simula_core", "simula_worker"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

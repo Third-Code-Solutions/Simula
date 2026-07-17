@@ -1,0 +1,16 @@
+.next
+.turbo
+.venv
+node_modules
+.agent
+.serena
+AGENT.md
+BOOTSTRAP_PROMPT.md
+pnpm-lock.yaml
+uv.lock
+packages/contracts/openapi.json
+packages/contracts/result.schema.json
+packages/contracts/src/openapi.ts
+packages/contracts/src/database.ts
+brain
+plans

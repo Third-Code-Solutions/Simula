@@ -1,0 +1,108 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  foundation:
+    name: Foundation gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      SUPABASE_TELEMETRY_DISABLED: "1"
+      SIMULA_ENVIRONMENT: test
+      SIMULA_LOG_LEVEL: INFO
+      SIMULA_RELEASE_SHA: ${{ github.sha }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install exact Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: 24.18.0
+          package-manager-cache: false
+
+      - name: Install exact uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          version: 0.11.19
+          enable-cache: true
+
+      - name: Install exact Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: 3.14.6
+
+      - name: Install exact pnpm
+        run: |
+          corepack enable
+          corepack install --global pnpm@11.13.1
+
+      - name: Install frozen dependencies
+        run: |
+          pnpm install --frozen-lockfile
+          uv sync --frozen --all-packages --all-groups
+          pnpm toolchain:check
+
+      - name: Start exact local Redis
+        run: |
+          docker compose up --detach --wait redis
+          test "$(docker compose exec -T redis id -u)" != "0"
+
+      - name: Start and verify disposable Supabase
+        run: |
+          pnpm exec supabase start --yes -x studio,imgproxy > /dev/null
+          curl --fail --silent --show-error http://127.0.0.1:54321/auth/v1/health
+          pnpm verify:m2-api
+
+      - name: Run quality and security gates
+        run: |
+          pnpm check
+          pnpm test:integration
+          pnpm security:sca
+
+      - name: Stop disposable services
+        if: always()
+        run: |
+          pnpm exec supabase stop --no-backup || true
+          docker compose down --volumes --remove-orphans
+
+  containers:
+    name: Non-root container gate
+    needs: foundation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Build pinned images
+        run: |
+          docker build --pull --tag simula-web:m0 --file apps/web/Dockerfile .
+          docker build --pull --tag simula-api:m0 --file services/api/Dockerfile .
+          docker build --pull --tag simula-worker:m0 --file services/worker/Dockerfile .
+
+      - name: Prove non-root runtime users and imports
+        run: |
+          test "$(docker image inspect --format '{{.Config.User}}' simula-web:m0)" = "node"
+          test "$(docker image inspect --format '{{.Config.User}}' simula-api:m0)" = "simula"
+          test "$(docker image inspect --format '{{.Config.User}}' simula-worker:m0)" = "simula"
+          docker run --rm simula-api:m0 python -c "import simula_api"
+          docker run --rm simula-worker:m0 python -m simula_worker --check

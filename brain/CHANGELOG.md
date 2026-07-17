@@ -1,0 +1,109 @@
+---
+title: SIMULA Changelog
+status: active
+created: 2026-07-17
+updated: 2026-07-17
+owner: Principal program and engineering lead
+classification: OBSERVED
+source_of_truth: true
+---
+
+# SIMULA Changelog
+
+## 2026-07-17
+
+- Inspected empty repository state and read all available governing documents.
+- Recorded that `AGENTS.md` is absent and singular `AGENT.md` is present.
+- Recorded that directory has no Git metadata.
+- Created Phase 0 Obsidian directory structure.
+- Created master roadmap and active Phase 0 ExecPlan.
+- Initialized project home, charter, state, risk register, evidence ledger, and glossary.
+- Started three parallel, read-only public research streams: competitors, methodology, and data/governance.
+- Created all required research, product, methodology, data, architecture, security, QA, operations, and decision-note drafts.
+- Verified 33/33 required Obsidian artifacts have minimum YAML frontmatter.
+- Verified no application scaffold directories exist.
+- Received data-source/data-governance research summary: official Philippine candidates, legal/privacy/ethics sources, rights limitations, and 32 classified claims. Subagent made no file edits.
+- Started architecture/security read-only research in the freed parallel slot.
+- Received methodology research summary: 26 classified claims and 23 sources covering frames, synthetic populations, psychometrics, LLM failure evidence, calibration, uncertainty, fairness, reproducibility, and disclosure. Subagent made no file edits.
+- Started UX/market-positioning read-only research in the freed parallel slot.
+- Received competitor/product research summary: 35 classified findings covering Predikta, Netopia AI, seven comparator platforms, and independent research context. Subagent made no file edits.
+- Re-audited M0 after continuation instruction. Current Git state is `No commits yet on main`; corrected stale current-state wording while retaining initial no-Git observation.
+- M0 acceptance audit passed after correction: 33/33 required artifacts/YAML, 11/11 plan sections, 35/35 Home links, and no application scaffold.
+- Received UX/positioning research summary: 25 classified findings, prioritized JTBD hypotheses, exact positioning, and trust/uncertainty/accessibility requirements. Subagent made no file edits.
+- No application code created.
+- Re-audited repository architecture, phase gates, and verification coverage with three independent read-only agents.
+- Re-ran live public research for Predikta, Netopia/competitors, methodology, Philippine data/privacy, architecture/security, and UX/accessibility; retained vendor claims as REPORTED and private internals as UNKNOWN.
+- Replaced placeholder competitor teardowns, landscape, evidence matrix, and evidence ledger with claim-level cited synthesis.
+- Completed discovery-depth product/JTBD, methodology/validation, data/provenance, architecture/security, privacy, deployment, accessibility, and risk requirements.
+- Added current PSA, NPC AI/privacy/scraping, Next.js, Vercel, Railway, Supabase, OWASP, NIST, W3C, and AAPOR evidence with access dates and limitations.
+- Confirmed no application scaffold, tests, migrations, CI, or production resource changes were created during Phase 0 synthesis.
+- Started independent final evidence-quality review and exit audit.
+- Independent Phase 0 review found 0 Critical, 4 High, and 3 Medium. Fixed evidence-matrix IDs/classes, unsupported demand wording, teardown claim atomicity, negative-search scope, mixed classifications, stale state, and missing Phase 1 plan.
+- Created `plans/active/001-phase-1-product-and-architecture-definition.md` with 11/11 required ExecPlan sections, ADR backlog, milestones, tests, rollback, and exit gate.
+- Re-audit found 0 Critical, 2 High, and 1 Medium. Fixed final matrix classification, recorded resolution evidence, and refreshed audit counts.
+- Phase 0 close audit passed: 33/33 required notes/YAML, 36/36 Home links, 49/49 vault wikilinks, 53 evidence IDs defined, 49 referenced, 0 undefined, and no application scaffold/manifests/code/tests/migrations/CI.
+- Marked Phase 0 complete and moved its ExecPlan to `plans/completed/`.
+- Activated Phase 1 Product and Architecture Definition. No Phase 2 application scaffold created.
+- Rechecked official living platform docs/changelog and registries. Recorded Node 24.18 LTS, Python 3.14.6, Next 16.2.10, exact npm/PyPI direct pins, Supabase exposure/deprecation/pgmq hazards, and pinned CLI help evidence.
+- Approved Phase 2 prototype job/scope, Given/When/Then acceptance, engineering/human-comprehension thresholds, and a falsifiable user-discovery plan without claiming customer demand.
+- Approved methodology/output/uncertainty fail-closed policy: deterministic demo fixture only, values estimate nobody, no predictive/calibrated/measured output or validity threshold.
+- Approved authored-data admission, provenance, privacy, retention, and real-provider gates.
+- Accepted ADR-0002 through ADR-0010 for toolchain, auth/tenancy/RLS, data lifecycle, API/contracts, queue/state, provider/mock, environments/migrations, observability, and export/share deferral.
+- Added authorization/RLS matrix, threat-control-test matrix, requirement traceability, Definition of Ready/Done, and ordered vertical Phase 2 backlog.
+- Phase 1 M0–M3 complete. Audit before independent review: 54/54 Markdown YAML, 122/122 Obsidian links, 62 evidence IDs, 0 undefined referenced IDs, and no application scaffold/manifests/migrations/CI.
+- Independent Phase 1 audit found 0 Critical and 6 High; Phase 1 remained active. Replaced Supabase Queues with Railway Redis/ARQ plus transactional outbox to satisfy the governing Railway queue mandate.
+- Corrected invalid accessibility package pin to `@axe-core/playwright 4.12.1`; verified 18/18 npm pins, 18/18 PyPI pins, and Redis 8.2.7 image manifest.
+- Closed organization contract with atomic create/list acceptance, exact database-command/API/idempotency/audit behavior, tests, and explicit Phase 2 membership-mutation deferral.
+- Closed cancel/result CAS race with exact 202/200 outcomes and dual-winner tests.
+- Rewrote every Phase 2 story with acceptance, ADR, threat, boundary, contract/data, test, dependency, observability, security/privacy, fixture/external-state, and rollback fields.
+- Approved exact Phase 2 input, rate, quota, timeout, worker concurrency, polling, Redis memory, outbox, and queue-backpressure limits plus failure codes/tests.
+- Post-correction local audit passed: 55/55 YAML, 127/127 wikilinks, 64 evidence IDs with zero undefined, 7/7 stories with all DoR fields, 21/21 acceptance IDs traced, 18/18 npm pins, 18/18 PyPI pins, Redis image manifest valid, and zero application scaffold files.
+- Focused re-audit corrected the state-machine contradiction so `cancel_requested` can advance only to `canceled`; corrected stale acceptance evidence from 19/19 to 21/21.
+- Full independent re-audit reported 0 Critical/2 High/0 Medium: browser-reachable Data API grants could bypass FastAPI controls/atomic helpers and expose membership roster data; user-scoped outbox confirmation could falsely acknowledge work never placed in Redis. Phase 1 remained blocked.
+- Replaced caller-token Data API domain access with server-only TLS Postgres access: application schemas are not Data API exposed; `anon`/`authenticated` have no application grants; separate `simula_api`/`simula_worker` roles are NOINHERIT/NOBYPASSRLS; verified JWT claims are transaction-local; reads retain RLS; all writes use complete private atomic helpers; membership reads are self-only.
+- Restricted outbox claim/confirm/fail to `simula_worker`. FastAPI may best-effort enqueue but never confirms; ambiguous Redis outcomes remain pending for dispatcher retry/deduplication.
+- Added Supabase connection/role and Psycopg evidence E-4025/E-4026; pinned Psycopg 3.3.4, binary 3.3.4, and pool 3.3.1.
+- A combined CPython 3.14/Linux `uv` solve exposed that ARQ 0.28 requires redis-py `<6`, contradicting the prior client 8.0.1 pin. Replaced it with compatible redis-py 5.3.1; all 21 direct Python pins now resolve together. Exact Redis server 8.2.7 integration remains a Phase 2 test.
+- npm peer audit exposed openapi-typescript 7.13.0's TypeScript `^5.x` contract, contradicting TypeScript 7.0.2. Selected TypeScript 5.9.3 and completed the 31-pin baseline. Independent replay then exposed ESLint 10 peer overrides in config-next plugins; selected ESLint 9.39.5 and reran all 31 exact pins with exit 0 and zero peer/ERESOLVE warnings.
+- Security re-audit caught ARQ 0.28's default pickle deserializer. Mandated one bounded canonical stdlib-JSON codec for the full ARQ envelope across API/dispatcher/inspector/worker, with no pickle fallback, versioned queue rollout, and malformed/noncanonical/duplicate/oversize/pickle-gadget tests (E-4028).
+- Recorded ARQ's official maintenance-only status as R-020. Exact Phase 2 runtime proof and a Phase 5 queue-library reassessment/tested exit plan are mandatory before staging.
+- Current correction audit: 55/55 YAML, 128/128 wikilinks, 54/54 Home links, 68 evidence IDs with zero undefined/duplicates, 21/21 acceptance IDs traced, 7/7 Ready stories, 31/31 npm pins resolve with zero peer warnings, 21/21 Python pins resolve together, and zero application scaffold files. Final independent re-audit pending.
+- Final queue/security review hardened exact ARQ v0.28 envelope schemas, fail-closed `f=''` handling, custom connect/command timeouts, target-ZSET dispatch proof, Postgres job/run/generation binding, bounded confirmation/capacity handshakes, Redis-loss generations, run→outbox lock order, three-slot organization occupancy including active cancellation leases, and deterministic adversarial tests.
+- Independent Phase 1 exit review passed: 0 Critical / 0 High / 0 Medium. Gate integrity remained 55/55 YAML, 128/128 links, 54/54 Home links, 68 unique evidence IDs, 21/21 acceptance criteria traced, 7/7 Ready stories, and zero scaffold.
+- Marked Phase 1 complete, moved its reviewed ExecPlan to `plans/completed/`, and activated the 11-section Phase 2 Walking Skeleton ExecPlan. No hosted resource or production action authorized.
+- Started P2-01 only after the Phase 2 ExecPlan was active. Added exact pnpm/Turbo and uv workspaces, health-only Next/FastAPI surfaces, payload-inert worker shell, shared canonical JSON codec, generated contracts, local Redis/Supabase config, digest-pinned non-root containers, and immutable-action CI. Added no domain tables, product routes, hosted resources, or deployment.
+- Bootstrapped and verified exact user-local Node 24.18.0, pnpm 11.13.1, and signed/checksummed PSF Python 3.14.6 because system defaults drift and uv 0.11.19's managed catalog lacks the Windows 3.14.6 artifact. Kept exact manifest requirements intact.
+- Committed reproducible `pnpm-lock.yaml` and `uv.lock` inputs. Frozen checks pass; Python 3.14.6 imports ARQ 0.28.0, redis-py 5.3.1, and hiredis 3.4.0.
+- Removed redundant `vite-tsconfig-paths 6.1.1` after Vite 8.1.5 emitted native `resolve.tsconfigPaths` guidance; this also removed deprecated `tsconfck 3.1.6`. Updated ADR-0002 with evidence and rollback.
+- npm audit found GHSA-qx2v-qp2m-jg93 in Next's PostCSS 8.4.31 transitive. Added a narrow pnpm workspace override to accepted PostCSS 8.5.19; clean build/tests and npm audit now report no known vulnerability. Python audit also reports none outside intentionally skipped editable local packages.
+- Green P2-01 host/static evidence: exact toolchain plus effective pnpm-policy checks; frozen installs; format/lint; strict TypeScript/mypy over 28 Python source files; 4 web/contract and 31 Python unit tests; Next production build; byte-level generated-contract drift; 141-file secret baseline; Compose parse; Supabase config parse; and exact Redis/Node/Python/uv image manifest verification.
+- Added exact Redis/ARQ integration proofs for startup, JSON-only enqueue/retry/result, hard subprocess crash/redelivery with one idempotent durable effect, and SIGTERM shutdown. Added CI container builds, import probes, and non-root user inspection. These checks are implemented but not claimed passing locally.
+- Initial independent M0 static review found one High test-safety defect and one Medium route-inventory defect. Removed all Redis database flushes and runtime URL overrides; tests now use fixed loopback DB 15, dedicated namespaced keys, and exact-key cleanup. Disabled FastAPI docs/ReDoc/OpenAPI HTTP routes and added exhaustive route/404 tests. Runtime findings remain explicitly outside the claim while R-021 is open.
+- Hardened the same boundary after advisory review: accept only canonical UUIDv4/v7 correlation, return generic correlated 500s, log allowlisted request/error fields, disable raw Uvicorn access logs, format stdlib/Uvicorn output as JSON, and detect Supabase secret keys plus privileged legacy JWTs with canary tests.
+- Independent M0 re-audit then reported 0 Critical / 0 High / 4 Medium: ignored pnpm 11 policy, High-only npm audit threshold, fail-open readiness, and missing Supabase CI lifecycle. Moved policy into `pnpm-workspace.yaml`, regenerated `autoInstallPeers: false` lock state, asserted effective config, made Moderate audit findings blocking, added environment-specific readiness 503 tests, and added secret-suppressed disposable Supabase start/Auth-health/reset/always-stop CI steps.
+- Final independent M0 static confirmation passed: 0 Critical / 0 High / 0 Medium; 31/31 Python unit tests and effective pnpm/Supabase CLI controls were rechecked. R-021 runtime evidence remains unproven, so M0 stays open and M1 stays untouched.
+- Diagnosed Docker Desktop runtime failure from primary local logs: WSL distro import fails with `HCS_E_HYPERV_NOT_INSTALLED`; hardware virtualization and/or Windows Virtual Machine Platform is unavailable. Recorded R-021, kept M0 open, and stopped before P2-02. Remediation requires user/administrator host action plus reboot or an authorized Linux CI host.
+- Re-audited the host without mutation: `Win32_Processor` reports `VirtualizationFirmwareEnabled=False`; WSL 2 is installed with no distribution; Windows optional-feature inspection requires elevation. Narrowed R-021 to the directly observed firmware blocker while retaining the unverified OS-feature dependency.
+- Added `pnpm verify:m0-runtime`: a local-only M0 harness for exact Redis/ARQ/Supabase/container proof with credential-suppressed Supabase output and cleanup after failure or interruption.
+- Independent harness safety review found 0 Critical / 2 High / 2 Medium: inherited Docker/Compose routing could target remote/unrelated state; cleanup lacked invocation ownership; commands could hang or die on SIGTERM without cleanup; and the health probe honored proxies/redirects.
+- Corrected all four findings: sanitize routing/hosted overrides; validate and re-inject only local Unix-socket/named-pipe Docker context; pin Compose file/project; use a lock plus per-run Compose/Supabase/image namespaces and temp config; refuse occupied ports/prior namespaces; add timeouts and interruption handling; use direct loopback HTTP; and add sixteen routing/ownership/concurrency/timeout/termination/proxy tests.
+- Follow-up reviews found POSIX descendant escalation, Windows abrupt-owner cleanup, POSIX nonzero-leader sweeping, and shared-lock safety gaps. Added independent PGID liveness/escalation, bounded pipe handling, a handshake launcher inside a validated kill-on-close Windows Job Object, forced-owner and stubborn/nonzero-descendant proofs, and a UID-private no-follow lock. Side corrections discard both credential-bearing streams, give probes exact run-owned containers, and make absent-image cleanup non-failing. The 26-test harness suite passes all 24 Windows-applicable tests with 2 expected POSIX-only skips.
+- Final independent runtime-harness safety review passed: 0 Critical / 0 High / 0 Medium. The reviewer independently reran the applicable harness suite, Ruff, and mypy. This closes harness findings only; R-021 keeps the Docker-backed M0 runtime gate open.
+- Frozen installs, exact toolchain, format/lint, strict types over 30 Python files, 4 JS/TS tests, 55 Python unit tests plus 2 expected POSIX-only skips, production build, contract drift, 143-file secret scan, and Moderate-blocking SCA pass. Adversarial preflight ignores hostile routing overrides and selects `desktop-linux` at the local named pipe; both it and the exact full gate exit 1 at read-only Docker inspection with zero Docker processes, temp runtime directories, or hosted link marker. M0 remains open and M1 remains untouched.
+- Obsidian integrity recheck passes: 56/56 governed Markdown files have required frontmatter; 145/145 wikilinks resolve; 80 unique evidence IDs have zero duplicates or undefined references; the active ExecPlan retains sections 1–11.
+- No hosted Supabase/Railway/Vercel resource, production data, production deployment, Git commit, or push was created.
+- User restored the Windows virtualization/Docker prerequisite. Live inspection reports Docker 29.6.1 on the local `desktop-linux` named-pipe context; R-021 moved from Open to Mitigated.
+- Corrected Docker Desktop Redis publication by retaining the host binding `127.0.0.1:6379` while making the Compose DNS bridge non-internal. Containers still resolve `redis:6379`; LAN exposure remains absent. This is trusted local-development topology only, not production networking.
+- Hardened `pnpm verify:m0-runtime` to parse canonical Compose JSON and fail closed unless Redis uses only `simula-private`, that network is non-internal, and exactly TCP 6379 is published on `127.0.0.1`. Added valid-boundary plus malformed/public/internal/extra-port/extra-network tests; 30 Windows-applicable harness tests pass with 2 expected POSIX skips.
+- Exact M0 runtime gate passed after remediation: Redis 8.2.7 non-root runtime, 3/3 ARQ integration tests, local Supabase Auth health/reset, pinned web/API/worker builds, non-root user checks, API/worker probes, and exact cleanup. Audit found zero run-owned containers, networks, images, temp directories, or hosted link markers.
+- Current-tree `pnpm check`, Moderate-blocking npm/Python SCA, and Compose parse pass. M0 / P2-01 is complete; M1 / P2-02 is unlocked. No hosted or production mutation occurred.
+- Post-close Obsidian audit passes: 56/56 governed Markdown frontmatter, 145/145 resolved wikilinks, 81 unique evidence IDs with zero duplicates/undefined references, and all 11 active-plan sections.
+- Started P2-02 only after the exact Docker-backed P2-01 gate passed. Added the first ordered Supabase migration, privileged global-role bootstrap, authored local Auth identities, generated database types, and no HTTP/product UI surface.
+- Implemented `api`/`private` schemas with 14 constrained tables, four least-privilege runtime/owner roles, global default function denial, forced RLS, 16 exact policies, self-only membership reads, composite tenant foreign keys, and one complete security-definer organization command with idempotency and atomic audit.
+- Reset-driven testing exposed and corrected PostgreSQL 17 restricted-role bootstrap semantics, schema-scoped default-ACL ineffectiveness, retained `PUBLIC EXECUTE`, qualified `NULLIF`/`EXTRACT` grammar misuse, generated Auth identity email insertion, ACL/comment ordering after ownership transfer, and a correlated membership-policy name-resolution bug that blocked second-organization creation.
+- Added `pnpm verify:m1-database`: two zero-state resets, database lint, 32 catalog-derived pgTAP assertions, authored Auth sign-in, anon/authenticated Data API denial, real-session claim/pool-reset/direct-DML/two-tenant/idempotency/atomic-rollback/deletion-skeleton tests, and byte-exact generated database-type drift.
+- M1 gates pass: 32/32 pgTAP, 2/2 database boundary tests, 5/5 combined Redis/database integration, full `pnpm check`, 157-file secret scan, and Moderate-blocking npm/Python SCA. P2-02 is complete; P2-03 is active. No hosted/production mutation, commit, push, or runtime credential was created.
+- P2-03 implementation added atomic project/stimulus-version database commands and adversarial tests; FastAPI JWT/JWKS/claim-pool/RFC-9457/idempotency/version APIs; generated OpenAPI/TypeScript; and an accessible Supabase-Auth-only web journey. Static evidence passes API 19/19, web 5/5, strict Python, web TypeScript/lint/format, generated declaration build, and Next production build (E-5010). M2 remains open: Docker's WSL engine is unavailable and the exact Node/pnpm bootstrap is not in the current shell for reset-driven local integration and Playwright E2E. No hosted/production mutation, commit, push, or runtime credential was created.
+- Docker Desktop recovery: local data disks were backed up; Desktop updated to 4.82.0; Virtual Machine Platform/WSL and hypervisor boot were enabled; and Windows reboot restored Docker Server 29.6.1. Exact Node 24.18.0/pnpm 11.13.1 now resolves through a repo-local Corepack shim.
+- P2-03 local runtime gate passes: two reset-driven Supabase database gates, lint, 32 pgTAP tests, 20 API unit tests, four real Auth/API/database integration tests, generated database types/contracts, web TypeScript/ESLint, five deterministic one-fork Vitest tests, and Next production build. Corrected Windows psycopg Proactor incompatibility with a selector loop before API startup; corrected the disposable viewer-membership fixture to use controlled UUID literals and the local superuser. Playwright E2E and independent M2 review remain pending (E-5010).
+- Post-M1 Obsidian audit passes: 56/56 governed Markdown frontmatter, 145/145 resolved wikilinks, 55 Home links, 82 unique evidence IDs with zero duplicates/undefined references, and all 11 active-plan sections.

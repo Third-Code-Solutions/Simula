@@ -1,0 +1,37 @@
+---
+title: SIMULA Risk Register
+status: active
+created: 2026-07-17
+updated: 2026-07-17
+owner: Principal program and engineering lead
+classification: PROPOSED
+source_of_truth: true
+---
+
+# SIMULA Risk Register
+
+Risk scale: likelihood and impact are Low, Medium, High, or Critical. Status is Open, Monitoring, Mitigated, or Accepted.
+
+| ID | Classification | Risk | Likelihood | Impact | Mitigation / Phase 1 treatment | Owner | Status |
+|---|---|---|---|---|---|---|---|
+| R-001 | INFERRED | Vendor marketing claims may be mistaken for independent validation. | High | High | Label vendor claims `REPORTED`; seek independent benchmarks; prohibit accuracy claims before held-out evaluation. | Research/Methodology | Open |
+| R-002 | INFERRED | Sparse public evidence may lead to fabricated competitor internals. | Medium | High | Keep private database, models, algorithms, datasets, accuracy, and architecture `UNKNOWN` without direct credible evidence. | Research | Open |
+| R-003 | INFERRED | Public Philippine data may lack licensed, timely, intersectional variables needed for target cohorts. | High | High | Build provenance registry; identify gaps; use labeled demo synthetic data; require licensing and sparse-cell review. | Data | Open |
+| R-004 | INFERRED | Synthetic audience output may be presented with false precision or overgeneralized to the population. | High | Critical | Separate estimate types; uncertainty and validation labels; suppression rules; no representativeness claim without evidence. | Methodology/Product | Open |
+| R-005 | INFERRED | Privacy, data-protection, research-ethics, or license obligations may be misunderstood. | Medium | Critical | Cite current primary sources; complete privacy impact and legal review in Phase 1; avoid compliance claims. | Security/Legal | Open |
+| R-006 | INFERRED | LLM/provider processing may expose confidential campaign stimuli. | Medium | High | Phase 1 data-flow review, provider retention controls, minimization, tenant isolation, secret handling, and explicit customer disclosure. | Security/Architecture | Open |
+| R-007 | INFERRED | Prompt injection or malicious uploads may affect simulation integrity or leak data. | Medium | High | Threat model, content isolation, validation, file controls, model/tool least privilege, and adversarial tests. | Security | Open |
+| R-008 | OBSERVED | Repository has no commits; all current project files are untracked, reducing durable change traceability. | High | Medium | Maintain changelog and plan evidence now; define and verify initial commit policy before implementation. | Engineering | Monitoring |
+| R-009 | OBSERVED | Governing filename mismatch: request says `AGENTS.md`; repository has `AGENT.md`. | High | Low | Treat supplied instructions and `AGENT.md` as controlling; normalize only with user authorization or future maintenance decision. | Engineering | Monitoring |
+| R-010 | INFERRED | Phase 0 scope could drift into premature product or architecture implementation. | Medium | Medium | Phase 0 passed no-code audit; Phase 1 retained scaffold gate. | Program | Mitigated |
+| R-011 | INFERRED | Public personal-data scraping or reuse may be mistaken as permitted because content is accessible. | Medium | Critical | E-3009: prohibit scraping for audience construction; require lawful-basis, terms, purpose, minimization, PIA, and rights review. | Data/Privacy | Open |
+| R-012 | INFERRED | Model, prompt, provider, language, or population shift may invalidate prior calibration. | High | High | Scope every benchmark; version all inputs; monitor drift; demote expired or failed scope to experimental. | Methodology/Evaluation | Open |
+| R-013 | INFERRED | Middleware-only, RLS-only, or browser-reachable Data API commands could bypass API authorization, idempotency, limits, audit, or object controls. | Medium | Critical | ADR-0003 + authorization matrix remove application schemas/grants from browser Data API roles. M1 proves Data API denial, dedicated `simula_api`, transaction-local claim cleanup, forced RLS reads, no direct runtime DML, and complete organization helper atomicity (E-5009). FastAPI JWT/object/command enforcement remains P2-03. | Security/Backend | Monitoring |
+| R-014 | INFERRED | Long simulation work placed in Vercel request/post-response execution may time out or be lost. | Medium | High | ADR-0006/0008 select private Railway Redis/ARQ transport, Supabase transactional outbox/Postgres state, and private Railway worker/dispatcher. Implementation evidence still required. | Architecture/Platform | Monitoring |
+| R-015 | OBSERVED | No customer/design-partner evidence validates the chosen job or demand. | High | High | Keep hypothesis label; use prototype only for learning; prespecified interviews/tasks must pass before staging acceptance. | Product | Open |
+| R-016 | OBSERVED | Host tool patches differ from accepted reproducible pins. | High | Medium | CI/container exact pins and lockfiles are authoritative; bootstrap records drift; fail runtime-version check in release jobs. | Platform | Monitoring |
+| R-017 | INFERRED | Railway Redis can lose queued/retry/redelivery state before or after confirmation/worker claim. | Medium | High | Postgres run/attempt/lease/outbox authority; exact pins/no-eviction; pending replay; 30s reconciler covering queued plus expired-lease running/retrying; 120s-or-incident trigger with hard DB attempt/generation caps; pre/post-claim/retry loss tests; Phase 5 restore drill. | Platform/Backend | Monitoring |
+| R-018 | INFERRED | A leaked `simula_api` credential, stale transaction claim, or grant drift could impersonate a subject or bypass tenant controls. | Medium | Critical | Separate NOINHERIT/NOBYPASSRLS runtime role; no source password; exact catalog grant/function allowlist; transaction-local allowlisted claims; commit/pool-reset, forged/expired claim, helper, cross-tenant, and owner-role denial tests pass in M1 (E-5009). TLS/credential rotation and API claim installation remain P2-03/P2-07. | Security/Backend/DB | Monitoring |
+| R-019 | INFERRED | Dispatcher code could falsely confirm an outbox row after an ambiguous, wrong-queue, or missing Redis side effect. | Medium | High | Only `simula_worker` can claim/confirm; require current claim token plus unambiguous new create or atomic exact-key/function/args/schema/job binding with target-queue score; matching global key or queue-agnostic in-progress marker never confirms; ambiguous outcomes stay pending; reconciliation/poison alerts; wrong-ZSET/in-progress-only/forged/crash tests. | Backend/Platform | Monitoring |
+| R-020 | OBSERVED | ARQ is in maintenance-only mode, so non-critical defects or future runtime incompatibilities may remain unfixed. | High | High | Phase 2 exact Python 3.14/ARQ 0.28/redis-py 5.3.1/Redis 8.2.7 runtime and failure tests; keep queue domain behind an adapter; Phase 5 reassesses maintained alternatives and approves a tested migration/exit plan before Phase 6 or production. | Architecture/Platform | Monitoring |
+| R-021 | OBSERVED | This Windows host previously could not start Docker Linux because the hypervisor platform was unavailable; host/runtime regressions could block local gates again. | Medium | High | Docker Desktop 4.82.0, Virtual Machine Platform/WSL, and hypervisor boot remediation followed by reboot restored Docker 29.6.1. Retain the fail-closed Docker-context/engine preflight; never substitute fake Redis or hosted state. | Platform/User | Mitigated |

@@ -1,0 +1,37 @@
+name: simula-local
+
+services:
+  redis:
+    image: redis:8.2.7-alpine@sha256:223b183cbc49f5ff48728e1fc52ccf101f05072decad2bd9867281a3c9bf75fd
+    command:
+      - redis-server
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - noeviction
+      - --save
+      - ""
+    ports:
+      - "127.0.0.1:${SIMULA_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 1s
+      timeout: 1s
+      retries: 30
+    init: true
+    restart: "no"
+    user: redis
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - simula-private
+
+networks:
+  simula-private:
+    # Host-run services use loopback Redis. Docker Desktop suppresses published
+    # ports on internal networks, so keep this bridge network non-internal.
+    internal: false

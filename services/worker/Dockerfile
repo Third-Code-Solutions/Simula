@@ -1,0 +1,27 @@
+FROM ghcr.io/astral-sh/uv:0.11.19@sha256:b46b03ddfcfbf8f547af7e9eaefdf8a39c8cebcba7c98858d3162bd28cf536f6 AS uv
+FROM python:3.14.6-slim-bookworm@sha256:86f975aca15cf04a40b399eebede9aea7c82eae084d1f1a0a6ef6bcaae871a30 AS build
+
+ENV UV_COMPILE_BYTECODE=1
+ENV UV_LINK_MODE=copy
+WORKDIR /app
+
+COPY --from=uv /uv /usr/local/bin/uv
+COPY pyproject.toml uv.lock .python-version ./
+COPY packages/simula-core packages/simula-core
+COPY services/api/pyproject.toml services/api/pyproject.toml
+COPY services/worker services/worker
+RUN uv sync --frozen --no-dev --no-editable --package simula-worker
+
+FROM python:3.14.6-slim-bookworm@sha256:86f975aca15cf04a40b399eebede9aea7c82eae084d1f1a0a6ef6bcaae871a30 AS runtime
+
+ENV PATH=/app/.venv/bin:$PATH
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+
+RUN groupadd --gid 10001 simula && useradd --uid 10001 --gid simula --no-create-home simula
+COPY --from=build --chown=simula:simula /app/.venv /app/.venv
+
+USER simula
+HEALTHCHECK --interval=10s --timeout=2s --retries=3 CMD ["python", "-m", "simula_worker", "--check"]
+CMD ["python", "-m", "simula_worker"]
