@@ -27,7 +27,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 - [[../../brain/QA/PHASE_2_BACKLOG|Phase 2 Backlog]] contains seven ordered vertical stories with all Ready fields.
 - [[../../brain/Product/ACCEPTANCE_CRITERIA|Acceptance Criteria]] and [[../../brain/QA/TRACEABILITY_MATRIX|Traceability Matrix]] define the required behavior and tests.
 - Phase 1 closed with 55/55 governed Markdown YAML, 128/128 links, 68 unique evidence IDs, 21/21 acceptance criteria traced, 7/7 Ready stories, exact dependency resolution, and zero scaffold.
-- Repository has no commits; all governance files remain untracked. Preserve user-owned state and do not commit or publish without explicit instruction.
+- Repository is on `main` at pushed commit `d51c89f`. Green, focused increments are committed and pushed under the user's standing instruction; preserve unrelated user-owned changes.
 
 # 4. Scope
 
@@ -36,7 +36,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 - P2-01: reproducible pnpm/Turbo + uv monorepo, exact runtime/direct pins and locks, minimal web/API/worker/contracts/core packages, local Redis/Supabase configuration, CI skeleton.
 - P2-02: ordered Supabase SQL migrations, authored local fixtures, dedicated runtime/definer roles, non-exposed application schemas, RLS, complete atomic command helpers, adversarial role tests.
 - P2-03: Supabase Auth session flow, FastAPI JWT/JWKS validation, transaction-local verified claims, organization/project/stimulus vertical, generated contracts, accessible forms and states.
-- P2-04: atomic frozen run/outbox, exact canonical ARQ v0.28 JSON transport, service-only dispatch, Postgres-bound worker claims, deterministic no-egress mock, immutable typed result.
+- P2-04: atomic frozen run/outbox, exact canonical ARQ v0.28 JSON transport, service-only dispatch, Postgres-bound worker claims, deterministic no-egress mock, immutable typed result. Complete and evidenced in E-5013.
 - P2-05: accessible result/status/provenance/limitations experience with bounded polling and exhaustive state rendering.
 - P2-06: cancel/result CAS, retry/failure classes, leases, duplicate delivery, Redis-loss reconciliation, poison and concurrency races.
 - P2-07: full local CI-quality gate, telemetry, security, load/resource, migration/contract drift, E2E, evidence, and independent review.
@@ -151,6 +151,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: P2-03/M2 passes its final local and independent-review gate (E-5010). Two clean resets, lint, 32 pgTAP, 26 API tests, five integrations, generated type/contract checks, full repository quality/SCA, immutable-version browser proof, review-remediated Redis/auth/audit/media/CORS controls, and two final clean independent reviews are complete. M3/P2-04 is unlocked; its first strict ARQ codec slice is committed after a green repository gate.
 - 2026-07-18 — OBSERVED: P2-04 durable database slice passes a clean local reset plus 41 pgTAP catalog/ACL assertions and the full repository gate (110 tests, 2 platform skips). Commit `9342d37` adds the immutable authored-demo fixture, frozen run/outbox command, worker-owner policies, and execute-only worker helpers; the exact ordered migration is applied and verified on hosted Supabase (E-5012). Queue transport, dispatcher, worker execution, and API routes remain open.
 - 2026-07-18 — OBSERVED: P2-04 worker and API slices pass focused and repository gates. Commit `754fe0f` adds role-pinned worker dispatch/execution; the next commit adds generated run/result API contracts and an API publisher that can never confirm an outbox. The disposable full database/Redis duplicate/crash proof remains open.
+- 2026-07-18 — OBSERVED: P2-04/M3 is complete (E-5013). Commit `d51c89f` closes the reset-driven API→outbox→Redis→worker→immutable-result proof, duplicate no-op behavior, and hosted forward corrections through migration `20260718020400`. P2-05 is now the active milestone.
 
 # 9. Progress
 
@@ -174,13 +175,15 @@ tests/                     cross-service, security, load, E2E
   - [x] Reset-driven local API/database integration and generated database-type drift under exact Node 24.18.0/pnpm 11.13.1.
   - [x] Sign-in-to-stimulus Playwright E2E, including a second immutable version with a distinct checksum.
   - [x] Independent M2 review: remediation loop and two final reviewers reported no actionable findings.
-- [ ] M3 / P2-04 durable deterministic run.
+- [x] M3 / P2-04 durable deterministic run.
   - [x] Strict ARQ envelope/transport codec, generated typed result schema, and deterministic no-egress mock.
   - [x] Frozen run/outbox database authority, worker-only helper ACL, local reset proof, and hosted ordered migration.
   - [x] Queue adapter/target-queue confirmation, dispatcher, role-pinned worker gateway, and lease-bound deterministic worker execution.
   - [x] Run/result APIs, generated OpenAPI contract, and unit proof of best-effort non-confirming publish.
-  - [ ] Disposable end-to-end duplicate/crash proof.
+  - [x] Disposable end-to-end duplicate/crash proof.
 - [ ] M4 / P2-05 trustworthy result experience.
+  - [x] Additive authorized provenance contract, frozen release/limit snapshot, generated contract, and local integration proof.
+  - [ ] Browser run/result/provenance experience and accessibility/E2E gate.
 - [ ] M5 / P2-06 cancellation and recovery.
 - [ ] M6 / P2-07 integrated quality gate.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.

@@ -268,11 +268,30 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
             f"/api/v1/runs/{run_id}/result",
             headers={"Authorization": f"Bearer {owner_token}"},
         )
+        provenance = await client.get(
+            f"/api/v1/runs/{run_id}/provenance",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
         assert run.status_code == 200
         assert run.json()["state"] == "succeeded"
         assert result.status_code == 200
         assert result.json()["result"]["schema_version"] == "1.0.0"
         assert result.json()["result"]["run_id"] == str(run_id)
+        assert provenance.status_code == 200
+        provenance_body = provenance.json()
+        assert provenance_body["availability"] == "available"
+        assert provenance_body["stimulus"] == {
+            "content": "Try fictional M3 now.",
+            "content_sha256": created_stimulus.json()["versions"][0]["content_sha256"],
+            "version_id": str(stimulus_version_id),
+        }
+        assert provenance_body["audience"]["kind"] == "authored_demo"
+        assert provenance_body["audience"]["non_representative"] is True
+        assert provenance_body["execution"]["pipeline_release_id"] == "phase2_deterministic_mock_v1"
+        assert provenance_body["limits"]["version"] == "phase2_2026_07_17"
+        assert provenance_body["deterministic_seed"].lstrip("-").isdigit()
+        assert "frozen_manifest" not in provenance_body
+        assert "job_id" not in provenance_body
 
         retrying_run = await client.get(
             f"/api/v1/runs/{retry_run_id}",

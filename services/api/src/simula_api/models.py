@@ -195,6 +195,73 @@ class SimulationResultResponse(StrictModel):
     created_at: datetime
 
 
+class ProvenanceStimulus(StrictModel):
+    version_id: UUID
+    content: StimulusContent
+    content_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class ProvenanceAudienceCell(StrictModel):
+    key: Literal["authored_demo"]
+    weight: float = Field(gt=0.0, le=1.0)
+
+
+class ProvenanceAudience(StrictModel):
+    version_id: UUID
+    kind: Literal["authored_demo"]
+    checksum_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    cells: list[ProvenanceAudienceCell] = Field(min_length=1)
+    non_representative: Literal[True]
+    limitations: list[Literal["Estimates nobody and is not representative of any population."]]
+
+
+class ProvenanceExecution(StrictModel):
+    method_version: Literal["phase2_demo_v1"]
+    disclosure_version: Literal["phase2_demo_v1"]
+    language: Literal["en"]
+    output_schema_version: Literal[1]
+    provider_id: Literal["deterministic_mock"]
+    provider_version: Literal[1]
+    pipeline_release_id: Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9._-]{2,63}$")]
+
+
+class ProvenanceExecutionLimits(StrictModel):
+    version: Literal["phase2_2026_07_17"]
+    arq_job_timeout_seconds: Literal[30]
+    provider_cost_ceiling: Literal[0]
+    max_database_attempts: Literal[3]
+    max_dispatch_generations: Literal[3]
+    max_result_bytes: Literal[131072]
+
+
+class SimulationProvenanceResponse(StrictModel):
+    """Whitelisted immutable run provenance; generic manifests never cross the API boundary."""
+
+    availability: Literal["available", "legacy_unavailable"]
+    unavailable_reason: Literal["frozen_provenance_not_captured"] | None = None
+    run_id: UUID
+    created_at: datetime
+    terminal_at: datetime | None
+    result_created_at: datetime | None
+    frozen_manifest_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    deterministic_seed: str = Field(pattern=r"^-?[0-9]{1,19}$")
+    stimulus: ProvenanceStimulus | None = None
+    audience: ProvenanceAudience | None = None
+    execution: ProvenanceExecution | None = None
+    limits: ProvenanceExecutionLimits | None = None
+
+    @model_validator(mode="after")
+    def has_complete_or_explicitly_unavailable_provenance(self) -> Self:
+        details = (self.stimulus, self.audience, self.execution, self.limits)
+        if self.availability == "available":
+            if self.unavailable_reason is not None or any(detail is None for detail in details):
+                raise ValueError("available provenance must include every frozen detail")
+            return self
+        if self.unavailable_reason is None or any(detail is not None for detail in details):
+            raise ValueError("legacy provenance must disclose why details are unavailable")
+        return self
+
+
 class StimulusVersionResponse(StrictModel):
     id: UUID
     organization_id: UUID

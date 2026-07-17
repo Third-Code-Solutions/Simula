@@ -11,6 +11,7 @@ from simula_api.auth import SupabaseTokenVerifier, VerifiedIdentity
 from simula_api.cursor import CursorCodec
 from simula_api.database import DatabaseGateway
 from simula_api.models import (
+    SimulationProvenanceResponse,
     SimulationResultResponse,
     SimulationRunResponse,
     SimulationRunState,
@@ -92,6 +93,49 @@ class FakeDatabase:
     def __init__(self) -> None:
         self.run_commands: list[dict[str, object]] = []
         self.result: SimulationResultResponse | None = None
+        self.provenance = SimulationProvenanceResponse.model_validate(
+            {
+                "availability": "available",
+                "run_id": RUN_ID,
+                "created_at": NOW,
+                "terminal_at": None,
+                "result_created_at": None,
+                "frozen_manifest_sha256": "b" * 64,
+                "deterministic_seed": "7",
+                "stimulus": {
+                    "version_id": STIMULUS_VERSION_ID,
+                    "content": "Test response typing.",
+                    "content_sha256": "a" * 64,
+                },
+                "audience": {
+                    "version_id": UUID("00000000-0000-4000-8000-0000000000d1"),
+                    "kind": "authored_demo",
+                    "checksum_sha256": "d" * 64,
+                    "cells": [{"key": "authored_demo", "weight": 1.0}],
+                    "non_representative": True,
+                    "limitations": [
+                        "Estimates nobody and is not representative of any population."
+                    ],
+                },
+                "execution": {
+                    "method_version": "phase2_demo_v1",
+                    "disclosure_version": "phase2_demo_v1",
+                    "language": "en",
+                    "output_schema_version": 1,
+                    "provider_id": "deterministic_mock",
+                    "provider_version": 1,
+                    "pipeline_release_id": "phase2_deterministic_mock_v1",
+                },
+                "limits": {
+                    "version": "phase2_2026_07_17",
+                    "arq_job_timeout_seconds": 30,
+                    "provider_cost_ceiling": 0,
+                    "max_database_attempts": 3,
+                    "max_dispatch_generations": 3,
+                    "max_result_bytes": 131072,
+                },
+            },
+        )
 
     async def organization_for_project(self, _: VerifiedIdentity, *, project_id: UUID) -> UUID:
         assert project_id == PROJECT_ID
@@ -114,6 +158,12 @@ class FakeDatabase:
     ) -> SimulationResultResponse | None:
         assert run_id == RUN_ID
         return self.result
+
+    async def get_simulation_provenance(
+        self, _: VerifiedIdentity, *, run_id: UUID
+    ) -> SimulationProvenanceResponse:
+        assert run_id == RUN_ID
+        return self.provenance
 
 
 class RecordingPublisher:
@@ -250,3 +300,20 @@ async def test_published_result_is_returned_as_the_generated_typed_contract() ->
     assert response.status_code == 200
     assert response.json()["result"]["schema_version"] == "1.0.0"
     assert response.json()["result"]["run_id"] == str(RUN_ID)
+
+
+async def test_authorized_provenance_is_a_closed_projection_not_the_raw_manifest() -> None:
+    app, _, _ = app_with_fakes()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            f"/api/v1/runs/{RUN_ID}/provenance",
+            headers={"Authorization": f"Bearer {TEST_BEARER}"},
+        )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["availability"] == "available"
+    assert body["stimulus"]["content"] == "Test response typing."
+    assert body["execution"]["pipeline_release_id"] == "phase2_deterministic_mock_v1"
+    assert "frozen_manifest" not in body
+    assert "job_id" not in body

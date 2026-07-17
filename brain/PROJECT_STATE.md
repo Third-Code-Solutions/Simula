@@ -18,7 +18,7 @@ source_of_truth: true
 
 ## Current objective
 
-Implement the remaining P2-04 queue, worker, and API vertical on the verified durable-run database authority, then continue P2-05 through P2-07 in order. Prove one tenant-safe asynchronous deterministic demo result without real-provider egress or representativeness claims. Hosted P2-04 schema now includes the sole immutable authored-demo fixture; all future schema changes remain ordered migrations with history review.
+Complete P2-05's trustworthy result/status/provenance experience, then P2-06 cancellation/recovery and P2-07's integrated exit gate in order. P2-05's first additive provenance contract slice freezes the deterministic pipeline release and execution-limit identifiers for new runs; it remains local until the full P2-05 gate passes. No real-provider egress or representativeness claim is authorized.
 
 ## Repository state
 

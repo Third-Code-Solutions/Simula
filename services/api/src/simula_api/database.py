@@ -22,6 +22,11 @@ from simula_api.models import (
     ProjectDetail,
     ProjectPatch,
     ProjectResponse,
+    ProvenanceAudience,
+    ProvenanceExecution,
+    ProvenanceExecutionLimits,
+    ProvenanceStimulus,
+    SimulationProvenanceResponse,
     SimulationResultResponse,
     SimulationRunResponse,
     StimulusResponse,
@@ -600,6 +605,101 @@ class DatabaseGateway:
             result=row["artifact"],
             artifact_sha256=row["artifact_sha256"],
             created_at=row["created_at"],
+        )
+
+    async def get_simulation_provenance(
+        self, identity: VerifiedIdentity, *, run_id: UUID
+    ) -> SimulationProvenanceResponse:
+        async with self._transaction(identity) as connection:
+            cursor = await connection.execute(
+                """
+                select
+                  runs.id,
+                  runs.created_at,
+                  runs.terminal_at,
+                  runs.frozen_manifest,
+                  runs.frozen_manifest_sha256,
+                  runs.deterministic_seed,
+                  results.created_at as result_created_at
+                from api.simulation_runs as runs
+                left join api.simulation_results as results on results.run_id = runs.id
+                where runs.id = %s
+                """,
+                (run_id,),
+            )
+            row = await cursor.fetchone()
+        if row is None:
+            raise _not_found()
+
+        manifest = row["frozen_manifest"]
+        if not isinstance(manifest, Mapping) or "code" not in manifest or "limits" not in manifest:
+            return SimulationProvenanceResponse(
+                availability="legacy_unavailable",
+                unavailable_reason="frozen_provenance_not_captured",
+                run_id=row["id"],
+                created_at=row["created_at"],
+                terminal_at=row["terminal_at"],
+                result_created_at=row["result_created_at"],
+                frozen_manifest_sha256=row["frozen_manifest_sha256"],
+                deterministic_seed=str(row["deterministic_seed"]),
+            )
+
+        stimulus = manifest.get("stimulus")
+        audience = manifest.get("audience")
+        audience_manifest = audience.get("manifest") if isinstance(audience, Mapping) else None
+        execution = manifest.get("execution")
+        code = manifest.get("code")
+        limits = manifest.get("limits")
+        if not all(
+            isinstance(value, Mapping)
+            for value in (stimulus, audience, audience_manifest, execution, code, limits)
+        ):
+            raise RuntimeError("stored run provenance is malformed")
+        frozen_stimulus = cast(Mapping[str, object], stimulus)
+        frozen_audience = cast(Mapping[str, object], audience)
+        frozen_audience_manifest = cast(Mapping[str, object], audience_manifest)
+        frozen_execution = cast(Mapping[str, object], execution)
+        frozen_code = cast(Mapping[str, object], code)
+        frozen_limits = cast(Mapping[str, object], limits)
+        return SimulationProvenanceResponse(
+            availability="available",
+            run_id=row["id"],
+            created_at=row["created_at"],
+            terminal_at=row["terminal_at"],
+            result_created_at=row["result_created_at"],
+            frozen_manifest_sha256=row["frozen_manifest_sha256"],
+            deterministic_seed=str(row["deterministic_seed"]),
+            stimulus=ProvenanceStimulus.model_validate(
+                {
+                    "version_id": frozen_stimulus["version_id"],
+                    "content": frozen_stimulus["content"],
+                    "content_sha256": frozen_stimulus["content_sha256"],
+                }
+            ),
+            audience=ProvenanceAudience.model_validate(
+                {
+                    "version_id": frozen_audience["version_id"],
+                    "kind": frozen_audience["kind"],
+                    "checksum_sha256": frozen_audience["checksum_sha256"],
+                    "cells": frozen_audience_manifest["audience_cells"],
+                    "non_representative": frozen_audience["non_representative"],
+                    "limitations": [
+                        "Estimates nobody and is not representative of any population."
+                    ],
+                }
+            ),
+            execution=ProvenanceExecution.model_validate(
+                {
+                    "method_version": manifest["method_version"],
+                    "disclosure_version": manifest["disclosure_version"],
+                    "language": frozen_execution["language"],
+                    "output_schema_version": frozen_execution["output_schema_version"],
+                    "provider_id": frozen_execution["provider_id"],
+                    "provider_version": frozen_execution["provider_version"],
+                    "pipeline_release_id": frozen_code["pipeline_release_id"],
+                }
+            ),
+            limits=ProvenanceExecutionLimits.model_validate(frozen_limits),
         )
 
     async def _project_detail(

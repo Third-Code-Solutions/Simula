@@ -126,6 +126,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/provenance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Simulation Provenance */
+        get: operations["get_simulation_provenance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/result": {
         parameters: {
             query?: never;
@@ -447,6 +464,120 @@ export interface components {
          * @enum {string}
          */
         ProjectStatus: "active" | "archived" | "deleted";
+        /** ProvenanceAudience */
+        ProvenanceAudience: {
+            /** Cells */
+            cells: components["schemas"]["ProvenanceAudienceCell"][];
+            /** Checksum Sha256 */
+            checksum_sha256: string;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "authored_demo";
+            /** Limitations */
+            limitations: "Estimates nobody and is not representative of any population."[];
+            /**
+             * Non Representative
+             * @constant
+             */
+            non_representative: true;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+        };
+        /** ProvenanceAudienceCell */
+        ProvenanceAudienceCell: {
+            /**
+             * Key
+             * @constant
+             */
+            key: "authored_demo";
+            /** Weight */
+            weight: number;
+        };
+        /** ProvenanceExecution */
+        ProvenanceExecution: {
+            /**
+             * Disclosure Version
+             * @constant
+             */
+            disclosure_version: "phase2_demo_v1";
+            /**
+             * Language
+             * @constant
+             */
+            language: "en";
+            /**
+             * Method Version
+             * @constant
+             */
+            method_version: "phase2_demo_v1";
+            /**
+             * Output Schema Version
+             * @constant
+             */
+            output_schema_version: 1;
+            /** Pipeline Release Id */
+            pipeline_release_id: string;
+            /**
+             * Provider Id
+             * @constant
+             */
+            provider_id: "deterministic_mock";
+            /**
+             * Provider Version
+             * @constant
+             */
+            provider_version: 1;
+        };
+        /** ProvenanceExecutionLimits */
+        ProvenanceExecutionLimits: {
+            /**
+             * Arq Job Timeout Seconds
+             * @constant
+             */
+            arq_job_timeout_seconds: 30;
+            /**
+             * Max Database Attempts
+             * @constant
+             */
+            max_database_attempts: 3;
+            /**
+             * Max Dispatch Generations
+             * @constant
+             */
+            max_dispatch_generations: 3;
+            /**
+             * Max Result Bytes
+             * @constant
+             */
+            max_result_bytes: 131072;
+            /**
+             * Provider Cost Ceiling
+             * @constant
+             */
+            provider_cost_ceiling: 0;
+            /**
+             * Version
+             * @constant
+             */
+            version: "phase2_2026_07_17";
+        };
+        /** ProvenanceStimulus */
+        ProvenanceStimulus: {
+            /** Content */
+            content: string;
+            /** Content Sha256 */
+            content_sha256: string;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+        };
         /** QualitativeObservation */
         QualitativeObservation: {
             /**
@@ -515,6 +646,41 @@ export interface components {
              * @constant
              */
             provider_version: 1;
+        };
+        /**
+         * SimulationProvenanceResponse
+         * @description Whitelisted immutable run provenance; generic manifests never cross the API boundary.
+         */
+        SimulationProvenanceResponse: {
+            audience?: components["schemas"]["ProvenanceAudience"] | null;
+            /**
+             * Availability
+             * @enum {string}
+             */
+            availability: "available" | "legacy_unavailable";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Deterministic Seed */
+            deterministic_seed: string;
+            execution?: components["schemas"]["ProvenanceExecution"] | null;
+            /** Frozen Manifest Sha256 */
+            frozen_manifest_sha256: string;
+            limits?: components["schemas"]["ProvenanceExecutionLimits"] | null;
+            /** Result Created At */
+            result_created_at: string | null;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            stimulus?: components["schemas"]["ProvenanceStimulus"] | null;
+            /** Terminal At */
+            terminal_at: string | null;
+            /** Unavailable Reason */
+            unavailable_reason?: "frozen_provenance_not_captured" | null;
         };
         /** SimulationResultResponse */
         SimulationResultResponse: {
@@ -3465,6 +3631,307 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimulationRunResponse"];
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Only JSON command bodies are supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    get_simulation_provenance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SimulationProvenanceResponse"];
                 };
             };
             /** @description Authentication is missing, expired, or invalid. */

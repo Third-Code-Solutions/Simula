@@ -27,6 +27,7 @@ from simula_api.models import (
     ProjectPage,
     ProjectPatch,
     ProjectResponse,
+    SimulationProvenanceResponse,
     SimulationResultResponse,
     SimulationRunCreate,
     SimulationRunResponse,
@@ -571,6 +572,21 @@ async def get_simulation_run(
     run = await services.database.get_simulation_run(identity, run_id=run_id)
     response.headers["ETag"] = f'"{run.version}"'
     return run
+
+
+@router.get(
+    "/runs/{run_id}/provenance",
+    operation_id="get_simulation_provenance",
+    response_model=SimulationProvenanceResponse,
+)
+async def get_simulation_provenance(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> SimulationProvenanceResponse:
+    services = _services(request)
+    await services.rate_limiter.require_run_read(user_id=identity.user_id, run_id=run_id)
+    return await services.database.get_simulation_provenance(identity, run_id=run_id)
 
 
 @router.get(
