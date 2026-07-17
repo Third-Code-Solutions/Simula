@@ -150,6 +150,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-17 — ACCEPTED: M1 / P2-02 passes its exact local gate. The first migration owns all application DDL; `roles.sql` is the privileged local/CI global bootstrap; runtime passwords remain injected and absent from source; browser roles cannot reach application schemas; complete organization writes remain helper-only (E-5009).
 - 2026-07-18 — OBSERVED: P2-03/M2 passes its final local and independent-review gate (E-5010). Two clean resets, lint, 32 pgTAP, 26 API tests, five integrations, generated type/contract checks, full repository quality/SCA, immutable-version browser proof, review-remediated Redis/auth/audit/media/CORS controls, and two final clean independent reviews are complete. M3/P2-04 is unlocked; its first strict ARQ codec slice is committed after a green repository gate.
 - 2026-07-18 — OBSERVED: P2-04 durable database slice passes a clean local reset plus 41 pgTAP catalog/ACL assertions and the full repository gate (110 tests, 2 platform skips). Commit `9342d37` adds the immutable authored-demo fixture, frozen run/outbox command, worker-owner policies, and execute-only worker helpers; the exact ordered migration is applied and verified on hosted Supabase (E-5012). Queue transport, dispatcher, worker execution, and API routes remain open.
+- 2026-07-18 — OBSERVED: P2-04 worker and API slices pass focused and repository gates. Commit `754fe0f` adds role-pinned worker dispatch/execution; the next commit adds generated run/result API contracts and an API publisher that can never confirm an outbox. The disposable full database/Redis duplicate/crash proof remains open.
 
 # 9. Progress
 
@@ -177,7 +178,8 @@ tests/                     cross-service, security, load, E2E
   - [x] Strict ARQ envelope/transport codec, generated typed result schema, and deterministic no-egress mock.
   - [x] Frozen run/outbox database authority, worker-only helper ACL, local reset proof, and hosted ordered migration.
   - [x] Queue adapter/target-queue confirmation, dispatcher, role-pinned worker gateway, and lease-bound deterministic worker execution.
-  - [ ] Run/result APIs and end-to-end duplicate/crash proof.
+  - [x] Run/result APIs, generated OpenAPI contract, and unit proof of best-effort non-confirming publish.
+  - [ ] Disposable end-to-end duplicate/crash proof.
 - [ ] M4 / P2-05 trustworthy result experience.
 - [ ] M5 / P2-06 cancellation and recovery.
 - [ ] M6 / P2-07 integrated quality gate.

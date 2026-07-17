@@ -22,6 +22,8 @@ from simula_api.models import (
     ProjectDetail,
     ProjectPatch,
     ProjectResponse,
+    SimulationResultResponse,
+    SimulationRunResponse,
     StimulusResponse,
     StimulusVersionResponse,
 )
@@ -518,6 +520,88 @@ class DatabaseGateway:
             raise _database_problem(error) from error
         return self._version_from_command(row), bool(row["replayed"])
 
+    async def create_simulation_run(
+        self,
+        identity: VerifiedIdentity,
+        *,
+        project_id: UUID,
+        stimulus_version_id: UUID,
+        idempotency_key: str,
+        request_sha256: str,
+        correlation_id: UUID,
+    ) -> tuple[SimulationRunResponse, bool]:
+        try:
+            async with self._transaction(identity) as connection:
+                cursor = await connection.execute(
+                    """
+                    select * from api.create_simulation_run(%s, %s, %s, %s, %s)
+                    """,
+                    (
+                        project_id,
+                        stimulus_version_id,
+                        idempotency_key,
+                        request_sha256,
+                        correlation_id,
+                    ),
+                )
+                row = await cursor.fetchone()
+                if row is None:
+                    raise RuntimeError("simulation run command returned no row")
+        except psycopg.Error as error:
+            raise _database_problem(error) from error
+        return self._run_from_command(row), bool(row["replayed"])
+
+    async def get_simulation_run(
+        self, identity: VerifiedIdentity, *, run_id: UUID
+    ) -> SimulationRunResponse:
+        async with self._transaction(identity) as connection:
+            cursor = await connection.execute(
+                """
+                select
+                  id,
+                  organization_id,
+                  project_id,
+                  stimulus_version_id,
+                  audience_version_id,
+                  state,
+                  schema_version,
+                  dispatch_generation,
+                  version,
+                  created_at
+                from api.simulation_runs
+                where id = %s
+                """,
+                (run_id,),
+            )
+            row = await cursor.fetchone()
+        if row is None:
+            raise _not_found()
+        run = self._run_from_row(row)
+        return run
+
+    async def get_simulation_result(
+        self, identity: VerifiedIdentity, *, run_id: UUID
+    ) -> SimulationResultResponse | None:
+        async with self._transaction(identity) as connection:
+            cursor = await connection.execute(
+                """
+                select run_id, schema_version, artifact, artifact_sha256, created_at
+                from api.simulation_results
+                where run_id = %s
+                """,
+                (run_id,),
+            )
+            row = await cursor.fetchone()
+        if row is None:
+            return None
+        return SimulationResultResponse(
+            run_id=row["run_id"],
+            schema_version=row["schema_version"],
+            result=row["artifact"],
+            artifact_sha256=row["artifact_sha256"],
+            created_at=row["created_at"],
+        )
+
     async def _project_detail(
         self, connection: AsyncConnection[DatabaseRow], project_id: UUID
     ) -> ProjectDetail:
@@ -647,5 +731,38 @@ class DatabaseGateway:
             version=row["stimulus_version"],
             content=row["content"],
             content_sha256=row["content_sha256"],
+            created_at=row["created_at"],
+        )
+
+    @staticmethod
+    def _run_from_command(row: DatabaseRow) -> SimulationRunResponse:
+        return SimulationRunResponse(
+            id=row["run_id"],
+            organization_id=row["organization_id"],
+            project_id=row["project_id"],
+            stimulus_version_id=row["stimulus_version_id"],
+            audience_version_id=row["audience_version_id"],
+            state=row["run_state"],
+            schema_version=row["schema_version"],
+            dispatch_generation=row["dispatch_generation"],
+            job_id=row["job_id"],
+            version=row["run_version"],
+            created_at=row["created_at"],
+        )
+
+    @staticmethod
+    def _run_from_row(row: DatabaseRow) -> SimulationRunResponse:
+        run_id = cast(UUID, row["id"])
+        return SimulationRunResponse(
+            id=run_id,
+            organization_id=row["organization_id"],
+            project_id=row["project_id"],
+            stimulus_version_id=row["stimulus_version_id"],
+            audience_version_id=row["audience_version_id"],
+            state=row["state"],
+            schema_version=row["schema_version"],
+            dispatch_generation=row["dispatch_generation"],
+            job_id=f"run:{run_id}:dispatch:{row['dispatch_generation']}",
+            version=row["version"],
             created_at=row["created_at"],
         )

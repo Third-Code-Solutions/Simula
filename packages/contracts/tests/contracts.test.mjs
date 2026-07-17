@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-test("P2-03 OpenAPI is generated from the FastAPI authority", async () => {
+test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
   const document = JSON.parse(
     await readFile(new URL("../openapi.json", import.meta.url), "utf8"),
   );
@@ -15,12 +15,17 @@ test("P2-03 OpenAPI is generated from the FastAPI authority", async () => {
     "/api/v1/organizations",
     "/api/v1/organizations/{organization_id}/projects",
     "/api/v1/projects/{project_id}",
+    "/api/v1/projects/{project_id}/runs",
     "/api/v1/projects/{project_id}/stimuli",
+    "/api/v1/runs/{run_id}",
+    "/api/v1/runs/{run_id}/result",
     "/api/v1/stimuli/{stimulus_id}/versions",
     "/health/live",
     "/health/ready",
   ]);
   assert.ok(document.paths["/api/v1/organizations"].post);
+  assert.ok(document.paths["/api/v1/projects/{project_id}/runs"].post);
+  assert.ok(document.paths["/api/v1/runs/{run_id}/result"].get);
   assert.ok(
     document.paths["/api/v1/organizations"].post.responses["422"].content[
       "application/problem+json"

@@ -9,7 +9,7 @@ from simula_api.routes import router
 from structlog.testing import capture_logs
 
 
-def test_runtime_route_inventory_matches_the_m2_boundary() -> None:
+def test_runtime_route_inventory_matches_the_m3_boundary() -> None:
     app = create_app()
 
     assert {route.path for route in router.routes if isinstance(route, APIRoute)} == {
@@ -18,6 +18,9 @@ def test_runtime_route_inventory_matches_the_m2_boundary() -> None:
         "/api/v1/organizations/{organization_id}/projects",
         "/api/v1/projects/{project_id}",
         "/api/v1/projects/{project_id}/stimuli",
+        "/api/v1/projects/{project_id}/runs",
+        "/api/v1/runs/{run_id}",
+        "/api/v1/runs/{run_id}/result",
         "/api/v1/stimuli/{stimulus_id}/versions",
     }
     assert {route.path for route in app.routes[1:] if isinstance(route, APIRoute)} == {

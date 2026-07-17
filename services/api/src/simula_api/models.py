@@ -15,6 +15,7 @@ from pydantic import (
     field_validator,
     model_validator,
 )
+from simula_core.simulation import SimulationResultV1
 
 Label = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=80)]
 Objective = Annotated[str, StringConstraints(min_length=1, max_length=1000)]
@@ -58,6 +59,16 @@ class StimulusStatus(StrEnum):
     ACTIVE = "active"
     RETIRED = "retired"
     DELETED = "deleted"
+
+
+class SimulationRunState(StrEnum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    RETRYING = "retrying"
+    CANCEL_REQUESTED = "cancel_requested"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELED = "canceled"
 
 
 class OrganizationCreate(StrictModel):
@@ -154,6 +165,34 @@ class StimulusVersionAppend(StrictModel):
         if len(value.encode("utf-8")) > 16_384:
             raise ValueError("content exceeds the UTF-8 byte limit")
         return value
+
+
+class SimulationRunCreate(StrictModel):
+    stimulus_version_id: UUID
+
+
+class SimulationRunResponse(StrictModel):
+    id: UUID
+    organization_id: UUID
+    project_id: UUID
+    stimulus_version_id: UUID
+    audience_version_id: UUID
+    state: SimulationRunState
+    schema_version: Literal[1]
+    dispatch_generation: int = Field(ge=1, le=3)
+    job_id: str = Field(
+        pattern=r"^run:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:dispatch:[1-3]$"
+    )
+    version: int = Field(ge=1)
+    created_at: datetime
+
+
+class SimulationResultResponse(StrictModel):
+    run_id: UUID
+    schema_version: Literal[1]
+    result: SimulationResultV1
+    artifact_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    created_at: datetime
 
 
 class StimulusVersionResponse(StrictModel):

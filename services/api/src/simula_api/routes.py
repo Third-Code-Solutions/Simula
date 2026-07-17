@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import re
 from collections.abc import Callable
 from typing import Annotated
@@ -10,6 +11,7 @@ from uuid import UUID
 import structlog
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from simula_core.queue_runtime import RunDispatchIntent
 
 from simula_api.auth import VerifiedIdentity
 from simula_api.cursor import CursorPosition
@@ -25,6 +27,9 @@ from simula_api.models import (
     ProjectPage,
     ProjectPatch,
     ProjectResponse,
+    SimulationResultResponse,
+    SimulationRunCreate,
+    SimulationRunResponse,
     StimulusCreate,
     StimulusResponse,
     StimulusVersionAppend,
@@ -116,7 +121,9 @@ def _rate_idempotency_key(request: Request) -> str | None:
 
 
 def _idempotency_scope(request: Request) -> str:
-    return f"{request.method}:{request.url.path}"
+    route_path = getattr(request.scope.get("route"), "path", None)
+    path = route_path if isinstance(route_path, str) else request.url.path
+    return f"{request.method}:{path}"
 
 
 def _correlation_id(request: Request) -> UUID:
@@ -185,6 +192,30 @@ def _require_if_match(value: str | None) -> int:
             errors=(ProblemError(field="if-match", code="required"),),
         )
     return int(match.group(1))
+
+
+async def _best_effort_publish_run(*, request: Request, run: SimulationRunResponse) -> None:
+    publisher = _services(request).run_publisher
+    if publisher is None:
+        logger.error("run_publisher_unavailable", correlation_id=str(_correlation_id(request)))
+        return
+    try:
+        await publisher.publish(
+            RunDispatchIntent(
+                run_id=run.id,
+                generation=run.dispatch_generation,
+                job_id=run.job_id,
+            )
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        # The committed outbox remains authoritative; only simula_worker confirms it.
+        logger.warning(
+            "run_publish_ambiguous",
+            correlation_id=str(_correlation_id(request)),
+            run_id=str(run.id),
+        )
 
 
 @router.get("/me", operation_id="get_current_identity", response_model=MeResponse)
@@ -485,3 +516,81 @@ async def append_stimulus_version(
         route="/api/v1/stimuli/{stimulus_id}/versions", replayed=replayed, request=request
     )
     return version
+
+
+@router.post(
+    "/projects/{project_id}/runs",
+    operation_id="create_simulation_run",
+    response_model=SimulationRunResponse,
+    status_code=202,
+)
+async def create_simulation_run(
+    project_id: UUID,
+    request: Request,
+    response: Response,
+    body: SimulationRunCreate,
+    idempotency_key: IdempotencyKey,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> SimulationRunResponse:
+    services = _services(request)
+    organization_id = await services.database.organization_for_project(
+        identity, project_id=project_id
+    )
+    await services.rate_limiter.require_run_create(
+        user_id=identity.user_id,
+        organization_id=organization_id,
+        idempotency_key=idempotency_key,
+        idempotency_scope=_idempotency_scope(request),
+    )
+    run, replayed = await services.database.create_simulation_run(
+        identity,
+        project_id=project_id,
+        stimulus_version_id=body.stimulus_version_id,
+        idempotency_key=idempotency_key,
+        request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
+        correlation_id=_correlation_id(request),
+    )
+    response.headers["Idempotent-Replayed"] = str(replayed).lower()
+    response.headers["ETag"] = f'"{run.version}"'
+    _record_replay(route="/api/v1/projects/{project_id}/runs", replayed=replayed, request=request)
+    await _best_effort_publish_run(request=request, run=run)
+    return run
+
+
+@router.get(
+    "/runs/{run_id}", operation_id="get_simulation_run", response_model=SimulationRunResponse
+)
+async def get_simulation_run(
+    run_id: UUID,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> SimulationRunResponse:
+    services = _services(request)
+    await services.rate_limiter.require_run_read(user_id=identity.user_id, run_id=run_id)
+    run = await services.database.get_simulation_run(identity, run_id=run_id)
+    response.headers["ETag"] = f'"{run.version}"'
+    return run
+
+
+@router.get(
+    "/runs/{run_id}/result",
+    operation_id="get_simulation_result",
+    response_model=SimulationResultResponse,
+)
+async def get_simulation_result(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> SimulationResultResponse:
+    services = _services(request)
+    await services.rate_limiter.require_run_read(user_id=identity.user_id, run_id=run_id)
+    result = await services.database.get_simulation_result(identity, run_id=run_id)
+    if result is None:
+        raise AppProblem(
+            status=404,
+            code="not_found",
+            title="Resource not found",
+            detail="The requested resource was not found.",
+        )
+    return result

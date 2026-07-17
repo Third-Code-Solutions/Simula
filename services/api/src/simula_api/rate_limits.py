@@ -114,6 +114,13 @@ ORGANIZATION_CREATE = TokenBucketPolicy(
 ORGANIZATION_MUTATION = TokenBucketPolicy(
     name="organization_mutation", limit=30, period_seconds=60 * 60, burst=5
 )
+RUN_CREATE_USER = TokenBucketPolicy(
+    name="run_create_user", limit=10, period_seconds=60 * 60, burst=2
+)
+RUN_CREATE_ORGANIZATION = TokenBucketPolicy(
+    name="run_create_organization", limit=50, period_seconds=24 * 60 * 60, burst=2
+)
+RUN_READ = TokenBucketPolicy(name="run_read", limit=60, period_seconds=60, burst=10)
 
 
 class RateLimiter(Protocol):
@@ -145,6 +152,17 @@ class RateLimiter(Protocol):
         idempotency_key: str | None = None,
         idempotency_scope: str | None = None,
     ) -> None: ...
+
+    async def require_run_create(
+        self,
+        *,
+        user_id: UUID,
+        organization_id: UUID,
+        idempotency_key: str,
+        idempotency_scope: str,
+    ) -> None: ...
+
+    async def require_run_read(self, *, user_id: UUID, run_id: UUID) -> None: ...
 
 
 class RedisRateLimiter:
@@ -224,6 +242,31 @@ class RedisRateLimiter:
             idempotency_key=idempotency_key,
             idempotency_scope=idempotency_scope,
         )
+
+    async def require_run_create(
+        self,
+        *,
+        user_id: UUID,
+        organization_id: UUID,
+        idempotency_key: str,
+        idempotency_scope: str,
+    ) -> None:
+        await self._consume(
+            RUN_CREATE_USER,
+            subject=f"user:{user_id}",
+            idempotency_key=idempotency_key,
+            idempotency_scope=idempotency_scope,
+        )
+        await self._consume(
+            RUN_CREATE_ORGANIZATION,
+            subject="organization",
+            organization_id=organization_id,
+            idempotency_key=idempotency_key,
+            idempotency_scope=idempotency_scope,
+        )
+
+    async def require_run_read(self, *, user_id: UUID, run_id: UUID) -> None:
+        await self._consume(RUN_READ, subject=f"user:{user_id}:run:{run_id}")
 
     async def _consume(
         self,
