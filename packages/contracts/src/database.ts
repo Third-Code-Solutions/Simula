@@ -267,6 +267,7 @@ export type Database = {
           stimulus_version_id: string
           terminal_at: string | null
           updated_at: string
+          version: number
           worker_lease_expires_at: string | null
           worker_lease_token: string | null
         }
@@ -289,6 +290,7 @@ export type Database = {
           stimulus_version_id: string
           terminal_at?: string | null
           updated_at?: string
+          version?: number
           worker_lease_expires_at?: string | null
           worker_lease_token?: string | null
         }
@@ -311,6 +313,7 @@ export type Database = {
           stimulus_version_id?: string
           terminal_at?: string | null
           updated_at?: string
+          version?: number
           worker_lease_expires_at?: string | null
           worker_lease_token?: string | null
         }
@@ -481,6 +484,29 @@ export type Database = {
           project_version: number
           replayed: boolean
           updated_at: string
+        }[]
+      }
+      create_simulation_run: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_project_id: string
+          requested_sha256: string
+          requested_stimulus_version_id: string
+        }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          replayed: boolean
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
         }[]
       }
       create_stimulus: {
@@ -820,6 +846,46 @@ export type Database = {
           version_id: string
         }[]
       }
+      claim_due_run_outbox: {
+        Args: { requested_batch_size: number }
+        Returns: {
+          claim_expires_at: string
+          claim_token: string
+          generation: number
+          job_id: string
+          outbox_id: string
+          run_id: string
+        }[]
+      }
+      claim_run_execution: {
+        Args: {
+          requested_generation: number
+          requested_job_id: string
+          requested_run_id: string
+        }
+        Returns: {
+          attempt_id: string
+          claim_status: string
+          deterministic_seed: number
+          frozen_manifest: Json
+          frozen_manifest_sha256: string
+          lease_expires_at: string
+          lease_token: string
+        }[]
+      }
+      complete_run_execution: {
+        Args: {
+          requested_artifact: Json
+          requested_attempt_id: string
+          requested_lease_token: string
+          requested_run_id: string
+        }
+        Returns: boolean
+      }
+      confirm_run_dispatch: {
+        Args: { requested_claim_token: string; requested_outbox_id: string }
+        Returns: boolean
+      }
       create_organization_atomic: {
         Args: {
           requested_correlation_id: string
@@ -861,6 +927,29 @@ export type Database = {
           updated_at: string
         }[]
       }
+      create_simulation_run_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_project_id: string
+          requested_sha256: string
+          requested_stimulus_version_id: string
+        }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          replayed: boolean
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
+        }[]
+      }
       create_stimulus_atomic: {
         Args: {
           requested_content: string
@@ -886,11 +975,37 @@ export type Database = {
           version_created_at: string
         }[]
       }
+      fail_run_dispatch: {
+        Args: {
+          requested_claim_token: string
+          requested_outbox_id: string
+          requested_safe_error_code: string
+        }
+        Returns: boolean
+      }
+      fail_run_execution: {
+        Args: {
+          requested_attempt_id: string
+          requested_lease_token: string
+          requested_retryable: boolean
+          requested_run_id: string
+          requested_safe_error_code: string
+        }
+        Returns: string
+      }
       has_org_role: {
         Args: {
           allowed_roles: Database["api"]["Enums"]["organization_role"][]
           requested_organization_id: string
           requested_user_id: string
+        }
+        Returns: boolean
+      }
+      heartbeat_run_execution: {
+        Args: {
+          requested_attempt_id: string
+          requested_lease_token: string
+          requested_run_id: string
         }
         Returns: boolean
       }

@@ -89,7 +89,7 @@ def create_queue_client(redis_url: str, *, max_connections: int) -> ArqRedis:
     pool = ConnectionPool.from_url(
         redis_url,
         decode_responses=False,
-        encoding=None,
+        encoding="utf-8",
         max_connections=max_connections,
         retry_on_timeout=False,
         socket_connect_timeout=QUEUE_COMMAND_TIMEOUT_SECONDS,
