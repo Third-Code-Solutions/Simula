@@ -13,6 +13,7 @@ from simula_core.simulation import (
 )
 from simula_worker.database import ExecutionClaim, FailureResolution
 from simula_worker.main import process_run_v1
+from structlog.testing import capture_logs
 
 
 def test_worker_metadata_is_private_service() -> None:
@@ -23,11 +24,17 @@ def test_worker_metadata_is_private_service() -> None:
 
 class RecordingDatabase:
     def __init__(
-        self, claim: ExecutionClaim, failure_resolution: FailureResolution | None = None
+        self,
+        claim: ExecutionClaim,
+        failure_resolution: FailureResolution | None = None,
+        *,
+        heartbeat_result: bool = True,
     ) -> None:
         self.claim = claim
         self.failure_resolution = failure_resolution or FailureResolution(state="failed")
+        self.heartbeat_result = heartbeat_result
         self.claim_calls: list[tuple[UUID, int, str]] = []
+        self.heartbeats: list[tuple[UUID, UUID, UUID]] = []
         self.completions: list[tuple[UUID, UUID, UUID, Mapping[str, object]]] = []
         self.failures: list[tuple[UUID, UUID, UUID, str, bool]] = []
 
@@ -46,8 +53,8 @@ class RecordingDatabase:
         return True
 
     async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:
-        del run_id, attempt_id, lease_token
-        return True
+        self.heartbeats.append((run_id, attempt_id, lease_token))
+        return self.heartbeat_result
 
     async def fail_execution(
         self,
@@ -143,6 +150,51 @@ async def test_worker_rejects_malformed_context_before_database_or_provider_work
     assert provider.requests == []
 
 
+@pytest.mark.parametrize(
+    ("context_job_id", "payload", "reason"),
+    [
+        (
+            "forged-sensitive-job-canary",
+            {"schema_version": 1, "run_id": "00000000-0000-4000-8000-0000000000b1"},
+            "invalid_job_id",
+        ),
+        (
+            "run:00000000-0000-4000-8000-0000000000b1:dispatch:1",
+            {"schema_version": 1, "run_id": "sensitive-payload-canary"},
+            "invalid_payload",
+        ),
+        (
+            "run:00000000-0000-4000-8000-0000000000b1:dispatch:1",
+            {"schema_version": 1, "run_id": "00000000-0000-4000-8000-0000000000b2"},
+            "run_id_mismatch",
+        ),
+    ],
+)
+async def test_worker_emits_allowlisted_binding_rejection_without_payload(
+    context_job_id: str,
+    payload: object,
+    reason: str,
+) -> None:
+    database = RecordingDatabase(_claim(status="no_work"))
+    provider = RecordingProvider()
+
+    with capture_logs() as logs:
+        await process_run_v1(
+            {"job_id": context_job_id}, payload, database=database, provider=provider
+        )
+
+    assert logs == [
+        {
+            "event": "run_execution_binding_rejected",
+            "log_level": "warning",
+            "reason": reason,
+        }
+    ]
+    assert "sensitive" not in str(logs)
+    assert database.claim_calls == []
+    assert provider.requests == []
+
+
 async def test_worker_unconfirmed_dispatch_defers_without_manifest_or_provider_work() -> None:
     run_id = UUID("00000000-0000-4000-8000-0000000000b2")
     database = RecordingDatabase(_claim(status="awaiting_confirmation"))
@@ -162,6 +214,32 @@ async def test_worker_unconfirmed_dispatch_defers_without_manifest_or_provider_w
     assert provider.requests == []
 
 
+@pytest.mark.parametrize(
+    ("claim_status", "safe_reason"),
+    [("no_work", "no_work"), ("sensitive-status-canary", "invalid_status")],
+)
+async def test_worker_emits_allowlisted_database_claim_rejection(
+    claim_status: str, safe_reason: str
+) -> None:
+    run_id = UUID("00000000-0000-4000-8000-0000000000b2")
+    database = RecordingDatabase(_claim(status=claim_status))
+    provider = RecordingProvider()
+
+    with capture_logs() as logs:
+        await process_run_v1(
+            {"job_id": f"run:{run_id}:dispatch:1"},
+            {"schema_version": 1, "run_id": str(run_id)},
+            database=database,
+            provider=provider,
+        )
+
+    rejected = next(log for log in logs if log["event"] == "run_execution_claim_rejected")
+    assert rejected["reason"] == safe_reason
+    assert rejected["run_id"] == str(run_id)
+    assert "sensitive-status-canary" not in str(logs)
+    assert provider.requests == []
+
+
 async def test_worker_completes_a_claimed_deterministic_run() -> None:
     run_id, claim = _claimed_run()
     database = RecordingDatabase(claim)
@@ -174,12 +252,37 @@ async def test_worker_completes_a_claimed_deterministic_run() -> None:
     )
 
     assert database.failures == []
+    assert database.heartbeats == [
+        (run_id, claim.attempt_id, claim.lease_token),
+    ]
     assert len(database.completions) == 1
     _, attempt_id, lease_token, artifact = database.completions[0]
     assert attempt_id == claim.attempt_id
     assert lease_token == claim.lease_token
     assert artifact["schema_version"] == "1.0.0"
     assert artifact["run_id"] == str(run_id)
+
+
+async def test_worker_discards_work_when_the_current_lease_cannot_heartbeat() -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim, heartbeat_result=False)
+    provider = RecordingProvider()
+
+    with capture_logs() as logs:
+        await process_run_v1(
+            {"job_id": f"run:{run_id}:dispatch:1"},
+            {"schema_version": 1, "run_id": str(run_id)},
+            database=database,
+            provider=provider,
+        )
+
+    assert database.heartbeats == [(run_id, claim.attempt_id, claim.lease_token)]
+    assert provider.requests == []
+    assert database.completions == []
+    assert database.failures == []
+    rejected = next(log for log in logs if log["event"] == "run_execution_lease_rejected")
+    assert rejected["checkpoint"] == "before_provider"
+    assert rejected["run_id"] == str(run_id)
 
 
 async def test_worker_records_a_safe_terminal_failure_for_provider_error() -> None:

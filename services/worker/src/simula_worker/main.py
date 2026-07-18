@@ -6,7 +6,7 @@ import asyncio
 import signal
 from collections.abc import Iterable, Mapping
 from datetime import UTC, datetime, timedelta
-from typing import cast
+from typing import Literal, cast
 from uuid import UUID
 
 import structlog
@@ -38,6 +38,10 @@ from simula_worker.database import WorkerDatabase, WorkerExecutionGateway
 from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
 
 logger = structlog.get_logger()
+
+_SAFE_CLAIM_REJECTION_REASONS = frozenset(
+    {"awaiting_confirmation", "busy", "no_work", "organization_capacity"}
+)
 
 
 def _signals() -> Iterable[signal.Signals]:
@@ -141,6 +145,30 @@ def _run_job(payload: object) -> RunJobV1 | None:
         return None
 
 
+def _safe_claim_rejection_reason(status: str) -> str:
+    if status in _SAFE_CLAIM_REJECTION_REASONS:
+        return status
+    return "invalid_status"
+
+
+async def _heartbeat_execution(
+    database: WorkerExecutionGateway,
+    run_id: UUID,
+    attempt_id: UUID,
+    lease_token: UUID,
+    *,
+    checkpoint: Literal["before_provider"],
+) -> bool:
+    current = await database.heartbeat_execution(run_id, attempt_id, lease_token)
+    if not current:
+        logger.warning(
+            "run_execution_lease_rejected",
+            checkpoint=checkpoint,
+            run_id=str(run_id),
+        )
+    return current
+
+
 def _provider_request(
     *,
     run_id: UUID,
@@ -182,14 +210,25 @@ async def process_run_v1(
     try:
         context_run_id, generation = parse_job_id(ctx.get("job_id"))
     except ArqCodecError:
+        logger.warning("run_execution_binding_rejected", reason="invalid_job_id")
         return None
-    if job is None or job.run_id != context_run_id:
+    if job is None:
+        logger.warning("run_execution_binding_rejected", reason="invalid_payload")
+        return None
+    if job.run_id != context_run_id:
+        logger.warning("run_execution_binding_rejected", reason="run_id_mismatch")
         return None
 
     database = database or cast(WorkerExecutionGateway, _context_dependency(ctx, "database"))
     provider = provider or cast(SimulationProvider, _context_dependency(ctx, "provider"))
     claim = await database.claim_execution(context_run_id, generation, str(ctx["job_id"]))
     job_try = ctx.get("job_try")
+    if claim.status != "claimed":
+        logger.info(
+            "run_execution_claim_rejected",
+            reason=_safe_claim_rejection_reason(claim.status),
+            run_id=str(context_run_id),
+        )
     if claim.status == "awaiting_confirmation" and isinstance(job_try, int) and job_try <= 3:
         raise Retry(defer=1)
     if claim.status == "organization_capacity" and isinstance(job_try, int) and job_try <= 13:
@@ -201,6 +240,15 @@ async def process_run_v1(
         or claim.frozen_manifest is None
         or claim.frozen_manifest_sha256 is None
         or claim.deterministic_seed is None
+    ):
+        return None
+
+    if not await _heartbeat_execution(
+        database,
+        context_run_id,
+        claim.attempt_id,
+        claim.lease_token,
+        checkpoint="before_provider",
     ):
         return None
 
