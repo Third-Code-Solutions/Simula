@@ -183,6 +183,12 @@ alter function private.request_run_cancel_atomic(uuid, uuid) owner to simula_com
 revoke create on schema private from simula_command_owner;
 reset role;
 
+-- Hosted migration runners do not retain CREATE on the non-exposed API schema.
+-- Give the command owner the temporary capability, so the invoker wrapper has
+-- the same deliberate ownership/ACL boundary as its private helper.
+grant create on schema api to simula_command_owner;
+set role simula_command_owner;
+
 create function api.request_run_cancel(
   requested_run_id uuid,
   requested_correlation_id uuid
@@ -213,6 +219,8 @@ $function$;
 revoke all on function api.request_run_cancel(uuid, uuid)
   from public, anon, authenticated, simula_worker;
 grant execute on function api.request_run_cancel(uuid, uuid) to simula_api;
+revoke create on schema api from simula_command_owner;
+reset role;
 
 set role simula_command_owner;
 revoke all on function private.request_run_cancel_atomic(uuid, uuid)
