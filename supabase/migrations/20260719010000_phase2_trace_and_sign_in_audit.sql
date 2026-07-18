@@ -197,8 +197,9 @@ grant execute on function private.create_simulation_run_traced(uuid, uuid, text,
   to simula_api;
 grant execute on function private.record_sign_in_success(uuid, uuid)
   to simula_api;
-reset role;
+set role postgres;
 revoke create on schema private from simula_command_owner;
+reset role;
 
 create function api.create_simulation_run(
   requested_project_id uuid,
@@ -339,5 +340,6 @@ revoke all on function private.claim_run_execution_traced(uuid, smallint, text)
   from public, anon, authenticated, simula_api, simula_worker;
 grant execute on function private.claim_run_execution_traced(uuid, smallint, text)
   to simula_worker;
-reset role;
+set role postgres;
 revoke create on schema private from simula_worker_owner;
+reset role;
