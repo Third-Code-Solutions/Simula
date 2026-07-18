@@ -70,6 +70,11 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:54321/auth/v1/health
           pnpm verify:m2-api
 
+      - name: Run disposable browser gate
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm verify:p2:e2e
+
       - name: Run quality and security gates
         run: |
           pnpm check

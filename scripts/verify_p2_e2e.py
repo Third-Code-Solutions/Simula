@@ -41,8 +41,11 @@ def tool_environment() -> dict[str, str]:
     """Use the repository's exact Node toolchain without replacing caller settings."""
 
     environment = dict(os.environ)
-    additions = (NODE_TOOLCHAIN / "node-v24.18.0-win-x64", NODE_TOOLCHAIN / "bin")
-    environment["PATH"] = os.pathsep.join([*(str(path) for path in additions), environment["PATH"]])
+    if os.name == "nt":
+        additions = (NODE_TOOLCHAIN / "node-v24.18.0-win-x64", NODE_TOOLCHAIN / "bin")
+        environment["PATH"] = os.pathsep.join(
+            [*(str(path) for path in additions), environment["PATH"]]
+        )
     return environment
 
 
@@ -58,19 +61,37 @@ def executable(name: str, *, environment: Mapping[str, str]) -> str:
 def venv_python() -> str:
     """Return the repository-managed Python executable for direct service ownership."""
 
-    candidate = ROOT / ".venv" / "Scripts" / "python.exe"
+    candidate = (
+        ROOT / ".venv" / "Scripts" / "python.exe"
+        if os.name == "nt"
+        else ROOT / ".venv" / "bin" / "python"
+    )
     if not candidate.is_file():
         raise BrowserGateError("repository virtual-environment Python is unavailable")
     return str(candidate)
 
 
-def node_executable() -> str:
+def node_executable(*, environment: Mapping[str, str]) -> str:
     """Return the exact pinned Node executable for direct Next ownership."""
 
-    candidate = NODE_TOOLCHAIN / "node-v24.18.0-win-x64" / "node.exe"
-    if not candidate.is_file():
-        raise BrowserGateError("pinned Node executable is unavailable")
-    return str(candidate)
+    if os.name == "nt":
+        candidate = NODE_TOOLCHAIN / "node-v24.18.0-win-x64" / "node.exe"
+        if not candidate.is_file():
+            raise BrowserGateError("pinned Node executable is unavailable")
+        return str(candidate)
+    return executable("node", environment=environment)
+
+
+def pnpm_executable(*, environment: Mapping[str, str]) -> str:
+    """Resolve the exact pnpm installed by the local or CI toolchain."""
+
+    return executable("pnpm.cmd" if os.name == "nt" else "pnpm", environment=environment)
+
+
+def docker_executable(*, environment: Mapping[str, str]) -> str:
+    """Resolve Docker without assuming a Windows executable suffix."""
+
+    return executable("docker.exe" if os.name == "nt" else "docker", environment=environment)
 
 
 def run(
@@ -96,7 +117,7 @@ def run(
 def local_supabase(environment: Mapping[str, str]) -> SupabaseRuntime:
     """Read only loopback public values from the locally running Supabase CLI."""
 
-    pnpm = executable("pnpm.cmd", environment=environment)
+    pnpm = pnpm_executable(environment=environment)
     result = run(
         (pnpm, "exec", "supabase", "status", "--output", "env"),
         environment=environment,
@@ -128,7 +149,7 @@ def ensure_free(port: int) -> None:
 def configure_local_roles(environment: Mapping[str, str]) -> tuple[str, str]:
     """Set fresh credentials for the least-privilege roles in local Docker only."""
 
-    docker = executable("docker.exe", environment=environment)
+    docker = docker_executable(environment=environment)
     container = run(
         (docker, "ps", "--filter", f"name=^/{LOCAL_SUPABASE_DB_NAME}$", "--format", "{{.ID}}"),
         environment=environment,
@@ -292,9 +313,9 @@ def main() -> None:
     environment = tool_environment()
     ensure_free(8000)
     ensure_free(3100)
-    pnpm = executable("pnpm.cmd", environment=environment)
+    pnpm = pnpm_executable(environment=environment)
     python = venv_python()
-    node = node_executable()
+    node = node_executable(environment=environment)
     run((pnpm, "redis:up"), environment=environment)
     supabase = local_supabase(environment)
     api_credential, worker_credential = configure_local_roles(environment)
