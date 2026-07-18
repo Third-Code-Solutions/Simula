@@ -5,9 +5,11 @@ import os
 import secrets
 from collections.abc import AsyncIterator, Callable
 from contextlib import AsyncExitStack, asynccontextmanager
+from copy import deepcopy
 from typing import Protocol, cast
 from uuid import UUID, uuid4
 
+import psycopg
 import pytest
 from arq.worker import Retry
 from httpx import ASGITransport, AsyncClient
@@ -433,6 +435,95 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
         )
         assert canceled_retry.status_code == 200
         assert canceled_retry.json()["state"] == "canceled"
+
+
+@pytest.mark.integration
+async def test_p2_result_write_boundary_rejects_nested_contract_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+    job_id: str | None = None
+
+    async with _api_client(monkeypatch) as client:
+        run_id = await _create_p2_dispatch_run(
+            client, owner_token, suffix=suffix, label="p2-result-contract"
+        )
+        job_id = job_id_for(run_id, generation=1)
+        queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
+        try:
+            async with _worker_database(monkeypatch) as worker_database:
+                dispatcher = RunDispatcher(
+                    worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
+                )
+                dispatched = await dispatcher.dispatch_once()
+                assert dispatched.claimed == 1
+                assert dispatched.confirmed == 1
+                claim = await worker_database.claim_execution(run_id, 1, job_id)
+                assert claim.status == "claimed"
+                assert claim.attempt_id is not None
+                assert claim.lease_token is not None
+                assert claim.frozen_manifest is not None
+                assert claim.frozen_manifest_sha256 is not None
+                assert claim.deterministic_seed is not None
+
+                artifact = (
+                    DeterministicMockProvider()
+                    .run(
+                        _provider_request(
+                            run_id=run_id,
+                            claim_attempt_id=claim.attempt_id,
+                            frozen_manifest=claim.frozen_manifest,
+                            frozen_manifest_sha256=claim.frozen_manifest_sha256,
+                            deterministic_seed=claim.deterministic_seed,
+                        )
+                    )
+                    .model_dump(mode="json")
+                )
+                invalid_artifacts = []
+
+                top_level_extra = deepcopy(artifact)
+                top_level_extra["unreviewed"] = {"nested": "payload"}
+                invalid_artifacts.append(top_level_extra)
+
+                nested_extra = deepcopy(artifact)
+                nested_extra["outputs"][0]["value"]["unreviewed"] = True
+                invalid_artifacts.append(nested_extra)
+
+                provenance_mismatch = deepcopy(artifact)
+                provenance_mismatch["provenance"]["frozen_manifest_sha256"] = "0" * 64
+                invalid_artifacts.append(provenance_mismatch)
+
+                for invalid_artifact in invalid_artifacts:
+                    with pytest.raises(
+                        psycopg.errors.InvalidParameterValue,
+                        match="invalid_result_contract",
+                    ):
+                        await worker_database.complete_execution(
+                            run_id,
+                            claim.attempt_id,
+                            claim.lease_token,
+                            invalid_artifact,
+                        )
+
+                assert await worker_database.complete_execution(
+                    run_id,
+                    claim.attempt_id,
+                    claim.lease_token,
+                    artifact,
+                )
+        finally:
+            await queue.aclose(close_connection_pool=True)
+            if job_id is not None:
+                await _remove_exact_queue_keys(job_id)
+
+        result = await client.get(
+            f"/api/v1/runs/{run_id}/result",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert result.status_code == 200
+        assert result.json()["result"] == artifact
 
 
 @pytest.mark.integration

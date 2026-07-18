@@ -1041,6 +1041,15 @@ export type Database = {
         Args: { expected_user_id: string }
         Returns: boolean
       }
+      phase2_result_artifact_is_valid: {
+        Args: {
+          requested_artifact: Json
+          requested_deterministic_seed: number
+          requested_frozen_manifest_sha256: string
+          requested_run_id: string
+        }
+        Returns: boolean
+      }
       reconcile_run_dispatch: {
         Args: {
           requested_batch_size: number
