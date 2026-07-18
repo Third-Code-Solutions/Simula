@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
+
 import { requireAuthenticatedPage } from "@/lib/auth";
 
 import { ProjectsWorkspace } from "./projects-workspace";
+
+export const metadata: Metadata = {
+  title: "Projects",
+};
 
 export default async function ProjectsPage({
   params,

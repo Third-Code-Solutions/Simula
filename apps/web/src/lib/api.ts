@@ -19,6 +19,7 @@ export type ProjectDetail = Schemas["ProjectDetail"];
 export type ProjectPage = Schemas["ProjectPage"];
 export type Stimulus = Schemas["StimulusResponse"];
 export type StimulusVersion = Schemas["StimulusVersionResponse"];
+export type AudienceDisclosure = Schemas["AudienceDisclosureResponse"];
 export type { SimulationProvenance, SimulationResult, SimulationRun };
 
 export type ApiProblemDocument = Readonly<{
@@ -233,6 +234,10 @@ export function createProject(
 
 export function getProject(projectId: string): Promise<ProjectDetail> {
   return request<ProjectDetail>(`/api/v1/projects/${projectId}`);
+}
+
+export function getDemoAudience(): Promise<AudienceDisclosure> {
+  return request<AudienceDisclosure>("/api/v1/audiences/demo");
 }
 
 export function updateProject(

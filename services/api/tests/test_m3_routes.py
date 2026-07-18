@@ -11,8 +11,10 @@ from simula_api.auth import SupabaseTokenVerifier, VerifiedIdentity
 from simula_api.cursor import CursorCodec
 from simula_api.database import DatabaseGateway
 from simula_api.models import (
+    AudienceDisclosureResponse,
     SimulationProvenanceResponse,
     SimulationResultResponse,
+    SimulationRunFailure,
     SimulationRunResponse,
     SimulationRunState,
 )
@@ -89,13 +91,38 @@ class FakeRateLimiter:
         assert user_id == OWNER_ID
         assert run_id == RUN_ID
 
+    async def require_run_cancel(self, *, user_id: UUID, organization_id: UUID) -> None:
+        assert (user_id, organization_id) == (OWNER_ID, ORGANIZATION_ID)
+
 
 class FakeDatabase:
     def __init__(self) -> None:
         self.run_commands: list[dict[str, object]] = []
         self.cancel_commands: list[dict[str, object]] = []
         self.cancel_response = _run()
+        self.run_response = _run()
+        self.replay_response: SimulationRunResponse | None = None
         self.result: SimulationResultResponse | None = None
+        self.audience = AudienceDisclosureResponse.model_validate(
+            {
+                "id": "00000000-0000-4000-8000-0000000000d1",
+                "name": "Authored deterministic demo audience",
+                "version": 1,
+                "kind": "authored_demo",
+                "checksum_sha256": "d" * 64,
+                "non_representative": True,
+                "limitations": ["Estimates nobody and is not representative of any population."],
+                "disclosure_version": "phase2_demo_v1",
+                "purpose": "Exercise the deterministic pipeline.",
+                "prohibited_uses": ["population inference"],
+                "owner": "SIMULA methodology",
+                "source": "Repository-authored synthetic fixture.",
+                "dependencies": ["deterministic_mock provider"],
+                "transformation": "No measured observations.",
+                "scope": "Phase 2 prototype.",
+                "lifecycle": "Migration-managed.",
+            }
+        )
         self.provenance = SimulationProvenanceResponse.model_validate(
             {
                 "availability": "available",
@@ -150,6 +177,12 @@ class FakeDatabase:
         self.run_commands.append(dict(kwargs))
         return (_run(), False)
 
+    async def get_simulation_run_replay(
+        self, _: VerifiedIdentity, **kwargs: object
+    ) -> SimulationRunResponse | None:
+        del kwargs
+        return self.replay_response
+
     async def request_simulation_run_cancel(
         self, _: VerifiedIdentity, **kwargs: object
     ) -> SimulationRunResponse:
@@ -160,7 +193,10 @@ class FakeDatabase:
         self, _: VerifiedIdentity, *, run_id: UUID
     ) -> SimulationRunResponse:
         assert run_id == RUN_ID
-        return _run()
+        return self.run_response
+
+    async def get_demo_audience(self, _: VerifiedIdentity) -> AudienceDisclosureResponse:
+        return self.audience
 
     async def get_simulation_result(
         self, _: VerifiedIdentity, *, run_id: UUID
@@ -198,7 +234,10 @@ class QueueBackpressureAdmission:
 
 
 def _run(
-    *, state: SimulationRunState = SimulationRunState.QUEUED, version: int = 1
+    *,
+    state: SimulationRunState = SimulationRunState.QUEUED,
+    version: int = 1,
+    failure_code: str | None = None,
 ) -> SimulationRunResponse:
     return SimulationRunResponse(
         id=RUN_ID,
@@ -212,6 +251,18 @@ def _run(
         job_id=f"run:{RUN_ID}:dispatch:1",
         version=version,
         created_at=NOW,
+        failure=(
+            SimulationRunFailure(
+                code=failure_code,
+                correlation_id=UUID("018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4"),
+                guidance=(
+                    "No substitute result was generated. Retry or use the correlation ID "
+                    "for support."
+                ),
+            )
+            if failure_code is not None
+            else None
+        ),
     )
 
 
@@ -274,6 +325,25 @@ async def test_run_create_rejects_before_durable_command_when_queue_is_saturated
     assert publisher.intents == []
 
 
+async def test_durable_run_replay_bypasses_new_work_queue_admission() -> None:
+    app, database, publisher = app_with_fakes(run_admission=QueueBackpressureAdmission())
+    database.replay_response = _run()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            f"/api/v1/projects/{PROJECT_ID}/runs",
+            headers={
+                "Authorization": f"Bearer {TEST_BEARER}",
+                "Idempotency-Key": "m3-run-create-key-0001",
+            },
+            json={"stimulus_version_id": str(STIMULUS_VERSION_ID)},
+        )
+
+    assert response.status_code == 202
+    assert response.headers["idempotent-replayed"] == "true"
+    assert database.run_commands == []
+    assert len(publisher.intents) == 1
+
+
 async def test_run_create_remains_accepted_when_post_commit_publish_is_ambiguous() -> None:
     app, database, publisher = app_with_fakes(
         publisher_error=QueuePublishAmbiguousError("ambiguous redis timeout")
@@ -308,6 +378,45 @@ async def test_run_and_unpublished_result_reads_are_rate_limited_and_non_enumera
     assert run.headers["etag"] == '"1"'
     assert result.status_code == 404
     assert result.json()["code"] == "not_found"
+
+
+async def test_demo_audience_discloses_governance_before_run_creation() -> None:
+    app, _, _ = app_with_fakes()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            "/api/v1/audiences/demo",
+            headers={"Authorization": f"Bearer {TEST_BEARER}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["kind"] == "authored_demo"
+    assert response.json()["non_representative"] is True
+    assert response.json()["prohibited_uses"] == ["population inference"]
+    assert response.json()["checksum_sha256"] == "d" * 64
+
+
+async def test_failed_run_exposes_only_safe_code_and_original_correlation() -> None:
+    app, database, _ = app_with_fakes()
+    database.run_response = _run(
+        state=SimulationRunState.FAILED,
+        version=3,
+        failure_code="execution_provider_failure",
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            f"/api/v1/runs/{RUN_ID}",
+            headers={"Authorization": f"Bearer {TEST_BEARER}"},
+        )
+
+    assert response.status_code == 200
+    assert response.json()["failure"] == {
+        "code": "execution_provider_failure",
+        "correlation_id": "018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4",
+        "guidance": (
+            "No substitute result was generated. Retry or use the correlation ID for support."
+        ),
+    }
+    assert "provider" not in str(response.json()["failure"].get("detail", ""))
 
 
 async def test_run_cancel_returns_accepted_until_a_worker_commits_the_terminal_state() -> None:

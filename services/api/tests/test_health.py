@@ -14,6 +14,7 @@ def test_runtime_route_inventory_matches_the_m3_boundary() -> None:
 
     assert {route.path for route in router.routes if isinstance(route, APIRoute)} == {
         "/api/v1/me",
+        "/api/v1/audiences/demo",
         "/api/v1/organizations",
         "/api/v1/organizations/{organization_id}/projects",
         "/api/v1/projects/{project_id}",

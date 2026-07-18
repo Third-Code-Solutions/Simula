@@ -19,6 +19,15 @@ function runFixture(state: SimulationRun["state"]): SimulationRun {
     job_id: `run:${RUN_ID}:dispatch:1`,
     version: 1,
     created_at: "2026-07-18T00:00:00Z",
+    failure:
+      state === "failed"
+        ? {
+            code: "execution_provider_failure",
+            correlation_id: "018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4",
+            guidance:
+              "No substitute result was generated. Retry or use the correlation ID for support.",
+          }
+        : null,
   };
 }
 
@@ -60,6 +69,9 @@ describe("RunStatusPanel", () => {
 
     expect(
       screen.getByText(/SIMULA will not substitute a result/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4/),
     ).toBeInTheDocument();
   });
 });

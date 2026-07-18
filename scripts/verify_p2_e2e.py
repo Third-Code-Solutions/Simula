@@ -290,7 +290,7 @@ def response_is_ok(url: str) -> bool:
         with urlopen(url, timeout=1) as response:  # noqa: S310 - fixed local loopback URLs.
             status = cast(int | None, response.getcode())
             return status == 200
-    except URLError:
+    except TimeoutError, URLError:
         return False
 
 

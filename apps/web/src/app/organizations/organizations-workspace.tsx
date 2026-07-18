@@ -11,6 +11,7 @@ import {
   listOrganizations,
 } from "@/lib/api";
 import { SignOutButton } from "@/app/sign-out-button";
+import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 
 function problemMessage(error: unknown): string {
   if (error instanceof ApiProblem) {
@@ -93,13 +94,14 @@ export function OrganizationsWorkspace() {
   }
 
   return (
-    <main className="workspace-main">
+    <main className="workspace-main" id="main-content">
       <header className="workspace-header">
         <Link className="wordmark" href="/organizations">
           SIMULA
         </Link>
         <SignOutButton />
       </header>
+      <WorkspaceSidebar current="organizations" />
       <section className="workspace-grid" aria-labelledby="page-title">
         <div>
           <p className="eyebrow">Workspace</p>

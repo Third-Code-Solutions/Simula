@@ -18,6 +18,7 @@ from simula_api.auth import VerifiedIdentity
 from simula_api.config import ApiSettings
 from simula_api.cursor import CursorPosition
 from simula_api.models import (
+    AudienceDisclosureResponse,
     OrganizationResponse,
     ProjectDetail,
     ProjectPatch,
@@ -28,6 +29,7 @@ from simula_api.models import (
     ProvenanceStimulus,
     SimulationProvenanceResponse,
     SimulationResultResponse,
+    SimulationRunFailure,
     SimulationRunResponse,
     StimulusResponse,
     StimulusVersionResponse,
@@ -572,9 +574,36 @@ class DatabaseGateway:
                 row = await cursor.fetchone()
                 if row is None:
                     raise RuntimeError("simulation run command returned no row")
+                await self._add_failure_context(
+                    connection, row, run_id_key="run_id", state_key="run_state"
+                )
         except psycopg.Error as error:
             raise _database_problem(error) from error
         return self._run_from_command(row), bool(row["replayed"])
+
+    async def get_simulation_run_replay(
+        self,
+        identity: VerifiedIdentity,
+        *,
+        project_id: UUID,
+        idempotency_key: str,
+        request_sha256: str,
+    ) -> SimulationRunResponse | None:
+        try:
+            async with self._transaction(identity) as connection:
+                cursor = await connection.execute(
+                    "select * from api.get_simulation_run_replay(%s, %s, %s)",
+                    (project_id, idempotency_key, request_sha256),
+                )
+                row = await cursor.fetchone()
+                if row is None:
+                    return None
+                await self._add_failure_context(
+                    connection, row, run_id_key="run_id", state_key="run_state"
+                )
+        except psycopg.Error as error:
+            raise _database_problem(error) from error
+        return self._run_from_command(row)
 
     async def request_simulation_run_cancel(
         self,
@@ -592,6 +621,9 @@ class DatabaseGateway:
                 row = await cursor.fetchone()
                 if row is None:
                     raise RuntimeError("simulation run cancellation returned no row")
+                await self._add_failure_context(
+                    connection, row, run_id_key="run_id", state_key="run_state"
+                )
         except psycopg.Error as error:
             raise _database_problem(error) from error
         return self._run_from_command(row)
@@ -612,17 +644,71 @@ class DatabaseGateway:
                   schema_version,
                   dispatch_generation,
                   version,
-                  created_at
+                  created_at,
+                  correlation_id
                 from api.simulation_runs
                 where id = %s
                 """,
                 (run_id,),
             )
             row = await cursor.fetchone()
+            if row is not None:
+                await self._add_failure_context(connection, row, run_id_key="id", state_key="state")
         if row is None:
             raise _not_found()
         run = self._run_from_row(row)
         return run
+
+    async def get_demo_audience(self, identity: VerifiedIdentity) -> AudienceDisclosureResponse:
+        async with self._transaction(identity) as connection:
+            cursor = await connection.execute(
+                """
+                select
+                  versions.id,
+                  audiences.name,
+                  versions.version,
+                  versions.kind,
+                  versions.checksum_sha256,
+                  versions.is_non_representative,
+                  versions.limitations,
+                  versions.manifest
+                from api.audience_versions as versions
+                join api.audiences as audiences on audiences.id = versions.audience_id
+                where versions.id = '00000000-0000-4000-8000-0000000000d1'::uuid
+                  and versions.organization_id is null
+                  and versions.kind = 'authored_demo'
+                  and versions.admission_status = 'approved_demo'
+                  and versions.is_non_representative
+                  and audiences.is_public_demo
+                  and audiences.organization_id is null
+                """
+            )
+            row = await cursor.fetchone()
+        if row is None:
+            raise _not_found()
+        manifest = row["manifest"]
+        if not isinstance(manifest, Mapping):
+            raise RuntimeError("demo audience manifest is malformed")
+        return AudienceDisclosureResponse.model_validate(
+            {
+                "id": row["id"],
+                "name": row["name"],
+                "version": row["version"],
+                "kind": row["kind"],
+                "checksum_sha256": row["checksum_sha256"],
+                "non_representative": row["is_non_representative"],
+                "limitations": [row["limitations"]],
+                "disclosure_version": manifest.get("disclosure_version"),
+                "purpose": manifest.get("purpose"),
+                "prohibited_uses": manifest.get("prohibited_uses"),
+                "owner": manifest.get("owner"),
+                "source": manifest.get("source"),
+                "dependencies": manifest.get("dependencies"),
+                "transformation": manifest.get("transformation"),
+                "scope": manifest.get("scope"),
+                "lifecycle": manifest.get("lifecycle"),
+            }
+        )
 
     async def get_simulation_result(
         self, identity: VerifiedIdentity, *, run_id: UUID
@@ -888,6 +974,7 @@ class DatabaseGateway:
             job_id=row["job_id"],
             version=row["run_version"],
             created_at=row["created_at"],
+            failure=DatabaseGateway._failure_context(row, state_key="run_state"),
         )
 
     @staticmethod
@@ -905,4 +992,40 @@ class DatabaseGateway:
             job_id=f"run:{run_id}:dispatch:{row['dispatch_generation']}",
             version=row["version"],
             created_at=row["created_at"],
+            failure=DatabaseGateway._failure_context(row, state_key="state"),
         )
+
+    @staticmethod
+    def _failure_context(row: DatabaseRow, *, state_key: str) -> SimulationRunFailure | None:
+        if row[state_key] != "failed":
+            return None
+        code = row.get("terminal_error_code")
+        correlation_id = row.get("correlation_id")
+        if not isinstance(code, str) or not isinstance(correlation_id, UUID):
+            raise RuntimeError("failed simulation run support context is malformed")
+        return SimulationRunFailure(
+            code=code,
+            correlation_id=correlation_id,
+            guidance=(
+                "No substitute result was generated. Retry or use the correlation ID for support."
+            ),
+        )
+
+    @staticmethod
+    async def _add_failure_context(
+        connection: AsyncConnection[DatabaseRow],
+        row: DatabaseRow,
+        *,
+        run_id_key: str,
+        state_key: str,
+    ) -> None:
+        if row[state_key] != "failed":
+            return
+        cursor = await connection.execute(
+            "select * from api.get_run_failure_context(%s)",
+            (row[run_id_key],),
+        )
+        failure_row = await cursor.fetchone()
+        if failure_row is None:
+            raise RuntimeError("failed simulation run support context is missing")
+        row.update(failure_row)

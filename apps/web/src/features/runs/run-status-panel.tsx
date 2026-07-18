@@ -61,6 +61,12 @@ export function RunStatusPanel({
       <p className="eyebrow">Run status</p>
       <h2>{copy.label}</h2>
       <p>{copy.detail}</p>
+      {run.failure ? (
+        <p className="field-note">
+          Failure code: <code>{run.failure.code}</code>. Correlation:{" "}
+          <code>{run.failure.correlation_id}</code>. {run.failure.guidance}
+        </p>
+      ) : null}
       {isSlow ? (
         <p className="field-note">
           Taking longer than expected. SIMULA will continue checking at a slower

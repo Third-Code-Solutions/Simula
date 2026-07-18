@@ -17,6 +17,7 @@ from simula_api.auth import VerifiedIdentity
 from simula_api.cursor import CursorPosition
 from simula_api.database import canonical_request_sha256
 from simula_api.models import (
+    AudienceDisclosureResponse,
     MeResponse,
     OrganizationCreate,
     OrganizationPage,
@@ -223,6 +224,18 @@ async def _best_effort_publish_run(*, request: Request, run: SimulationRunRespon
 @router.get("/me", operation_id="get_current_identity", response_model=MeResponse)
 async def me(identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)]) -> MeResponse:
     return MeResponse(user_id=identity.user_id)
+
+
+@router.get(
+    "/audiences/demo",
+    operation_id="get_demo_audience",
+    response_model=AudienceDisclosureResponse,
+)
+async def get_demo_audience(
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> AudienceDisclosureResponse:
+    return await _services(request).database.get_demo_audience(identity)
 
 
 @router.post(
@@ -538,6 +551,19 @@ async def create_simulation_run(
     organization_id = await services.database.organization_for_project(
         identity, project_id=project_id
     )
+    request_sha256 = canonical_request_sha256(body.model_dump(mode="json"))
+    replay = await services.database.get_simulation_run_replay(
+        identity,
+        project_id=project_id,
+        idempotency_key=idempotency_key,
+        request_sha256=request_sha256,
+    )
+    if replay is not None:
+        response.headers["Idempotent-Replayed"] = "true"
+        response.headers["ETag"] = f'"{replay.version}"'
+        _record_replay(route="/api/v1/projects/{project_id}/runs", replayed=True, request=request)
+        await _best_effort_publish_run(request=request, run=replay)
+        return replay
     await services.rate_limiter.require_run_create(
         user_id=identity.user_id,
         organization_id=organization_id,
@@ -551,7 +577,7 @@ async def create_simulation_run(
         project_id=project_id,
         stimulus_version_id=body.stimulus_version_id,
         idempotency_key=idempotency_key,
-        request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
+        request_sha256=request_sha256,
         correlation_id=_correlation_id(request),
     )
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
@@ -593,7 +619,11 @@ async def request_simulation_run_cancel(
 ) -> SimulationRunResponse:
     del body
     services = _services(request)
-    await services.rate_limiter.require_run_read(user_id=identity.user_id, run_id=run_id)
+    current_run = await services.database.get_simulation_run(identity, run_id=run_id)
+    await services.rate_limiter.require_run_cancel(
+        user_id=identity.user_id,
+        organization_id=current_run.organization_id,
+    )
     run = await services.database.request_simulation_run_cancel(
         identity,
         run_id=run_id,

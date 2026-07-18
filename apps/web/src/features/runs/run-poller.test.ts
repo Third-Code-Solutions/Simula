@@ -19,6 +19,7 @@ function runFixture(state: "queued" | "succeeded" = "queued") {
     job_id: `run:${RUN_ID}:dispatch:1`,
     version: 1,
     created_at: "2026-07-18T00:00:00Z",
+    failure: null,
   };
 }
 

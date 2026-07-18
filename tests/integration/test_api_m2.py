@@ -348,6 +348,29 @@ async def test_m2_real_auth_api_database_and_tenant_boundaries(
         assert me.status_code == 200
         assert me.json() == {"user_id": LOCAL_USERS[OWNER_A]}
 
+        audience = await client.get(
+            "/api/v1/audiences/demo",
+            headers={"Authorization": f"Bearer {owner_a_token}"},
+        )
+        assert audience.status_code == 200
+        audience_body = audience.json()
+        assert audience_body["id"] == "00000000-0000-4000-8000-0000000000d1"
+        assert audience_body["kind"] == "authored_demo"
+        assert audience_body["non_representative"] is True
+        assert audience_body["limitations"] == [
+            "Estimates nobody and is not representative of any population."
+        ]
+        assert audience_body["disclosure_version"] == "phase2_demo_v1"
+        assert audience_body["prohibited_uses"] == [
+            "population inference",
+            "predictive decision making",
+            "replacement for human research",
+        ]
+        assert audience_body["source"] == (
+            "Repository-authored synthetic fixture; no participant or customer data."
+        )
+        assert len(audience_body["checksum_sha256"]) == 64
+
         organization_key = f"m2-org-{suffix}"
         organization_payload = {"name": f"Fictional Studio {suffix[:8]}"}
         concurrent = await asyncio.gather(

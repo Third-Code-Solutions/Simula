@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 import { SignOutButton } from "@/app/sign-out-button";
+import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 import {
   ApiProblem,
   type SimulationRun,
@@ -129,14 +130,19 @@ export function RunWorkspace({
   }
 
   return (
-    <main className="workspace-main" aria-labelledby="run-title">
+    <main
+      className="workspace-main"
+      id="main-content"
+      aria-labelledby="run-title"
+    >
       <header className="workspace-header">
         <Link className="wordmark" href="/organizations">
           SIMULA
         </Link>
         <SignOutButton />
       </header>
-      <nav aria-label="Breadcrumb">
+      <WorkspaceSidebar current="run" />
+      <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href="/organizations">Organizations</Link>
         <span aria-hidden="true"> / </span>
         <span>Run</span>

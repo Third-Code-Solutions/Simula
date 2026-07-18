@@ -121,6 +121,7 @@ RUN_CREATE_ORGANIZATION = TokenBucketPolicy(
     name="run_create_organization", limit=50, period_seconds=24 * 60 * 60, burst=2
 )
 RUN_READ = TokenBucketPolicy(name="run_read", limit=60, period_seconds=60, burst=10)
+RUN_CANCEL = TokenBucketPolicy(name="run_cancel", limit=30, period_seconds=60 * 60, burst=5)
 
 
 class RateLimiter(Protocol):
@@ -163,6 +164,8 @@ class RateLimiter(Protocol):
     ) -> None: ...
 
     async def require_run_read(self, *, user_id: UUID, run_id: UUID) -> None: ...
+
+    async def require_run_cancel(self, *, user_id: UUID, organization_id: UUID) -> None: ...
 
 
 class RedisRateLimiter:
@@ -274,6 +277,13 @@ class RedisRateLimiter:
 
     async def require_run_read(self, *, user_id: UUID, run_id: UUID) -> None:
         await self._consume(RUN_READ, subject=f"user:{user_id}:run:{run_id}")
+
+    async def require_run_cancel(self, *, user_id: UUID, organization_id: UUID) -> None:
+        await self._consume(
+            RUN_CANCEL,
+            subject=f"user:{user_id}",
+            organization_id=organization_id,
+        )
 
     async def _consume(
         self,

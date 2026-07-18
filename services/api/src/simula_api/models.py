@@ -175,6 +175,14 @@ class SimulationRunCancel(StrictModel):
     pass
 
 
+class SimulationRunFailure(StrictModel):
+    code: str = Field(pattern=r"^[a-z][a-z0-9_]{0,63}$")
+    correlation_id: UUID
+    guidance: Literal[
+        "No substitute result was generated. Retry or use the correlation ID for support."
+    ]
+
+
 class SimulationRunResponse(StrictModel):
     id: UUID
     organization_id: UUID
@@ -189,6 +197,34 @@ class SimulationRunResponse(StrictModel):
     )
     version: int = Field(ge=1)
     created_at: datetime
+    failure: SimulationRunFailure | None = None
+
+    @model_validator(mode="after")
+    def failed_run_has_safe_support_context(self) -> Self:
+        if self.state == SimulationRunState.FAILED and self.failure is None:
+            raise ValueError("failed runs require safe failure context")
+        if self.state != SimulationRunState.FAILED and self.failure is not None:
+            raise ValueError("only failed runs may expose failure context")
+        return self
+
+
+class AudienceDisclosureResponse(StrictModel):
+    id: UUID
+    name: str
+    version: int = Field(ge=1)
+    kind: Literal["authored_demo"]
+    checksum_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    non_representative: Literal[True]
+    limitations: list[Literal["Estimates nobody and is not representative of any population."]]
+    disclosure_version: Literal["phase2_demo_v1"]
+    purpose: str
+    prohibited_uses: list[str] = Field(min_length=1)
+    owner: str
+    source: str
+    dependencies: list[str] = Field(min_length=1)
+    transformation: str
+    scope: str
+    lifecycle: str
 
 
 class SimulationResultResponse(StrictModel):

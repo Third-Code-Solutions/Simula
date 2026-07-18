@@ -6,15 +6,18 @@ import { useEffect, useRef, useState } from "react";
 
 import {
   ApiProblem,
+  type AudienceDisclosure,
   type ProjectDetail,
   type Stimulus,
   appendStimulusVersion,
   createSimulationRun,
   createStimulus,
+  getDemoAudience,
   getProject,
   updateProject,
 } from "@/lib/api";
 import { SignOutButton } from "@/app/sign-out-button";
+import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 
 function problemMessage(error: unknown): string {
   if (error instanceof ApiProblem) {
@@ -43,6 +46,7 @@ export function ProjectWorkspace({
   const router = useRouter();
   const runKeys = useRef(new Map<string, string>());
   const [project, setProject] = useState<ProjectDetail>();
+  const [audience, setAudience] = useState<AudienceDisclosure>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [savingProject, setSavingProject] = useState(false);
@@ -67,9 +71,13 @@ export function ProjectWorkspace({
 
     async function loadInitialProject() {
       try {
-        const loadedProject = await getProject(projectId);
+        const [loadedProject, loadedAudience] = await Promise.all([
+          getProject(projectId),
+          getDemoAudience(),
+        ]);
         if (!stale) {
           setProject(loadedProject);
+          setAudience(loadedAudience);
           setError(undefined);
         }
       } catch (loadError) {
@@ -187,7 +195,7 @@ export function ProjectWorkspace({
   }
 
   async function startRun(stimulusVersionId: string) {
-    if (!project) {
+    if (!project || !audience) {
       return;
     }
     const idempotencyKey =
@@ -211,14 +219,15 @@ export function ProjectWorkspace({
   }
 
   return (
-    <main className="workspace-main">
+    <main className="workspace-main" id="main-content">
       <header className="workspace-header">
         <Link className="wordmark" href="/organizations">
           SIMULA
         </Link>
         <SignOutButton />
       </header>
-      <nav aria-label="Breadcrumb">
+      <WorkspaceSidebar current="project" />
+      <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href="/organizations">Organizations</Link>
         <span aria-hidden="true"> / </span>
         {project ? (
@@ -235,7 +244,7 @@ export function ProjectWorkspace({
           {error}
         </p>
       ) : null}
-      {project ? (
+      {project && audience ? (
         <>
           <section className="workspace-grid" aria-labelledby="page-title">
             <div>
@@ -272,6 +281,31 @@ export function ProjectWorkspace({
                 {savingProject ? "Saving…" : "Save project"}
               </button>
             </form>
+          </section>
+          <section
+            className="panel"
+            aria-labelledby="audience-disclosure-title"
+          >
+            <p className="eyebrow">Required pre-run disclosure</p>
+            <h2 id="audience-disclosure-title">{audience.name}</h2>
+            <p>
+              <strong>{audience.kind}</strong> · version {audience.version} ·{" "}
+              {audience.non_representative
+                ? "non-representative"
+                : "unavailable"}
+            </p>
+            {audience.limitations.map((limitation) => (
+              <p className="field-note" key={limitation}>
+                {limitation}
+              </p>
+            ))}
+            <p className="field-note">
+              Purpose: {audience.purpose} Prohibited uses:{" "}
+              {audience.prohibited_uses.join(", ")}.
+            </p>
+            <p className="resource-meta">
+              Fixture checksum: <code>{audience.checksum_sha256}</code>
+            </p>
           </section>
           <section className="content-section" aria-labelledby="stimuli-title">
             <div>
@@ -342,7 +376,9 @@ export function ProjectWorkspace({
                             </p>
                           </div>
                           <button
-                            disabled={startingRunVersion === version.id}
+                            disabled={
+                              !audience || startingRunVersion === version.id
+                            }
                             onClick={() => void startRun(version.id)}
                             type="button"
                           >

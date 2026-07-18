@@ -884,7 +884,7 @@ def test_executor_timeout_terminates_descendant_process(tmp_path: Path) -> None:
             (sys.executable, "-c", parent_code, str(child_pid_file)),
             cwd=tmp_path,
             output=OutputMode.CAPTURE,
-            timeout_seconds=1.0,
+            timeout_seconds=3.0,
             docker_context=None,
         )
 

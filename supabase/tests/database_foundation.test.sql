@@ -99,6 +99,7 @@ select extensions.is(
     'run_attempts_worker_owner_update',
     'run_events_command_cancel_insert',
     'run_events_command_insert',
+    'run_events_command_select',
     'run_events_worker_owner_insert',
     'run_outbox_command_insert',
     'run_outbox_worker_owner_recovery_insert',
@@ -362,6 +363,7 @@ select extensions.is(
     'simula_command_owner|private.idempotency_keys|SELECT',
     'simula_command_owner|private.idempotency_keys|UPDATE',
     'simula_command_owner|private.run_events|INSERT',
+    'simula_command_owner|private.run_events|SELECT',
     'simula_command_owner|private.run_outbox|INSERT',
     'simula_worker_owner|api.organizations|SELECT',
     'simula_worker_owner|api.simulation_results|INSERT',
@@ -451,6 +453,8 @@ select extensions.is(
     'api.create_project(uuid,text,text,text,text,text,text,text,uuid)',
     'api.create_simulation_run(uuid,uuid,text,text,uuid)',
     'api.create_stimulus(uuid,text,text,text,text,text,uuid)',
+    'api.get_run_failure_context(uuid)',
+    'api.get_simulation_run_replay(uuid,text,text)',
     'api.list_organizations()',
     'api.record_privileged_denial(uuid,text,text,uuid,uuid)',
     'api.request_run_cancel(uuid,uuid)',
@@ -460,6 +464,8 @@ select extensions.is(
     'private.create_project_atomic(uuid,text,text,text,text,text,text,text,uuid)',
     'private.create_simulation_run_atomic(uuid,uuid,text,text,uuid)',
     'private.create_stimulus_atomic(uuid,text,text,text,text,text,uuid)',
+    'private.get_run_failure_context(uuid)',
+    'private.get_simulation_run_replay(uuid,text,text)',
     'private.has_org_role(uuid,uuid,api.organization_role[])',
     'private.is_org_member(uuid,uuid)',
     'private.is_verified_api_subject(uuid)',
@@ -514,6 +520,8 @@ select extensions.ok(
             'create_project_atomic',
             'create_simulation_run_atomic',
             'create_stimulus_atomic',
+            'get_run_failure_context',
+            'get_simulation_run_replay',
             'has_org_role',
             'is_org_member',
             'record_privileged_denial_atomic',
@@ -533,6 +541,8 @@ select extensions.ok(
         'create_project_atomic',
         'create_simulation_run_atomic',
         'create_stimulus_atomic',
+        'get_run_failure_context',
+        'get_simulation_run_replay',
         'claim_due_run_outbox',
         'claim_run_execution',
         'complete_run_execution',
@@ -726,6 +736,28 @@ select extensions.ok(
       and versions.kind = 'authored_demo'
       and versions.admission_status = 'approved_demo'
       and versions.is_non_representative
+      and versions.manifest ?& array[
+        'audience_cells',
+        'dependencies',
+        'disclosure_version',
+        'kind',
+        'lifecycle',
+        'method_version',
+        'non_representative',
+        'owner',
+        'prohibited_uses',
+        'purpose',
+        'scope',
+        'source',
+        'transformation'
+      ]
+      and versions.checksum_sha256 = pg_catalog.encode(
+        extensions.digest(
+          pg_catalog.convert_to(versions.manifest::text, 'UTF8'),
+          'sha256'
+        ),
+        'hex'
+      )
   ),
   'only the immutable global demo fixture is seeded; tenant and run data remain empty'
 );

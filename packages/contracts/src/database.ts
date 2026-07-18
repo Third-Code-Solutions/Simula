@@ -534,6 +534,33 @@ export type Database = {
           version_created_at: string
         }[]
       }
+      get_run_failure_context: {
+        Args: { requested_run_id: string }
+        Returns: {
+          correlation_id: string
+          terminal_error_code: string
+        }[]
+      }
+      get_simulation_run_replay: {
+        Args: {
+          requested_idempotency_key: string
+          requested_project_id: string
+          requested_sha256: string
+        }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
+        }[]
+      }
       list_organizations: {
         Args: never
         Returns: {
@@ -1016,6 +1043,33 @@ export type Database = {
       finalize_requested_cancellations: {
         Args: { requested_batch_size: number }
         Returns: number
+      }
+      get_run_failure_context: {
+        Args: { requested_run_id: string }
+        Returns: {
+          correlation_id: string
+          terminal_error_code: string
+        }[]
+      }
+      get_simulation_run_replay: {
+        Args: {
+          requested_idempotency_key: string
+          requested_project_id: string
+          requested_sha256: string
+        }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
+        }[]
       }
       has_org_role: {
         Args: {

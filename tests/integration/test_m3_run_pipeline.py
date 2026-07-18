@@ -799,14 +799,19 @@ class _RetryableFailureProvider(Protocol):
 
 
 @pytest.mark.parametrize(
-    "provider_factory",
-    [_TimeoutProvider, _PreflightUnavailableProvider, _RateLimitedProvider],
+    ("provider_factory", "expected_failure_code"),
+    [
+        (_TimeoutProvider, "execution_timed_out"),
+        (_PreflightUnavailableProvider, "execution_provider_preflight_unavailable"),
+        (_RateLimitedProvider, "execution_rate_limited"),
+    ],
     ids=["timeout", "preflight-unavailable", "rate-limited"],
 )
 @pytest.mark.integration
 async def test_p2_retryable_provider_failures_use_database_backoff_then_exhaust(
     monkeypatch: pytest.MonkeyPatch,
     provider_factory: Callable[[], _RetryableFailureProvider],
+    expected_failure_code: str,
 ) -> None:
     local_supabase = _local_supabase()
     owner_token = _sign_in(local_supabase, OWNER_A)
@@ -841,6 +846,7 @@ async def test_p2_retryable_provider_failures_use_database_backoff_then_exhaust(
             json={"stimulus_version_id": str(stimulus_version_id)},
         )
         assert created_run.status_code == 202
+        correlation_id = created_run.headers["x-correlation-id"]
         run_id = UUID(created_run.json()["id"])
         job_id = job_id_for(run_id, generation=1)
         queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
@@ -891,6 +897,13 @@ async def test_p2_retryable_provider_failures_use_database_backoff_then_exhaust(
         )
         assert failed.status_code == 200
         assert failed.json()["state"] == "failed"
+        assert failed.json()["failure"] == {
+            "code": expected_failure_code,
+            "correlation_id": correlation_id,
+            "guidance": (
+                "No substitute result was generated. Retry or use the correlation ID for support."
+            ),
+        }
         assert result.status_code == 404
         assert provider.calls == 3
 
@@ -1393,3 +1406,8 @@ async def test_p2_poisoned_dispatch_exhaustion_is_terminal_and_cancel_wins(
         )
         assert poisoned.status_code == 200
         assert poisoned.json()["state"] == "failed"
+        assert poisoned.json()["failure"]["code"] == "dispatch_exhausted"
+        UUID(poisoned.json()["failure"]["correlation_id"])
+        assert poisoned.json()["failure"]["guidance"] == (
+            "No substitute result was generated. Retry or use the correlation ID for support."
+        )

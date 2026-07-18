@@ -40,6 +40,15 @@ function runFixture(
     job_id: `run:${POLL_RUN_ID}:dispatch:1`,
     version,
     created_at: CREATED_AT,
+    failure:
+      state === "failed"
+        ? {
+            code: "execution_provider_failure",
+            correlation_id: "018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4",
+            guidance:
+              "No substitute result was generated. Retry or use the correlation ID for support.",
+          }
+        : null,
   };
 }
 

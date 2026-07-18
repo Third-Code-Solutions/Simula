@@ -24,6 +24,16 @@ export const terminalRunStates = new Set<SimulationRun["state"]>([
   "canceled",
 ]);
 
+const runFailureSchema = z
+  .object({
+    code: z.string().regex(/^[a-z][a-z0-9_]{0,63}$/),
+    correlation_id: UUID,
+    guidance: z.literal(
+      "No substitute result was generated. Retry or use the correlation ID for support.",
+    ),
+  })
+  .strict();
+
 export const simulationRunSchema = z
   .object({
     id: UUID,
@@ -37,8 +47,25 @@ export const simulationRunSchema = z
     job_id: z.string().regex(/^run:[0-9a-f-]{36}:dispatch:[1-3]$/),
     version: z.number().int().positive(),
     created_at: TIMESTAMP,
+    failure: runFailureSchema.nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (value.state === "failed" && value.failure === null) {
+      context.addIssue({
+        code: "custom",
+        message: "failed run requires support context",
+        path: ["failure"],
+      });
+    }
+    if (value.state !== "failed" && value.failure !== null) {
+      context.addIssue({
+        code: "custom",
+        message: "non-failed run cannot expose failure context",
+        path: ["failure"],
+      });
+    }
+  });
 
 const fixtureDistributionSchema = z
   .object({

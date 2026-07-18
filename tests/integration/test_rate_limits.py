@@ -12,6 +12,7 @@ from simula_api.rate_limits import (
     GENERAL_UNAUTHENTICATED,
     IDEMPOTENCY_DEDUPE_TTL_SECONDS,
     ORGANIZATION_MUTATION,
+    RUN_CANCEL,
     RedisRateLimiter,
 )
 
@@ -143,6 +144,30 @@ async def test_redis_token_buckets_enforce_burst_concurrency_and_partitioning() 
         await limiter.require_organization_mutation(
             user_id=uuid4(),
             organization_id=organization_a,
+        )
+
+        cancel_user = uuid4()
+        cancel_organization = uuid4()
+        cancel_attempts = await asyncio.gather(
+            *[
+                _attempt(
+                    lambda: limiter.require_run_cancel(
+                        user_id=cancel_user,
+                        organization_id=cancel_organization,
+                    )
+                )
+                for _ in range(RUN_CANCEL.burst + 1)
+            ]
+        )
+        assert sum(result is None for result in cancel_attempts) == RUN_CANCEL.burst
+        assert sum(result is not None for result in cancel_attempts) == 1
+        await limiter.require_run_cancel(
+            user_id=cancel_user,
+            organization_id=uuid4(),
+        )
+        await limiter.require_run_cancel(
+            user_id=uuid4(),
+            organization_id=cancel_organization,
         )
     finally:
         await _delete_test_keys(client, key_prefix)
