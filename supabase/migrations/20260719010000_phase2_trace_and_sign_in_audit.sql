@@ -346,4 +346,3 @@ grant execute on function private.claim_run_execution_traced(uuid, smallint, tex
   to simula_worker;
 set role postgres;
 revoke create on schema private from simula_worker_owner;
-reset role;
