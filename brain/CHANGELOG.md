@@ -10,6 +10,10 @@ source_of_truth: true
 
 # SIMULA Changelog
 
+## 2026-07-18
+
+- Closed P2-05 trustworthy result experience: added a route-ID guard, bounded shared polling with terminal telemetry, exhaustive state and unavailable-output rendering, canonical signed-64-bit seed handling, non-reconstructed legacy provenance, complete frozen limits/config display, keyboard/mobile/Axe browser evidence, a server-owned result rollback switch, and executable forbidden-claim checks. Disposable local E2E and full `pnpm check` pass (E-5014); no hosted application or schema mutation was made.
+
 ## 2026-07-17
 
 - Inspected empty repository state and read all available governing documents.

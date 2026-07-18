@@ -60,6 +60,50 @@
         "title": "FixtureDistribution",
         "type": "object"
       },
+      "FixtureResultOutput": {
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "const": "demo_fixture_distribution",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "const": "Pipeline demo values",
+            "title": "Label",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "const": "Estimates nobody and is not representative of any population.",
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "output_id": {
+            "const": "reaction_fixture",
+            "title": "Output Id",
+            "type": "string"
+          },
+          "uncertainty": {
+            "$ref": "#/components/schemas/NotApplicableUncertainty"
+          },
+          "value": {
+            "$ref": "#/components/schemas/FixtureDistribution"
+          }
+        },
+        "required": [
+          "output_id",
+          "kind",
+          "label",
+          "value",
+          "uncertainty",
+          "limitations"
+        ],
+        "title": "FixtureResultOutput",
+        "type": "object"
+      },
       "HealthResponse": {
         "additionalProperties": false,
         "properties": {
@@ -783,56 +827,13 @@
         "title": "QualitativeObservation",
         "type": "object"
       },
-      "ResultOutput": {
-        "additionalProperties": false,
-        "properties": {
-          "kind": {
-            "const": "demo_fixture_distribution",
-            "title": "Kind",
-            "type": "string"
-          },
-          "label": {
-            "const": "Pipeline demo values",
-            "title": "Label",
-            "type": "string"
-          },
-          "limitations": {
-            "items": {
-              "const": "Estimates nobody and is not representative of any population.",
-              "type": "string"
-            },
-            "title": "Limitations",
-            "type": "array"
-          },
-          "output_id": {
-            "const": "reaction_fixture",
-            "title": "Output Id",
-            "type": "string"
-          },
-          "uncertainty": {
-            "$ref": "#/components/schemas/NotApplicableUncertainty"
-          },
-          "value": {
-            "$ref": "#/components/schemas/FixtureDistribution"
-          }
-        },
-        "required": [
-          "output_id",
-          "kind",
-          "label",
-          "value",
-          "uncertainty",
-          "limitations"
-        ],
-        "title": "ResultOutput",
-        "type": "object"
-      },
       "ResultProvenance": {
         "additionalProperties": false,
         "properties": {
           "deterministic_seed": {
+            "pattern": "^(?:0|-?[1-9][0-9]{0,18})$",
             "title": "Deterministic Seed",
-            "type": "integer"
+            "type": "string"
           },
           "frozen_manifest_sha256": {
             "pattern": "^[0-9a-f]{64}$",
@@ -1042,9 +1043,27 @@
             "type": "array"
           },
           "outputs": {
-            "items": {
-              "$ref": "#/components/schemas/ResultOutput"
-            },
+            "maxItems": 1,
+            "minItems": 1,
+            "prefixItems": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "demo_fixture_distribution": "#/components/schemas/FixtureResultOutput",
+                    "unavailable": "#/components/schemas/UnavailableResultOutput"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/FixtureResultOutput"
+                  },
+                  {
+                    "$ref": "#/components/schemas/UnavailableResultOutput"
+                  }
+                ]
+              }
+            ],
             "title": "Outputs",
             "type": "array"
           },
@@ -1343,6 +1362,58 @@
           "created_at"
         ],
         "title": "StimulusVersionResponse",
+        "type": "object"
+      },
+      "UnavailableResultOutput": {
+        "additionalProperties": false,
+        "description": "An explicit no-value result; it is never rendered as a numeric estimate.",
+        "properties": {
+          "availability": {
+            "enum": [
+              "unsupported",
+              "suppressed"
+            ],
+            "title": "Availability",
+            "type": "string"
+          },
+          "kind": {
+            "const": "unavailable",
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "const": "Pipeline demo values",
+            "title": "Label",
+            "type": "string"
+          },
+          "limitations": {
+            "items": {
+              "const": "Estimates nobody and is not representative of any population.",
+              "type": "string"
+            },
+            "title": "Limitations",
+            "type": "array"
+          },
+          "output_id": {
+            "const": "reaction_fixture",
+            "title": "Output Id",
+            "type": "string"
+          },
+          "reason": {
+            "const": "This output is unavailable. SIMULA will not substitute a value.",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "output_id",
+          "kind",
+          "label",
+          "availability",
+          "reason",
+          "limitations"
+        ],
+        "title": "UnavailableResultOutput",
         "type": "object"
       }
     },

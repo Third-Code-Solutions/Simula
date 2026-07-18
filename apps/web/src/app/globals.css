@@ -422,6 +422,11 @@ nav a {
   font-weight: 750;
 }
 
+.provenance-panel summary:focus-visible {
+  outline: 3px solid #fde68a;
+  outline-offset: 3px;
+}
+
 .provenance-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 1.25rem;
@@ -473,6 +478,15 @@ code {
   font-size: 0.72rem;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.provenance-panel code {
+  display: inline-block;
+  max-width: 100%;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 
 .primary-link {

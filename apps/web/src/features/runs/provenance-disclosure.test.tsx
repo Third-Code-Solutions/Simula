@@ -65,7 +65,9 @@ describe("ProvenanceDisclosure", () => {
   });
 
   it("renders frozen user text as text, never generated markup", async () => {
-    const { container } = render(<ProvenanceDisclosure runId={RUN_ID} />);
+    const { container, unmount } = render(
+      <ProvenanceDisclosure runId={RUN_ID} />,
+    );
     const details = container.querySelector("details");
     if (!details) {
       throw new Error("provenance disclosure is absent");
@@ -76,5 +78,42 @@ describe("ProvenanceDisclosure", () => {
     expect(await screen.findByText(hostileStimulus)).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("script")).toBeNull();
+    unmount();
+  });
+
+  it("states that legacy provenance is unavailable without reconstructing it", async () => {
+    mocks.getSimulationProvenance.mockResolvedValueOnce(
+      parseSimulationProvenance({
+        availability: "legacy_unavailable",
+        unavailable_reason: "frozen_provenance_not_captured",
+        run_id: RUN_ID,
+        created_at: "2026-07-18T00:00:00Z",
+        terminal_at: null,
+        result_created_at: null,
+        frozen_manifest_sha256: "a".repeat(64),
+        deterministic_seed: "7",
+        stimulus: null,
+        audience: null,
+        execution: null,
+        limits: null,
+      }),
+    );
+    const { container, unmount } = render(
+      <ProvenanceDisclosure runId={RUN_ID} />,
+    );
+    const details = container.querySelector("details");
+    if (!details) {
+      throw new Error("provenance disclosure is absent");
+    }
+    details.open = true;
+    fireEvent(details, new Event("toggle"));
+
+    expect(
+      await screen.findByText(/SIMULA will not reconstruct it/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Frozen stimulus" }),
+    ).not.toBeInTheDocument();
+    unmount();
   });
 });

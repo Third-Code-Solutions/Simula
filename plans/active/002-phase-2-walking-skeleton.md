@@ -37,7 +37,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 - P2-02: ordered Supabase SQL migrations, authored local fixtures, dedicated runtime/definer roles, non-exposed application schemas, RLS, complete atomic command helpers, adversarial role tests.
 - P2-03: Supabase Auth session flow, FastAPI JWT/JWKS validation, transaction-local verified claims, organization/project/stimulus vertical, generated contracts, accessible forms and states.
 - P2-04: atomic frozen run/outbox, exact canonical ARQ v0.28 JSON transport, service-only dispatch, Postgres-bound worker claims, deterministic no-egress mock, immutable typed result. Complete and evidenced in E-5013.
-- P2-05: accessible result/status/provenance/limitations experience with bounded polling and exhaustive state rendering.
+- P2-05: accessible result/status/provenance/limitations experience with bounded polling and exhaustive state rendering. Complete and evidenced in E-5014.
 - P2-06: cancel/result CAS, retry/failure classes, leases, duplicate delivery, Redis-loss reconciliation, poison and concurrency races.
 - P2-07: full local CI-quality gate, telemetry, security, load/resource, migration/contract drift, E2E, evidence, and independent review.
 
@@ -107,9 +107,9 @@ tests/                     cross-service, security, load, E2E
 
 ## M4 — P2-05 trustworthy result experience
 
-- Implement status/error/empty/loading/result/provenance/limitations views, bounded shared polling, escaped exhaustive output rendering, keyboard and text equivalents.
-- Gate: E2E result/error/polling, enum exhaustiveness, XSS, axe, keyboard, responsive and forbidden-claim checks.
-- Rollback: hide result route behind a server-owned flag; retain authorized API data.
+- Complete: status/error/empty/loading/result/provenance/limitations views, bounded shared polling, escaped exhaustive output rendering, keyboard and text equivalents.
+- Gate passed: local E2E result/error/polling, explicit output/state variants, XSS-safe rendering, desktop/mobile Axe, keyboard disclosure, responsive proof, and forbidden-claim policy (E-5014).
+- Rollback: `SIMULA_RESULT_EXPERIENCE_ENABLED=false` server-side hides result presentation while retaining authorized API data.
 
 ## M5 — P2-06 cancellation and recovery
 
@@ -153,6 +153,8 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: P2-04 worker and API slices pass focused and repository gates. Commit `754fe0f` adds role-pinned worker dispatch/execution; the next commit adds generated run/result API contracts and an API publisher that can never confirm an outbox. The disposable full database/Redis duplicate/crash proof remains open.
 - 2026-07-18 — OBSERVED: P2-04/M3 is complete (E-5013). Commit `d51c89f` closes the reset-driven API→outbox→Redis→worker→immutable-result proof, duplicate no-op behavior, and hosted forward corrections through migration `20260718020400`. P2-05 is now the active milestone.
 
+- 2026-07-18 — OBSERVED: P2-05/M4 is complete (E-5014). The disposable local browser gate passes terminal result/provenance, safe errors, bounded polling, keyboard disclosure, desktop/mobile Axe, and responsive proof. Full `pnpm check` passes 141 tests with 2 expected platform skips; no hosted application or schema state changed. P2-06 is now active.
+
 # 9. Progress
 
 - [x] Phase 1 gate passed and completed plan recorded.
@@ -181,11 +183,12 @@ tests/                     cross-service, security, load, E2E
   - [x] Queue adapter/target-queue confirmation, dispatcher, role-pinned worker gateway, and lease-bound deterministic worker execution.
   - [x] Run/result APIs, generated OpenAPI contract, and unit proof of best-effort non-confirming publish.
   - [x] Disposable end-to-end duplicate/crash proof.
-- [ ] M4 / P2-05 trustworthy result experience.
+- [x] M4 / P2-05 trustworthy result experience.
   - [x] Additive authorized provenance contract, frozen release/limit snapshot, generated contract, and local integration proof.
   - [x] Browser run launch, bounded shared polling, strict rendering decoder, semantic result/provenance views, and focused unit proof.
-  - [ ] Browser accessibility/E2E gate.
-- [ ] M5 / P2-06 cancellation and recovery.
+  - [x] Browser accessibility/E2E gate.
+  - [x] Full repository gate, policy/secret scans, and documented E-5014 evidence.
+- [ ] M5 / P2-06 cancellation and recovery (active).
 - [ ] M6 / P2-07 integrated quality gate.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 
@@ -234,6 +237,13 @@ M1 evidence on 2026-07-17:
 - No hosted link, external resource, production data, deployment, runtime credential, Git commit, or push was created. Linux CI and independent M1 review remain unexecuted.
 - Post-M1 Obsidian integrity: 56/56 governed Markdown frontmatter, 145/145 wikilinks, 55 Home links, 82 evidence IDs with zero duplicates/undefined references, and all sections 1–11 pass.
 
+M4 evidence on 2026-07-18:
+
+- `pnpm verify:p2:e2e` passed all three Playwright proofs against a disposable loopback-only Supabase/Redis/API/worker/web runtime: terminal result/provenance plus keyboard, safe inaccessible-run error, and queued-to-terminal polling stop. Axe reported no desktop or 390px mobile violations.
+- `pnpm check` passed format, lint, strict types, 35 web tests, 141 Python tests, 2 expected Windows platform skips, production web build, generated-contract drift, forbidden-claim policy, and secret baseline.
+- The result schema now has explicit unavailable/suppressed output semantics and canonical signed 64-bit seed strings; legacy provenance is explicitly unavailable rather than reconstructed. Browser telemetry contains only poll count/stop reason, error code/correlation, or provenance-view name.
+- No hosted application, schema, fixture, or production data mutation occurred for M4.
+
 # 11. Final Outcome
 
-In progress. M0 and M1 are complete; M2 is active. Phase 2 completes only when M2–M6 and the independent exit review pass. Phase 3 remains blocked. Production deployment remains unauthorized.
+In progress. M0 through M4 are complete; M5 / P2-06 cancellation and recovery is active. Phase 2 completes only when M5, M6, and the independent exit review pass. Phase 3 remains blocked. Production deployment remains unauthorized.

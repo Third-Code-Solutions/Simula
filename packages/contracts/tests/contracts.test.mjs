@@ -18,6 +18,7 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
     "/api/v1/projects/{project_id}/runs",
     "/api/v1/projects/{project_id}/stimuli",
     "/api/v1/runs/{run_id}",
+    "/api/v1/runs/{run_id}/provenance",
     "/api/v1/runs/{run_id}/result",
     "/api/v1/stimuli/{stimulus_id}/versions",
     "/health/live",
@@ -25,6 +26,7 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
   ]);
   assert.ok(document.paths["/api/v1/organizations"].post);
   assert.ok(document.paths["/api/v1/projects/{project_id}/runs"].post);
+  assert.ok(document.paths["/api/v1/runs/{run_id}/provenance"].get);
   assert.ok(document.paths["/api/v1/runs/{run_id}/result"].get);
   assert.ok(
     document.paths["/api/v1/organizations"].post.responses["422"].content[

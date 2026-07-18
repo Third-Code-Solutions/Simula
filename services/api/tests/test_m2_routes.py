@@ -186,6 +186,24 @@ async def test_protected_route_fails_closed_without_a_bearer_token() -> None:
     assert len(rate_limiter.ip_hashes) == 1
 
 
+async def test_pre_auth_rate_limit_does_not_charge_cors_preflight() -> None:
+    class RecordingRateLimiter(FakeRateLimiter):
+        def __init__(self) -> None:
+            self.attempts = 0
+
+        async def require_unauthenticated(self, *, ip_hash: str) -> None:
+            assert ip_hash
+            self.attempts += 1
+
+    rate_limiter = RecordingRateLimiter()
+    app, _ = app_with_fakes(rate_limiter=cast(RateLimiter, rate_limiter))
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.options("/api/v1/organizations")
+
+    assert response.status_code == 405
+    assert rate_limiter.attempts == 0
+
+
 async def test_pre_auth_rate_limit_stops_over_limit_malformed_bearers_before_verifier() -> None:
     class CountingVerifier:
         def __init__(self) -> None:

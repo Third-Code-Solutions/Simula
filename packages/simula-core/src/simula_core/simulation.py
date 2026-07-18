@@ -8,12 +8,22 @@ from math import fsum, isclose
 from typing import Annotated, Literal, Protocol
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from simula_core.json_codec import canonical_json_dumps
 
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 FixtureKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
+CanonicalSignedInt64 = Annotated[str, StringConstraints(pattern=r"^(?:0|-?[1-9][0-9]{0,18})$")]
+SIGNED_INT64_MIN = -(2**63)
+SIGNED_INT64_MAX = 2**63 - 1
 NonRepresentativeLimitation = Literal[
     "Estimates nobody and is not representative of any population."
 ]
@@ -49,7 +59,7 @@ class ProviderRequest(StrictFrozenModel):
     language: Literal["en"]
     stimulus_content: Annotated[str, StringConstraints(min_length=1, max_length=5000)]
     audience_cells: tuple[AudienceCell, ...] = (AudienceCell(key="authored_demo", weight=1.0),)
-    deterministic_seed: int
+    deterministic_seed: int = Field(ge=SIGNED_INT64_MIN, le=SIGNED_INT64_MAX)
     output_schema_version: Literal[1]
     frozen_manifest_sha256: Sha256
     deadline_at: datetime
@@ -77,13 +87,30 @@ class NotApplicableUncertainty(StrictFrozenModel):
     reason: Literal["authored deterministic fixture"]
 
 
-class ResultOutput(StrictFrozenModel):
+class FixtureResultOutput(StrictFrozenModel):
     output_id: Literal["reaction_fixture"]
     kind: Literal["demo_fixture_distribution"]
     label: Literal["Pipeline demo values"]
     value: FixtureDistribution
     uncertainty: NotApplicableUncertainty
     limitations: tuple[NonRepresentativeLimitation, ...]
+
+
+class UnavailableResultOutput(StrictFrozenModel):
+    """An explicit no-value result; it is never rendered as a numeric estimate."""
+
+    output_id: Literal["reaction_fixture"]
+    kind: Literal["unavailable"]
+    label: Literal["Pipeline demo values"]
+    availability: Literal["unsupported", "suppressed"]
+    reason: Literal["This output is unavailable. SIMULA will not substitute a value."]
+    limitations: tuple[NonRepresentativeLimitation, ...]
+
+
+ResultOutput = Annotated[
+    FixtureResultOutput | UnavailableResultOutput,
+    Field(discriminator="kind"),
+]
 
 
 class QualitativeObservation(StrictFrozenModel):
@@ -104,8 +131,17 @@ class ResultProvenance(StrictFrozenModel):
     provider_id: Literal["deterministic_mock"]
     provider_version: Literal[1]
     frozen_manifest_sha256: Sha256
-    deterministic_seed: int
+    # JSON numbers cannot preserve every PostgreSQL bigint in browser code.
+    # Persist the exact signed decimal representation with the immutable result.
+    deterministic_seed: CanonicalSignedInt64
     output_schema_version: Literal[1]
+
+    @field_validator("deterministic_seed")
+    @classmethod
+    def deterministic_seed_is_signed_int64(cls, value: str) -> str:
+        if not SIGNED_INT64_MIN <= int(value) <= SIGNED_INT64_MAX:
+            raise ValueError("deterministic seed must fit signed int64")
+        return value
 
 
 class SimulationResultV1(StrictFrozenModel):
@@ -114,7 +150,7 @@ class SimulationResultV1(StrictFrozenModel):
     schema_version: Literal["1.0.0"]
     run_id: UUID
     validation_label: Literal["experimental"]
-    outputs: tuple[ResultOutput, ...]
+    outputs: tuple[ResultOutput]
     qualitative: tuple[QualitativeObservation, ...]
     recommendations: tuple[HumanResearchRecommendation, ...]
     provenance: ResultProvenance
@@ -165,7 +201,7 @@ class DeterministicMockProvider(SimulationProvider):
             run_id=request.run_id,
             validation_label="experimental",
             outputs=(
-                ResultOutput(
+                FixtureResultOutput(
                     output_id="reaction_fixture",
                     kind="demo_fixture_distribution",
                     label="Pipeline demo values",
@@ -205,7 +241,7 @@ class DeterministicMockProvider(SimulationProvider):
                 provider_id="deterministic_mock",
                 provider_version=1,
                 frozen_manifest_sha256=request.frozen_manifest_sha256,
-                deterministic_seed=request.deterministic_seed,
+                deterministic_seed=str(request.deterministic_seed),
                 output_schema_version=request.output_schema_version,
             ),
             limitations=(non_representative,),

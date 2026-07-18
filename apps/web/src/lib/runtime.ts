@@ -11,3 +11,8 @@ export function runtimeMetadata(): RuntimeMetadata {
     service: "web",
   };
 }
+
+/** Server-owned emergency rollback switch for the Phase 2 result presentation. */
+export function resultExperienceEnabled(): boolean {
+  return process.env.SIMULA_RESULT_EXPERIENCE_ENABLED !== "false";
+}

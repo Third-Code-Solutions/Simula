@@ -314,6 +314,13 @@ class PreAuthRateLimitMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # CORS preflight never reaches an authenticated route and therefore
+        # cannot refund this provisional bucket. Counting it would let normal
+        # browser navigation exhaust an IP limit before any domain request.
+        if scope.get("method") == "OPTIONS":
+            await self.app(scope, receive, send)
+            return
+
         path = scope.get("path", "")
         if path != "/api/v1" and not path.startswith("/api/v1/"):
             await self.app(scope, receive, send)

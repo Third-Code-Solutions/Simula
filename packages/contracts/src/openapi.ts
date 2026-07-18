@@ -239,6 +239,28 @@ export interface components {
              */
             unit: "share";
         };
+        /** FixtureResultOutput */
+        FixtureResultOutput: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "demo_fixture_distribution";
+            /**
+             * Label
+             * @constant
+             */
+            label: "Pipeline demo values";
+            /** Limitations */
+            limitations: "Estimates nobody and is not representative of any population."[];
+            /**
+             * Output Id
+             * @constant
+             */
+            output_id: "reaction_fixture";
+            uncertainty: components["schemas"]["NotApplicableUncertainty"];
+            value: components["schemas"]["FixtureDistribution"];
+        };
         /** HealthResponse */
         HealthResponse: {
             /** Environment */
@@ -598,32 +620,10 @@ export interface components {
              */
             text: "A deterministic mock observation used only to test rendering.";
         };
-        /** ResultOutput */
-        ResultOutput: {
-            /**
-             * Kind
-             * @constant
-             */
-            kind: "demo_fixture_distribution";
-            /**
-             * Label
-             * @constant
-             */
-            label: "Pipeline demo values";
-            /** Limitations */
-            limitations: "Estimates nobody and is not representative of any population."[];
-            /**
-             * Output Id
-             * @constant
-             */
-            output_id: "reaction_fixture";
-            uncertainty: components["schemas"]["NotApplicableUncertainty"];
-            value: components["schemas"]["FixtureDistribution"];
-        };
         /** ResultProvenance */
         ResultProvenance: {
             /** Deterministic Seed */
-            deterministic_seed: number;
+            deterministic_seed: string;
             /** Frozen Manifest Sha256 */
             frozen_manifest_sha256: string;
             /**
@@ -711,7 +711,9 @@ export interface components {
             /** Limitations */
             limitations: "Estimates nobody and is not representative of any population."[];
             /** Outputs */
-            outputs: components["schemas"]["ResultOutput"][];
+            outputs: [
+                components["schemas"]["FixtureResultOutput"] | components["schemas"]["UnavailableResultOutput"]
+            ];
             provenance: components["schemas"]["ResultProvenance"];
             /** Qualitative */
             qualitative: components["schemas"]["QualitativeObservation"][];
@@ -864,6 +866,39 @@ export interface components {
             stimulus_id: string;
             /** Version */
             version: number;
+        };
+        /**
+         * UnavailableResultOutput
+         * @description An explicit no-value result; it is never rendered as a numeric estimate.
+         */
+        UnavailableResultOutput: {
+            /**
+             * Availability
+             * @enum {string}
+             */
+            availability: "unsupported" | "suppressed";
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            kind: "unavailable";
+            /**
+             * Label
+             * @constant
+             */
+            label: "Pipeline demo values";
+            /** Limitations */
+            limitations: "Estimates nobody and is not representative of any population."[];
+            /**
+             * Output Id
+             * @constant
+             */
+            output_id: "reaction_fixture";
+            /**
+             * Reason
+             * @constant
+             */
+            reason: "This output is unavailable. SIMULA will not substitute a value.";
         };
     };
     responses: never;

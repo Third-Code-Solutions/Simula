@@ -3,11 +3,17 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+import pytest
 from simula_core.json_codec import canonical_json_dumps
 from simula_core.simulation import (
+    SIGNED_INT64_MAX,
+    SIGNED_INT64_MIN,
     DeterministicMockProvider,
+    FixtureResultOutput,
     ProviderRequest,
+    ResultProvenance,
     SimulationResultV1,
+    UnavailableResultOutput,
 )
 
 
@@ -36,10 +42,12 @@ def test_mock_result_is_byte_identical_for_the_same_frozen_request() -> None:
         second.model_dump(mode="json")
     )
     assert first.validation_label == "experimental"
+    assert isinstance(first.outputs[0], FixtureResultOutput)
     assert first.outputs[0].kind == "demo_fixture_distribution"
     assert first.outputs[0].uncertainty.status == "not_applicable"
     assert first.qualitative[0].synthetic is True
     assert first.recommendations[0].kind == "recommendation"
+    assert first.provenance.deterministic_seed == "7"
     assert "Estimates nobody" in first.limitations[0]
 
 
@@ -49,10 +57,32 @@ def test_mock_result_changes_only_with_explicit_frozen_input_and_is_a_distributi
     first = provider.run(_request(seed=7))
     changed = provider.run(_request(seed=8))
 
+    assert isinstance(first.outputs[0], FixtureResultOutput)
+    assert isinstance(changed.outputs[0], FixtureResultOutput)
     values = [category.value for category in first.outputs[0].value.categories]
     assert sum(values) == 1.0
     assert all(0.0 <= value <= 1.0 for value in values)
     assert first.outputs[0].value != changed.outputs[0].value
+
+
+@pytest.mark.parametrize("seed", (SIGNED_INT64_MIN, SIGNED_INT64_MAX))
+def test_mock_result_preserves_exact_signed_int64_seed_as_canonical_text(seed: int) -> None:
+    result = DeterministicMockProvider().run(_request(seed=seed))
+
+    assert result.provenance.deterministic_seed == str(seed)
+
+
+@pytest.mark.parametrize("seed", ("-0", "00", "9223372036854775808", "-9223372036854775809"))
+def test_result_provenance_rejects_noncanonical_or_out_of_range_seeds(seed: str) -> None:
+    with pytest.raises(ValueError, match=r"deterministic seed|String should match pattern"):
+        ResultProvenance(
+            method_version="phase2_demo_v1",
+            provider_id="deterministic_mock",
+            provider_version=1,
+            frozen_manifest_sha256="a" * 64,
+            deterministic_seed=seed,
+            output_schema_version=1,
+        )
 
 
 def test_result_contract_is_closed_and_has_no_real_provider_or_cost_fields() -> None:
@@ -61,3 +91,28 @@ def test_result_contract_is_closed_and_has_no_real_provider_or_cost_fields() -> 
     assert schema["additionalProperties"] is False
     assert "real_provider" not in str(schema)
     assert "cost" not in str(schema)
+
+
+def test_unavailable_output_is_explicit_and_rejects_a_substitute_value() -> None:
+    unavailable = UnavailableResultOutput(
+        output_id="reaction_fixture",
+        kind="unavailable",
+        label="Pipeline demo values",
+        availability="suppressed",
+        reason="This output is unavailable. SIMULA will not substitute a value.",
+        limitations=("Estimates nobody and is not representative of any population.",),
+    )
+
+    assert unavailable.model_dump(mode="json")["availability"] == "suppressed"
+    with pytest.raises(ValueError, match="Extra inputs are not permitted"):
+        UnavailableResultOutput.model_validate(
+            {
+                "output_id": "reaction_fixture",
+                "kind": "unavailable",
+                "label": "Pipeline demo values",
+                "availability": "suppressed",
+                "reason": "This output is unavailable. SIMULA will not substitute a value.",
+                "limitations": ("Estimates nobody and is not representative of any population.",),
+                "value": 0,
+            }
+        )

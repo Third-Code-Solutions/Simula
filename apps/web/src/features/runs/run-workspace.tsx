@@ -18,6 +18,7 @@ import {
   runPollers,
 } from "./run-poller";
 import { RunStatusPanel } from "./run-status-panel";
+import { recordRunUiError } from "./run-telemetry";
 
 function problemMessage(error: unknown): string {
   if (error instanceof ApiProblem) {
@@ -30,8 +31,13 @@ function problemMessage(error: unknown): string {
 
 export function RunWorkspace({
   pollers = runPollers,
+  resultExperienceEnabled = true,
   runId,
-}: Readonly<{ pollers?: RunPollerRegistry; runId: string }>) {
+}: Readonly<{
+  pollers?: RunPollerRegistry;
+  resultExperienceEnabled?: boolean;
+  runId: string;
+}>) {
   const [result, setResult] = useState<SimulationResult>();
   const [resultError, setResultError] = useState<string>();
   const [snapshot, setSnapshot] = useState<RunPollSnapshot>({
@@ -47,7 +53,12 @@ export function RunWorkspace({
   }, [pollers, runId]);
 
   useEffect(() => {
-    if (snapshot.run?.state !== "succeeded" || result || resultError) {
+    if (
+      !resultExperienceEnabled ||
+      snapshot.run?.state !== "succeeded" ||
+      result ||
+      resultError
+    ) {
       return;
     }
     let stale = false;
@@ -58,6 +69,9 @@ export function RunWorkspace({
           setResult(loaded);
         }
       } catch (error) {
+        if (error instanceof ApiProblem) {
+          recordRunUiError(error);
+        }
         if (!stale) {
           setResultError(problemMessage(error));
         }
@@ -67,7 +81,13 @@ export function RunWorkspace({
     return () => {
       stale = true;
     };
-  }, [result, resultError, runId, snapshot.run?.state]);
+  }, [
+    result,
+    resultError,
+    resultExperienceEnabled,
+    runId,
+    snapshot.run?.state,
+  ]);
 
   const error =
     resultError ??
@@ -114,11 +134,25 @@ export function RunWorkspace({
           Refresh run status
         </button>
       ) : null}
-      {snapshot.run?.state === "succeeded" && !result && !resultError ? (
+      {snapshot.run?.state === "succeeded" && !resultExperienceEnabled ? (
+        <section className="panel status-panel" aria-live="polite">
+          <h2>Result presentation unavailable</h2>
+          <p>
+            This server has temporarily hidden result presentation. SIMULA will
+            not show a substitute value.
+          </p>
+        </section>
+      ) : null}
+      {snapshot.run?.state === "succeeded" &&
+      resultExperienceEnabled &&
+      !result &&
+      !resultError ? (
         <p aria-live="polite">Loading immutable result…</p>
       ) : null}
-      {result ? <ResultRenderer result={result} /> : null}
-      {snapshot.run?.state === "succeeded" ? (
+      {resultExperienceEnabled && result ? (
+        <ResultRenderer result={result} />
+      ) : null}
+      {resultExperienceEnabled && snapshot.run?.state === "succeeded" ? (
         <ProvenanceDisclosure runId={runId} />
       ) : null}
     </main>

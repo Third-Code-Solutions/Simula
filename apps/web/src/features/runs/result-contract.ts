@@ -82,29 +82,48 @@ const limitation =
   "Estimates nobody and is not representative of any population.";
 const recommendation =
   "Verify wording with appropriately recruited human participants before acting.";
+const outputLimitations = z.tuple([z.literal(limitation)]);
+
+const fixtureResultOutputSchema = z
+  .object({
+    output_id: z.literal("reaction_fixture"),
+    kind: z.literal("demo_fixture_distribution"),
+    label: z.literal("Pipeline demo values"),
+    value: fixtureDistributionSchema,
+    uncertainty: z
+      .object({
+        status: z.literal("not_applicable"),
+        reason: z.literal("authored deterministic fixture"),
+      })
+      .strict(),
+    limitations: outputLimitations,
+  })
+  .strict();
+
+const unavailableResultOutputSchema = z
+  .object({
+    output_id: z.literal("reaction_fixture"),
+    kind: z.literal("unavailable"),
+    label: z.literal("Pipeline demo values"),
+    availability: z.enum(["unsupported", "suppressed"]),
+    reason: z.literal(
+      "This output is unavailable. SIMULA will not substitute a value.",
+    ),
+    limitations: outputLimitations,
+  })
+  .strict();
+
+const resultOutputSchema = z.discriminatedUnion("kind", [
+  fixtureResultOutputSchema,
+  unavailableResultOutputSchema,
+]);
 
 export const simulationResultSchema = z
   .object({
     schema_version: z.literal("1.0.0"),
     run_id: UUID,
     validation_label: z.literal("experimental"),
-    outputs: z.tuple([
-      z
-        .object({
-          output_id: z.literal("reaction_fixture"),
-          kind: z.literal("demo_fixture_distribution"),
-          label: z.literal("Pipeline demo values"),
-          value: fixtureDistributionSchema,
-          uncertainty: z
-            .object({
-              status: z.literal("not_applicable"),
-              reason: z.literal("authored deterministic fixture"),
-            })
-            .strict(),
-          limitations: z.tuple([z.literal(limitation)]),
-        })
-        .strict(),
-    ]),
+    outputs: z.tuple([resultOutputSchema]),
     qualitative: z.tuple([
       z
         .object({
@@ -132,7 +151,7 @@ export const simulationResultSchema = z
         provider_id: z.literal("deterministic_mock"),
         provider_version: z.literal(1),
         frozen_manifest_sha256: SHA256,
-        deterministic_seed: z.number().int().finite(),
+        deterministic_seed: z.string().regex(/^-?[0-9]{1,19}$/),
         output_schema_version: z.literal(1),
       })
       .strict(),

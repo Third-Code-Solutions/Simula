@@ -95,7 +95,7 @@ describe("run/result browser contract decoder", () => {
           provider_id: "deterministic_mock",
           provider_version: 1,
           frozen_manifest_sha256: "b".repeat(64),
-          deterministic_seed: 7,
+          deterministic_seed: "7",
           output_schema_version: 1,
         },
         limitations: [
@@ -152,5 +152,71 @@ describe("run/result browser contract decoder", () => {
       },
     });
     expect(provenance.availability).toBe("available");
+  });
+
+  it("preserves an exact signed 64-bit deterministic seed as text", () => {
+    const result = parseSimulationResult({
+      run_id: RUN_ID,
+      schema_version: 1,
+      artifact_sha256: "a".repeat(64),
+      created_at: "2026-07-18T00:00:00Z",
+      result: {
+        schema_version: "1.0.0",
+        run_id: RUN_ID,
+        validation_label: "experimental",
+        outputs: [
+          {
+            output_id: "reaction_fixture",
+            kind: "demo_fixture_distribution",
+            label: "Pipeline demo values",
+            value: {
+              unit: "share",
+              categories: [
+                { key: "clear", value: 0.4 },
+                { key: "unclear", value: 0.35 },
+                { key: "needs_human_review", value: 0.25 },
+              ],
+            },
+            uncertainty: {
+              status: "not_applicable",
+              reason: "authored deterministic fixture",
+            },
+            limitations: [
+              "Estimates nobody and is not representative of any population.",
+            ],
+          },
+        ],
+        qualitative: [
+          {
+            kind: "generated_qualitative",
+            synthetic: true,
+            text: "A deterministic mock observation used only to test rendering.",
+            source_output_ids: ["reaction_fixture"],
+          },
+        ],
+        recommendations: [
+          {
+            kind: "recommendation",
+            text: "Verify wording with appropriately recruited human participants before acting.",
+            source_output_ids: ["reaction_fixture"],
+          },
+        ],
+        provenance: {
+          method_version: "phase2_demo_v1",
+          provider_id: "deterministic_mock",
+          provider_version: 1,
+          frozen_manifest_sha256: "b".repeat(64),
+          deterministic_seed: "-4425823892900667840",
+          output_schema_version: 1,
+        },
+        limitations: [
+          "Estimates nobody and is not representative of any population.",
+        ],
+      },
+    });
+
+    expect(result.result.provenance.deterministic_seed).toBe(
+      "-4425823892900667840",
+    );
   });
 });

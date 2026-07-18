@@ -1,6 +1,11 @@
 import { ApiProblem, getSimulationRun } from "@/lib/api";
 
 import { type SimulationRun, isTerminalRunState } from "./result-contract";
+import {
+  type RunTelemetry,
+  browserRunTelemetry,
+  recordRunUiError,
+} from "./run-telemetry";
 
 export type RunPollSnapshot = Readonly<{
   error?: ApiProblem;
@@ -24,10 +29,10 @@ export type PollerClock = Readonly<{
 }>;
 
 const defaultClock: PollerClock = {
-  clearTimeout,
-  now: Date.now,
-  random: Math.random,
-  setTimeout,
+  clearTimeout: (handle) => globalThis.clearTimeout(handle),
+  now: () => Date.now(),
+  random: () => Math.random(),
+  setTimeout: (callback, delay) => globalThis.setTimeout(callback, delay),
 };
 
 const BASE_DELAYS = [1_000, 1_500, 2_250, 3_500, 5_000, 10_000] as const;
@@ -48,6 +53,7 @@ function isStopError(
 
 class SharedRunPoller {
   private attempt = 0;
+  private pollCount = 0;
   private readonly listeners = new Set<Listener>();
   private readonly startedAt: number;
   private inFlight = false;
@@ -58,6 +64,7 @@ class SharedRunPoller {
     private readonly runId: string,
     private readonly fetchRun: FetchRun,
     private readonly clock: PollerClock,
+    private readonly telemetry: RunTelemetry,
     private readonly onEmpty: () => void,
   ) {
     this.startedAt = clock.now();
@@ -111,6 +118,11 @@ class SharedRunPoller {
         stopReason: "timed_out",
       };
       this.emit();
+      this.telemetry({
+        name: "run_poll_stopped",
+        pollCount: this.pollCount,
+        reason: "timed_out",
+      });
       return;
     }
     const base =
@@ -133,6 +145,7 @@ class SharedRunPoller {
       return;
     }
     this.inFlight = true;
+    this.pollCount += 1;
     try {
       const run = await this.fetchRun(this.runId);
       const terminal = isTerminalRunState(run.state);
@@ -143,6 +156,13 @@ class SharedRunPoller {
         stopReason: terminal ? "terminal" : undefined,
       };
       this.emit();
+      if (terminal) {
+        this.telemetry({
+          name: "run_poll_stopped",
+          pollCount: this.pollCount,
+          reason: "terminal",
+        });
+      }
       if (!terminal && this.listeners.size > 0) {
         this.schedule();
       }
@@ -156,6 +176,7 @@ class SharedRunPoller {
               "SIMULA is temporarily unavailable. Retry shortly.",
             );
       const stopReason = isStopError(problem);
+      recordRunUiError(problem);
       this.snapshot = {
         ...this.snapshot,
         error: problem,
@@ -164,6 +185,13 @@ class SharedRunPoller {
         stopReason,
       };
       this.emit();
+      if (stopReason) {
+        this.telemetry({
+          name: "run_poll_stopped",
+          pollCount: this.pollCount,
+          reason: stopReason,
+        });
+      }
       if (!stopReason && this.listeners.size > 0) {
         this.schedule();
       }
@@ -186,6 +214,7 @@ export class RunPollerRegistry {
   public constructor(
     private readonly fetchRun: FetchRun,
     private readonly clock: PollerClock = defaultClock,
+    private readonly telemetry: RunTelemetry = browserRunTelemetry,
   ) {}
 
   public subscribe(
@@ -194,9 +223,15 @@ export class RunPollerRegistry {
   ): Readonly<{ refresh: () => void; unsubscribe: () => void }> {
     let poller = this.pollers.get(runId);
     if (!poller) {
-      poller = new SharedRunPoller(runId, this.fetchRun, this.clock, () => {
-        this.pollers.delete(runId);
-      });
+      poller = new SharedRunPoller(
+        runId,
+        this.fetchRun,
+        this.clock,
+        this.telemetry,
+        () => {
+          this.pollers.delete(runId);
+        },
+      );
       this.pollers.set(runId, poller);
     }
     return {

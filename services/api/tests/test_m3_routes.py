@@ -300,6 +300,7 @@ async def test_published_result_is_returned_as_the_generated_typed_contract() ->
     assert response.status_code == 200
     assert response.json()["result"]["schema_version"] == "1.0.0"
     assert response.json()["result"]["run_id"] == str(RUN_ID)
+    assert response.json()["result"]["provenance"]["deterministic_seed"] == "7"
 
 
 async def test_authorized_provenance_is_a_closed_projection_not_the_raw_manifest() -> None:

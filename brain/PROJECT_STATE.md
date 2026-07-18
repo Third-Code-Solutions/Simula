@@ -18,7 +18,7 @@ source_of_truth: true
 
 ## Current objective
 
-Complete P2-05's trustworthy result/status/provenance experience, then P2-06 cancellation/recovery and P2-07's integrated exit gate in order. P2-05's first additive provenance contract slice freezes the deterministic pipeline release and execution-limit identifiers for new runs; it remains local until the full P2-05 gate passes. No real-provider egress or representativeness claim is authorized.
+Implement P2-06 cancellation/recovery, then P2-07's integrated exit gate in order. P2-05 is locally proven; P2-06 must preserve one authoritative terminal result through cancellation, retry, and worker races. No real-provider egress or representativeness claim is authorized.
 
 ## Repository state
 
@@ -63,6 +63,8 @@ Initial M4 audit found 0 Critical/6 High. Iterative review then exposed and corr
 - M2 / P2-03 is complete. Atomic project/stimulus-version commands, generated contracts, Auth-only accessible web journey, JWT/JWKS/claim boundary, rate/CORS/media safeguards, and audit-denial evidence are implemented. Browser domain calls use FastAPI bearer auth only; browser Data API access remains absent.
 - M2 final local evidence: `pnpm verify:m2-api` passes two clean resets, lint, 32 pgTAP checks, 26 API tests, five database/Auth/API/Redis integrations, generated database/OpenAPI drift checks, and the full repository format/lint/type/web-test/web-build/secret/SCA gate. Review remediation added atomic Redis buckets, pre-auth IP protection with verified-request refunds, 24-hour idempotency replay bypass, DB-15 exact-key test cleanup, JSON-only command media, forged/expired/rotation proof, audit outcome/source/denial records, and browser-readable correlated CORS error headers. Two independent final reviews reported no remaining findings (E-5010).
 - M3 / P2-04 is complete. Strict ARQ codec/result contract, durable run/outbox authority, queue transport, dispatcher, role-pinned worker execution, and run/result APIs now have a reset-driven real asynchronous proof. Hosted Supabase history matches migrations through `20260718020400`; the P2-05–P2-07 sequence remains pending (E-5013).
+
+- M4 / P2-05 is complete. The browser now has a validated run-route guard, exhaustive state rendering, bounded shared polling, explicit unavailable-result/legacy-provenance states, full frozen provenance/limits, XSS-safe text rendering, a server-owned rollback switch, content-free browser telemetry, and an executable forbidden-claim policy. The local browser gate passes terminal result, safe error, polling, keyboard, desktop/mobile Axe, and responsive proofs; full `pnpm check` passes 141 tests with 2 expected platform skips (E-5014). No hosted schema or application state changed for this UI-only slice.
 
 ## Key constraints
 

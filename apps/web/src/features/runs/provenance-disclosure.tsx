@@ -6,6 +6,8 @@ import {
   getSimulationProvenance,
 } from "@/lib/api";
 
+import { browserRunTelemetry, recordRunUiError } from "./run-telemetry";
+
 function problemMessage(error: unknown): string {
   if (error instanceof ApiProblem) {
     return error.correlationId
@@ -33,6 +35,9 @@ export function ProvenanceDisclosure({ runId }: Readonly<{ runId: string }>) {
       setProvenance(await getSimulationProvenance(runId));
       setError(undefined);
     } catch (loadError) {
+      if (loadError instanceof ApiProblem) {
+        recordRunUiError(loadError);
+      }
       setError(problemMessage(loadError));
     } finally {
       setLoading(false);
@@ -44,6 +49,7 @@ export function ProvenanceDisclosure({ runId }: Readonly<{ runId: string }>) {
       className="provenance-panel"
       onToggle={(event) => {
         if (event.currentTarget.open) {
+          browserRunTelemetry({ name: "run_provenance_view" });
           void load();
         }
       }}
@@ -87,6 +93,12 @@ export function ProvenanceDisclosure({ runId }: Readonly<{ runId: string }>) {
               <dd>
                 <code>{provenance.audience.checksum_sha256}</code>
               </dd>
+              <dt>Frozen cells</dt>
+              <dd>
+                {provenance.audience.cells
+                  .map((cell) => `${cell.key}: ${cell.weight}`)
+                  .join(", ")}
+              </dd>
             </dl>
           </section>
           <section>
@@ -94,6 +106,12 @@ export function ProvenanceDisclosure({ runId }: Readonly<{ runId: string }>) {
             <dl>
               <dt>Method</dt>
               <dd>{provenance.execution.method_version}</dd>
+              <dt>Disclosure version</dt>
+              <dd>{provenance.execution.disclosure_version}</dd>
+              <dt>Language</dt>
+              <dd>{provenance.execution.language}</dd>
+              <dt>Output schema</dt>
+              <dd>{provenance.execution.output_schema_version}</dd>
               <dt>Provider</dt>
               <dd>
                 {provenance.execution.provider_id} v
@@ -118,10 +136,18 @@ export function ProvenanceDisclosure({ runId }: Readonly<{ runId: string }>) {
               <dd>{provenance.limits.arq_job_timeout_seconds} seconds</dd>
               <dt>Database attempts</dt>
               <dd>{provenance.limits.max_database_attempts}</dd>
+              <dt>Dispatch generations</dt>
+              <dd>{provenance.limits.max_dispatch_generations}</dd>
+              <dt>Provider cost ceiling</dt>
+              <dd>{provenance.limits.provider_cost_ceiling}</dd>
+              <dt>Maximum result bytes</dt>
+              <dd>{provenance.limits.max_result_bytes}</dd>
               <dt>Created</dt>
               <dd>{timestamp(provenance.created_at)}</dd>
               <dt>Terminal</dt>
               <dd>{timestamp(provenance.terminal_at)}</dd>
+              <dt>Result recorded</dt>
+              <dd>{timestamp(provenance.result_created_at)}</dd>
             </dl>
           </section>
         </div>
