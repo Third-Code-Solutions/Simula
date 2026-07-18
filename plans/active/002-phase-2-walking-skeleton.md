@@ -126,7 +126,7 @@ tests/                     cross-service, security, load, E2E
 
 - Historical self-audit: structured telemetry/audit/correlation, security/secret/SCA/container checks, load/backpressure/resource tests, clean migration/contract generation, browser E2E, local database gates, and evidence update are recorded in E-5022.
 - Automated gate evidence: clean local reset/lint/41 pgTAP assertions; ten real API/Redis/worker integrations; five browser flows; `pnpm check`; explicit Linux mypy; hosted migration equality; and GitHub Actions run `29640798631` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
-- Formal exit status: FAIL. E-5023 records unresolved High findings. E-5024 closes expired-lease mutation authority and stale/canceled attempt corruption; E-5025 closes arbitrary result persistence and frozen-provenance drift. All other Critical/High findings remain blocking.
+- Formal exit status: FAIL. E-5023 records unresolved High findings. E-5024 closes expired-lease mutation authority and stale/canceled attempt corruption; E-5025 closes arbitrary result persistence and frozen-provenance drift; E-5026 closes worker retry/deadline/heartbeat/rejection-telemetry drift. All other Critical/High findings remain blocking.
 - Rollback: telemetry export may be disabled independently; core audit remains; revert only to a schema-compatible artifact.
 
 # 7. Risks
@@ -172,6 +172,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: ten bounded independent reviewer assignments returned Phase 2 exit FAIL with unresolved High findings across acceptance, worker/database authority, API/auth, accessibility, CI/supply chain, observability/operations, and method/data controls (E-5023). P2-07 is reopened; Phase 3 remains blocked.
 - 2026-07-18 — OBSERVED: the first remediation rejects expired lease heartbeat/failure authority and terminalizes stale/canceled attempts. Clean local database/repository gates, 10/10 run integrations, and GitHub Actions `29643209461` for `941f825` pass; seed-free hosted migration version `20260718113445` is applied with zero security-advisor lints (E-5024). This does not close P2-07.
 - 2026-07-18 — OBSERVED: the second remediation rejects unknown/nested result fields and frozen run/manifest/seed provenance drift at the durable database write boundary. Clean local database/repository gates, 11/11 run integrations, and GitHub Actions `29644323387` for `1ee0f5a` pass; seed-free hosted migration version `20260718122048` is applied with matching local/remote function definitions and zero security-advisor lints (E-5025). SEC-EGRESS-001 and P2-07 remain open.
+- 2026-07-18 — OBSERVED: worker transport/runtime drift is corrected with shared 16-try ARQ bounds, 8s/2s/10s transaction deadlines, lease heartbeat before provider work, and allowlisted content-free binding/claim rejection events. Worker/core, real database, complete integration, browser, container, and GitHub Actions `29644976771`/`29645325104` pass (E-5026). R-027 is Mitigated for Phase 2; P2-07 remains open.
 
 # 9. Progress
 
@@ -218,6 +219,7 @@ tests/                     cross-service, security, load, E2E
   - [x] Historical self-audit/automated quality snapshot (E-5022).
   - [x] Expired-lease and stale/canceled-attempt remediation (E-5024).
   - [x] Fail-closed result-write contract remediation (E-5025).
+  - [x] Worker retry/deadline/heartbeat/telemetry remediation (E-5026).
   - [ ] Remaining E-5023 Critical/High findings cleared and independently re-reviewed.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 
