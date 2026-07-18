@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from datetime import UTC, datetime
 from uuid import UUID
 
@@ -16,6 +19,19 @@ from simula_core.simulation import (
     UnavailableResultOutput,
 )
 
+_DETERMINISM_PROBE = """
+import sys
+
+from simula_core.json_codec import canonical_json_dumps
+from simula_core.simulation import DeterministicMockProvider, ProviderRequest
+
+request = ProviderRequest.model_validate_json(sys.stdin.buffer.read())
+provider = DeterministicMockProvider()
+for _ in range(20):
+    result = provider.run(request)
+    sys.stdout.buffer.write(canonical_json_dumps(result.model_dump(mode="json")) + b"\\n")
+"""
+
 
 def _request(*, seed: int = 7) -> ProviderRequest:
     return ProviderRequest(
@@ -30,6 +46,20 @@ def _request(*, seed: int = 7) -> ProviderRequest:
         run_id=UUID("00000000-0000-4000-8000-000000000201"),
         stimulus_content="A fictional campaign message for the product path.",
     )
+
+
+def _run_determinism_probe(index: int, request_json: bytes) -> tuple[bytes, ...]:
+    completed = subprocess.run(  # noqa: S603 -- exact current interpreter, constant probe
+        [sys.executable, "-c", _DETERMINISM_PROBE],
+        input=request_json,
+        capture_output=True,
+        check=False,
+        timeout=30,
+        env={**os.environ, "PYTHONHASHSEED": str(index + 1)},
+    )
+    if completed.returncode != 0:
+        raise AssertionError(completed.stderr.decode("utf-8", errors="replace"))
+    return tuple(completed.stdout.splitlines())
 
 
 def test_mock_result_is_byte_identical_for_the_same_frozen_request() -> None:
@@ -49,6 +79,19 @@ def test_mock_result_is_byte_identical_for_the_same_frozen_request() -> None:
     assert first.recommendations[0].kind == "recommendation"
     assert first.provenance.deterministic_seed == "7"
     assert "Estimates nobody" in first.limitations[0]
+
+
+def test_mock_result_is_byte_identical_across_100_cross_process_repeats() -> None:
+    request = _request()
+    request_json = request.model_dump_json().encode("utf-8")
+    batches = (_run_determinism_probe(index, request_json) for index in range(5))
+    outputs = tuple(output for batch in batches for output in batch)
+
+    expected = canonical_json_dumps(
+        DeterministicMockProvider().run(request).model_dump(mode="json")
+    )
+    assert len(outputs) == 100
+    assert set(outputs) == {expected}
 
 
 def test_mock_result_changes_only_with_explicit_frozen_input_and_is_a_distribution() -> None:

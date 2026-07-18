@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(9);
+select extensions.plan(11);
 
 select extensions.has_function(
   'api',
@@ -86,6 +86,28 @@ select extensions.ok(
     'SELECT,INSERT,UPDATE,DELETE'
   ),
   'worker runtime role has no direct run or outbox table access'
+);
+
+select extensions.is(
+  (
+    select constraints.confdeltype::text
+    from pg_catalog.pg_constraint as constraints
+    where constraints.conname = 'simulation_runs_project_foreign_key'
+      and constraints.conrelid = 'api.simulation_runs'::pg_catalog.regclass
+  ),
+  'c',
+  'project deletion cascades through the complete run graph'
+);
+
+select extensions.is(
+  (
+    select constraints.confdeltype::text
+    from pg_catalog.pg_constraint as constraints
+    where constraints.conname = 'simulation_runs_stimulus_version_foreign_key'
+      and constraints.conrelid = 'api.simulation_runs'::pg_catalog.regclass
+  ),
+  'c',
+  'stimulus-version deletion cascades through the complete run graph'
 );
 
 select * from extensions.finish();

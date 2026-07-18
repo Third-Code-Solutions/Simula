@@ -244,7 +244,10 @@ def _local_supabase() -> LocalSupabase:
     pnpm = shutil.which("pnpm")
     if pnpm is None:
         pytest.fail("pnpm executable is unavailable")
-    status = _run_captured([pnpm, "exec", "supabase", "status", "--output", "env"])
+    status = _run_captured(
+        [pnpm, "exec", "supabase", "status", "--output", "env"],
+        timeout_seconds=90,
+    )
     if status.returncode != 0:
         pytest.fail("local Supabase status failed")
     values = _parse_env_output(status.stdout)

@@ -24,6 +24,8 @@ _WORKER_LOG_FIELDS = {
     "run_execution_lease_rejected": frozenset({"checkpoint", "run_id"}),
     "run_execution_provider_failed": frozenset({"error_class", "run_id"}),
     "run_execution_retryable_failure": frozenset({"reason", "run_id"}),
+    "run_worker_close_failed": frozenset({"error_class"}),
+    "run_worker_poll_failed": frozenset({"error_class", "restart_delay_seconds"}),
     "service_started": frozenset({"payload_contract"}),
     "service_stopped": frozenset({"payload_contract"}),
 }

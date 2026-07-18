@@ -74,6 +74,7 @@ def local_supabase() -> LocalSupabase:
         pytest.fail("pnpm executable is unavailable")
     status = _run_captured(
         [pnpm, "exec", "supabase", "status", "--output", "env"],
+        timeout_seconds=90,
     )
     if status.returncode != 0:
         pytest.fail("local Supabase status failed; start the disposable local stack first")

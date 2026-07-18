@@ -6,8 +6,10 @@ import asyncio
 import importlib.metadata
 import platform
 import signal
+import subprocess
 import sys
 from contextlib import suppress
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -76,6 +78,21 @@ class ProbeWorker(Worker):
             await self.on_shutdown(self.ctx)
         await self.pool.aclose(close_connection_pool=True)
         self._pool = None
+
+
+def _start_crash_worker() -> subprocess.Popen[bytes]:
+    return subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "arq",
+            "tests.integration.arq_crash_worker.WorkerSettings",
+            "--no-burst",
+        ],
+        cwd=Path(__file__).resolve().parents[2],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
 
 
 def redis_settings() -> RedisSettings:
@@ -166,7 +183,7 @@ async def test_hard_crash_redelivers_without_duplicate_durable_effect() -> None:
         job_deserializer=canonical_json_loads,
         job_serializer=canonical_json_dumps,
     )
-    process: asyncio.subprocess.Process | None = None
+    process: subprocess.Popen[bytes] | None = None
     probe_id = CRASH_PROBE_ID
     job_id = CRASH_JOB_ID
     try:
@@ -175,15 +192,7 @@ async def test_hard_crash_redelivers_without_duplicate_durable_effect() -> None:
         job = await pool.enqueue_job("crash_probe", probe_id, _job_id=job_id)
         assert job is not None
 
-        process = await asyncio.create_subprocess_exec(
-            sys.executable,
-            "-m",
-            "arq",
-            "tests.integration.arq_crash_worker.WorkerSettings",
-            "--no-burst",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
+        process = await asyncio.to_thread(_start_crash_worker)
         await wait_for_key(
             pool,
             redis_test_state_key("started", probe_id),
@@ -191,7 +200,7 @@ async def test_hard_crash_redelivers_without_duplicate_durable_effect() -> None:
             deadline_seconds=5,
         )
         process.kill()
-        await asyncio.wait_for(process.wait(), timeout=5)
+        await asyncio.to_thread(process.communicate, timeout=5)
 
         await wait_for_key(
             pool,
@@ -209,9 +218,9 @@ async def test_hard_crash_redelivers_without_duplicate_durable_effect() -> None:
         assert await pool.get(redis_test_state_key("effect", probe_id)) == b"once"
         assert int(await pool.get(redis_test_state_key("delivery", probe_id))) == 2
     finally:
-        if process is not None and process.returncode is None:
+        if process is not None and process.poll() is None:
             process.kill()
-            await process.wait()
+            await asyncio.to_thread(process.communicate, timeout=5)
         await clean_test_owned_state(pool, job_ids=(job_id,), probe_ids=(probe_id,))
         await pool.aclose()
 

@@ -11,8 +11,10 @@ from typing import Literal, Protocol, cast
 from uuid import UUID
 
 import structlog
-from arq.worker import Retry
+from arq.connections import ArqRedis
+from arq.worker import Retry, Worker
 from pydantic import ValidationError
+from redis.exceptions import RedisError
 from simula_core.arq_codec import (
     ARQ_QUEUE_NAME,
     MAX_ARQ_TRIES,
@@ -44,6 +46,7 @@ logger = structlog.get_logger()
 _SAFE_CLAIM_REJECTION_REASONS = frozenset(
     {"awaiting_confirmation", "busy", "no_work", "organization_capacity"}
 )
+WORKER_RESTART_DELAY_SECONDS = 1.0
 
 
 def _signals() -> Iterable[signal.Signals]:
@@ -134,6 +137,93 @@ async def _dispatch_forever(
             continue
 
 
+def _create_arq_worker(
+    redis: ArqRedis,
+    database: WorkerDatabase,
+    telemetry: WorkerTelemetry,
+) -> Worker:
+    return Worker(
+        functions=[process_run_v1],
+        queue_name=ARQ_QUEUE_NAME,
+        redis_pool=redis,
+        handle_signals=False,
+        max_jobs=4,
+        max_tries=MAX_ARQ_TRIES,
+        job_timeout=30,
+        poll_delay=0.25,
+        job_serializer=arq_json_dumps,
+        job_deserializer=arq_json_loads,
+        ctx={
+            "database": database,
+            "provider": DeterministicMockProvider(),
+            "telemetry": telemetry,
+        },
+    )
+
+
+async def _close_arq_worker(worker: Worker, redis: ArqRedis) -> None:
+    """Close pinned ARQ safely on Windows and always release its private pool."""
+
+    if not hasattr(signal, "SIGUSR1"):
+        # ARQ 0.28 close() unconditionally references POSIX-only SIGUSR1 when
+        # handle_signals=False. Signal with the available equivalent first,
+        # then suppress only that duplicate internal signal step.
+        worker.handle_sig(signal.SIGTERM)
+        worker._handle_signals = True
+    try:
+        await worker.close()
+    except RedisError as error:
+        logger.warning("run_worker_close_failed", error_class=type(error).__name__)
+    finally:
+        await redis.aclose(close_connection_pool=True)
+
+
+async def _run_arq_worker_forever(
+    stop: asyncio.Event,
+    *,
+    settings: WorkerSettings,
+    database: WorkerDatabase,
+    telemetry: WorkerTelemetry,
+) -> None:
+    """Restart only bounded transport-poll failures; unknown failures remain fatal."""
+
+    while not stop.is_set():
+        redis = create_queue_client(settings.redis_url, max_connections=4)
+        worker = _create_arq_worker(redis, database, telemetry)
+        worker_task = asyncio.create_task(worker.async_run(), name="arq-poll-loop")
+        stop_task = asyncio.create_task(stop.wait(), name="arq-poll-stop")
+        try:
+            done, _pending = await asyncio.wait(
+                {worker_task, stop_task}, return_when=asyncio.FIRST_COMPLETED
+            )
+            if stop_task in done:
+                worker_task.cancel()
+                await asyncio.gather(worker_task, return_exceptions=True)
+                return
+            await worker_task
+            if not stop.is_set():
+                raise RuntimeError("ARQ worker poll loop exited unexpectedly")
+        except asyncio.CancelledError:
+            raise
+        except RedisError as error:
+            telemetry.set_dependency_ready("queue", False)
+            logger.error(
+                "run_worker_poll_failed",
+                error_class=type(error).__name__,
+                restart_delay_seconds=WORKER_RESTART_DELAY_SECONDS,
+            )
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=WORKER_RESTART_DELAY_SECONDS)
+            except TimeoutError:
+                continue
+        finally:
+            for task in (worker_task, stop_task):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(worker_task, stop_task, return_exceptions=True)
+            await _close_arq_worker(worker, redis)
+
+
 async def serve() -> None:
     """Run the strict worker with bounded dependencies and graceful signal shutdown."""
 
@@ -150,45 +240,33 @@ async def serve() -> None:
     metadata = RuntimeMetadata.from_environment(service="worker")
     database = WorkerDatabase(settings)
     await database.open()
-    redis = create_queue_client(settings.redis_url, max_connections=8)
+    dispatcher_redis = create_queue_client(settings.redis_url, max_connections=4)
     telemetry = WorkerTelemetry()
     metrics_server = WorkerMetricsServer(telemetry, port=settings.metrics_port)
     await metrics_server.start()
-    worker = None
     worker_task: asyncio.Task[None] | None = None
     dispatcher_task: asyncio.Task[None] | None = None
     try:
-        from arq.worker import Worker
-
-        worker = Worker(
-            functions=[process_run_v1],
-            queue_name=ARQ_QUEUE_NAME,
-            redis_pool=redis,
-            handle_signals=False,
-            max_jobs=4,
-            max_tries=MAX_ARQ_TRIES,
-            job_timeout=30,
-            poll_delay=0.25,
-            job_serializer=arq_json_dumps,
-            job_deserializer=arq_json_loads,
-            ctx={
-                "database": database,
-                "provider": DeterministicMockProvider(),
-                "telemetry": telemetry,
-            },
-        )
         dispatcher = RunDispatcher(
             database,
-            RedisRunQueue(cast(RedisDispatchClient, redis)),
+            RedisRunQueue(cast(RedisDispatchClient, dispatcher_redis)),
             telemetry=telemetry,
         )
-        worker_task = asyncio.create_task(worker.async_run(), name="arq-worker")
+        worker_task = asyncio.create_task(
+            _run_arq_worker_forever(
+                stop,
+                settings=settings,
+                database=database,
+                telemetry=telemetry,
+            ),
+            name="arq-worker-supervisor",
+        )
         dispatcher_task = asyncio.create_task(
             _dispatch_forever(
                 dispatcher,
                 stop,
                 database=database,
-                queue=cast(ReadinessQueue, redis),
+                queue=cast(ReadinessQueue, dispatcher_redis),
                 telemetry=telemetry,
             ),
             name="run-dispatcher",
@@ -210,8 +288,7 @@ async def serve() -> None:
         if worker_task is not None and not worker_task.done():
             worker_task.cancel()
             await asyncio.gather(worker_task, return_exceptions=True)
-        if worker is not None:
-            await worker.close()
+        await dispatcher_redis.aclose(close_connection_pool=True)
         telemetry.set_dependency_ready("database", False)
         telemetry.set_dependency_ready("queue", False)
         await database.close()

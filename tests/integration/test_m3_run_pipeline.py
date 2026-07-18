@@ -303,22 +303,27 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
         stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
 
         run_key = f"m3-run-{suffix}"
-        created_run = await client.post(
-            f"/api/v1/projects/{project_id}/runs",
-            headers=_headers(owner_token, run_key),
-            json={"stimulus_version_id": str(stimulus_version_id)},
-        )
-        responses = [
-            created_run,
-            *[
-                await client.post(
+        first_batch = await asyncio.gather(
+            *(
+                client.post(
                     f"/api/v1/projects/{project_id}/runs",
                     headers=_headers(owner_token, run_key),
                     json={"stimulus_version_id": str(stimulus_version_id)},
                 )
-                for _ in range(20)
-            ],
-        ]
+                for _ in range(10)
+            )
+        )
+        second_batch = await asyncio.gather(
+            *(
+                client.post(
+                    f"/api/v1/projects/{project_id}/runs",
+                    headers=_headers(owner_token, run_key),
+                    json={"stimulus_version_id": str(stimulus_version_id)},
+                )
+                for _ in range(10)
+            )
+        )
+        responses = [*first_batch, *second_batch]
         assert {response.status_code for response in responses} == {202}
         assert len({response.json()["id"] for response in responses}) == 1
         assert (
@@ -435,6 +440,85 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
         )
         assert canceled_retry.status_code == 200
         assert canceled_retry.json()["state"] == "canceled"
+
+        deletion_proof = _run_as_local_supabase_admin(
+            """
+            begin;
+            create temporary table deletion_target (organization_id uuid primary key)
+              on commit drop;
+            insert into deletion_target values (:'organization_id'::uuid);
+            do $test$
+            declare
+              target_organization_id uuid := (
+                select organization_id from deletion_target
+              );
+            begin
+              if not exists (
+                select 1 from api.simulation_results
+                where organization_id = target_organization_id
+              ) or not exists (
+                select 1 from private.run_attempts
+                where organization_id = target_organization_id
+              ) or not exists (
+                select 1 from private.run_events
+                where organization_id = target_organization_id
+              ) or not exists (
+                select 1 from private.run_outbox
+                where organization_id = target_organization_id
+              ) then
+                raise exception 'deletion fixture is missing terminal run graph rows';
+              end if;
+
+              delete from api.organizations
+              where id = target_organization_id;
+
+              if exists (
+                select 1 from api.organizations
+                where id = target_organization_id
+              ) or exists (
+                select 1 from api.organization_memberships
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from api.projects
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from api.stimuli
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from api.stimulus_versions
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from api.simulation_runs
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from api.simulation_results
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from private.run_attempts
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from private.run_events
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from private.run_outbox
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from private.idempotency_keys
+                where organization_id = target_organization_id
+              ) or exists (
+                select 1 from private.audit_events
+                where organization_id = target_organization_id
+              ) then
+                raise exception 'organization deletion left Phase 2 graph residue';
+              end if;
+            end
+            $test$;
+            commit;
+            select 'deleted';
+            """,
+            organization_id=organization_id,
+        )
+        assert deletion_proof.splitlines()[-1] == "deleted"
 
 
 @pytest.mark.integration
