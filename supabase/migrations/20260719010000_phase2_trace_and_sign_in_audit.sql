@@ -58,6 +58,7 @@ with check (
   )
 );
 
+set role postgres;
 grant create on schema private to simula_command_owner;
 set role simula_command_owner;
 
@@ -199,7 +200,8 @@ grant execute on function private.record_sign_in_success(uuid, uuid)
   to simula_api;
 set role postgres;
 revoke create on schema private from simula_command_owner;
-reset role;
+grant create on schema api to simula_command_owner;
+set role simula_command_owner;
 
 create function api.create_simulation_run(
   requested_project_id uuid,
@@ -258,6 +260,8 @@ grant execute on function api.create_simulation_run(uuid, uuid, text, text, uuid
 grant execute on function api.record_sign_in_success(uuid, uuid)
   to simula_api;
 
+set role postgres;
+revoke create on schema api from simula_command_owner;
 grant create on schema private to simula_worker_owner;
 set role simula_worker_owner;
 
