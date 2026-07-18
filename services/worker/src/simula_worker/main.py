@@ -25,6 +25,8 @@ from simula_core.runtime import RuntimeMetadata
 from simula_core.simulation import (
     AudienceCell,
     DeterministicMockProvider,
+    ProviderPreflightUnavailableError,
+    ProviderRateLimitedError,
     ProviderRequest,
     SimulationProvider,
     SimulationResultV1,
@@ -212,13 +214,19 @@ async def process_run_v1(
         result: SimulationResultV1 = provider.run(request)
     except asyncio.CancelledError:
         raise
-    except TimeoutError:
-        logger.warning("run_execution_timed_out", run_id=str(context_run_id))
+    except (TimeoutError, ProviderPreflightUnavailableError, ProviderRateLimitedError) as error:
+        if isinstance(error, TimeoutError):
+            safe_error_code = "execution_timed_out"
+        elif isinstance(error, ProviderRateLimitedError):
+            safe_error_code = "execution_rate_limited"
+        else:
+            safe_error_code = "execution_provider_preflight_unavailable"
+        logger.warning("run_execution_retryable_failure", run_id=str(context_run_id))
         resolution = await database.fail_execution(
             context_run_id,
             claim.attempt_id,
             claim.lease_token,
-            "execution_timed_out",
+            safe_error_code,
             True,
         )
         if resolution.state == "retrying":

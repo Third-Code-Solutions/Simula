@@ -4,7 +4,13 @@ from uuid import UUID
 import pytest
 from arq.worker import Retry
 from simula_core.runtime import RuntimeMetadata
-from simula_core.simulation import DeterministicMockProvider, ProviderRequest, SimulationResultV1
+from simula_core.simulation import (
+    DeterministicMockProvider,
+    ProviderPreflightUnavailableError,
+    ProviderRateLimitedError,
+    ProviderRequest,
+    SimulationResultV1,
+)
 from simula_worker.database import ExecutionClaim, FailureResolution
 from simula_worker.main import process_run_v1
 
@@ -71,6 +77,24 @@ class TimeoutProvider:
     def run(self, request: ProviderRequest) -> SimulationResultV1:
         self.requests.append(request)
         raise TimeoutError
+
+
+class PreflightUnavailableProvider:
+    def __init__(self) -> None:
+        self.requests: list[object] = []
+
+    def run(self, request: ProviderRequest) -> SimulationResultV1:
+        self.requests.append(request)
+        raise ProviderPreflightUnavailableError
+
+
+class RateLimitedProvider:
+    def __init__(self) -> None:
+        self.requests: list[object] = []
+
+    def run(self, request: ProviderRequest) -> SimulationResultV1:
+        self.requests.append(request)
+        raise ProviderRateLimitedError
 
 
 def _claim(*, status: str) -> ExecutionClaim:
@@ -205,4 +229,34 @@ async def test_worker_defers_only_the_database_authorized_timeout_retry() -> Non
             "execution_timed_out",
             True,
         )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("provider_type", "safe_error_code"),
+    [
+        (PreflightUnavailableProvider, "execution_provider_preflight_unavailable"),
+        (RateLimitedProvider, "execution_rate_limited"),
+    ],
+)
+async def test_worker_defers_only_database_authorized_safe_provider_failures(
+    provider_type: type[PreflightUnavailableProvider] | type[RateLimitedProvider],
+    safe_error_code: str,
+) -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim, FailureResolution(state="retrying", retry_after_seconds=5))
+    provider = provider_type()
+
+    with pytest.raises(Retry) as raised:
+        await process_run_v1(
+            {"job_id": f"run:{run_id}:dispatch:1"},
+            {"schema_version": 1, "run_id": str(run_id)},
+            database=database,
+            provider=provider,
+        )
+
+    assert raised.value.defer_score == 5000
+    assert database.completions == []
+    assert database.failures == [
+        (run_id, claim.attempt_id, claim.lease_token, safe_error_code, True)
     ]

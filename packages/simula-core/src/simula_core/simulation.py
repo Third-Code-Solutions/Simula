@@ -38,6 +38,14 @@ HUMAN_RESEARCH_RECOMMENDATION: HumanResearchText = (
 )
 
 
+class ProviderPreflightUnavailableError(RuntimeError):
+    """A provider adapter failed before it could submit any provider work."""
+
+
+class ProviderRateLimitedError(RuntimeError):
+    """A provider explicitly rejected the request before provider work began."""
+
+
 class StrictFrozenModel(BaseModel):
     """Closed immutable model used for frozen provider and result contracts."""
 

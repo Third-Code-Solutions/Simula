@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import secrets
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
-from typing import cast
+from typing import Protocol, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -14,7 +14,13 @@ from redis.asyncio import Redis, from_url
 from simula_api.app import create_app
 from simula_core.arq_codec import ARQ_QUEUE_NAME, job_id_for
 from simula_core.queue_runtime import create_queue_client
-from simula_core.simulation import DeterministicMockProvider, ProviderRequest, SimulationResultV1
+from simula_core.simulation import (
+    DeterministicMockProvider,
+    ProviderPreflightUnavailableError,
+    ProviderRateLimitedError,
+    ProviderRequest,
+    SimulationResultV1,
+)
 from simula_worker.config import WorkerSettings
 from simula_worker.database import ExecutionClaim, WorkerDatabase
 from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
@@ -548,9 +554,41 @@ class _TimeoutProvider:
         raise TimeoutError
 
 
+class _PreflightUnavailableProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def run(self, request: ProviderRequest) -> SimulationResultV1:
+        del request
+        self.calls += 1
+        raise ProviderPreflightUnavailableError
+
+
+class _RateLimitedProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def run(self, request: ProviderRequest) -> SimulationResultV1:
+        del request
+        self.calls += 1
+        raise ProviderRateLimitedError
+
+
+class _RetryableFailureProvider(Protocol):
+    calls: int
+
+    def run(self, request: ProviderRequest) -> SimulationResultV1: ...
+
+
+@pytest.mark.parametrize(
+    "provider_factory",
+    [_TimeoutProvider, _PreflightUnavailableProvider, _RateLimitedProvider],
+    ids=["timeout", "preflight-unavailable", "rate-limited"],
+)
 @pytest.mark.integration
-async def test_p2_timeout_retries_use_database_backoff_then_exhaust(
+async def test_p2_retryable_provider_failures_use_database_backoff_then_exhaust(
     monkeypatch: pytest.MonkeyPatch,
+    provider_factory: Callable[[], _RetryableFailureProvider],
 ) -> None:
     local_supabase = _local_supabase()
     owner_token = _sign_in(local_supabase, OWNER_A)
@@ -588,7 +626,7 @@ async def test_p2_timeout_retries_use_database_backoff_then_exhaust(
         run_id = UUID(created_run.json()["id"])
         job_id = job_id_for(run_id, generation=1)
         queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
-        provider = _TimeoutProvider()
+        provider = provider_factory()
         try:
             async with _worker_database(monkeypatch) as worker_database:
                 dispatcher = RunDispatcher(
