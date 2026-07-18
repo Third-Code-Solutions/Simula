@@ -937,10 +937,10 @@ def test_executor_timeout_kills_stubborn_descendant_after_leader_exits(
         (
             "import pathlib, subprocess, sys, time",
             "child = subprocess.Popen([sys.executable, '-c', sys.argv[3], sys.argv[2]])",
+            "pathlib.Path(sys.argv[1]).write_text(str(child.pid), encoding='utf-8')",
             "ready = pathlib.Path(sys.argv[2])",
             "deadline = time.monotonic() + 5",
             "while not ready.exists() and time.monotonic() < deadline: time.sleep(0.01)",
-            "pathlib.Path(sys.argv[1]).write_text(str(child.pid), encoding='utf-8')",
         )
     )
 
@@ -956,7 +956,7 @@ def test_executor_timeout_kills_stubborn_descendant_after_leader_exits(
             ),
             cwd=tmp_path,
             output=OutputMode.CAPTURE,
-            timeout_seconds=0.5,
+            timeout_seconds=2.0,
             docker_context=None,
         )
 
