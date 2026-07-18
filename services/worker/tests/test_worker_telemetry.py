@@ -4,8 +4,14 @@ import asyncio
 from time import time
 
 import pytest
-from simula_worker.main import _refresh_dependency_readiness
+from simula_worker.database import RunCreationControl
+from simula_worker.main import (
+    _queue_memory_percent,
+    _refresh_dependency_readiness,
+    _refresh_run_creation_control,
+)
 from simula_worker.telemetry import WorkerMetricsServer, WorkerTelemetry
+from structlog.testing import capture_logs
 
 
 def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -> None:
@@ -14,7 +20,12 @@ def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -
     telemetry.observe_dispatch("confirmed", count=2)
     telemetry.observe_provider("completed")
     telemetry.set_dependency_ready("database", True)
-    telemetry.set_queue_snapshot(depth=3, oldest_ready_age_seconds=1.5)
+    telemetry.set_queue_snapshot(
+        depth=3,
+        oldest_ready_age_seconds=1.5,
+        memory_percent=50.0,
+    )
+    telemetry.set_run_creation_control(enabled=False, alert_reason="poison_outbox")
 
     rendered = telemetry.render().decode()
 
@@ -24,6 +35,9 @@ def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -
     assert "simula_worker_external_provider_calls_total 0.0" in rendered
     assert "simula_worker_queue_depth 3.0" in rendered
     assert "simula_worker_queue_oldest_ready_age_seconds 1.5" in rendered
+    assert "simula_worker_queue_memory_percent 50.0" in rendered
+    assert "simula_worker_run_creation_enabled 0.0" in rendered
+    assert 'simula_worker_run_control_alert_active{reason="poison_outbox"} 1.0' in rendered
     assert "run_id" not in rendered
     with pytest.raises(ValueError, match="not allowlisted"):
         telemetry.observe_job("sensitive-unbounded-status", duration_seconds=0)
@@ -78,13 +92,62 @@ class _ReadyQueue:
         assert withscores
         return [(b"job", (time() - 2) * 1000)]
 
+    async def info(self, section: str) -> dict[str, int]:
+        assert section == "memory"
+        return {"used_memory": 64, "maxmemory": 128}
+
 
 async def test_worker_dependency_probe_refreshes_queue_readiness_and_age() -> None:
     telemetry = WorkerTelemetry()
 
-    await _refresh_dependency_readiness(_ReadyDatabase(), _ReadyQueue(), telemetry)
+    memory_percent = await _refresh_dependency_readiness(_ReadyDatabase(), _ReadyQueue(), telemetry)
 
     rendered = telemetry.render().decode()
     assert 'simula_worker_dependency_ready{dependency="database"} 1.0' in rendered
     assert 'simula_worker_dependency_ready{dependency="queue"} 1.0' in rendered
     assert "simula_worker_queue_depth 2.0" in rendered
+    assert "simula_worker_queue_memory_percent 50.0" in rendered
+    assert memory_percent == 50.0
+
+
+def test_worker_queue_memory_snapshot_is_bounded() -> None:
+    assert _queue_memory_percent({"used_memory": 200, "maxmemory": 100}) == 100.0
+    assert _queue_memory_percent({"used_memory": 200, "maxmemory": 0}) == 0.0
+    with pytest.raises(ValueError, match="malformed"):
+        _queue_memory_percent("sensitive-unbounded-memory-response")
+
+
+class _CriticalControlDatabase:
+    async def evaluate_run_creation_control(
+        self, redis_memory_percent: float, poisoned_count: int
+    ) -> RunCreationControl:
+        assert redis_memory_percent == 91.0
+        assert poisoned_count == 0
+        return RunCreationControl(
+            enabled=False,
+            alert_reason="redis_memory_critical",
+            changed=True,
+        )
+
+
+async def test_worker_emits_bounded_alert_when_run_creation_latches_closed() -> None:
+    telemetry = WorkerTelemetry()
+
+    with capture_logs() as logs:
+        await _refresh_run_creation_control(
+            _CriticalControlDatabase(),
+            telemetry,
+            redis_memory_percent=91.0,
+            poisoned_count=0,
+        )
+
+    assert logs == [
+        {
+            "event": "run_creation_disabled",
+            "log_level": "warning",
+            "reason": "redis_memory_critical",
+        }
+    ]
+    rendered = telemetry.render().decode()
+    assert "simula_worker_run_creation_enabled 0.0" in rendered
+    assert 'simula_worker_run_control_alert_active{reason="redis_memory_critical"} 1.0' in rendered

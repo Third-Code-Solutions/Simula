@@ -35,6 +35,14 @@ _JOB_OUTCOMES = frozenset(
     }
 )
 _PROVIDER_OUTCOMES = frozenset({"completed", "failed", "retryable_failure"})
+_RUN_CONTROL_ALERT_REASONS = frozenset(
+    {
+        "oldest_undispatched_critical",
+        "operator_manual",
+        "poison_outbox",
+        "redis_memory_critical",
+    }
+)
 _MAX_REQUEST_BYTES = 16 * 1024
 _PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"
 
@@ -90,9 +98,28 @@ class WorkerTelemetry:
             "Age of the oldest ready queue job, or zero when none is ready.",
             registry=self.registry,
         )
+        self._queue_memory_percent = Gauge(
+            "simula_worker_queue_memory_percent",
+            "Redis memory use as a bounded percentage of configured maxmemory.",
+            registry=self.registry,
+        )
+        self._run_creation_enabled = Gauge(
+            "simula_worker_run_creation_enabled",
+            "Whether durable run admission is enabled.",
+            registry=self.registry,
+        )
+        self._run_control_alert = Gauge(
+            "simula_worker_run_control_alert_active",
+            "Active durable run-control alert by bounded reason.",
+            ("reason",),
+            registry=self.registry,
+        )
         for dependency in sorted(_DEPENDENCIES):
             self._dependency_ready.labels(dependency=dependency).set(0)
         self._external_provider_calls.inc(0)
+        self._run_creation_enabled.set(1)
+        for reason in sorted(_RUN_CONTROL_ALERT_REASONS):
+            self._run_control_alert.labels(reason=reason).set(0)
 
     def observe_job(self, outcome: str, *, duration_seconds: float) -> None:
         _require_label(outcome, _JOB_OUTCOMES, name="job outcome")
@@ -116,13 +143,31 @@ class WorkerTelemetry:
         _require_label(dependency, _DEPENDENCIES, name="dependency")
         self._dependency_ready.labels(dependency=dependency).set(1 if ready else 0)
 
-    def set_queue_snapshot(self, *, depth: int, oldest_ready_age_seconds: float) -> None:
+    def set_queue_snapshot(
+        self, *, depth: int, oldest_ready_age_seconds: float, memory_percent: float
+    ) -> None:
         if isinstance(depth, bool) or depth < 0:
             raise ValueError("queue depth must be a non-negative integer")
         if oldest_ready_age_seconds < 0:
             raise ValueError("oldest ready age must be non-negative")
+        if memory_percent < 0 or memory_percent > 100:
+            raise ValueError("queue memory percent must be from zero through 100")
         self._queue_depth.set(depth)
         self._queue_oldest_ready_age.set(oldest_ready_age_seconds)
+        self._queue_memory_percent.set(memory_percent)
+
+    def set_run_creation_control(self, *, enabled: bool, alert_reason: str | None) -> None:
+        if enabled and alert_reason is not None:
+            raise ValueError("enabled run creation cannot have an active alert")
+        if not enabled:
+            if alert_reason is None:
+                raise ValueError("disabled run creation requires an alert reason")
+            _require_label(alert_reason, _RUN_CONTROL_ALERT_REASONS, name="run control alert")
+        self._run_creation_enabled.set(1 if enabled else 0)
+        for reason in sorted(_RUN_CONTROL_ALERT_REASONS):
+            self._run_control_alert.labels(reason=reason).set(
+                1 if not enabled and reason == alert_reason else 0
+            )
 
     def render(self) -> bytes:
         return generate_latest(self.registry)

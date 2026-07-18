@@ -37,7 +37,8 @@ select extensions.is(
     'private.idempotency_keys',
     'private.run_attempts',
     'private.run_events',
-    'private.run_outbox'
+    'private.run_outbox',
+    'private.runtime_controls'
   ]::text[],
   'application table inventory is exact'
 );
@@ -81,6 +82,7 @@ select extensions.is(
     'audit_events_command_cancel_insert',
     'audit_events_command_insert',
     'audit_events_command_sign_in_insert',
+    'audit_events_worker_control_insert',
     'audit_events_worker_owner_insert',
     'idempotency_keys_command_insert',
     'idempotency_keys_command_select',
@@ -106,6 +108,8 @@ select extensions.is(
     'run_outbox_worker_owner_recovery_insert',
     'run_outbox_worker_owner_select',
     'run_outbox_worker_owner_update',
+    'runtime_controls_worker_owner_select',
+    'runtime_controls_worker_owner_update',
     'simulation_results_api_select',
     'simulation_results_worker_owner_insert',
     'simulation_results_worker_owner_select',
@@ -379,7 +383,9 @@ select extensions.is(
     'simula_worker_owner|private.run_events|INSERT',
     'simula_worker_owner|private.run_outbox|INSERT',
     'simula_worker_owner|private.run_outbox|SELECT',
-    'simula_worker_owner|private.run_outbox|UPDATE'
+    'simula_worker_owner|private.run_outbox|UPDATE',
+    'simula_worker_owner|private.runtime_controls|SELECT',
+    'simula_worker_owner|private.runtime_controls|UPDATE'
   ]::text[],
   'application table grant inventory is exact'
 );
@@ -428,6 +434,7 @@ select extensions.ok(
     'private.claim_run_execution(uuid,smallint,text)',
     'private.complete_run_execution(uuid,uuid,uuid,jsonb)',
     'private.confirm_run_dispatch(uuid,uuid)',
+    'private.evaluate_run_creation_control(numeric,integer)',
     'private.fail_run_dispatch(uuid,uuid,text)',
     'private.fail_run_execution(uuid,uuid,uuid,text,boolean)',
     'private.finalize_poisoned_dispatches(integer)',
@@ -495,6 +502,7 @@ select extensions.ok(
           'claim_run_execution_traced',
           'complete_run_execution',
           'confirm_run_dispatch',
+          'evaluate_run_creation_control',
           'fail_run_dispatch',
           'fail_run_execution',
           'enforce_global_run_backpressure',
@@ -513,6 +521,7 @@ select extensions.ok(
           'claim_run_execution_traced',
           'complete_run_execution',
           'confirm_run_dispatch',
+          'evaluate_run_creation_control',
           'fail_run_dispatch',
           'fail_run_execution',
           'enforce_global_run_backpressure',
@@ -560,6 +569,7 @@ select extensions.ok(
         'claim_run_execution_traced',
         'complete_run_execution',
         'confirm_run_dispatch',
+        'evaluate_run_creation_control',
         'fail_run_dispatch',
         'fail_run_execution',
         'enforce_global_run_backpressure',

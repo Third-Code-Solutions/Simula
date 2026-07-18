@@ -896,6 +896,30 @@ export type Database = {
         }
         Relationships: []
       }
+      runtime_controls: {
+        Row: {
+          control_name: string
+          correlation_id: string
+          enabled: boolean
+          reason: string | null
+          updated_at: string
+        }
+        Insert: {
+          control_name: string
+          correlation_id: string
+          enabled: boolean
+          reason?: string | null
+          updated_at?: string
+        }
+        Update: {
+          control_name?: string
+          correlation_id?: string
+          enabled?: boolean
+          reason?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1092,6 +1116,17 @@ export type Database = {
           version_created_at: string
         }[]
       }
+      evaluate_run_creation_control: {
+        Args: {
+          requested_poisoned_count: number
+          requested_redis_memory_percent: number
+        }
+        Returns: {
+          alert_reason: string
+          changed: boolean
+          run_creation_enabled: boolean
+        }[]
+      }
       fail_run_dispatch: {
         Args: {
           requested_claim_token: string
@@ -1214,6 +1249,14 @@ export type Database = {
           schema_version: number
           stimulus_version_id: string
         }[]
+      }
+      set_run_creation_control: {
+        Args: {
+          requested_correlation_id: string
+          requested_enabled: boolean
+          requested_reason: string
+        }
+        Returns: boolean
       }
       update_project_atomic: {
         Args: {

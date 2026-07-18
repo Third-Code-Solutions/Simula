@@ -11,6 +11,9 @@ export default defineConfig({
   use: {
     baseURL: process.env.SIMULA_E2E_BASE_URL ?? "http://127.0.0.1:3000",
     browserName: "chromium",
+    launchOptions: {
+      args: ["--disable-gpu"],
+    },
     screenshot: "only-on-failure",
     trace: "retain-on-failure",
     video: "off",

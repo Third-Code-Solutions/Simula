@@ -6,6 +6,8 @@ import secrets
 from collections.abc import AsyncIterator, Callable
 from contextlib import AsyncExitStack, asynccontextmanager
 from copy import deepcopy
+from math import ceil
+from time import perf_counter
 from typing import Protocol, cast
 from uuid import UUID, uuid4
 
@@ -101,6 +103,8 @@ def _run_as_local_supabase_admin(
     run_id: UUID | None = None,
     organization_id: UUID | None = None,
     attempt_id: UUID | None = None,
+    correlation_id: UUID | None = None,
+    operator_correlation_id: UUID | None = None,
 ) -> str:
     inspect = _run_captured(
         [
@@ -145,6 +149,10 @@ def _run_as_local_supabase_admin(
         command.extend(["-v", f"organization_id={organization_id}"])
     if attempt_id is not None:
         command.extend(["-v", f"attempt_id={attempt_id}"])
+    if correlation_id is not None:
+        command.extend(["-v", f"correlation_id={correlation_id}"])
+    if operator_correlation_id is not None:
+        command.extend(["-v", f"operator_correlation_id={operator_correlation_id}"])
     result = _run_captured(
         command,
         environment={
@@ -204,6 +212,16 @@ async def _remove_exact_queue_keys(job_id: str) -> None:
         await client.aclose()
 
 
+async def _clear_rate_limit_namespace(prefix: str) -> None:
+    client: Redis = from_url(LOCAL_REDIS_URL, decode_responses=True)  # type: ignore[no-untyped-call]
+    try:
+        keys = [key async for key in client.scan_iter(match=f"{prefix}:*")]
+        if keys:
+            await client.delete(*keys)
+    finally:
+        await client.aclose()
+
+
 @asynccontextmanager
 async def _worker_database(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[WorkerDatabase]:
     worker_password = _set_disposable_worker_password()
@@ -235,10 +253,12 @@ async def _worker_replicas(
 
 
 @asynccontextmanager
-async def _api_client(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncClient]:
+async def _api_client(
+    monkeypatch: pytest.MonkeyPatch, *, rate_limit_prefix: str | None = None
+) -> AsyncIterator[AsyncClient]:
     local_supabase = _local_supabase()
     api_password = _set_disposable_api_password()
-    rate_limit_prefix = f"simula:test:m3:{uuid4().hex}"
+    rate_limit_prefix = rate_limit_prefix or f"simula:test:m3:{uuid4().hex}"
     monkeypatch.setenv("SIMULA_ENVIRONMENT", "test")
     monkeypatch.setenv("SIMULA_RELEASE_SHA", "a" * 40)
     monkeypatch.setenv("SIMULA_LOG_LEVEL", "INFO")
@@ -544,6 +564,95 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
 
 
 @pytest.mark.integration
+async def test_p2_deterministic_mock_terminal_result_p95_under_ten_seconds_over_thirty_runs(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-RUN-003: 30 exact local pipeline samples satisfy the Phase 2 CI budget."""
+
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+    rate_prefix = f"simula:test:p95:{suffix}"
+    organization_id: UUID | None = None
+    durations: list[float] = []
+
+    try:
+        async with _api_client(monkeypatch, rate_limit_prefix=rate_prefix) as client:
+            created_organization = await client.post(
+                "/api/v1/organizations",
+                headers=_headers(owner_token, f"p2-p95-org-{suffix}"),
+                json={"name": f"P2 P95 {suffix[:8]}"},
+            )
+            assert created_organization.status_code == 201
+            organization_id = UUID(created_organization.json()["id"])
+            created_project = await client.post(
+                f"/api/v1/organizations/{organization_id}/projects",
+                headers=_headers(owner_token, f"p2-p95-project-{suffix}"),
+                json=_project_payload(f"P2 P95 {suffix[:8]}"),
+            )
+            assert created_project.status_code == 201
+            project_id = UUID(created_project.json()["id"])
+            created_stimulus = await client.post(
+                f"/api/v1/projects/{project_id}/stimuli",
+                headers=_headers(owner_token, f"p2-p95-stimulus-{suffix}"),
+                json={"name": "P2 P95", "content": "Measure fictional deterministic work."},
+            )
+            assert created_stimulus.status_code == 201
+            stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+
+            queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
+            try:
+                async with _worker_database(monkeypatch) as worker_database:
+                    dispatcher = RunDispatcher(
+                        worker_database,
+                        RedisRunQueue(cast(RedisDispatchClient, queue)),
+                    )
+                    for sample in range(30):
+                        await _clear_rate_limit_namespace(rate_prefix)
+                        started_at = perf_counter()
+                        created_run = await client.post(
+                            f"/api/v1/projects/{project_id}/runs",
+                            headers=_headers(owner_token, f"p2-p95-run-{sample}-{suffix}"),
+                            json={"stimulus_version_id": str(stimulus_version_id)},
+                        )
+                        assert created_run.status_code == 202
+                        run_id = UUID(created_run.json()["id"])
+                        job_id = job_id_for(run_id, generation=1)
+                        try:
+                            dispatched = await dispatcher.dispatch_once()
+                            assert dispatched.claimed >= 1
+                            assert dispatched.confirmed == dispatched.claimed
+                            await process_run_v1(
+                                {"job_id": job_id, "job_try": 1},
+                                {"schema_version": 1, "run_id": str(run_id)},
+                                database=worker_database,
+                                provider=DeterministicMockProvider(),
+                            )
+                            result = await client.get(
+                                f"/api/v1/runs/{run_id}/result",
+                                headers={"Authorization": f"Bearer {owner_token}"},
+                            )
+                            assert result.status_code == 200
+                            assert result.json()["result"]["run_id"] == str(run_id)
+                            durations.append(perf_counter() - started_at)
+                        finally:
+                            await _remove_exact_queue_keys(job_id)
+            finally:
+                await queue.aclose(close_connection_pool=True)
+
+        assert len(durations) == 30
+        p95 = sorted(durations)[ceil(0.95 * len(durations)) - 1]
+        assert p95 < 10.0, f"30-run deterministic terminal-result p95 was {p95:.3f}s"
+    finally:
+        await _clear_rate_limit_namespace(rate_prefix)
+        if organization_id is not None:
+            _run_as_local_supabase_admin(
+                "delete from api.organizations where id = :'organization_id'::uuid;",
+                organization_id=organization_id,
+            )
+
+
+@pytest.mark.integration
 async def test_p2_result_write_boundary_rejects_nested_contract_drift(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -716,6 +825,145 @@ async def test_p2_stalled_outbox_backpressure_rejects_new_run_but_allows_replay(
             )
         if job_id is not None:
             await _remove_exact_queue_keys(job_id)
+
+
+@pytest.mark.integration
+async def test_p2_critical_queue_signal_latches_run_creation_until_operator_recovery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+    operator_correlation_id = uuid4()
+    run_ids: list[UUID] = []
+
+    try:
+        async with _api_client(monkeypatch) as client:
+            created_organization = await client.post(
+                "/api/v1/organizations",
+                headers=_headers(owner_token, f"p2-control-org-{suffix}"),
+                json={"name": f"P2 Control {suffix[:8]}"},
+            )
+            assert created_organization.status_code == 201
+            organization_id = UUID(created_organization.json()["id"])
+            created_project = await client.post(
+                f"/api/v1/organizations/{organization_id}/projects",
+                headers=_headers(owner_token, f"p2-control-project-{suffix}"),
+                json=_project_payload(f"P2 Control {suffix[:8]}"),
+            )
+            assert created_project.status_code == 201
+            project_id = UUID(created_project.json()["id"])
+            created_stimulus = await client.post(
+                f"/api/v1/projects/{project_id}/stimuli",
+                headers=_headers(owner_token, f"p2-control-stimulus-{suffix}"),
+                json={"name": "P2 Control", "content": "Try fictional control now."},
+            )
+            assert created_stimulus.status_code == 201
+            stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+            first_key = f"p2-control-run-{suffix}"
+            first = await client.post(
+                f"/api/v1/projects/{project_id}/runs",
+                headers=_headers(owner_token, first_key),
+                json={"stimulus_version_id": str(stimulus_version_id)},
+            )
+            assert first.status_code == 202
+            first_run_id = UUID(first.json()["id"])
+            run_ids.append(first_run_id)
+
+            async with _worker_database(monkeypatch) as worker_database:
+                control = await worker_database.evaluate_run_creation_control(91.0, 0)
+            assert control.enabled is False
+            assert control.alert_reason == "redis_memory_critical"
+            assert control.changed is True
+            worker_correlation_id = UUID(
+                _run_as_local_supabase_admin(
+                    """
+                    set role postgres;
+                    select correlation_id
+                    from private.runtime_controls
+                    where control_name = 'run_creation';
+                    """
+                ).splitlines()[-1]
+            )
+
+            blocked = await client.post(
+                f"/api/v1/projects/{project_id}/runs",
+                headers=_headers(owner_token, f"p2-control-blocked-{suffix}"),
+                json={"stimulus_version_id": str(stimulus_version_id)},
+            )
+            assert blocked.status_code == 503
+            assert blocked.headers["retry-after"] == "30"
+            assert blocked.json()["code"] == "queue_backpressure"
+
+            _run_as_local_supabase_admin(
+                """
+                set role postgres;
+                select private.set_run_creation_control(
+                  true,
+                  'operator_recovery_verified',
+                  :'correlation_id'::uuid
+                );
+                """,
+                correlation_id=operator_correlation_id,
+            )
+
+            async with _api_client(monkeypatch) as recovered_client:
+                admitted = await recovered_client.post(
+                    f"/api/v1/projects/{project_id}/runs",
+                    headers=_headers(owner_token, f"p2-control-recovered-{suffix}"),
+                    json={"stimulus_version_id": str(stimulus_version_id)},
+                )
+                assert admitted.status_code == 202
+                run_ids.append(UUID(admitted.json()["id"]))
+
+            audit_counts = _run_as_local_supabase_admin(
+                """
+                set role postgres;
+                select
+                    count(*) filter (
+                      where action = 'operator.run_creation_disabled'
+                        and source_service = 'worker'
+                        and correlation_id = :'correlation_id'::uuid
+                    ),
+                  count(*) filter (
+                    where action = 'operator.run_creation_enabled'
+                      and source_service = 'operator'
+                      and correlation_id = :'operator_correlation_id'::uuid
+                  )
+                from private.audit_events
+                where object_type = 'runtime_control';
+                """,
+                correlation_id=worker_correlation_id,
+                operator_correlation_id=operator_correlation_id,
+            )
+            assert audit_counts.endswith("1|1")
+    finally:
+        cleanup_correlation_id = uuid4()
+        _run_as_local_supabase_admin(
+            """
+            set role postgres;
+            select private.set_run_creation_control(
+              true,
+              'operator_recovery_verified',
+              :'correlation_id'::uuid
+            );
+            """,
+            correlation_id=cleanup_correlation_id,
+        )
+        for run_id in run_ids:
+            _run_as_local_supabase_admin(
+                """
+                update private.run_outbox
+                set status = 'terminal',
+                    claim_token = null,
+                    claim_expires_at = null,
+                    confirmed_at = null,
+                    terminal_error_code = 'integration_control_cleanup'
+                where run_id = :'run_id'::uuid;
+                """,
+                run_id=run_id,
+            )
+            await _remove_exact_queue_keys(job_id_for(run_id, generation=1))
 
 
 @pytest.mark.integration

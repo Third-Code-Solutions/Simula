@@ -56,6 +56,15 @@ class FailureResolution:
     retry_after_seconds: int | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class RunCreationControl:
+    """Durable admission latch and its bounded active alert."""
+
+    enabled: bool
+    alert_reason: str | None
+    changed: bool
+
+
 class WorkerExecutionGateway(Protocol):
     """Lease-bound execution mutations available to the ARQ handler."""
 
@@ -152,6 +161,19 @@ class WorkerDatabase(WorkerExecutionGateway):
             (requested_batch_size, force_recovery),
         )
         return int(row["reconciled"])
+
+    async def evaluate_run_creation_control(
+        self, redis_memory_percent: float, poisoned_count: int
+    ) -> RunCreationControl:
+        row = await self._fetchone(
+            "select * from private.evaluate_run_creation_control(%s::numeric, %s::integer)",
+            (redis_memory_percent, poisoned_count),
+        )
+        return RunCreationControl(
+            enabled=bool(row["run_creation_enabled"]),
+            alert_reason=cast(str | None, row["alert_reason"]),
+            changed=bool(row["changed"]),
+        )
 
     async def confirm_dispatch(self, outbox_id: UUID, claim_token: UUID) -> bool:
         return await self._boolean_function(

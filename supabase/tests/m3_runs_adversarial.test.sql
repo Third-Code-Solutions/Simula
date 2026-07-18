@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(19);
+select extensions.plan(24);
 
 select extensions.has_function(
   'api',
@@ -194,6 +194,70 @@ select extensions.ok(
       and definitions.indisunique
   ),
   'one successful sign-in audit exists per Supabase session'
+);
+
+select extensions.has_table(
+  'private',
+  'runtime_controls',
+  'run admission has one durable operator-controlled latch'
+);
+
+select extensions.has_function(
+  'private',
+  'evaluate_run_creation_control',
+  array['numeric', 'integer']::text[],
+  'worker evaluates only a bounded critical operational snapshot'
+);
+
+select extensions.has_function(
+  'private',
+  'set_run_creation_control',
+  array['boolean', 'text', 'uuid']::text[],
+  'operator can explicitly disable or re-enable run admission'
+);
+
+select extensions.ok(
+  pg_catalog.has_function_privilege(
+    'simula_worker',
+    'private.evaluate_run_creation_control(numeric,integer)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and not pg_catalog.has_function_privilege(
+    'simula_api',
+    'private.evaluate_run_creation_control(numeric,integer)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and pg_catalog.has_function_privilege(
+    'postgres',
+    'private.set_run_creation_control(boolean,text,uuid)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and not pg_catalog.has_function_privilege(
+    'simula_api',
+    'private.set_run_creation_control(boolean,text,uuid)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and not pg_catalog.has_function_privilege(
+    'simula_worker',
+    'private.set_run_creation_control(boolean,text,uuid)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and not pg_catalog.has_table_privilege(
+    'simula_worker',
+    'private.runtime_controls'::pg_catalog.regclass,
+    'SELECT,INSERT,UPDATE,DELETE'
+  ),
+  'runtime and operator control capabilities remain exactly separated'
+);
+
+select extensions.is(
+  (
+    select controls.enabled
+    from private.runtime_controls as controls
+    where controls.control_name = 'run_creation'
+  ),
+  true,
+  'fresh environments admit runs until a critical signal latches them closed'
 );
 
 select * from extensions.finish();

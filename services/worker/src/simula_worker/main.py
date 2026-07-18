@@ -39,7 +39,12 @@ from simula_core.trace_context import TraceContext
 from structlog.contextvars import bound_contextvars
 
 from simula_worker.config import WorkerSettings
-from simula_worker.database import ExecutionClaim, WorkerDatabase, WorkerExecutionGateway
+from simula_worker.database import (
+    ExecutionClaim,
+    RunCreationControl,
+    WorkerDatabase,
+    WorkerExecutionGateway,
+)
 from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
 from simula_worker.telemetry import JobObservation, WorkerMetricsServer, WorkerTelemetry
 
@@ -62,9 +67,17 @@ class ReadinessQueue(Protocol):
 
     async def zrange(self, name: str, start: int, end: int, *, withscores: bool) -> object: ...
 
+    async def info(self, section: str) -> object: ...
+
 
 class ReadinessDatabase(Protocol):
     async def ready(self) -> bool: ...
+
+
+class RunControlDatabase(Protocol):
+    async def evaluate_run_creation_control(
+        self, redis_memory_percent: float, poisoned_count: int
+    ) -> RunCreationControl: ...
 
 
 async def _probe_ready(probe: Awaitable[object]) -> bool:
@@ -80,7 +93,7 @@ async def _refresh_dependency_readiness(
     database: ReadinessDatabase,
     queue: ReadinessQueue,
     telemetry: WorkerTelemetry,
-) -> None:
+) -> float | None:
     database_ready, queue_ready = await asyncio.gather(
         _probe_ready(database.ready()),
         _probe_ready(queue.ping()),
@@ -88,21 +101,28 @@ async def _refresh_dependency_readiness(
     telemetry.set_dependency_ready("database", database_ready)
     telemetry.set_dependency_ready("queue", queue_ready)
     if not queue_ready:
-        return
+        return None
     try:
         async with asyncio.timeout(1.0):
-            raw_depth, raw_oldest = await asyncio.gather(
+            raw_depth, raw_oldest, raw_memory = await asyncio.gather(
                 queue.zcard(ARQ_QUEUE_NAME),
                 queue.zrange(ARQ_QUEUE_NAME, 0, 0, withscores=True),
+                queue.info("memory"),
             )
         depth = int(cast(int | str, raw_depth))
         if depth < 0:
             raise ValueError("queue depth is negative")
         oldest_ready_age = _oldest_ready_age(raw_oldest)
-    except TypeError, ValueError, TimeoutError:
+        memory_percent = _queue_memory_percent(raw_memory)
+    except RedisError, TypeError, ValueError, TimeoutError:
         telemetry.set_dependency_ready("queue", False)
-        return
-    telemetry.set_queue_snapshot(depth=depth, oldest_ready_age_seconds=oldest_ready_age)
+        return None
+    telemetry.set_queue_snapshot(
+        depth=depth,
+        oldest_ready_age_seconds=oldest_ready_age,
+        memory_percent=memory_percent,
+    )
+    return memory_percent
 
 
 def _oldest_ready_age(raw_oldest: object) -> float:
@@ -113,6 +133,46 @@ def _oldest_ready_age(raw_oldest: object) -> float:
         raise ValueError("queue snapshot is malformed")
     score = float(cast(float | int | str, first[1]))
     return max(0.0, time() - score / 1000.0)
+
+
+def _queue_memory_percent(raw_memory: object) -> float:
+    if not isinstance(raw_memory, Mapping):
+        raise ValueError("queue memory snapshot is malformed")
+    used_memory = int(cast(int | str, raw_memory.get("used_memory")))
+    maxmemory = int(cast(int | str, raw_memory.get("maxmemory")))
+    if used_memory < 0 or maxmemory < 0:
+        raise ValueError("queue memory snapshot is negative")
+    if maxmemory == 0:
+        return 0.0
+    return min(100.0, used_memory * 100.0 / maxmemory)
+
+
+async def _refresh_run_creation_control(
+    database: RunControlDatabase,
+    telemetry: WorkerTelemetry,
+    *,
+    redis_memory_percent: float,
+    poisoned_count: int,
+) -> None:
+    try:
+        control = await database.evaluate_run_creation_control(
+            redis_memory_percent,
+            poisoned_count,
+        )
+        telemetry.set_run_creation_control(
+            enabled=control.enabled,
+            alert_reason=control.alert_reason,
+        )
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        logger.error(
+            "run_creation_control_evaluation_failed",
+            error_class=type(error).__name__,
+        )
+        return
+    if control.changed:
+        logger.warning("run_creation_disabled", reason=control.alert_reason)
 
 
 async def _dispatch_forever(
@@ -127,8 +187,21 @@ async def _dispatch_forever(
 
     while not stop.is_set():
         try:
-            await _refresh_dependency_readiness(database, queue, telemetry)
-            await dispatcher.dispatch_once()
+            memory_percent = await _refresh_dependency_readiness(database, queue, telemetry)
+            await _refresh_run_creation_control(
+                database,
+                telemetry,
+                redis_memory_percent=memory_percent or 0.0,
+                poisoned_count=0,
+            )
+            result = await dispatcher.dispatch_once()
+            if result.poisoned > 0:
+                await _refresh_run_creation_control(
+                    database,
+                    telemetry,
+                    redis_memory_percent=memory_percent or 0.0,
+                    poisoned_count=result.poisoned,
+                )
         except asyncio.CancelledError:
             raise
         except Exception as error:
