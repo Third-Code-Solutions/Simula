@@ -10,6 +10,15 @@ source_of_truth: true
 
 # SIMULA Observability
 
+## Phase 2 on-call questions
+
+1. Which bounded route template and status class is failing or slow now?
+2. Which required dependency is preventing the API or worker from being safely ready?
+3. Can one request and resulting run be followed by correlation/trace context without exposing stimulus, result, identity, or credential data?
+4. Are queue age, retries, terminal failures, cancellation latency, or expired leases increasing?
+
+Every Phase 2 telemetry signal must answer at least one of these questions. Unbounded labels, raw URLs, tenant/user identifiers, request bodies, stimuli, results, tokens, and exception messages are prohibited.
+
 ## Signals
 
 - Structured application, audit, security, and job-event logs.

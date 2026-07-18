@@ -21,6 +21,7 @@ from simula_api.models import (
 from simula_api.problems import AppProblem, unauthenticated
 from simula_api.rate_limits import RateLimiter
 from simula_api.services import AppServices
+from simula_api.telemetry import TRACEPARENT_HEADER
 
 OWNER_ID = UUID("00000000-0000-4000-8000-000000000001")
 ORGANIZATION_ID = UUID("10000000-0000-4000-8000-000000000001")
@@ -252,6 +253,7 @@ async def test_pre_auth_rate_limit_stops_over_limit_malformed_bearers_before_ver
     assert responses[-1].status_code == 429
     assert responses[-1].headers["retry-after"] == "7"
     assert responses[-1].headers[CORRELATION_HEADER]
+    assert responses[-1].headers[TRACEPARENT_HEADER]
     assert responses[-1].headers["access-control-allow-origin"] == "https://console.example.test"
     assert "Retry-After" in responses[-1].headers["access-control-expose-headers"]
     assert CORRELATION_HEADER in responses[-1].headers["access-control-expose-headers"].lower()

@@ -28,6 +28,7 @@ def test_runtime_route_inventory_matches_the_m3_boundary() -> None:
     assert {route.path for route in app.routes[1:] if isinstance(route, APIRoute)} == {
         "/health/live",
         "/health/ready",
+        "/internal/metrics",
     }
 
 

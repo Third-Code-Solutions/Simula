@@ -13,7 +13,7 @@ from uuid import UUID, uuid4
 
 import httpx
 import structlog
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
@@ -37,9 +37,11 @@ from simula_api.problems import (
 )
 from simula_api.queue import ArqRunPublisher
 from simula_api.rate_limits import RedisRateLimiter
+from simula_api.readiness import DependencyReadiness
 from simula_api.routes import router
 from simula_api.run_admission import RedisRunAdmission
 from simula_api.services import AppServices
+from simula_api.telemetry import TRACEPARENT_HEADER, ApiTelemetry, TraceContext
 
 CORRELATION_HEADER = "x-correlation-id"
 RELEASE_SHA_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
@@ -49,7 +51,14 @@ ALLOWED_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 MAX_BODY_BYTES = 64 * 1024
 MAX_HEADER_BYTES = 16 * 1024
 JSON_COMMAND_METHODS = frozenset({"POST", "PATCH"})
-CORS_EXPOSE_HEADERS = ("ETag", "Idempotent-Replayed", "Retry-After", "X-Correlation-ID")
+CORS_EXPOSE_HEADERS = (
+    "ETag",
+    "Idempotent-Replayed",
+    "Retry-After",
+    "Traceparent",
+    "X-Correlation-ID",
+)
+PROMETHEUS_CONTENT_TYPE = "text/plain; version=0.0.4; charset=utf-8"
 
 logger = structlog.get_logger()
 
@@ -139,8 +148,9 @@ def _allowed_cors_headers(scope: Scope) -> dict[str, str]:
 class CorrelationMiddleware:
     """Bound headers/body, add correlation, and emit payload-free request logs."""
 
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, *, telemetry: ApiTelemetry) -> None:
         self.app = app
+        self.telemetry = telemetry
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -155,7 +165,19 @@ class CorrelationMiddleware:
             else _correlation_id(request_headers.get(CORRELATION_HEADER))
         )
         scope["state"]["correlation_id"] = correlation_id
-        context_tokens = bind_contextvars(correlation_id=correlation_id)
+        existing_trace = scope["state"].get("trace_context")
+        trace = (
+            existing_trace
+            if isinstance(existing_trace, TraceContext)
+            else TraceContext.from_header(request_headers.get(TRACEPARENT_HEADER))
+        )
+        scope["state"]["trace_context"] = trace
+        scope["state"]["traceparent"] = trace.header_value
+        scope["state"]["trace_id"] = trace.trace_id
+        scope["state"]["span_id"] = trace.span_id
+        context_tokens = bind_contextvars(
+            correlation_id=correlation_id, span_id=trace.span_id, trace_id=trace.trace_id
+        )
         metadata = _runtime_metadata()
         method = scope.get("method", "UNKNOWN")
         started_at = perf_counter()
@@ -169,6 +191,7 @@ class CorrelationMiddleware:
                 response_started = True
                 status_code = message["status"]
                 MutableHeaders(scope=message)[CORRELATION_HEADER] = correlation_id
+                MutableHeaders(scope=message)[TRACEPARENT_HEADER] = trace.header_value
             await send(message)
 
         async def receive_limited() -> Message:
@@ -233,7 +256,9 @@ class CorrelationMiddleware:
                 error_class=type(error).__name__,
                 method=method,
                 route_template=_route_template(scope),
+                span_id=trace.span_id,
                 status=status_code,
+                trace_id=trace.trace_id,
             )
             if response_started:
                 raise
@@ -253,14 +278,24 @@ class CorrelationMiddleware:
             )
             await response(scope, receive_limited, send_with_correlation)
         finally:
+            duration_seconds = perf_counter() - started_at
+            route_template = _route_template(scope)
+            self.telemetry.observe_http(
+                method=method,
+                route=route_template,
+                status=status_code,
+                duration_seconds=duration_seconds,
+            )
             logger.info(
                 "http_request_completed",
                 **metadata,
                 correlation_id=correlation_id,
-                duration_ms=round((perf_counter() - started_at) * 1000, 3),
+                duration_ms=round(duration_seconds * 1000, 3),
                 method=method,
-                route_template=_route_template(scope),
+                route_template=route_template,
+                span_id=trace.span_id,
                 status=status_code,
+                trace_id=trace.trace_id,
             )
             reset_contextvars(**context_tokens)
 
@@ -307,8 +342,9 @@ class JsonCommandMediaTypeMiddleware:
 class PreAuthRateLimitMiddleware:
     """Charge unverified API requests before parsing, auth, or route dispatch."""
 
-    def __init__(self, app: ASGIApp) -> None:
+    def __init__(self, app: ASGIApp, *, telemetry: ApiTelemetry) -> None:
         self.app = app
+        self.telemetry = telemetry
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -336,6 +372,12 @@ class PreAuthRateLimitMiddleware:
         state = scope.setdefault("state", {})
         if not isinstance(state.get("correlation_id"), str):
             state["correlation_id"] = _correlation_id(Headers(scope=scope).get(CORRELATION_HEADER))
+        trace = TraceContext.from_header(Headers(scope=scope).get(TRACEPARENT_HEADER))
+        state["trace_context"] = trace
+        state["traceparent"] = trace.header_value
+        state["trace_id"] = trace.trace_id
+        state["span_id"] = trace.span_id
+        started_at = perf_counter()
         client = scope.get("client")
         peer = (
             client[0]
@@ -347,7 +389,10 @@ class PreAuthRateLimitMiddleware:
             await services.rate_limiter.require_unauthenticated(ip_hash=ip_hash)
         except AppProblem as error:
             correlation_id = state["correlation_id"]
-            headers = {CORRELATION_HEADER: correlation_id}
+            headers = {
+                CORRELATION_HEADER: correlation_id,
+                TRACEPARENT_HEADER: trace.header_value,
+            }
             if error.retry_after is not None:
                 headers["Retry-After"] = str(error.retry_after)
             headers.update(_allowed_cors_headers(scope))
@@ -356,16 +401,28 @@ class PreAuthRateLimitMiddleware:
                 code=error.code,
                 correlation_id=correlation_id,
                 route_template=_route_template(scope),
+                span_id=state.get("span_id", "unavailable"),
                 status=error.status,
+                trace_id=state.get("trace_id", "unavailable"),
+            )
+            duration_seconds = perf_counter() - started_at
+            route_template = _route_template(scope)
+            self.telemetry.observe_http(
+                method=scope.get("method", "UNKNOWN"),
+                route=route_template,
+                status=error.status,
+                duration_seconds=duration_seconds,
             )
             logger.info(
                 "http_request_completed",
                 **_runtime_metadata(),
                 correlation_id=correlation_id,
-                duration_ms=0.0,
+                duration_ms=round(duration_seconds * 1000, 3),
                 method=scope.get("method", "UNKNOWN"),
-                route_template=_route_template(scope),
+                route_template=route_template,
+                span_id=trace.span_id,
                 status=error.status,
+                trace_id=trace.trace_id,
             )
             response = JSONResponse(
                 _safe_problem(
@@ -397,6 +454,8 @@ def _health_response(status: str) -> HealthResponse:
 
 
 def create_app(*, services: AppServices | None = None) -> FastAPI:
+    telemetry = ApiTelemetry()
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         metadata = RuntimeMetadata.from_environment(service="api")
@@ -427,7 +486,26 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
                     run_publisher=ArqRunPublisher(cast(ArqEnqueuer, owned_run_queue)),
                     run_admission=owned_run_admission,
                 )
-                app.state.domain_ready = await owned_database.ready()
+
+                async def auth_ready() -> bool:
+                    response = await owned_client.get(f"{settings.supabase_url}/auth/v1/health")
+                    return 200 <= response.status_code < 300
+
+                async def queue_ready() -> bool:
+                    return bool(await owned_run_queue.ping())
+
+                readiness = DependencyReadiness(
+                    {
+                        "auth": auth_ready,
+                        "database": owned_database.ready,
+                        "queue": queue_ready,
+                        "rate_limit": owned_rate_limiter.ready,
+                        "run_admission": owned_run_admission.ready,
+                    },
+                    telemetry,
+                )
+                app.state.readiness = readiness
+                app.state.domain_ready = await readiness.ready()
             except (AppProblem, ConfigurationError) as error:
                 app.state.domain_services = None
                 app.state.domain_ready = False
@@ -461,6 +539,8 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
     )
     app.state.domain_services = services
     app.state.domain_ready = services is not None
+    app.state.readiness = None
+    app.state.telemetry = telemetry
     app.state.cors_origins = ()
     try:
         settings = ApiSettings.from_environment()
@@ -478,14 +558,15 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
                 "Content-Type",
                 "Idempotency-Key",
                 "If-Match",
+                "Traceparent",
                 "X-Correlation-ID",
             ],
             expose_headers=list(CORS_EXPOSE_HEADERS),
             max_age=600,
         )
     app.add_middleware(JsonCommandMediaTypeMiddleware)
-    app.add_middleware(CorrelationMiddleware)
-    app.add_middleware(PreAuthRateLimitMiddleware)
+    app.add_middleware(CorrelationMiddleware, telemetry=telemetry)
+    app.add_middleware(PreAuthRateLimitMiddleware, telemetry=telemetry)
     app.add_exception_handler(AppProblem, app_problem_handler)
     app.add_exception_handler(RequestValidationError, validation_problem_handler)
     app.add_exception_handler(StarletteHTTPException, http_problem_handler)
@@ -502,10 +583,30 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
         responses={503: {"description": "Runtime configuration or dependency is unsafe."}},
     )
     async def readiness(response: Response) -> HealthResponse:
-        if not _runtime_configuration_ready() or not app.state.domain_ready:
+        dependencies_ready = (
+            await app.state.readiness.ready()
+            if isinstance(app.state.readiness, DependencyReadiness)
+            else app.state.domain_ready
+        )
+        if not _runtime_configuration_ready() or not dependencies_ready:
             response.status_code = 503
             return _health_response("not_ready")
         return _health_response("ready")
+
+    @app.get("/internal/metrics", include_in_schema=False)
+    async def metrics(request: Request) -> Response:
+        client = request.scope.get("client")
+        if not (
+            os.getenv("SIMULA_ENVIRONMENT") in {"local", "test"}
+            and request.headers.get("origin") is None
+            and isinstance(client, tuple)
+            and client
+            and client[0] in {"127.0.0.1", "::1"}
+        ):
+            return Response(status_code=404)
+        return Response(
+            content=telemetry.render(), headers={"Content-Type": PROMETHEUS_CONTENT_TYPE}
+        )
 
     return app
 

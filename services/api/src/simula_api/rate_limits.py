@@ -190,6 +190,13 @@ class RedisRateLimiter:
         except (TimeoutError, RedisError) as error:
             raise _dependency_unavailable() from error
 
+    async def ready(self) -> bool:
+        try:
+            async with asyncio.timeout(REDIS_TIMEOUT_SECONDS):
+                return bool(await self._client.ping())
+        except TimeoutError, RedisError:
+            return False
+
     async def close(self) -> None:
         await cast(Awaitable[None], self._client.aclose())
 

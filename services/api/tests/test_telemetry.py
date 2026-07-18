@@ -1,0 +1,139 @@
+from __future__ import annotations
+
+import json
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+from simula_api.app import CORRELATION_HEADER, create_app
+from simula_api.telemetry import TRACEPARENT_HEADER, ApiTelemetry, TraceContext
+from structlog.testing import capture_logs
+
+
+def test_trace_context_accepts_only_canonical_nonzero_w3c_parent() -> None:
+    inbound = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+
+    trace = TraceContext.from_header(inbound)
+
+    assert trace.trace_id == "4bf92f3577b34da6a3ce929d0e0e4736"
+    assert trace.span_id != "00f067aa0ba902b7"
+    assert trace.flags == "01"
+    assert trace.header_value.startswith("00-4bf92f3577b34da6a3ce929d0e0e4736-")
+
+    for rejected in (
+        None,
+        "00-00000000000000000000000000000000-00f067aa0ba902b7-01",
+        "00-4bf92f3577b34da6a3ce929d0e0e4736-0000000000000000-01",
+        "00-4BF92F3577B34DA6A3CE929D0E0E4736-00f067aa0ba902b7-01",
+        "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-03",
+        "sensitive-trace-canary",
+    ):
+        replacement = TraceContext.from_header(rejected)
+        assert replacement.trace_id != "0" * 32
+        assert replacement.span_id != "0" * 16
+        assert replacement.flags == "00"
+
+
+async def test_http_trace_logs_and_metrics_are_bounded_and_payload_free(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SIMULA_ENVIRONMENT", "test")
+    app = create_app()
+    inbound = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+
+    with capture_logs() as logs:
+        async with AsyncClient(
+            transport=ASGITransport(app=app, client=("127.0.0.1", 123)),
+            base_url="http://test",
+        ) as client:
+            response = await client.get(
+                "/health/live?confidential=metrics-query-canary",
+                headers={
+                    CORRELATION_HEADER: "018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4",
+                    TRACEPARENT_HEADER: inbound,
+                },
+            )
+            metrics = await client.get("/internal/metrics")
+
+    assert response.status_code == 200
+    assert response.headers[TRACEPARENT_HEADER].startswith("00-4bf92f3577b34da6a3ce929d0e0e4736-")
+    completed = next(
+        entry
+        for entry in logs
+        if entry["event"] == "http_request_completed" and entry["route_template"] == "/health/live"
+    )
+    assert completed["trace_id"] == "4bf92f3577b34da6a3ce929d0e0e4736"
+    assert completed["span_id"] in response.headers[TRACEPARENT_HEADER]
+    assert set(completed) <= {
+        "correlation_id",
+        "duration_ms",
+        "environment",
+        "event",
+        "log_level",
+        "method",
+        "release_sha",
+        "route_template",
+        "service",
+        "span_id",
+        "status",
+        "trace_id",
+    }
+    assert metrics.status_code == 200
+    assert metrics.headers["content-type"] == "text/plain; version=0.0.4; charset=utf-8"
+    assert (
+        'simula_api_http_requests_total{method="GET",route="/health/live",status_class="2xx"} 1.0'
+        in metrics.text
+    )
+    rendered = json.dumps(logs) + metrics.text
+    assert "metrics-query-canary" not in rendered
+    assert "confidential" not in rendered
+
+
+@pytest.mark.parametrize(
+    ("environment", "peer"),
+    [
+        ("test", ("203.0.113.10", 443)),
+        ("production", ("127.0.0.1", 123)),
+    ],
+)
+async def test_metrics_are_not_exposed_outside_local_loopback(
+    monkeypatch: pytest.MonkeyPatch,
+    environment: str,
+    peer: tuple[str, int],
+) -> None:
+    monkeypatch.setenv("SIMULA_ENVIRONMENT", environment)
+    app = create_app()
+    async with AsyncClient(
+        transport=ASGITransport(app=app, client=peer),
+        base_url="http://test",
+    ) as client:
+        response = await client.get("/internal/metrics")
+
+    assert response.status_code == 404
+    assert response.content == b""
+
+
+async def test_metrics_reject_browser_origin_even_on_local_loopback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SIMULA_ENVIRONMENT", "test")
+    app = create_app()
+    async with AsyncClient(
+        transport=ASGITransport(app=app, client=("127.0.0.1", 123)),
+        base_url="http://test",
+    ) as client:
+        response = await client.get(
+            "/internal/metrics", headers={"Origin": "http://127.0.0.1:3000"}
+        )
+
+    assert response.status_code == 404
+
+
+def test_dependency_labels_fail_closed_to_the_allowlist() -> None:
+    telemetry = ApiTelemetry()
+
+    try:
+        telemetry.set_dependency_ready("tenant-controlled", True)
+    except ValueError as error:
+        assert str(error) == "dependency metric label is not allowlisted"
+    else:
+        raise AssertionError("unknown dependency label was accepted")
