@@ -12,6 +12,7 @@ source_of_truth: true
 
 ## 2026-07-18
 
+- Added P2-06 stale-dispatch recovery: a worker-only, lock-ordered reconciler supersedes expired/declared-lost outbox generations, preserves the authoritative run, bounds recovery at three generations, and records recovery/exhaustion audit/event evidence. Dispatcher cadence and a real local stale-lease integration prove the replacement path. Migration `20260718060000` is applied and catalog-verified on hosted Supabase without seed or application data (E-5018).
 - Added P2-06 database-authoritative timeout retry behavior: 5s then 30s ARQ defers, three-attempt terminal exhaustion, typed worker failure resolutions, real local integration proof, and worker-owner `private` schema-CREATE cleanup. Migration `20260718050000` is applied and verified on hosted Supabase without seed or application data (E-5017).
 - Applied and verified P2-06 hosted Supabase schema migrations through `20260718041000`: cancellation command/finalizer ACLs are present, temporary command-owner `api`/`private` CREATE grants are revoked, and local/remote migration history matches. No seed, customer data, application deployment, or runtime credential was added (E-5016).
 - Added P2-06 cancellation sub-slice: owner/editor-only empty-JSON cancel command, narrow RLS/event/audit authority, cancellation-aware dispatcher, cancel-wins worker completion/failure, generated contracts, workspace control, and local API/worker/browser race proof. Full `pnpm check` passes (E-5015). Retry/exhaustion/poison recovery remains active; Phase 2 is not complete.

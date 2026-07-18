@@ -4,9 +4,9 @@
 
 - Phase 0 and Phase 1 are complete; their reviewed ExecPlans live in `plans/completed/`.
 - P2-01 through P2-04 are complete with recorded local evidence E-5008 through E-5013.
-- Hosted schema migrations through `20260718050000` match the repository. The `api` schema contains the application tables; `private` holds worker/audit internals.
+- Hosted schema migrations through `20260718060000` match the repository. The `api` schema contains the application tables; `private` holds worker/audit internals.
 - P2-05 is complete and evidenced by E-5014. The disposable local browser result/error/poll/accessibility gate and repository quality gate pass.
-- P2-06 cancellation and timeout retry/exhaustion are locally and hosted-schema proven in E-5015–E-5017; additional retry classes, poison, lease, and Redis-loss recovery remain active. P2-07 is not implemented. Phases 3–7 have roadmap gates but no authorized active ExecPlans.
+- P2-06 cancellation, timeout retry/exhaustion, and stale lease/Redis-loss dispatch recovery are locally and hosted-schema proven in E-5015–E-5018; additional retry classes, poison handling, and user-facing failure proof remain active. P2-07 is not implemented. Phases 3–7 have roadmap gates but no authorized active ExecPlans.
 
 ## Delivery order
 
@@ -38,7 +38,7 @@
 
 **Dependencies:** P2-05 browser gate green.
 
-**Current verified increment:** owner/editor `POST /runs/{id}/cancel` with explicit empty JSON, `202 cancel_requested` or terminal-race `200`, cancellation-aware dispatcher/worker terminalization, generated contracts, and browser proof. Retry/exhaustion/poison/lease recovery remains required before P2-06 can close.
+**Current verified increment:** owner/editor `POST /runs/{id}/cancel` with explicit empty JSON, `202 cancel_requested` or terminal-race `200`, cancellation-aware dispatcher/worker terminalization, atomic timeout retry/exhaustion, and worker-only stale-dispatch supersession with bounded generation recovery. Additional retry classes, poison handling, and user-facing failure proof remain required before P2-06 can close.
 
 ### P2-07 — Integrated quality and independent exit gate
 
