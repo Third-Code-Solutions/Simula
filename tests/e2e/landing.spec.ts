@@ -52,6 +52,19 @@ test("landing page is responsive and accessible on mobile", async ({
   await expectLandingQuality(page);
 });
 
+test("skip link transfers keyboard focus to the main content", async ({
+  page,
+}) => {
+  await page.goto("/");
+  const skipLink = page.getByRole("link", { name: "Skip to content" });
+
+  await page.keyboard.press("Tab");
+  await expect(skipLink).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  await expect(page.locator("#main-content")).toBeFocused();
+});
+
 test("sign-in shell is responsive and accessible", async ({ page }) => {
   await page.setViewportSize({ height: 900, width: 1440 });
   await page.goto("/sign-in");

@@ -134,6 +134,7 @@ export function RunWorkspace({
       className="workspace-main"
       id="main-content"
       aria-labelledby="run-title"
+      tabIndex={-1}
     >
       <header className="workspace-header">
         <Link className="wordmark" href="/organizations">

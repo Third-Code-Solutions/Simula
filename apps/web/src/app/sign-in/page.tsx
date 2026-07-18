@@ -21,7 +21,7 @@ export default async function SignInPage({
   const { next } = await searchParams;
 
   return (
-    <main className="centered-main" id="main-content">
+    <main className="centered-main" id="main-content" tabIndex={-1}>
       <section className="auth-context" aria-label="About SIMULA">
         <Link aria-label="SIMULA home" className="wordmark" href="/">
           SIMULA

@@ -104,7 +104,7 @@ export function ProjectsWorkspace({
   }
 
   return (
-    <main className="workspace-main" id="main-content">
+    <main className="workspace-main" id="main-content" tabIndex={-1}>
       <header className="workspace-header">
         <Link className="wordmark" href="/organizations">
           SIMULA
