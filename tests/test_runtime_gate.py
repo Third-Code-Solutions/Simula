@@ -170,7 +170,7 @@ def _process_is_running(process_id: int) -> bool:
             return True
         return True
 
-    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel32 = cast(Any, ctypes).WinDLL("kernel32", use_last_error=True)
     process_handle = kernel32.OpenProcess(0x1000, False, process_id)
     if not process_handle:
         return False

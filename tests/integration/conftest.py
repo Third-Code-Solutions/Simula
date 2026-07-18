@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import os
 import warnings
+from typing import Any, cast
 
 
 def pytest_configure() -> None:
@@ -13,4 +14,4 @@ def pytest_configure() -> None:
         return
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+        asyncio.set_event_loop_policy(cast(Any, asyncio).WindowsSelectorEventLoopPolicy())

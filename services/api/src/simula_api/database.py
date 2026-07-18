@@ -97,7 +97,11 @@ def _database_problem(error: psycopg.Error) -> AppProblem:
             title="Project version conflict",
             detail="Reload the project and apply the change again.",
         )
-    if message == "quota_exceeded":
+    if message in {
+        "quota_exceeded",
+        "pending_run_quota_exceeded",
+        "run_retention_quota_exceeded",
+    }:
         return AppProblem(
             status=429,
             code="quota_exceeded",
@@ -186,8 +190,16 @@ class DatabaseGateway:
                         (claims,),
                     )
                     yield cast(AsyncConnection[DatabaseRow], connection)
-        except (PoolTimeout, psycopg.OperationalError) as error:
+        except PoolTimeout as error:
             raise _dependency_unavailable() from error
+        except psycopg.OperationalError as error:
+            # SQLSTATE class 54 errors (including durable quota limits) are
+            # OperationalError subclasses too. Only transport failures are a
+            # dependency outage; command errors must reach their caller's
+            # explicit database-problem mapping.
+            if isinstance(error, psycopg.errors.ConnectionException):
+                raise _dependency_unavailable() from error
+            raise
 
     async def create_organization(
         self,

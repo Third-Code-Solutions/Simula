@@ -91,7 +91,12 @@ def _set_disposable_worker_password() -> str:
     return role_password
 
 
-def _run_as_local_supabase_admin(sql: str, *, run_id: UUID | None = None) -> None:
+def _run_as_local_supabase_admin(
+    sql: str,
+    *,
+    run_id: UUID | None = None,
+    organization_id: UUID | None = None,
+) -> None:
     inspect = _run_captured(
         [
             "docker",
@@ -129,6 +134,8 @@ def _run_as_local_supabase_admin(sql: str, *, run_id: UUID | None = None) -> Non
     ]
     if run_id is not None:
         command.extend(["-v", f"run_id={run_id}"])
+    if organization_id is not None:
+        command.extend(["-v", f"organization_id={organization_id}"])
     result = _run_captured(
         command,
         environment={
@@ -919,6 +926,112 @@ async def _create_run_for_project(
     )
     assert created_run.status_code == 202
     return UUID(created_run.json()["id"])
+
+
+@pytest.mark.integration
+async def test_p2_pending_run_quota_rejects_the_twenty_first_run(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INT-BACKPRESSURE-001: one organization cannot retain 21 live runs."""
+
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+    organization_id: UUID | None = None
+    run_ids: list[UUID] = []
+
+    try:
+        async with _api_client(monkeypatch) as setup_client:
+            created_organization = await setup_client.post(
+                "/api/v1/organizations",
+                headers=_headers(owner_token, f"p2-pending-org-{suffix}"),
+                json={"name": f"P2 Pending {suffix[:8]}"},
+            )
+            assert created_organization.status_code == 201
+            organization_id = UUID(created_organization.json()["id"])
+            created_project = await setup_client.post(
+                f"/api/v1/organizations/{organization_id}/projects",
+                headers=_headers(owner_token, f"p2-pending-project-{suffix}"),
+                json=_project_payload(f"P2 Pending {suffix[:8]}"),
+            )
+            assert created_project.status_code == 201
+            project_id = UUID(created_project.json()["id"])
+            created_stimulus = await setup_client.post(
+                f"/api/v1/projects/{project_id}/stimuli",
+                headers=_headers(owner_token, f"p2-pending-stimulus-{suffix}"),
+                json={"name": "P2 Pending Message", "content": "Bounded fictional queue."},
+            )
+            assert created_stimulus.status_code == 201
+            stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+            run_ids.append(
+                await _create_run_for_project(
+                    setup_client,
+                    owner_token,
+                    project_id=project_id,
+                    stimulus_version_id=stimulus_version_id,
+                    idempotency_key=f"p2-pending-first-{suffix}",
+                )
+            )
+
+        # Seed 18 local-only fixtures from the API-created immutable run. The
+        # 20th and 21st mutations below still take the full API/database path.
+        _run_as_local_supabase_admin(
+            """
+            insert into api.simulation_runs (
+              id, organization_id, project_id, stimulus_version_id,
+              audience_version_id, state, frozen_manifest,
+              frozen_manifest_sha256, schema_version, deterministic_seed,
+              dispatch_generation, attempt_count, worker_lease_token,
+              worker_lease_expires_at, last_progress_at, created_by,
+              correlation_id, created_at, updated_at, terminal_at, version
+            )
+            select pg_catalog.gen_random_uuid(), organization_id, project_id,
+              stimulus_version_id, audience_version_id, state, frozen_manifest,
+              frozen_manifest_sha256, schema_version, deterministic_seed,
+              dispatch_generation, attempt_count, worker_lease_token,
+              worker_lease_expires_at, last_progress_at, created_by,
+              correlation_id, created_at, updated_at, terminal_at, version
+            from api.simulation_runs
+            cross join pg_catalog.generate_series(1, 18)
+            where id = :'run_id'::uuid;
+            """,
+            run_id=run_ids[0],
+        )
+
+        async with _api_client(monkeypatch) as quota_client:
+            run_ids.append(
+                await _create_run_for_project(
+                    quota_client,
+                    owner_token,
+                    project_id=project_id,
+                    stimulus_version_id=stimulus_version_id,
+                    idempotency_key=f"p2-pending-twentieth-{suffix}",
+                )
+            )
+            rejected = await quota_client.post(
+                f"/api/v1/projects/{project_id}/runs",
+                headers=_headers(owner_token, f"p2-pending-overflow-{suffix}"),
+                json={"stimulus_version_id": str(stimulus_version_id)},
+            )
+            assert rejected.status_code == 429
+            assert rejected.json()["code"] == "quota_exceeded"
+    finally:
+        if organization_id is not None:
+            _run_as_local_supabase_admin(
+                """
+                update private.run_outbox
+                set status = 'terminal',
+                    claim_token = null,
+                    claim_expires_at = null,
+                    confirmed_at = null,
+                    terminal_error_code = 'integration_pending_quota_cleanup'
+                where organization_id = :'organization_id'::uuid;
+                """,
+                organization_id=organization_id,
+            )
+        await asyncio.gather(
+            *(_remove_exact_queue_keys(job_id_for(run_id, generation=1)) for run_id in run_ids)
+        )
 
 
 @pytest.mark.integration

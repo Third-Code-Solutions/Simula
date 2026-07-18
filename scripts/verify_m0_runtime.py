@@ -510,7 +510,11 @@ def port_is_available(host: str, port: int) -> bool:
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
             if os.name == "nt":
-                probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+                probe.setsockopt(
+                    socket.SOL_SOCKET,
+                    cast(Any, socket).SO_EXCLUSIVEADDRUSE,
+                    1,
+                )
             probe.bind((host, port))
     except OSError:
         return False
@@ -584,7 +588,8 @@ class GateLock:
             if os.name == "nt":
                 import msvcrt
 
-                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                windows_locking = cast(Any, msvcrt)
+                windows_locking.locking(handle.fileno(), windows_locking.LK_NBLCK, 1)
             else:
                 fcntl = cast(PosixFileLockModule, importlib.import_module("fcntl"))
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -610,7 +615,8 @@ class GateLock:
             if os.name == "nt":
                 import msvcrt
 
-                msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+                windows_locking = cast(Any, msvcrt)
+                windows_locking.locking(handle.fileno(), windows_locking.LK_UNLCK, 1)
             else:
                 fcntl = cast(PosixFileLockModule, importlib.import_module("fcntl"))
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
