@@ -157,7 +157,7 @@ revoke all on function private.get_simulation_run_replay(uuid, text, text)
   from public, anon, authenticated, simula_worker;
 grant execute on function private.get_simulation_run_replay(uuid, text, text) to simula_api;
 
-reset role;
+set role postgres;
 revoke create on schema private from simula_command_owner;
 
 create function api.get_run_failure_context(requested_run_id uuid)
