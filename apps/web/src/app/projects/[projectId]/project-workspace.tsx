@@ -136,7 +136,7 @@ export function ProjectWorkspace({
     setSavingStimulus(true);
     try {
       const stimulus = await createStimulus(project.id, { content, name });
-      setProject((current) =>
+      setProject((current: ProjectDetail | undefined) =>
         current
           ? { ...current, stimuli: [...current.stimuli, stimulus] }
           : current,
@@ -166,7 +166,7 @@ export function ProjectWorkspace({
     setVersioningStimulus(stimulusId);
     try {
       const version = await appendStimulusVersion(stimulusId, content);
-      setProject((current) =>
+      setProject((current: ProjectDetail | undefined) =>
         current
           ? {
               ...current,
