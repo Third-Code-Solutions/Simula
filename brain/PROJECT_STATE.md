@@ -12,23 +12,27 @@ source_of_truth: true
 
 ## Current phase
 
+- Status: implementation complete; formal independent Phase 2 exit review pending.
+
 - Phase 2 — Walking Skeleton.
 - Active plan: [[../plans/active/002-phase-2-walking-skeleton|002-phase-2-walking-skeleton]].
 - Completed: [[../plans/completed/000-phase-0-evidence-and-discovery|Phase 0]] and [[../plans/completed/001-phase-1-product-and-architecture-definition|Phase 1]] after independent review and exit audits.
 
 ## Current objective
 
-Complete P2-07's integrated exit gate after the verified P2-06 recovery milestone. P2-06 preserves one authoritative terminal result through cancellation, bounded retry, recovery, poison, and worker races. No real-provider egress or representativeness claim is authorized.
+P2-07 implementation and automated gates are complete. Hold Phase 2 at its required independent exit review; do not begin Phase 3. No real-provider egress or representativeness claim is authorized.
 
 ## Repository state
 
-- OBSERVED 2026-07-17: Git reports No commits yet on main; all project files are untracked.
+- OBSERVED 2026-07-18: implementation head `a521926` is pushed to `main`. Its GitHub Actions run `29640798631` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
 - OBSERVED 2026-07-17: P2-01 foundation and P2-02 database source are complete: exact manifests/locks, health/runtime proof, first ordered migration, local Auth fixtures, generated database types, least-privilege roles, forced RLS, complete organization command, and adversarial database gates. No hosted resource or production change exists.
 - OBSERVED 2026-07-17: brain/ is the authoritative Obsidian-readable vault.
 - OBSERVED 2026-07-17 Phase 0 close: 33/33 required notes/YAML, 36/36 Home targets, 49/49 vault wikilinks, 53 evidence IDs defined, 49 referenced, 0 undefined, and 0 application scaffold directories.
 - OBSERVED 2026-07-17: system defaults remain Node 24.16, pnpm 9.15, and Python 3.14.5. Verified user-local bootstrap provides exact Node 24.18.0, pnpm 11.13.1, Python 3.14.6, uv 0.11.19, and Supabase CLI 2.109.1 without loosening manifests.
 - OBSERVED 2026-07-18: the hosted Supabase target is `ywiwmczccktwzqyhzhiz` (Simula, active). MCP-authorized access as `kurtgav` bootstrapped the four least-privilege roles and applied checked-in migrations seed-free. Remote migration history exactly matches Git through `20260718070000`; cancellation/retry/recovery/poison helpers, API/worker ACLs, and temporary-schema-CREATE revocations were verified (E-5011, E-5016–E-5019).
 - OBSERVED 2026-07-18: checked-in migration `20260718010000_phase2_runs_and_worker` was reset-tested locally and applied once to the same hosted project. It adds the immutable global authored-demo fixture, frozen run/outbox command authority, worker-owner RLS policies, and execute-only worker helpers. Remote history was reconciled to the Git timestamp; verification found one fixture audience/version, no tenant/run data, no direct worker run DML, and the expected worker claim helper grant (E-5012).
+
+- OBSERVED 2026-07-18: hosted migration history equals local migrations through `20260718094407`. The global backpressure and hardened-function-ACL migrations are applied seed-free. Application relations intentionally reside in non-exposed `api` and `private` schemas, so an empty `public` Table Editor is expected (E-5022).
 
 ## Phase 0 outcome
 
@@ -67,6 +71,8 @@ Initial M4 audit found 0 Critical/6 High. Iterative review then exposed and corr
 - M4 / P2-05 is complete. The browser now has a validated run-route guard, exhaustive state rendering, bounded shared polling, explicit unavailable-result/legacy-provenance states, full frozen provenance/limits, XSS-safe text rendering, a server-owned rollback switch, content-free browser telemetry, and an executable forbidden-claim policy. The local browser gate passes terminal result, safe error, polling, keyboard, desktop/mobile Axe, and responsive proofs; full `pnpm check` passes 141 tests with 2 expected platform skips (E-5014). No hosted schema or application state changed for this UI-only slice.
 - M5 / P2-06 cancellation, retry, durable recovery, poison, and failure-experience are complete. Checked-in forward migrations add an owner/editor-only cancel command, narrow RLS/event/audit authority, no-active-lease cancellation finalization, cancel-wins completion/failure transitions, cancellation-aware dispatch claiming, durable temporary-schema-CREATE cleanup, database-authoritative 5s/30s timing with three-attempt exhaustion, a worker-only stale lease/Redis-loss reconciler that supersedes outbox generations under run-then-outbox locks, and a worker-only terminalizer for expired unconfirmed tenth dispatch claims. API/UI expose documented empty-JSON `POST /runs/{id}/cancel`; failed state gives explicit no-substitute-result copy and never fetches result/provenance. Timeout, explicit preflight-unavailable, and explicit rate-limit rejections are the only retryable provider failures; unknown/ambiguous provider errors remain terminal. Local reset/pgTAP/type checks, API/worker tests, real authorization/cancel-versus-completion/retry-exhaustion/stale-lease/poison-cancel integrations, five-browser-test P2 gate, and every constituent repository quality gate pass; hosted history/ACL verification also passes where migrations apply (E-5015–E-5021). P2-07 is active; Phase 2 remains open.
 
+- M6 / P2-07 implementation is complete: global Redis/outbox backpressure fails closed, the organization pending-run quota maps to `429 quota_exceeded`, and worker capacity/cancellation occupancy/cross-organization behavior is proven. Clean reset/lint/41 pgTAP assertions, ten real API/Redis/worker integrations, five browser flows, `pnpm check` (151 Python pass, 2 expected platform skips, 36 web tests), Linux mypy (65 sources), hosted migration equality, and GitHub Actions `29640798631` pass (E-5022). Formal Phase 2 closure remains pending the independent exit review.
+
 ## Key constraints
 
 - Pressure-test before field research; never market as survey replacement.
@@ -81,6 +87,7 @@ See [[RISK_REGISTER|Risk Register]]. Critical themes: false precision/representa
 
 ## Blockers
 
+- Formal Phase 2 independent exit review remains required. This self-audit and CI do not satisfy that governance control; Phase 3 is not authorized.
 - Human/design-partner evidence remains absent. It does not block an explicitly experimental local walking skeleton; it blocks Phase 6 staging acceptance/customer-facing release.
-- Hosted Supabase migrations through P2-06 are applied and history-aligned. The local CLI remains unlinked; before future hosted changes, compare MCP migration history to Git, reset/test the ordered migration locally, and apply the checked-in migration exactly once with the authorized MCP identity. Do not apply `seed.sql` or customer data.
+- Hosted Supabase migrations through the P2-07 implementation gate are applied and history-aligned. The local CLI remains unlinked; before future hosted changes, compare MCP migration history to Git, reset/test the ordered migration locally, and apply the checked-in migration exactly once with the authorized MCP identity. Do not apply `seed.sql` or customer data.
 - R-020: ARQ maintenance-only status requires exact Phase 2 proof and a tested Phase 5 exit decision before Phase 6.

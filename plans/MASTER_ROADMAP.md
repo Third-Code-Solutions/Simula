@@ -2,7 +2,7 @@
 title: SIMULA Master Roadmap
 status: active
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 owner: Principal program and engineering lead
 classification: PROPOSED
 source_of_truth: true
@@ -69,6 +69,8 @@ source_of_truth: true
 **Gate:** Final security and QA reviews pass; retention/deletion, monitoring, alerting, support, incidents, rollback, and release notes are approved. Actual production deployment still requires explicit authorization.
 
 ## Current phase
+
+- Current implementation state: Phase 2 is in formal exit review; Phase 3 remains unauthorized.
 
 - Completed: [[completed/000-phase-0-evidence-and-discovery|Phase 0 — Evidence and Discovery]]
 - Completed: [[completed/001-phase-1-product-and-architecture-definition|Phase 1 — Product and Architecture Definition]]
