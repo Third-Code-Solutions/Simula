@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import secrets
 from collections.abc import AsyncIterator, Callable
-from contextlib import asynccontextmanager
+from contextlib import AsyncExitStack, asynccontextmanager
 from typing import Protocol, cast
 from uuid import UUID, uuid4
 
@@ -201,6 +202,19 @@ async def _worker_database(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[Wor
         yield database
     finally:
         await database.close()
+
+
+@asynccontextmanager
+async def _worker_replicas(
+    monkeypatch: pytest.MonkeyPatch, *, count: int
+) -> AsyncIterator[list[WorkerDatabase]]:
+    """Open independent worker pools before rotating the disposable role password."""
+
+    async with AsyncExitStack() as stack:
+        databases: list[WorkerDatabase] = []
+        for _ in range(count):
+            databases.append(await stack.enter_async_context(_worker_database(monkeypatch)))
+        yield databases
 
 
 @asynccontextmanager
@@ -888,6 +902,169 @@ async def _create_p2_dispatch_run(
     )
     assert created_run.status_code == 202
     return UUID(created_run.json()["id"])
+
+
+async def _create_run_for_project(
+    client: AsyncClient,
+    owner_token: str,
+    *,
+    project_id: UUID,
+    stimulus_version_id: UUID,
+    idempotency_key: str,
+) -> UUID:
+    created_run = await client.post(
+        f"/api/v1/projects/{project_id}/runs",
+        headers=_headers(owner_token, idempotency_key),
+        json={"stimulus_version_id": str(stimulus_version_id)},
+    )
+    assert created_run.status_code == 202
+    return UUID(created_run.json()["id"])
+
+
+@pytest.mark.integration
+async def test_p2_worker_capacity_serializes_org_replicas_and_cancellation_leases(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """INT-WORKER-LIMIT-001: four replicas cannot exceed three live org slots."""
+
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+
+    async with _api_client(monkeypatch) as setup_client:
+        created_organization = await setup_client.post(
+            "/api/v1/organizations",
+            headers=_headers(owner_token, f"p2-capacity-org-{suffix}"),
+            json={"name": f"P2 Capacity {suffix[:8]}"},
+        )
+        assert created_organization.status_code == 201
+        organization_id = UUID(created_organization.json()["id"])
+        created_project = await setup_client.post(
+            f"/api/v1/organizations/{organization_id}/projects",
+            headers=_headers(owner_token, f"p2-capacity-project-{suffix}"),
+            json=_project_payload(f"P2 Capacity {suffix[:8]}"),
+        )
+        assert created_project.status_code == 201
+        project_id = UUID(created_project.json()["id"])
+        created_stimulus = await setup_client.post(
+            f"/api/v1/projects/{project_id}/stimuli",
+            headers=_headers(owner_token, f"p2-capacity-stimulus-{suffix}"),
+            json={"name": "P2 Capacity Message", "content": "Bounded fictional capacity."},
+        )
+        assert created_stimulus.status_code == 201
+        stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+
+    same_org_run_ids: list[UUID] = []
+    for index in range(4):
+        # Each disposable app has its own Redis rate-limit namespace. The
+        # durable database objects remain in the same organization.
+        async with _api_client(monkeypatch) as run_client:
+            same_org_run_ids.append(
+                await _create_run_for_project(
+                    run_client,
+                    owner_token,
+                    project_id=project_id,
+                    stimulus_version_id=stimulus_version_id,
+                    idempotency_key=f"p2-capacity-run-{index}-{suffix}",
+                )
+            )
+
+    async with _api_client(monkeypatch) as other_org_client:
+        other_org_run_id = await _create_p2_dispatch_run(
+            other_org_client,
+            owner_token,
+            suffix=f"other-{suffix}",
+            label="p2-capacity",
+        )
+
+    same_org_job_ids = [job_id_for(run_id, generation=1) for run_id in same_org_run_ids]
+    other_org_job_id = job_id_for(other_org_run_id, generation=1)
+    queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
+    try:
+        async with _worker_replicas(monkeypatch, count=4) as replicas:
+            dispatcher = RunDispatcher(replicas[0], RedisRunQueue(cast(RedisDispatchClient, queue)))
+            dispatched = await dispatcher.dispatch_once(batch_size=10)
+            assert dispatched.confirmed >= 5
+
+            claims = await asyncio.gather(
+                *(
+                    replica.claim_execution(run_id, 1, job_id)
+                    for replica, run_id, job_id in zip(
+                        replicas, same_org_run_ids, same_org_job_ids, strict=True
+                    )
+                )
+            )
+            assert sum(claim.status == "claimed" for claim in claims) == 3
+            capacity_index = next(
+                index
+                for index, claim in enumerate(claims)
+                if claim.status == "organization_capacity"
+            )
+            capacity_claim = claims[capacity_index]
+            assert capacity_claim == ExecutionClaim(
+                status="organization_capacity",
+                attempt_id=None,
+                lease_token=None,
+                frozen_manifest=None,
+                frozen_manifest_sha256=None,
+                deterministic_seed=None,
+            )
+            assert all(
+                claim.attempt_id is not None
+                and claim.lease_token is not None
+                and claim.frozen_manifest is not None
+                for claim in claims
+                if claim.status == "claimed"
+            )
+
+            # A full organization does not stall a different organization.
+            other_org_claim = await replicas[0].claim_execution(
+                other_org_run_id, 1, other_org_job_id
+            )
+            assert other_org_claim.status == "claimed"
+            assert other_org_claim.attempt_id is not None
+            assert other_org_claim.frozen_manifest is not None
+
+            claimed_run_ids = [
+                run_id
+                for run_id, claim in zip(same_org_run_ids, claims, strict=True)
+                if claim.status == "claimed"
+            ]
+            async with _api_client(monkeypatch) as cancellation_client:
+                for run_id in claimed_run_ids:
+                    canceled = await cancellation_client.post(
+                        f"/api/v1/runs/{run_id}/cancel",
+                        headers={"Authorization": f"Bearer {owner_token}"},
+                        json={},
+                    )
+                    assert canceled.status_code == 202
+                    assert canceled.json()["state"] == "cancel_requested"
+
+            # Live cancellation leases retain all three capacity slots.
+            still_blocked = await replicas[capacity_index].claim_execution(
+                same_org_run_ids[capacity_index], 1, same_org_job_ids[capacity_index]
+            )
+            assert still_blocked == capacity_claim
+
+            # Expiring one cancellation lease frees exactly one slot; no
+            # provider invocation or prior attempt was needed for the loser.
+            _expire_local_run_lease(claimed_run_ids[0])
+            released = await replicas[capacity_index].claim_execution(
+                same_org_run_ids[capacity_index], 1, same_org_job_ids[capacity_index]
+            )
+            assert released.status == "claimed"
+            assert released.attempt_id is not None
+            assert released.frozen_manifest is not None
+
+            # Finish the test's own cancellation fixtures so later cases do
+            # not inherit an expired cancellation eligible for finalization.
+            for run_id in claimed_run_ids[1:]:
+                _expire_local_run_lease(run_id)
+            assert await replicas[0].finalize_requested_cancellations() == 3
+    finally:
+        await queue.aclose(close_connection_pool=True)
+        for job_id in [*same_org_job_ids, other_org_job_id]:
+            await _remove_exact_queue_keys(job_id)
 
 
 @pytest.mark.integration

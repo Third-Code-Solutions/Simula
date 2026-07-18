@@ -325,6 +325,9 @@ def main() -> None:
         api_credential=api_credential,
         worker_credential=worker_credential,
     )
+    # The web package imports the workspace contract declaration entrypoint.
+    # A clean CI checkout has no ignored ``packages/contracts/dist`` yet.
+    run((pnpm, "--filter", "@simula/contracts", "build"), environment=environment)
     run(
         (pnpm, "--filter", "@simula/web", "build"),
         environment=web_environment,
