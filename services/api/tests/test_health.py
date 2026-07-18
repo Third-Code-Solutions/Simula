@@ -41,7 +41,13 @@ async def test_documentation_routes_are_not_exposed(path: str) -> None:
     assert response.status_code == 404
 
 
-async def test_health_returns_safe_runtime_metadata() -> None:
+async def test_health_returns_safe_runtime_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SIMULA_ENVIRONMENT", "test")
+    monkeypatch.setenv("SIMULA_RELEASE_SHA", "a" * 40)
+    monkeypatch.setenv("SIMULA_LOG_LEVEL", "INFO")
+
     async with AsyncClient(
         transport=ASGITransport(app=create_app()), base_url="http://test"
     ) as client:
@@ -49,8 +55,8 @@ async def test_health_returns_safe_runtime_metadata() -> None:
 
     assert response.status_code == 200
     assert response.json() == {
-        "environment": "local",
-        "release_sha": "dev",
+        "environment": "test",
+        "release_sha": "a" * 40,
         "service": "api",
         "status": "ok",
     }
