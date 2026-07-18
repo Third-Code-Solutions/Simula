@@ -108,7 +108,7 @@ A story is Ready only when user/system outcome, linked `AC-*`/threat/ADR, bounda
 
 ### P2-07 — Integrated quality, telemetry, and security gate — 5 points
 
-- Status: reopened after independent exit-review failure; remediation active (E-5023–E-5026).
+- Status: reopened after independent exit-review failure; remediation active (E-5023–E-5027).
 - Outcome: release owner can prove walking skeleton contracts, isolation, accessibility, resource, and operational budgets.
 - Acceptance links: every AC-AUTH/ORG/TEN/PROJ/AUD/RUN/RES/ERR/A11Y criterion.
 - ADRs: ADR-0002 through ADR-0010.
