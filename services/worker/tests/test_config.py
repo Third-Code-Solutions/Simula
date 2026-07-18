@@ -38,3 +38,11 @@ def test_worker_settings_accept_loopback_test_dependencies(monkeypatch: pytest.M
 
     assert settings.environment == "test"
     assert settings.redis_url == "redis://127.0.0.1:6379/0"
+    assert settings.metrics_port == 9464
+
+
+def test_worker_settings_reject_invalid_metrics_port(monkeypatch: pytest.MonkeyPatch) -> None:
+    _environment(monkeypatch, SIMULA_WORKER_METRICS_PORT="0")
+
+    with pytest.raises(ConfigurationError, match="1 through 65535"):
+        WorkerSettings.from_environment()

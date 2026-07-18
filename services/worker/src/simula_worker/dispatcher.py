@@ -18,6 +18,7 @@ from simula_core.queue_runtime import (
 )
 
 from simula_worker.database import DispatchClaim
+from simula_worker.telemetry import WorkerTelemetry
 
 logger = structlog.get_logger()
 RECOVERY_INTERVAL_SECONDS = 30.0
@@ -76,9 +77,16 @@ class DispatchPass:
 class RunDispatcher:
     """Moves durable intent to ARQ without treating publish acknowledgement as truth."""
 
-    def __init__(self, database: DispatcherDatabase, queue: DispatcherQueue) -> None:
+    def __init__(
+        self,
+        database: DispatcherDatabase,
+        queue: DispatcherQueue,
+        *,
+        telemetry: WorkerTelemetry | None = None,
+    ) -> None:
         self._database = database
         self._queue = queue
+        self._telemetry = telemetry
         self._next_recovery_at = 0.0
 
     async def dispatch_once(self, *, batch_size: int = 10) -> DispatchPass:
@@ -102,33 +110,50 @@ class RunDispatcher:
                 proved = await self._queue.proves_queued(intent)
                 if not proved:
                     logger.warning("run_dispatch_unproven", outbox_id=str(claim.outbox_id))
+                    self._observe("unproven")
                     continue
                 changed = await self._database.confirm_dispatch(claim.outbox_id, claim.claim_token)
             except asyncio.CancelledError:
                 raise
             except QueuePublishAmbiguousError:
                 logger.warning("run_dispatch_ambiguous", outbox_id=str(claim.outbox_id))
+                self._observe("ambiguous")
                 continue
-            except Exception:
-                logger.exception("run_dispatch_failed", outbox_id=str(claim.outbox_id))
+            except Exception as error:
+                logger.error(
+                    "run_dispatch_failed",
+                    error_class=type(error).__name__,
+                    outbox_id=str(claim.outbox_id),
+                )
+                self._observe("failed")
                 try:
                     failure_recorded = await self._database.fail_dispatch(
                         claim.outbox_id, claim.claim_token, "dispatch_transport_failed"
                     )
-                except Exception:
-                    logger.exception(
-                        "run_dispatch_failure_record_failed", outbox_id=str(claim.outbox_id)
+                except Exception as failure_error:
+                    logger.error(
+                        "run_dispatch_failure_record_failed",
+                        error_class=type(failure_error).__name__,
+                        outbox_id=str(claim.outbox_id),
                     )
+                    self._observe("failure_record_failed")
                 else:
                     if not failure_recorded:
                         logger.warning(
                             "run_dispatch_failure_record_rejected", outbox_id=str(claim.outbox_id)
                         )
+                        self._observe("failure_record_rejected")
                 continue
             if changed:
                 confirmed += 1
+                self._observe("confirmed")
             else:
                 logger.warning("run_dispatch_confirmation_rejected", outbox_id=str(claim.outbox_id))
+                self._observe("confirmation_rejected")
+        self._observe("canceled", count=canceled)
+        self._observe("poisoned", count=poisoned)
+        self._observe("recovered", count=recovered)
+        self._observe("claimed", count=len(claims))
         return DispatchPass(
             canceled=canceled,
             poisoned=poisoned,
@@ -136,3 +161,7 @@ class RunDispatcher:
             claimed=len(claims),
             confirmed=confirmed,
         )
+
+    def _observe(self, outcome: str, *, count: int = 1) -> None:
+        if self._telemetry is not None:
+            self._telemetry.observe_dispatch(outcome, count=count)

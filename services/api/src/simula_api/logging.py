@@ -5,8 +5,59 @@ from __future__ import annotations
 import logging
 import os
 import sys
+from collections.abc import Mapping, MutableMapping
+from typing import Any
 
 import structlog
+from simula_core.safe_logs import sanitize_log_event
+
+_API_LOG_FIELDS = {
+    "api_request_denied": frozenset(
+        {"code", "correlation_id", "route_template", "span_id", "status", "trace_id"}
+    ),
+    "audit_evidence_incomplete": frozenset(
+        {"action", "correlation_id", "error_code", "object_type"}
+    ),
+    "domain_dependencies_unavailable": frozenset({"error_class"}),
+    "http_request_completed": frozenset(
+        {
+            "correlation_id",
+            "duration_ms",
+            "method",
+            "route_template",
+            "span_id",
+            "status",
+            "trace_id",
+        }
+    ),
+    "http_request_failed": frozenset(
+        {
+            "correlation_id",
+            "error_class",
+            "method",
+            "route_template",
+            "span_id",
+            "status",
+            "trace_id",
+        }
+    ),
+    "idempotency_created": frozenset({"correlation_id", "route_template"}),
+    "idempotency_replay": frozenset({"correlation_id", "route_template"}),
+    "run_publish_ambiguous": frozenset({"correlation_id", "run_id"}),
+    "run_publisher_unavailable": frozenset({"correlation_id"}),
+    "service_started": frozenset(),
+    "service_stopped": frozenset(),
+}
+
+
+def _enforce_log_allowlist(
+    _logger: object, _method_name: str, event_dict: MutableMapping[str, Any]
+) -> Mapping[str, Any]:
+    return sanitize_log_event(
+        event_dict,
+        allowed_fields=_API_LOG_FIELDS,
+        unknown_event="foreign_log",
+    )
 
 
 def configure_logging() -> None:
@@ -15,6 +66,7 @@ def configure_logging() -> None:
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
+        _enforce_log_allowlist,
     ]
     formatter = structlog.stdlib.ProcessorFormatter(
         foreign_pre_chain=shared_processors,

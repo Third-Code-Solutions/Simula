@@ -7,6 +7,7 @@ from simula_core.arq_codec import job_id_for
 from simula_core.queue_runtime import QueuePublishAmbiguousError
 from simula_worker.database import DispatchClaim
 from simula_worker.dispatcher import RunDispatcher
+from simula_worker.telemetry import WorkerTelemetry
 
 
 class RecordingDatabase:
@@ -77,8 +78,9 @@ async def test_dispatcher_confirms_only_after_queue_proof() -> None:
     claim = _claim()
     database = RecordingDatabase([claim])
     queue = RecordingQueue(proves=True)
+    telemetry = WorkerTelemetry()
 
-    result = await RunDispatcher(database, queue).dispatch_once()
+    result = await RunDispatcher(database, queue, telemetry=telemetry).dispatch_once()
 
     assert result.claimed == 1
     assert result.confirmed == 1
@@ -90,6 +92,9 @@ async def test_dispatcher_confirms_only_after_queue_proof() -> None:
     assert database.reconciled_batch_sizes == [(10, False)]
     assert database.confirmations == [(claim.outbox_id, claim.claim_token)]
     assert queue.enqueued_job_ids == [claim.job_id]
+    rendered = telemetry.render().decode()
+    assert 'simula_worker_dispatch_total{outcome="claimed"} 1.0' in rendered
+    assert 'simula_worker_dispatch_total{outcome="confirmed"} 1.0' in rendered
 
 
 async def test_dispatcher_leaves_outbox_unconfirmed_when_enqueue_is_ambiguous() -> None:

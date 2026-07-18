@@ -13,6 +13,7 @@ from simula_core.simulation import (
 )
 from simula_worker.database import ExecutionClaim, FailureResolution
 from simula_worker.main import process_run_v1
+from simula_worker.telemetry import WorkerTelemetry
 from structlog.testing import capture_logs
 
 
@@ -243,12 +244,14 @@ async def test_worker_emits_allowlisted_database_claim_rejection(
 async def test_worker_completes_a_claimed_deterministic_run() -> None:
     run_id, claim = _claimed_run()
     database = RecordingDatabase(claim)
+    telemetry = WorkerTelemetry()
 
     await process_run_v1(
         {"job_id": f"run:{run_id}:dispatch:1"},
         {"schema_version": 1, "run_id": str(run_id)},
         database=database,
         provider=DeterministicMockProvider(),
+        telemetry=telemetry,
     )
 
     assert database.failures == []
@@ -261,6 +264,10 @@ async def test_worker_completes_a_claimed_deterministic_run() -> None:
     assert lease_token == claim.lease_token
     assert artifact["schema_version"] == "1.0.0"
     assert artifact["run_id"] == str(run_id)
+    rendered = telemetry.render().decode()
+    assert 'simula_worker_jobs_total{outcome="completed"} 1.0' in rendered
+    assert 'simula_worker_deterministic_provider_calls_total{outcome="completed"} 1.0' in rendered
+    assert "simula_worker_external_provider_calls_total 0.0" in rendered
 
 
 async def test_worker_discards_work_when_the_current_lease_cannot_heartbeat() -> None:

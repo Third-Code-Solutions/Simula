@@ -67,6 +67,7 @@ class WorkerSettings:
     environment: str
     database_url: str
     redis_url: str
+    metrics_port: int
 
     @classmethod
     def from_environment(cls) -> WorkerSettings:
@@ -75,6 +76,18 @@ class WorkerSettings:
             raise ConfigurationError("SIMULA_ENVIRONMENT is unsupported")
         database_url = _required("SIMULA_WORKER_DATABASE_URL")
         redis_url = _required("SIMULA_REDIS_URL")
+        raw_metrics_port = os.getenv("SIMULA_WORKER_METRICS_PORT", "9464")
+        try:
+            metrics_port = int(raw_metrics_port)
+        except ValueError as error:
+            raise ConfigurationError("SIMULA_WORKER_METRICS_PORT must be an integer") from error
+        if metrics_port not in range(1, 65_536):
+            raise ConfigurationError("SIMULA_WORKER_METRICS_PORT must be from 1 through 65535")
         _parse_postgres_url(database_url, environment=environment)
         _parse_redis_url(redis_url, environment=environment)
-        return cls(environment=environment, database_url=database_url, redis_url=redis_url)
+        return cls(
+            environment=environment,
+            database_url=database_url,
+            redis_url=redis_url,
+            metrics_port=metrics_port,
+        )

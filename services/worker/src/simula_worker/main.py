@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import signal
-from collections.abc import Iterable, Mapping
+from collections.abc import Awaitable, Iterable, Mapping
 from datetime import UTC, datetime, timedelta
-from typing import Literal, cast
+from time import time
+from typing import Literal, Protocol, cast
 from uuid import UUID
 
 import structlog
@@ -36,6 +37,7 @@ from simula_core.simulation import (
 from simula_worker.config import WorkerSettings
 from simula_worker.database import WorkerDatabase, WorkerExecutionGateway
 from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
+from simula_worker.telemetry import JobObservation, WorkerMetricsServer, WorkerTelemetry
 
 logger = structlog.get_logger()
 
@@ -48,16 +50,84 @@ def _signals() -> Iterable[signal.Signals]:
     return (signal.SIGINT, signal.SIGTERM)
 
 
-async def _dispatch_forever(dispatcher: RunDispatcher, stop: asyncio.Event) -> None:
+class ReadinessQueue(Protocol):
+    async def ping(self) -> object: ...
+
+    async def zcard(self, name: str) -> object: ...
+
+    async def zrange(self, name: str, start: int, end: int, *, withscores: bool) -> object: ...
+
+
+class ReadinessDatabase(Protocol):
+    async def ready(self) -> bool: ...
+
+
+async def _probe_ready(probe: Awaitable[object]) -> bool:
+    try:
+        async with asyncio.timeout(1.0):
+            result = await probe
+        return bool(result)
+    except Exception:
+        return False
+
+
+async def _refresh_dependency_readiness(
+    database: ReadinessDatabase,
+    queue: ReadinessQueue,
+    telemetry: WorkerTelemetry,
+) -> None:
+    database_ready, queue_ready = await asyncio.gather(
+        _probe_ready(database.ready()),
+        _probe_ready(queue.ping()),
+    )
+    telemetry.set_dependency_ready("database", database_ready)
+    telemetry.set_dependency_ready("queue", queue_ready)
+    if not queue_ready:
+        return
+    try:
+        async with asyncio.timeout(1.0):
+            raw_depth, raw_oldest = await asyncio.gather(
+                queue.zcard(ARQ_QUEUE_NAME),
+                queue.zrange(ARQ_QUEUE_NAME, 0, 0, withscores=True),
+            )
+        depth = int(cast(int | str, raw_depth))
+        if depth < 0:
+            raise ValueError("queue depth is negative")
+        oldest_ready_age = _oldest_ready_age(raw_oldest)
+    except TypeError, ValueError, TimeoutError:
+        telemetry.set_dependency_ready("queue", False)
+        return
+    telemetry.set_queue_snapshot(depth=depth, oldest_ready_age_seconds=oldest_ready_age)
+
+
+def _oldest_ready_age(raw_oldest: object) -> float:
+    if not isinstance(raw_oldest, (list, tuple)) or not raw_oldest:
+        return 0.0
+    first = raw_oldest[0]
+    if not isinstance(first, (list, tuple)) or len(first) != 2:
+        raise ValueError("queue snapshot is malformed")
+    score = float(cast(float | int | str, first[1]))
+    return max(0.0, time() - score / 1000.0)
+
+
+async def _dispatch_forever(
+    dispatcher: RunDispatcher,
+    stop: asyncio.Event,
+    *,
+    database: WorkerDatabase,
+    queue: ReadinessQueue,
+    telemetry: WorkerTelemetry,
+) -> None:
     """Poll durable intent; errors leave claims unconfirmed for lease expiry/redrive."""
 
     while not stop.is_set():
         try:
+            await _refresh_dependency_readiness(database, queue, telemetry)
             await dispatcher.dispatch_once()
         except asyncio.CancelledError:
             raise
-        except Exception:
-            logger.exception("run_dispatch_pass_failed")
+        except Exception as error:
+            logger.error("run_dispatch_pass_failed", error_class=type(error).__name__)
         try:
             await asyncio.wait_for(stop.wait(), timeout=1.0)
         except TimeoutError:
@@ -81,6 +151,9 @@ async def serve() -> None:
     database = WorkerDatabase(settings)
     await database.open()
     redis = create_queue_client(settings.redis_url, max_connections=8)
+    telemetry = WorkerTelemetry()
+    metrics_server = WorkerMetricsServer(telemetry, port=settings.metrics_port)
+    await metrics_server.start()
     worker = None
     worker_task: asyncio.Task[None] | None = None
     dispatcher_task: asyncio.Task[None] | None = None
@@ -101,12 +174,24 @@ async def serve() -> None:
             ctx={
                 "database": database,
                 "provider": DeterministicMockProvider(),
+                "telemetry": telemetry,
             },
         )
-        dispatcher = RunDispatcher(database, RedisRunQueue(cast(RedisDispatchClient, redis)))
+        dispatcher = RunDispatcher(
+            database,
+            RedisRunQueue(cast(RedisDispatchClient, redis)),
+            telemetry=telemetry,
+        )
         worker_task = asyncio.create_task(worker.async_run(), name="arq-worker")
         dispatcher_task = asyncio.create_task(
-            _dispatch_forever(dispatcher, stop), name="run-dispatcher"
+            _dispatch_forever(
+                dispatcher,
+                stop,
+                database=database,
+                queue=cast(ReadinessQueue, redis),
+                telemetry=telemetry,
+            ),
+            name="run-dispatcher",
         )
         logger.info("service_started", payload_contract="run_v1", **metadata.model_dump())
         stop_task = asyncio.create_task(stop.wait(), name="worker-stop")
@@ -127,7 +212,10 @@ async def serve() -> None:
             await asyncio.gather(worker_task, return_exceptions=True)
         if worker is not None:
             await worker.close()
+        telemetry.set_dependency_ready("database", False)
+        telemetry.set_dependency_ready("queue", False)
         await database.close()
+        await metrics_server.close()
         logger.info("service_stopped", payload_contract="run_v1", **metadata.model_dump())
 
 
@@ -203,102 +291,139 @@ async def process_run_v1(
     *,
     database: WorkerExecutionGateway | None = None,
     provider: SimulationProvider | None = None,
+    telemetry: WorkerTelemetry | None = None,
 ) -> None:
     """Claim a confirmed current run before manifest access or deterministic provider work."""
 
-    job = _run_job(payload)
-    try:
-        context_run_id, generation = parse_job_id(ctx.get("job_id"))
-    except ArqCodecError:
-        logger.warning("run_execution_binding_rejected", reason="invalid_job_id")
-        return None
-    if job is None:
-        logger.warning("run_execution_binding_rejected", reason="invalid_payload")
-        return None
-    if job.run_id != context_run_id:
-        logger.warning("run_execution_binding_rejected", reason="run_id_mismatch")
-        return None
-
-    database = database or cast(WorkerExecutionGateway, _context_dependency(ctx, "database"))
-    provider = provider or cast(SimulationProvider, _context_dependency(ctx, "provider"))
-    claim = await database.claim_execution(context_run_id, generation, str(ctx["job_id"]))
-    job_try = ctx.get("job_try")
-    if claim.status != "claimed":
-        logger.info(
-            "run_execution_claim_rejected",
-            reason=_safe_claim_rejection_reason(claim.status),
-            run_id=str(context_run_id),
-        )
-    if claim.status == "awaiting_confirmation" and isinstance(job_try, int) and job_try <= 3:
-        raise Retry(defer=1)
-    if claim.status == "organization_capacity" and isinstance(job_try, int) and job_try <= 13:
-        raise Retry(defer=5)
-    if (
-        claim.status != "claimed"
-        or claim.attempt_id is None
-        or claim.lease_token is None
-        or claim.frozen_manifest is None
-        or claim.frozen_manifest_sha256 is None
-        or claim.deterministic_seed is None
-    ):
-        return None
-
-    if not await _heartbeat_execution(
-        database,
-        context_run_id,
-        claim.attempt_id,
-        claim.lease_token,
-        checkpoint="before_provider",
-    ):
-        return None
-
-    try:
-        request = _provider_request(
-            run_id=context_run_id,
-            claim_attempt_id=claim.attempt_id,
-            frozen_manifest=claim.frozen_manifest,
-            frozen_manifest_sha256=claim.frozen_manifest_sha256,
-            deterministic_seed=claim.deterministic_seed,
-        )
-        result: SimulationResultV1 = provider.run(request)
-    except asyncio.CancelledError:
-        raise
-    except (TimeoutError, ProviderPreflightUnavailableError, ProviderRateLimitedError) as error:
-        if isinstance(error, TimeoutError):
-            safe_error_code = "execution_timed_out"
-        elif isinstance(error, ProviderRateLimitedError):
-            safe_error_code = "execution_rate_limited"
-        else:
-            safe_error_code = "execution_provider_preflight_unavailable"
-        logger.warning("run_execution_retryable_failure", run_id=str(context_run_id))
-        resolution = await database.fail_execution(
-            context_run_id,
-            claim.attempt_id,
-            claim.lease_token,
-            safe_error_code,
-            True,
-        )
-        if resolution.state == "retrying":
-            if resolution.retry_after_seconds is None:
-                raise RuntimeError("retrying resolution is missing its delay") from None
-            raise Retry(defer=resolution.retry_after_seconds) from None
-        return None
-    except Exception:
-        logger.exception("run_execution_provider_failed", run_id=str(context_run_id))
-        await database.fail_execution(
-            context_run_id,
-            claim.attempt_id,
-            claim.lease_token,
-            "execution_provider_failure",
-            False,
-        )
-        return None
-    completed = await database.complete_execution(
-        context_run_id,
-        claim.attempt_id,
-        claim.lease_token,
-        result.model_dump(mode="json"),
+    candidate_telemetry = telemetry or ctx.get("telemetry")
+    active_telemetry = (
+        candidate_telemetry if isinstance(candidate_telemetry, WorkerTelemetry) else None
     )
-    if not completed:
-        logger.warning("run_execution_completion_rejected", run_id=str(context_run_id))
-    return None
+    observation = JobObservation(active_telemetry)
+    try:
+        job = _run_job(payload)
+        try:
+            context_run_id, generation = parse_job_id(ctx.get("job_id"))
+        except ArqCodecError:
+            logger.warning("run_execution_binding_rejected", reason="invalid_job_id")
+            return None
+        if job is None:
+            logger.warning("run_execution_binding_rejected", reason="invalid_payload")
+            return None
+        if job.run_id != context_run_id:
+            logger.warning("run_execution_binding_rejected", reason="run_id_mismatch")
+            return None
+
+        observation.outcome = "failed"
+        database = database or cast(WorkerExecutionGateway, _context_dependency(ctx, "database"))
+        provider = provider or cast(SimulationProvider, _context_dependency(ctx, "provider"))
+        claim = await database.claim_execution(context_run_id, generation, str(ctx["job_id"]))
+        job_try = ctx.get("job_try")
+        if claim.status != "claimed":
+            observation.outcome = "claim_rejected"
+            logger.info(
+                "run_execution_claim_rejected",
+                reason=_safe_claim_rejection_reason(claim.status),
+                run_id=str(context_run_id),
+            )
+        if claim.status == "awaiting_confirmation" and isinstance(job_try, int) and job_try <= 3:
+            raise Retry(defer=1)
+        if claim.status == "organization_capacity" and isinstance(job_try, int) and job_try <= 13:
+            raise Retry(defer=5)
+        if (
+            claim.status != "claimed"
+            or claim.attempt_id is None
+            or claim.lease_token is None
+            or claim.frozen_manifest is None
+            or claim.frozen_manifest_sha256 is None
+            or claim.deterministic_seed is None
+        ):
+            return None
+
+        observation.outcome = "failed"
+        if not await _heartbeat_execution(
+            database,
+            context_run_id,
+            claim.attempt_id,
+            claim.lease_token,
+            checkpoint="before_provider",
+        ):
+            observation.outcome = "lease_rejected"
+            return None
+
+        provider_called = False
+        try:
+            request = _provider_request(
+                run_id=context_run_id,
+                claim_attempt_id=claim.attempt_id,
+                frozen_manifest=claim.frozen_manifest,
+                frozen_manifest_sha256=claim.frozen_manifest_sha256,
+                deterministic_seed=claim.deterministic_seed,
+            )
+            if active_telemetry is not None and not isinstance(provider, DeterministicMockProvider):
+                active_telemetry.observe_external_provider_call()
+            provider_called = True
+            result: SimulationResultV1 = provider.run(request)
+            if active_telemetry is not None:
+                active_telemetry.observe_provider("completed")
+        except asyncio.CancelledError:
+            raise
+        except (
+            TimeoutError,
+            ProviderPreflightUnavailableError,
+            ProviderRateLimitedError,
+        ) as error:
+            if active_telemetry is not None and provider_called:
+                active_telemetry.observe_provider("retryable_failure")
+            if isinstance(error, TimeoutError):
+                safe_error_code = "execution_timed_out"
+            elif isinstance(error, ProviderRateLimitedError):
+                safe_error_code = "execution_rate_limited"
+            else:
+                safe_error_code = "execution_provider_preflight_unavailable"
+            logger.warning(
+                "run_execution_retryable_failure",
+                reason=safe_error_code,
+                run_id=str(context_run_id),
+            )
+            resolution = await database.fail_execution(
+                context_run_id,
+                claim.attempt_id,
+                claim.lease_token,
+                safe_error_code,
+                True,
+            )
+            if resolution.state == "retrying":
+                observation.outcome = "retrying"
+                if resolution.retry_after_seconds is None:
+                    raise RuntimeError("retrying resolution is missing its delay") from None
+                raise Retry(defer=resolution.retry_after_seconds) from None
+            return None
+        except Exception as error:
+            if active_telemetry is not None and provider_called:
+                active_telemetry.observe_provider("failed")
+            logger.error(
+                "run_execution_provider_failed",
+                error_class=type(error).__name__,
+                run_id=str(context_run_id),
+            )
+            await database.fail_execution(
+                context_run_id,
+                claim.attempt_id,
+                claim.lease_token,
+                "execution_provider_failure",
+                False,
+            )
+            return None
+        completed = await database.complete_execution(
+            context_run_id,
+            claim.attempt_id,
+            claim.lease_token,
+            result.model_dump(mode="json"),
+        )
+        observation.outcome = "completed" if completed else "completion_rejected"
+        if not completed:
+            logger.warning("run_execution_completion_rejected", run_id=str(context_run_id))
+        return None
+    finally:
+        observation.finish()
