@@ -14,7 +14,7 @@ source_of_truth: true
 - Owner: Principal program and engineering lead
 - Created: 2026-07-17
 - Last updated: 2026-07-18
-- Status: Exit review; implementation and automated P2-07 gates pass. Formal Phase 2 completion remains pending the required independent exit review.
+- Status: Independent Phase 2 exit review failed; P2-07 remediation active. Phase 3 remains blocked.
 
 # 2. Purpose and User Outcome
 
@@ -45,7 +45,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 
 - Real model/provider calls, real Philippine population claims, official/microdata ingestion, scraping, uploads, calibrated or predictive output.
 - Membership management, exports/shares, realtime subscriptions, billing, customer data, hosted analytics.
-- Paid resource creation, hosted Supabase/Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user authorized and completed named Supabase P2-03 through P2-06 schema migrations; no seed, customer, or production data was applied.
+- Paid resource creation, hosted Supabase/Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user authorized named Supabase Phase 2 schema migrations through remediation version `20260718113445`; no seed, customer, or production data was applied.
 - Phase 3 methodology expansion, Phase 4 MVP breadth, and any representativeness/survey-replacement claim.
 
 # 5. Proposed Design
@@ -124,9 +124,9 @@ tests/                     cross-service, security, load, E2E
 
 ## M6 — P2-07 integrated quality gate
 
-- Implementation complete: structured telemetry/audit/correlation, security/secret/SCA/container checks, load/backpressure/resource tests, clean migration/contract generation, full browser E2E, local database gates, and evidence update are recorded in E-5022.
+- Historical self-audit: structured telemetry/audit/correlation, security/secret/SCA/container checks, load/backpressure/resource tests, clean migration/contract generation, browser E2E, local database gates, and evidence update are recorded in E-5022.
 - Automated gate evidence: clean local reset/lint/41 pgTAP assertions; ten real API/Redis/worker integrations; five browser flows; `pnpm check`; explicit Linux mypy; hosted migration equality; and GitHub Actions run `29640798631` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
-- Formal exit status: no known Critical/High implementation finding in this self-audit. The required independent Phase 2 exit review remains open; it is not substituted by CI or this audit.
+- Formal exit status: FAIL. E-5023 records unresolved High findings. E-5024 closes only expired-lease mutation authority and stale/canceled attempt corruption; all other Critical/High findings remain blocking.
 - Rollback: telemetry export may be disabled independently; core audit remains; revert only to a schema-compatible artifact.
 
 # 7. Risks
@@ -169,6 +169,8 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: explicit preflight-unavailable and rate-limited provider failures now receive only the same database-authorized retry budget as timeout; unknown errors remain terminal. The three-case real local integration and repository gates pass (E-5021). M5/P2-06 is complete; M6/P2-07 is active.
 
 - 2026-07-18 — OBSERVED: P2-07 implementation gates pass (E-5022): clean reset/lint/41 pgTAP assertions, ten real integration cases, five browser cases, full repository check, Linux mypy, hosted migration equality through `20260718094407`, and GitHub Actions `29640798631` all pass. This is a self-audit, not the required independent Phase 2 exit review; Phase 3 remains blocked.
+- 2026-07-18 — OBSERVED: ten bounded independent reviewer assignments returned Phase 2 exit FAIL with unresolved High findings across acceptance, worker/database authority, API/auth, accessibility, CI/supply chain, observability/operations, and method/data controls (E-5023). P2-07 is reopened; Phase 3 remains blocked.
+- 2026-07-18 — OBSERVED: the first remediation rejects expired lease heartbeat/failure authority and terminalizes stale/canceled attempts. Clean local database/repository gates and 10/10 run integrations pass; seed-free hosted migration version `20260718113445` is applied with zero security-advisor lints (E-5024). This does not close P2-07.
 
 # 9. Progress
 
@@ -211,14 +213,17 @@ tests/                     cross-service, security, load, E2E
   - [x] Bounded poison dispatch terminalization and poison/cancel race proof (E-5019).
   - [x] User-facing failed-run browser proof (E-5020).
   - [x] Bounded safe retry classes (E-5021).
-- [x] M6 / P2-07 implementation and automated quality gate (E-5022).
+- [ ] M6 / P2-07 integrated quality and independent exit gate.
+  - [x] Historical self-audit/automated quality snapshot (E-5022).
+  - [x] Expired-lease and stale/canceled-attempt remediation (E-5024).
+  - [ ] Remaining E-5023 Critical/High findings cleared and independently re-reviewed.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 
 ## Phase 2 exit criteria
 
 - [x] End-to-end local strategist journey works against generated contracts.
-- [x] Automated acceptance and traceability gates have recorded local/disposable evidence.
-- [x] Tenant isolation, Data API denial, claims cleanup, helper atomicity, queue forgery/loss/race, no-egress, accessibility, resource, and recovery gates pass in their recorded local gates.
+- [ ] Automated acceptance and traceability gates have complete local/disposable evidence, including concurrent replay, deterministic cross-process repeats, 30-run p95, deletion, and manual accessibility proof.
+- [ ] Tenant isolation, Data API denial, claims cleanup, helper atomicity, queue forgery/loss/race, explicit no-egress, accessibility, resource, and recovery gates pass in their recorded local gates.
 - [x] Clean exact installs/locks, migration reset, generated artifact drift, lint/type/test/build/security checks pass.
 - [x] Result says authored demo/non-representative/estimates nobody and exposes frozen provenance/limits.
 - [x] Obsidian state/changelog/risks/evidence/runbooks reflect implemented truth.
@@ -268,4 +273,4 @@ M4 evidence on 2026-07-18:
 
 # 11. Final Outcome
 
-Implementation complete; formal exit review pending. M0 through M6 have recorded passing implementation evidence. The self-audit found no known Critical/High implementation finding, but it cannot satisfy the required independent Phase 2 exit review. Phase 3 remains blocked. Production deployment remains unauthorized.
+Phase 2 remains open after independent exit-review failure (E-5023). M0 through M5 retain recorded evidence; M6/P2-07 is reopened. The first risk-first remediation passes locally and is applied seed-free to the hosted schema (E-5024), but remaining High findings block re-review and Phase 3. Production deployment remains unauthorized.

@@ -70,7 +70,7 @@ source_of_truth: true
 
 ## Current phase
 
-- Current implementation state: Phase 2 is in formal exit review; Phase 3 remains unauthorized.
+- Current implementation state: Phase 2 exit review failed; P2-07 remediation is active and Phase 3 remains unauthorized.
 
 - Completed: [[completed/000-phase-0-evidence-and-discovery|Phase 0 — Evidence and Discovery]]
 - Completed: [[completed/001-phase-1-product-and-architecture-definition|Phase 1 — Product and Architecture Definition]]

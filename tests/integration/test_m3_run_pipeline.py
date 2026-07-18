@@ -96,7 +96,8 @@ def _run_as_local_supabase_admin(
     *,
     run_id: UUID | None = None,
     organization_id: UUID | None = None,
-) -> None:
+    attempt_id: UUID | None = None,
+) -> str:
     inspect = _run_captured(
         [
             "docker",
@@ -131,11 +132,15 @@ def _run_as_local_supabase_admin(
         "-X",
         "-v",
         "ON_ERROR_STOP=1",
+        "-t",
+        "-A",
     ]
     if run_id is not None:
         command.extend(["-v", f"run_id={run_id}"])
     if organization_id is not None:
         command.extend(["-v", f"organization_id={organization_id}"])
+    if attempt_id is not None:
+        command.extend(["-v", f"attempt_id={attempt_id}"])
     result = _run_captured(
         command,
         environment={
@@ -146,6 +151,7 @@ def _run_as_local_supabase_admin(
     )
     if result.returncode != 0:
         pytest.fail("could not prepare local stale-run recovery fixture")
+    return result.stdout.strip()
 
 
 def _expire_local_run_lease(run_id: UUID) -> None:
@@ -413,6 +419,20 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
         )
         assert retrying_run.status_code == 200
         assert retrying_run.json()["state"] == "retrying"
+        retry_cancel = await client.post(
+            f"/api/v1/runs/{retry_run_id}/cancel",
+            headers=_headers(owner_token, f"m3-retry-cancel-{suffix}"),
+            json={},
+        )
+        assert retry_cancel.status_code == 202
+        async with _worker_database(monkeypatch) as cleanup_database:
+            assert await cleanup_database.finalize_requested_cancellations() == 1
+        canceled_retry = await client.get(
+            f"/api/v1/runs/{retry_run_id}",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert canceled_retry.status_code == 200
+        assert canceled_retry.json()["state"] == "canceled"
 
 
 @pytest.mark.integration
@@ -837,8 +857,22 @@ async def test_p2_stale_lease_recovery_supersedes_dispatch_generation(
                 assert initial.confirmed == 1
                 first_claim = await worker_database.claim_execution(run_id, 1, first_job_id)
                 assert first_claim.status == "claimed"
+                assert first_claim.attempt_id is not None
+                assert first_claim.lease_token is not None
 
                 _expire_local_run_lease(run_id)
+                assert not await worker_database.heartbeat_execution(
+                    run_id, first_claim.attempt_id, first_claim.lease_token
+                )
+                assert (
+                    await worker_database.fail_execution(
+                        run_id,
+                        first_claim.attempt_id,
+                        first_claim.lease_token,
+                        "expired_worker_must_not_mutate",
+                        True,
+                    )
+                ).state == "no_work"
 
                 recovery_dispatcher = RunDispatcher(
                     worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
@@ -862,20 +896,40 @@ async def test_p2_stale_lease_recovery_supersedes_dispatch_generation(
                 assert second_claim.status == "claimed"
                 assert second_claim.attempt_id is not None
                 assert second_claim.lease_token is not None
+                assert (
+                    _run_as_local_supabase_admin(
+                        """
+                    select status::text || '|' || coalesce(safe_error_code, '') || '|'
+                      || (finished_at is not null)::text
+                    from private.run_attempts
+                    where id = :'attempt_id'::uuid;
+                    """,
+                        attempt_id=first_claim.attempt_id,
+                    )
+                    == "superseded|recovered_stale_dispatch|true"
+                )
+                recovered_run = await client.get(
+                    f"/api/v1/runs/{run_id}",
+                    headers={"Authorization": f"Bearer {owner_token}"},
+                )
+                assert recovered_run.status_code == 200
+                assert recovered_run.json()["state"] == "running"
+                assert recovered_run.json()["dispatch_generation"] == 2
+                assert (
+                    await worker_database.fail_execution(
+                        run_id,
+                        second_claim.attempt_id,
+                        second_claim.lease_token,
+                        "integration_cleanup",
+                        False,
+                    )
+                ).state == "failed"
         finally:
             await queue.aclose(close_connection_pool=True)
             if first_job_id is not None:
                 await _remove_exact_queue_keys(first_job_id)
             if second_job_id is not None:
                 await _remove_exact_queue_keys(second_job_id)
-
-        recovered_run = await client.get(
-            f"/api/v1/runs/{run_id}",
-            headers={"Authorization": f"Bearer {owner_token}"},
-        )
-        assert recovered_run.status_code == 200
-        assert recovered_run.json()["state"] == "running"
-        assert recovered_run.json()["dispatch_generation"] == 2
 
 
 async def _create_p2_dispatch_run(
@@ -1174,6 +1228,19 @@ async def test_p2_worker_capacity_serializes_org_replicas_and_cancellation_lease
             for run_id in claimed_run_ids[1:]:
                 _expire_local_run_lease(run_id)
             assert await replicas[0].finalize_requested_cancellations() == 3
+            for run_id in claimed_run_ids:
+                assert (
+                    _run_as_local_supabase_admin(
+                        """
+                    select status::text || '|' || coalesce(safe_error_code, '') || '|'
+                      || (finished_at is not null)::text
+                    from private.run_attempts
+                    where run_id = :'run_id'::uuid;
+                    """,
+                        run_id=run_id,
+                    )
+                    == "canceled|canceled_by_user|true"
+                )
     finally:
         await queue.aclose(close_connection_pool=True)
         for job_id in [*same_org_job_ids, other_org_job_id]:

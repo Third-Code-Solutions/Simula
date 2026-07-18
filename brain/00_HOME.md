@@ -2,7 +2,7 @@
 title: SIMULA Project Home
 status: active
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 owner: Principal program and engineering lead
 classification: PROPOSED
 source_of_truth: true

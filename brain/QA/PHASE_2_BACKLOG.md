@@ -1,8 +1,8 @@
 ---
 title: Phase 2 Ordered Implementation Backlog
-status: ready-for-review
+status: active-remediation
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 owner: Engineering lead
 classification: PROPOSED
 source_of_truth: true
@@ -108,12 +108,12 @@ A story is Ready only when user/system outcome, linked `AC-*`/threat/ADR, bounda
 
 ### P2-07 — Integrated quality, telemetry, and security gate — 5 points
 
-- Status: implementation complete; formal independent Phase 2 exit review pending (E-5022).
+- Status: reopened after independent exit-review failure; remediation active (E-5023, E-5024).
 - Outcome: release owner can prove walking skeleton contracts, isolation, accessibility, resource, and operational budgets.
 - Acceptance links: every AC-AUTH/ORG/TEN/PROJ/AUD/RUN/RES/ERR/A11Y criterion.
 - ADRs: ADR-0002 through ADR-0010.
 - Threats: T-01 through T-13.
-- Scope/boundary: correlation/log/metrics/audit; full CI; security/dependency/secret/container checks; local load/idempotency/backpressure; documentation/evidence. No hosted or production deploy.
+- Scope/boundary: correlation/log/metrics/audit; full CI; security/dependency/secret/container checks; local load/idempotency/backpressure; documentation/evidence. No hosted application or production deploy.
 - Contract/data change: normalized generated artifacts and verification reports only; no new product scope.
 - Tests: full TRACEABILITY_MATRIX, `SEC-LOG-001`, `SEC-SECRET-001`, `SEC-BUNDLE-001`, `SEC-LIMIT-001`, `LOAD-RATE-001`, `INT-WORKER-LIMIT-001`, `SEC-ROUTE-001/002`, clean migration/contract drift, E2E.
 - Dependencies: P2-01–P2-06 complete; all failures resolved.

@@ -2,7 +2,7 @@
 title: SIMULA Changelog
 status: active
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 owner: Principal program and engineering lead
 classification: OBSERVED
 source_of_truth: true
@@ -129,3 +129,6 @@ source_of_truth: true
 - Added strict P2-04 worker runtime: role-pinned worker settings, bounded `simula_worker` function-only PostgreSQL gateway, durable outbox claim/enqueue/target-queue-proof/confirm dispatcher, strict ARQ worker wiring, and deterministic lease-bound completion/failure handling. Full repository gate passes (127 tests, 2 expected platform skips) before commit.
 - Added P2-04 FastAPI run authority: atomic run-create command, post-commit non-confirming best-effort publish, normalized idempotency rate scope, per-run read limits, ETag state read, `404` pre-publication result read, and generated typed OpenAPI contracts. Format/lint/types/tests/build/generated-contract/secret/SCA gates pass (131 tests, 2 expected platform skips) before commit.
 - Closed P2-04 async run proof: real local API/Auth → durable outbox → Redis/ARQ → role-pinned worker → result/retry flow passes after a clean reset. Five forward least-privilege migrations remove unnecessary table-write locks, correct failure enum typing, and grant only required extension-schema usage; the ordered set is applied and verified on hosted Supabase (E-5013).
+- Completed P2-05/P2-06 and the P2-07 self-audit snapshot through E-5022: trustworthy result/provenance UI, cancellation, bounded retry, stale-dispatch recovery, poison terminalization, backpressure/capacity proof, hosted schema alignment, and green CI. These remain historical implementation gates, not a passing independent Phase 2 exit review.
+- Ten bounded independent review assignments returned Phase 2 exit FAIL with unresolved High findings across acceptance, database/worker authority, API/auth, accessibility, CI/supply chain, observability/operations, and method/data controls. Reopened M6/P2-07; Phase 3 remains blocked (E-5023).
+- First risk-first remediation added seed-free hosted/local migration `20260718113445_20260718111531_phase2_lease_attempt_hardening`: expired workers cannot heartbeat or fail a run, and stale/canceled attempts close terminally. Clean reset/lint/41 pgTAP/type/advisor, 10/10 run integrations, full repository gate, hosted function ownership/security configuration, and zero hosted security-advisor lints pass (E-5024).
