@@ -38,7 +38,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 - P2-03: Supabase Auth session flow, FastAPI JWT/JWKS validation, transaction-local verified claims, organization/project/stimulus vertical, generated contracts, accessible forms and states.
 - P2-04: atomic frozen run/outbox, exact canonical ARQ v0.28 JSON transport, service-only dispatch, Postgres-bound worker claims, deterministic no-egress mock, immutable typed result. Complete and evidenced in E-5013.
 - P2-05: accessible result/status/provenance/limitations experience with bounded polling and exhaustive state rendering. Complete and evidenced in E-5014.
-- P2-06: cancel/result CAS, retry/failure classes, leases, duplicate delivery, Redis-loss reconciliation, poison and concurrency races.
+- P2-06: verified cancellation command/result CAS, then retry/failure classes, leases, duplicate delivery, Redis-loss reconciliation, poison and concurrency races.
 - P2-07: full local CI-quality gate, telemetry, security, load/resource, migration/contract drift, E2E, evidence, and independent review.
 
 ## Excluded
@@ -113,7 +113,8 @@ tests/                     cross-service, security, load, E2E
 
 ## M5 — P2-06 cancellation and recovery
 
-- Implement cancellation API/UI, worker checkpoints, safe retry classes/backoff, lease supersession, poison/exhaustion paths, Redis-loss generation reconciliation.
+- Complete cancellation sub-slice: owner/editor-only API/UI command, narrow RLS/event/audit authority, no-lease finalization before dispatch, cancellation-aware dispatch claim, and cancel-wins completion/failure CAS. Local reset/pgTAP/type/API/worker/integration/browser proof and full `pnpm check` pass (E-5015).
+- Remaining: safe retry classes/backoff, lease supersession, poison/exhaustion paths, Redis-loss generation reconciliation, and user-facing failure proof.
 - Gate: cancel-vs-result and poison-vs-cancel dual-winner tests, retry timing/exhaustion, worker crash/ack, stale lease, active-cancel occupancy, and user-facing failure E2E.
 - Rollback: disable cancel UI/route, pause consumer, reconcile from authoritative Postgres; never rewrite a terminal result.
 
@@ -154,6 +155,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: P2-04/M3 is complete (E-5013). Commit `d51c89f` closes the reset-driven API→outbox→Redis→worker→immutable-result proof, duplicate no-op behavior, and hosted forward corrections through migration `20260718020400`. P2-05 is now the active milestone.
 
 - 2026-07-18 — OBSERVED: P2-05/M4 is complete (E-5014). The disposable local browser gate passes terminal result/provenance, safe errors, bounded polling, keyboard disclosure, desktop/mobile Axe, and responsive proof. Full `pnpm check` passes 141 tests with 2 expected platform skips; no hosted application or schema state changed. P2-06 is now active.
+- 2026-07-18 — OBSERVED: P2-06 cancellation sub-slice passes local reset/pgTAP/type generation, API/worker unit tests, viewer-denial + queued-finalization + cancel-wins completion integration, and four-test browser gate (E-5015). Retry/exhaustion/poison/lease recovery remains open; M5 is not complete.
 
 # 9. Progress
 
@@ -189,6 +191,8 @@ tests/                     cross-service, security, load, E2E
   - [x] Browser accessibility/E2E gate.
   - [x] Full repository gate, policy/secret scans, and documented E-5014 evidence.
 - [ ] M5 / P2-06 cancellation and recovery (active).
+  - [x] Owner/editor cancellation command, UI, narrow RLS, worker finalization, and cancel-wins terminal race proof (E-5015).
+  - [ ] Retry/exhaustion, poison, lease, and recovery proof.
 - [ ] M6 / P2-07 integrated quality gate.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 

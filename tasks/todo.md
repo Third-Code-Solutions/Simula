@@ -5,9 +5,10 @@
 - [x] P2-05: Diagnose and fix the real browser polling transition without weakening the test.
 - [x] P2-05: Pass focused unit/type/lint/build and disposable browser result/error/poll/axe gate.
 - [x] P2-05: Commit and push the documented green slice.
-- [ ] P2-06: Implement API/UI cancellation and exact terminal-race behavior (active next).
+- [x] P2-06: Implement and prove API/UI cancellation and exact terminal-race behavior (E-5015).
 - [ ] P2-06: Implement and prove retries, exhaustion, leases, poison handling, and recovery.
-- [ ] P2-06: Pass focused migration/API/worker/E2E gates; update evidence; commit and push.
+- [x] P2-06: Pass focused cancellation migration/API/worker/E2E gates and update evidence (E-5015).
+- [ ] P2-06: Commit/push the verified cancellation slice and apply its forward migration to authorized hosted Supabase.
 - [ ] P2-07: Add the integrated traceability, telemetry, load, security, and CI gate.
 - [ ] P2-07: Run independent Phase 2 exit audit; update all Obsidian operational evidence.
 - [ ] Create the Phase 3 ExecPlan only after the Phase 2 gate is proven.

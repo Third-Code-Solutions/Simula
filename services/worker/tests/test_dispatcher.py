@@ -13,6 +13,11 @@ class RecordingDatabase:
     def __init__(self, claims: list[DispatchClaim]) -> None:
         self.claims = claims
         self.confirmations: list[tuple[UUID, UUID]] = []
+        self.finalized_batch_sizes: list[int] = []
+
+    async def finalize_requested_cancellations(self, requested_batch_size: int = 10) -> int:
+        self.finalized_batch_sizes.append(requested_batch_size)
+        return 0
 
     async def claim_due_dispatches(self, requested_batch_size: int = 10) -> list[DispatchClaim]:
         assert requested_batch_size == 10
@@ -59,6 +64,8 @@ async def test_dispatcher_confirms_only_after_queue_proof() -> None:
 
     assert result.claimed == 1
     assert result.confirmed == 1
+    assert result.canceled == 0
+    assert database.finalized_batch_sizes == [10]
     assert database.confirmations == [(claim.outbox_id, claim.claim_token)]
     assert queue.enqueued_job_ids == [claim.job_id]
 

@@ -171,6 +171,10 @@ class SimulationRunCreate(StrictModel):
     stimulus_version_id: UUID
 
 
+class SimulationRunCancel(StrictModel):
+    pass
+
+
 class SimulationRunResponse(StrictModel):
     id: UUID
     organization_id: UUID

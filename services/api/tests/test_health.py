@@ -20,6 +20,7 @@ def test_runtime_route_inventory_matches_the_m3_boundary() -> None:
         "/api/v1/projects/{project_id}/stimuli",
         "/api/v1/projects/{project_id}/runs",
         "/api/v1/runs/{run_id}",
+        "/api/v1/runs/{run_id}/cancel",
         "/api/v1/runs/{run_id}/provenance",
         "/api/v1/runs/{run_id}/result",
         "/api/v1/stimuli/{stimulus_id}/versions",

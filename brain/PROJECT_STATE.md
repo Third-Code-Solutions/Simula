@@ -18,7 +18,7 @@ source_of_truth: true
 
 ## Current objective
 
-Implement P2-06 cancellation/recovery, then P2-07's integrated exit gate in order. P2-05 is locally proven; P2-06 must preserve one authoritative terminal result through cancellation, retry, and worker races. No real-provider egress or representativeness claim is authorized.
+Complete P2-06 recovery after its verified cancellation slice, then P2-07's integrated exit gate in order. P2-06 must preserve one authoritative terminal result through cancellation, retry, and worker races. No real-provider egress or representativeness claim is authorized.
 
 ## Repository state
 
@@ -65,6 +65,7 @@ Initial M4 audit found 0 Critical/6 High. Iterative review then exposed and corr
 - M3 / P2-04 is complete. Strict ARQ codec/result contract, durable run/outbox authority, queue transport, dispatcher, role-pinned worker execution, and run/result APIs now have a reset-driven real asynchronous proof. Hosted Supabase history matches migrations through `20260718020400`; the P2-05–P2-07 sequence remains pending (E-5013).
 
 - M4 / P2-05 is complete. The browser now has a validated run-route guard, exhaustive state rendering, bounded shared polling, explicit unavailable-result/legacy-provenance states, full frozen provenance/limits, XSS-safe text rendering, a server-owned rollback switch, content-free browser telemetry, and an executable forbidden-claim policy. The local browser gate passes terminal result, safe error, polling, keyboard, desktop/mobile Axe, and responsive proofs; full `pnpm check` passes 141 tests with 2 expected platform skips (E-5014). No hosted schema or application state changed for this UI-only slice.
+- M5 / P2-06 cancellation sub-slice is locally proven: the checked-in forward migration adds an owner/editor-only cancel command, narrow RLS/event/audit authority, no-active-lease cancellation finalization, cancel-wins completion/failure transitions, and cancellation-aware dispatch claiming. API/UI expose documented empty-JSON `POST /runs/{id}/cancel`; the worker finalizes before dispatch. Local reset/pgTAP/type checks, API/worker tests, real authorization and cancel-versus-completion integration, four-browser-test P2 gate, and full `pnpm check` pass (E-5015). Retry timing/exhaustion, poison handling, and lease recovery are still open; P2-06 remains active.
 
 ## Key constraints
 

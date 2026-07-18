@@ -24,7 +24,10 @@ function requiredFixturePassword(): string {
   return FIXTURE_OWNER_PASSWORD;
 }
 
-function runFixture(state: "queued" | "succeeded") {
+function runFixture(
+  state: "queued" | "cancel_requested" | "canceled" | "succeeded",
+  version = 1,
+) {
   return {
     id: POLL_RUN_ID,
     organization_id: "00000000-0000-4000-8000-000000000002",
@@ -35,7 +38,7 @@ function runFixture(state: "queued" | "succeeded") {
     schema_version: 1,
     dispatch_generation: 1,
     job_id: `run:${POLL_RUN_ID}:dispatch:1`,
-    version: 1,
+    version,
     created_at: CREATED_AT,
   };
 }
@@ -279,4 +282,70 @@ test("E2E-POLL-001: a run poll transitions once and stops at terminal state", as
   });
   await page.waitForTimeout(1_500);
   expect(statusRequests).toBe(2);
+});
+
+test("E2E-CANCEL-001: a user can request cancellation and no substitute result appears", async ({
+  page,
+}) => {
+  let cancelRequested = false;
+  let postCancelStatusRequests = 0;
+  await page.route(
+    new RegExp(`/api/v1/runs/${POLL_RUN_ID}(?:/cancel)?$`),
+    async (route) => {
+      const method = route.request().method();
+      if (method === "OPTIONS") {
+        await route.fulfill({
+          headers: {
+            ...API_CORS_HEADERS,
+            "access-control-allow-headers": "authorization,accept,content-type",
+            "access-control-allow-methods": "GET, POST, OPTIONS",
+          },
+          status: 204,
+        });
+        return;
+      }
+      if (method === "POST") {
+        cancelRequested = true;
+        await route.fulfill({
+          contentType: "application/json",
+          headers: API_CORS_HEADERS,
+          status: 202,
+          body: JSON.stringify(runFixture("cancel_requested", 2)),
+        });
+        return;
+      }
+      postCancelStatusRequests += Number(cancelRequested);
+      await route.fulfill({
+        contentType: "application/json",
+        headers: API_CORS_HEADERS,
+        body: JSON.stringify(
+          !cancelRequested
+            ? runFixture("queued")
+            : postCancelStatusRequests === 1
+              ? runFixture("cancel_requested", 2)
+              : runFixture("canceled", 3),
+        ),
+      });
+    },
+  );
+
+  await signIn(page);
+  await page.goto(`/runs/${POLL_RUN_ID}`);
+  await expect(page.getByRole("heading", { name: "Queued" })).toBeVisible();
+
+  const cancellationResponse = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname.endsWith(
+        `/api/v1/runs/${POLL_RUN_ID}/cancel`,
+      ) && response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Cancel run" }).click();
+  expect((await cancellationResponse).status()).toBe(202);
+  await expect(page.getByRole("button", { name: "Cancel run" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Canceled" })).toBeVisible({
+    timeout: 5_000,
+  });
+  await expect(
+    page.getByRole("heading", { name: "Pipeline demo values", level: 2 }),
+  ).toHaveCount(0);
 });

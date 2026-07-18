@@ -92,6 +92,8 @@ class FakeRateLimiter:
 class FakeDatabase:
     def __init__(self) -> None:
         self.run_commands: list[dict[str, object]] = []
+        self.cancel_commands: list[dict[str, object]] = []
+        self.cancel_response = _run()
         self.result: SimulationResultResponse | None = None
         self.provenance = SimulationProvenanceResponse.model_validate(
             {
@@ -147,6 +149,12 @@ class FakeDatabase:
         self.run_commands.append(dict(kwargs))
         return (_run(), False)
 
+    async def request_simulation_run_cancel(
+        self, _: VerifiedIdentity, **kwargs: object
+    ) -> SimulationRunResponse:
+        self.cancel_commands.append(dict(kwargs))
+        return self.cancel_response
+
     async def get_simulation_run(
         self, _: VerifiedIdentity, *, run_id: UUID
     ) -> SimulationRunResponse:
@@ -177,18 +185,20 @@ class RecordingPublisher:
             raise self.error
 
 
-def _run() -> SimulationRunResponse:
+def _run(
+    *, state: SimulationRunState = SimulationRunState.QUEUED, version: int = 1
+) -> SimulationRunResponse:
     return SimulationRunResponse(
         id=RUN_ID,
         organization_id=ORGANIZATION_ID,
         project_id=PROJECT_ID,
         stimulus_version_id=STIMULUS_VERSION_ID,
         audience_version_id=UUID("00000000-0000-4000-8000-0000000000d1"),
-        state=SimulationRunState.QUEUED,
+        state=state,
         schema_version=1,
         dispatch_generation=1,
         job_id=f"run:{RUN_ID}:dispatch:1",
-        version=1,
+        version=version,
         created_at=NOW,
     )
 
@@ -264,6 +274,48 @@ async def test_run_and_unpublished_result_reads_are_rate_limited_and_non_enumera
     assert run.headers["etag"] == '"1"'
     assert result.status_code == 404
     assert result.json()["code"] == "not_found"
+
+
+async def test_run_cancel_returns_accepted_until_a_worker_commits_the_terminal_state() -> None:
+    app, database, _ = app_with_fakes()
+    database.cancel_response = _run(
+        state=SimulationRunState.CANCEL_REQUESTED,
+        version=2,
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            f"/api/v1/runs/{RUN_ID}/cancel",
+            headers={
+                "Authorization": f"Bearer {TEST_BEARER}",
+                CORRELATION_HEADER: "018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4",
+            },
+            json={},
+        )
+
+    assert response.status_code == 202
+    assert response.headers["etag"] == '"2"'
+    assert response.json()["state"] == "cancel_requested"
+    assert database.cancel_commands == [
+        {
+            "correlation_id": UUID("018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4"),
+            "run_id": RUN_ID,
+        }
+    ]
+
+
+async def test_run_cancel_returns_existing_terminal_state_when_completion_won() -> None:
+    app, database, _ = app_with_fakes()
+    database.cancel_response = _run(state=SimulationRunState.SUCCEEDED, version=3)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            f"/api/v1/runs/{RUN_ID}/cancel",
+            headers={"Authorization": f"Bearer {TEST_BEARER}"},
+            json={},
+        )
+
+    assert response.status_code == 200
+    assert response.headers["etag"] == '"3"'
+    assert response.json()["state"] == "succeeded"
 
 
 async def test_published_result_is_returned_as_the_generated_typed_contract() -> None:

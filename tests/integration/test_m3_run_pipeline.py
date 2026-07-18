@@ -17,11 +17,13 @@ from simula_core.simulation import DeterministicMockProvider
 from simula_worker.config import WorkerSettings
 from simula_worker.database import WorkerDatabase
 from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
-from simula_worker.main import process_run_v1
+from simula_worker.main import _provider_request, process_run_v1
 
 from tests.integration.test_api_m2 import (
     LOCAL_REDIS_URL,
     OWNER_A,
+    VIEWER_A,
+    _add_viewer_membership,
     _headers,
     _local_supabase,
     _project_payload,
@@ -299,3 +301,153 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
         )
         assert retrying_run.status_code == 200
         assert retrying_run.json()["state"] == "retrying"
+
+
+@pytest.mark.integration
+async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    viewer_token = _sign_in(local_supabase, VIEWER_A)
+    suffix = uuid4().hex
+    queued_job_id: str | None = None
+    running_job_id: str | None = None
+
+    async with _api_client(monkeypatch) as client:
+        created_organization = await client.post(
+            "/api/v1/organizations",
+            headers=_headers(owner_token, f"p2-cancel-org-{suffix}"),
+            json={"name": f"P2 Cancellation {suffix[:8]}"},
+        )
+        assert created_organization.status_code == 201
+        organization_id = UUID(created_organization.json()["id"])
+        _add_viewer_membership(organization_id)
+        created_project = await client.post(
+            f"/api/v1/organizations/{organization_id}/projects",
+            headers=_headers(owner_token, f"p2-cancel-project-{suffix}"),
+            json=_project_payload(f"P2 Cancellation {suffix[:8]}"),
+        )
+        assert created_project.status_code == 201
+        project_id = UUID(created_project.json()["id"])
+        created_stimulus = await client.post(
+            f"/api/v1/projects/{project_id}/stimuli",
+            headers=_headers(owner_token, f"p2-cancel-stimulus-{suffix}"),
+            json={"name": "P2 Cancellation Message", "content": "Cancel this fictional run."},
+        )
+        assert created_stimulus.status_code == 201
+        stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+
+        queued_response = await client.post(
+            f"/api/v1/projects/{project_id}/runs",
+            headers=_headers(owner_token, f"p2-cancel-queued-{suffix}"),
+            json={"stimulus_version_id": str(stimulus_version_id)},
+        )
+        assert queued_response.status_code == 202
+        queued_run_id = UUID(queued_response.json()["id"])
+        queued_job_id = job_id_for(queued_run_id, generation=1)
+
+        denied = await client.post(
+            f"/api/v1/runs/{queued_run_id}/cancel",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+            json={},
+        )
+        assert denied.status_code == 403
+        assert denied.json()["code"] == "forbidden"
+
+        requested = await client.post(
+            f"/api/v1/runs/{queued_run_id}/cancel",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={},
+        )
+        replayed_request = await client.post(
+            f"/api/v1/runs/{queued_run_id}/cancel",
+            headers={"Authorization": f"Bearer {owner_token}"},
+            json={},
+        )
+        assert requested.status_code == 202
+        assert requested.json()["state"] == "cancel_requested"
+        assert replayed_request.status_code == 202
+        assert replayed_request.json() == requested.json()
+
+        queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
+        try:
+            async with _worker_database(monkeypatch) as worker_database:
+                dispatcher = RunDispatcher(
+                    worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
+                )
+                finalized = await dispatcher.dispatch_once()
+                assert finalized.canceled == 1
+                assert finalized.claimed == 0
+                assert finalized.confirmed == 0
+
+                queued_terminal = await client.post(
+                    f"/api/v1/runs/{queued_run_id}/cancel",
+                    headers={"Authorization": f"Bearer {owner_token}"},
+                    json={},
+                )
+                assert queued_terminal.status_code == 200
+                assert queued_terminal.json()["state"] == "canceled"
+
+                running_response = await client.post(
+                    f"/api/v1/projects/{project_id}/runs",
+                    headers=_headers(owner_token, f"p2-cancel-running-{suffix}"),
+                    json={"stimulus_version_id": str(stimulus_version_id)},
+                )
+                assert running_response.status_code == 202
+                running_run_id = UUID(running_response.json()["id"])
+                running_job_id = job_id_for(running_run_id, generation=1)
+                dispatched = await dispatcher.dispatch_once()
+                assert dispatched.canceled == 0
+                assert dispatched.claimed == 1
+                assert dispatched.confirmed == 1
+
+                claim = await worker_database.claim_execution(running_run_id, 1, running_job_id)
+                assert claim.status == "claimed"
+                assert claim.attempt_id is not None
+                assert claim.lease_token is not None
+                assert claim.frozen_manifest is not None
+                assert claim.frozen_manifest_sha256 is not None
+                assert claim.deterministic_seed is not None
+
+                cancel_running = await client.post(
+                    f"/api/v1/runs/{running_run_id}/cancel",
+                    headers={"Authorization": f"Bearer {owner_token}"},
+                    json={},
+                )
+                assert cancel_running.status_code == 202
+                assert cancel_running.json()["state"] == "cancel_requested"
+
+                artifact = DeterministicMockProvider().run(
+                    _provider_request(
+                        run_id=running_run_id,
+                        claim_attempt_id=claim.attempt_id,
+                        frozen_manifest=claim.frozen_manifest,
+                        frozen_manifest_sha256=claim.frozen_manifest_sha256,
+                        deterministic_seed=claim.deterministic_seed,
+                    )
+                )
+                assert await worker_database.complete_execution(
+                    running_run_id,
+                    claim.attempt_id,
+                    claim.lease_token,
+                    artifact.model_dump(mode="json"),
+                )
+        finally:
+            await queue.aclose(close_connection_pool=True)
+            if queued_job_id is not None:
+                await _remove_exact_queue_keys(queued_job_id)
+            if running_job_id is not None:
+                await _remove_exact_queue_keys(running_job_id)
+
+        for run_id in (queued_run_id, running_run_id):
+            run = await client.get(
+                f"/api/v1/runs/{run_id}", headers={"Authorization": f"Bearer {owner_token}"}
+            )
+            result = await client.get(
+                f"/api/v1/runs/{run_id}/result",
+                headers={"Authorization": f"Bearer {owner_token}"},
+            )
+            assert run.status_code == 200
+            assert run.json()["state"] == "canceled"
+            assert result.status_code == 404

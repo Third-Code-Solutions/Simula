@@ -78,6 +78,7 @@ select extensions.is(
     'audience_versions_command_select',
     'audiences_api_select',
     'audiences_command_select',
+    'audit_events_command_cancel_insert',
     'audit_events_command_insert',
     'audit_events_worker_owner_insert',
     'idempotency_keys_command_insert',
@@ -96,6 +97,7 @@ select extensions.is(
     'run_attempts_worker_owner_insert',
     'run_attempts_worker_owner_select',
     'run_attempts_worker_owner_update',
+    'run_events_command_cancel_insert',
     'run_events_command_insert',
     'run_events_worker_owner_insert',
     'run_outbox_command_insert',
@@ -105,6 +107,7 @@ select extensions.is(
     'simulation_results_worker_owner_insert',
     'simulation_results_worker_owner_select',
     'simulation_runs_api_select',
+    'simulation_runs_command_cancel_update',
     'simulation_runs_command_insert',
     'simulation_runs_command_select',
     'simulation_runs_worker_owner_select',
@@ -345,6 +348,7 @@ select extensions.is(
     'simula_command_owner|api.projects|UPDATE',
     'simula_command_owner|api.simulation_runs|INSERT',
     'simula_command_owner|api.simulation_runs|SELECT',
+    'simula_command_owner|api.simulation_runs|UPDATE',
     'simula_command_owner|api.stimuli|INSERT',
     'simula_command_owner|api.stimuli|SELECT',
     'simula_command_owner|api.stimulus_versions|INSERT',
@@ -416,6 +420,7 @@ select extensions.ok(
     'private.confirm_run_dispatch(uuid,uuid)',
     'private.fail_run_dispatch(uuid,uuid,text)',
     'private.fail_run_execution(uuid,uuid,uuid,text,boolean)',
+    'private.finalize_requested_cancellations(integer)',
     'private.heartbeat_run_execution(uuid,uuid,uuid)'
   ]::text[],
   'browser roles execute no application functions; worker has the exact helper allowlist'
@@ -441,6 +446,7 @@ select extensions.is(
     'api.create_stimulus(uuid,text,text,text,text,text,uuid)',
     'api.list_organizations()',
     'api.record_privileged_denial(uuid,text,text,uuid,uuid)',
+    'api.request_run_cancel(uuid,uuid)',
     'api.update_project(uuid,integer,text,text,text,text,text,uuid)',
     'private.append_stimulus_version_atomic(uuid,text,text,text,text,uuid)',
     'private.create_organization_atomic(text,text,text,uuid)',
@@ -451,6 +457,7 @@ select extensions.is(
     'private.is_org_member(uuid,uuid)',
     'private.is_verified_api_subject(uuid)',
     'private.record_privileged_denial_atomic(uuid,text,text,uuid,uuid)',
+    'private.request_run_cancel_atomic(uuid,uuid)',
     'private.update_project_atomic(uuid,integer,text,text,text,text,text,uuid)',
     'private.verified_subject()'
   ]::text[],
@@ -469,6 +476,7 @@ select extensions.ok(
           'confirm_run_dispatch',
           'fail_run_dispatch',
           'fail_run_execution',
+          'finalize_requested_cancellations',
           'heartbeat_run_execution'
         )
         and owner_roles.rolname = 'simula_worker_owner'
@@ -482,6 +490,7 @@ select extensions.ok(
           'confirm_run_dispatch',
           'fail_run_dispatch',
           'fail_run_execution',
+          'finalize_requested_cancellations',
           'heartbeat_run_execution'
         )
         and owner_roles.rolname = 'simula_command_owner'
@@ -495,6 +504,7 @@ select extensions.ok(
             'has_org_role',
             'is_org_member',
             'record_privileged_denial_atomic',
+            'request_run_cancel_atomic',
             'update_project_atomic'
           )
         )
@@ -516,11 +526,13 @@ select extensions.ok(
         'confirm_run_dispatch',
         'fail_run_dispatch',
         'fail_run_execution',
+        'finalize_requested_cancellations',
         'heartbeat_run_execution',
         'has_org_role',
         'is_org_member',
         'is_verified_api_subject',
         'record_privileged_denial_atomic',
+        'request_run_cancel_atomic',
         'update_project_atomic',
         'verified_subject'
       )

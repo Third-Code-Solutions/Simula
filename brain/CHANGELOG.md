@@ -12,6 +12,7 @@ source_of_truth: true
 
 ## 2026-07-18
 
+- Added P2-06 cancellation sub-slice: owner/editor-only empty-JSON cancel command, narrow RLS/event/audit authority, cancellation-aware dispatcher, cancel-wins worker completion/failure, generated contracts, workspace control, and local API/worker/browser race proof. Full `pnpm check` passes (E-5015). Retry/exhaustion/poison recovery remains active; Phase 2 is not complete.
 - Closed P2-05 trustworthy result experience: added a route-ID guard, bounded shared polling with terminal telemetry, exhaustive state and unavailable-output rendering, canonical signed-64-bit seed handling, non-reconstructed legacy provenance, complete frozen limits/config display, keyboard/mobile/Axe browser evidence, a server-owned result rollback switch, and executable forbidden-claim checks. Disposable local E2E and full `pnpm check` pass (E-5014); no hosted application or schema mutation was made.
 
 ## 2026-07-17

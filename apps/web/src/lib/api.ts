@@ -289,6 +289,13 @@ export function getSimulationRun(runId: string): Promise<SimulationRun> {
   );
 }
 
+export function cancelSimulationRun(runId: string): Promise<SimulationRun> {
+  return request<unknown>(`/api/v1/runs/${runId}/cancel`, {
+    body: {},
+    method: "POST",
+  }).then((value) => parsedResponse(parseSimulationRun, value));
+}
+
 export function getSimulationResult(runId: string): Promise<SimulationResult> {
   return request<unknown>(`/api/v1/runs/${runId}/result`).then((value) =>
     parsedResponse(parseSimulationResult, value),

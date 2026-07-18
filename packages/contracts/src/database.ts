@@ -554,6 +554,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      request_run_cancel: {
+        Args: { requested_correlation_id: string; requested_run_id: string }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
+        }[]
+      }
       update_project: {
         Args: {
           requested_category: string
@@ -993,6 +1009,10 @@ export type Database = {
         }
         Returns: string
       }
+      finalize_requested_cancellations: {
+        Args: { requested_batch_size: number }
+        Returns: number
+      }
       has_org_role: {
         Args: {
           allowed_roles: Database["api"]["Enums"]["organization_role"][]
@@ -1026,6 +1046,22 @@ export type Database = {
           requested_organization_id: string
         }
         Returns: undefined
+      }
+      request_run_cancel_atomic: {
+        Args: { requested_correlation_id: string; requested_run_id: string }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
+        }[]
       }
       update_project_atomic: {
         Args: {

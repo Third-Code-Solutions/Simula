@@ -118,6 +118,13 @@ class WorkerDatabase(WorkerExecutionGateway):
             for row in rows
         ]
 
+    async def finalize_requested_cancellations(self, requested_batch_size: int = 10) -> int:
+        row = await self._fetchone(
+            "select private.finalize_requested_cancellations(%s) as finalized",
+            (requested_batch_size,),
+        )
+        return int(row["finalized"])
+
     async def confirm_dispatch(self, outbox_id: UUID, claim_token: UUID) -> bool:
         return await self._boolean_function(
             "select private.confirm_run_dispatch(%s, %s) as changed", (outbox_id, claim_token)

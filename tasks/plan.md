@@ -6,7 +6,7 @@
 - P2-01 through P2-04 are complete with recorded local evidence E-5008 through E-5013.
 - Hosted schema migrations through `20260718030100` match the repository. The `api` schema contains the application tables; `private` holds worker/audit internals.
 - P2-05 is complete and evidenced by E-5014. The disposable local browser result/error/poll/accessibility gate and repository quality gate pass.
-- P2-06 and P2-07 are not implemented. Phases 3–7 have roadmap gates but no authorized active ExecPlans.
+- P2-06 cancellation is locally proven in E-5015; its retry/exhaustion/poison/lease recovery remains active. P2-07 is not implemented. Phases 3–7 have roadmap gates but no authorized active ExecPlans.
 
 ## Delivery order
 
@@ -37,6 +37,8 @@
 **Verification:** forward migration reset/lint/pgTAP, API/worker/integration race tests, browser cancel/failure E2E, generated-contract drift.
 
 **Dependencies:** P2-05 browser gate green.
+
+**Current verified increment:** owner/editor `POST /runs/{id}/cancel` with explicit empty JSON, `202 cancel_requested` or terminal-race `200`, cancellation-aware dispatcher/worker terminalization, generated contracts, and browser proof. Retry/exhaustion/poison/lease recovery remains required before P2-06 can close.
 
 ### P2-07 — Integrated quality and independent exit gate
 

@@ -29,6 +29,7 @@ from simula_api.models import (
     ProjectResponse,
     SimulationProvenanceResponse,
     SimulationResultResponse,
+    SimulationRunCancel,
     SimulationRunCreate,
     SimulationRunResponse,
     StimulusCreate,
@@ -570,6 +571,33 @@ async def get_simulation_run(
     services = _services(request)
     await services.rate_limiter.require_run_read(user_id=identity.user_id, run_id=run_id)
     run = await services.database.get_simulation_run(identity, run_id=run_id)
+    response.headers["ETag"] = f'"{run.version}"'
+    return run
+
+
+@router.post(
+    "/runs/{run_id}/cancel",
+    operation_id="request_simulation_run_cancel",
+    response_model=SimulationRunResponse,
+    status_code=202,
+    responses={200: {"model": SimulationRunResponse}},
+)
+async def request_simulation_run_cancel(
+    run_id: UUID,
+    request: Request,
+    response: Response,
+    body: SimulationRunCancel,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> SimulationRunResponse:
+    del body
+    services = _services(request)
+    await services.rate_limiter.require_run_read(user_id=identity.user_id, run_id=run_id)
+    run = await services.database.request_simulation_run_cancel(
+        identity,
+        run_id=run_id,
+        correlation_id=_correlation_id(request),
+    )
+    response.status_code = 202 if run.state == "cancel_requested" else 200
     response.headers["ETag"] = f'"{run.version}"'
     return run
 

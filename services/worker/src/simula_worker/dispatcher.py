@@ -23,6 +23,8 @@ logger = structlog.get_logger()
 
 
 class DispatcherDatabase(Protocol):
+    async def finalize_requested_cancellations(self, requested_batch_size: int = 10) -> int: ...
+
     async def claim_due_dispatches(self, requested_batch_size: int = 10) -> list[DispatchClaim]: ...
 
     async def confirm_dispatch(self, outbox_id: UUID, claim_token: UUID) -> bool: ...
@@ -53,6 +55,7 @@ class RedisRunQueue(DispatcherQueue):
 
 @dataclass(frozen=True, slots=True)
 class DispatchPass:
+    canceled: int
     claimed: int
     confirmed: int
 
@@ -65,6 +68,7 @@ class RunDispatcher:
         self._queue = queue
 
     async def dispatch_once(self, *, batch_size: int = 10) -> DispatchPass:
+        canceled = await self._database.finalize_requested_cancellations(batch_size)
         claims = await self._database.claim_due_dispatches(batch_size)
         confirmed = 0
         for claim in claims:
@@ -92,4 +96,4 @@ class RunDispatcher:
                 confirmed += 1
             else:
                 logger.warning("run_dispatch_confirmation_rejected", outbox_id=str(claim.outbox_id))
-        return DispatchPass(claimed=len(claims), confirmed=confirmed)
+        return DispatchPass(canceled=canceled, claimed=len(claims), confirmed=confirmed)

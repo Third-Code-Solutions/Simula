@@ -556,6 +556,26 @@ class DatabaseGateway:
             raise _database_problem(error) from error
         return self._run_from_command(row), bool(row["replayed"])
 
+    async def request_simulation_run_cancel(
+        self,
+        identity: VerifiedIdentity,
+        *,
+        run_id: UUID,
+        correlation_id: UUID,
+    ) -> SimulationRunResponse:
+        try:
+            async with self._transaction(identity) as connection:
+                cursor = await connection.execute(
+                    "select * from api.request_run_cancel(%s, %s)",
+                    (run_id, correlation_id),
+                )
+                row = await cursor.fetchone()
+                if row is None:
+                    raise RuntimeError("simulation run cancellation returned no row")
+        except psycopg.Error as error:
+            raise _database_problem(error) from error
+        return self._run_from_command(row)
+
     async def get_simulation_run(
         self, identity: VerifiedIdentity, *, run_id: UUID
     ) -> SimulationRunResponse:
