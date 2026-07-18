@@ -212,6 +212,20 @@ async def process_run_v1(
         result: SimulationResultV1 = provider.run(request)
     except asyncio.CancelledError:
         raise
+    except TimeoutError:
+        logger.warning("run_execution_timed_out", run_id=str(context_run_id))
+        resolution = await database.fail_execution(
+            context_run_id,
+            claim.attempt_id,
+            claim.lease_token,
+            "execution_timed_out",
+            True,
+        )
+        if resolution.state == "retrying":
+            if resolution.retry_after_seconds is None:
+                raise RuntimeError("retrying resolution is missing its delay") from None
+            raise Retry(defer=resolution.retry_after_seconds) from None
+        return None
     except Exception:
         logger.exception("run_execution_provider_failed", run_id=str(context_run_id))
         await database.fail_execution(

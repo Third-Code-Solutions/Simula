@@ -236,8 +236,9 @@ select extensions.ok(
     and not pg_catalog.has_schema_privilege('simula_api', 'api', 'CREATE')
     and not pg_catalog.has_schema_privilege('simula_api', 'private', 'CREATE')
     and not pg_catalog.has_schema_privilege('simula_command_owner', 'api', 'CREATE')
-    and not pg_catalog.has_schema_privilege('simula_command_owner', 'private', 'CREATE'),
-  'API and command roles have resolution-only schema access'
+    and not pg_catalog.has_schema_privilege('simula_command_owner', 'private', 'CREATE')
+    and not pg_catalog.has_schema_privilege('simula_worker_owner', 'private', 'CREATE'),
+  'API, command, and worker-owner roles have resolution-only schema access'
 );
 
 -- 14

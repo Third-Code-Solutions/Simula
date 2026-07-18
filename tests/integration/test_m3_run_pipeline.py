@@ -8,12 +8,13 @@ from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
+from arq.worker import Retry
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis, from_url
 from simula_api.app import create_app
 from simula_core.arq_codec import ARQ_QUEUE_NAME, job_id_for
 from simula_core.queue_runtime import create_queue_client
-from simula_core.simulation import DeterministicMockProvider
+from simula_core.simulation import DeterministicMockProvider, ProviderRequest, SimulationResultV1
 from simula_worker.config import WorkerSettings
 from simula_worker.database import WorkerDatabase
 from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
@@ -247,16 +248,15 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
                 assert retry_claim.status == "claimed"
                 assert retry_claim.attempt_id is not None
                 assert retry_claim.lease_token is not None
-                assert (
-                    await worker_database.fail_execution(
-                        retry_run_id,
-                        retry_claim.attempt_id,
-                        retry_claim.lease_token,
-                        "integration_retry",
-                        retryable=True,
-                    )
-                    == "retrying"
+                retry_resolution = await worker_database.fail_execution(
+                    retry_run_id,
+                    retry_claim.attempt_id,
+                    retry_claim.lease_token,
+                    "integration_retry",
+                    retryable=True,
                 )
+                assert retry_resolution.state == "retrying"
+                assert retry_resolution.retry_after_seconds == 5
         finally:
             await queue.aclose(close_connection_pool=True)
             await _remove_exact_queue_keys(job_id)
@@ -451,3 +451,104 @@ async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
             assert run.status_code == 200
             assert run.json()["state"] == "canceled"
             assert result.status_code == 404
+
+
+class _TimeoutProvider:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def run(self, request: ProviderRequest) -> SimulationResultV1:
+        del request
+        self.calls += 1
+        raise TimeoutError
+
+
+@pytest.mark.integration
+async def test_p2_timeout_retries_use_database_backoff_then_exhaust(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+    job_id: str | None = None
+
+    async with _api_client(monkeypatch) as client:
+        created_organization = await client.post(
+            "/api/v1/organizations",
+            headers=_headers(owner_token, f"p2-timeout-org-{suffix}"),
+            json={"name": f"P2 Timeout {suffix[:8]}"},
+        )
+        assert created_organization.status_code == 201
+        organization_id = UUID(created_organization.json()["id"])
+        created_project = await client.post(
+            f"/api/v1/organizations/{organization_id}/projects",
+            headers=_headers(owner_token, f"p2-timeout-project-{suffix}"),
+            json=_project_payload(f"P2 Timeout {suffix[:8]}"),
+        )
+        assert created_project.status_code == 201
+        project_id = UUID(created_project.json()["id"])
+        created_stimulus = await client.post(
+            f"/api/v1/projects/{project_id}/stimuli",
+            headers=_headers(owner_token, f"p2-timeout-stimulus-{suffix}"),
+            json={"name": "P2 Timeout Message", "content": "Retry this fictional run."},
+        )
+        assert created_stimulus.status_code == 201
+        stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+        created_run = await client.post(
+            f"/api/v1/projects/{project_id}/runs",
+            headers=_headers(owner_token, f"p2-timeout-run-{suffix}"),
+            json={"stimulus_version_id": str(stimulus_version_id)},
+        )
+        assert created_run.status_code == 202
+        run_id = UUID(created_run.json()["id"])
+        job_id = job_id_for(run_id, generation=1)
+        queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
+        provider = _TimeoutProvider()
+        try:
+            async with _worker_database(monkeypatch) as worker_database:
+                dispatcher = RunDispatcher(
+                    worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
+                )
+                dispatched = await dispatcher.dispatch_once()
+                assert dispatched.claimed == 1
+                assert dispatched.confirmed == 1
+                context = {"job_id": job_id}
+                payload = {"schema_version": 1, "run_id": str(run_id)}
+
+                with pytest.raises(Retry) as first_retry:
+                    await process_run_v1(
+                        context, payload, database=worker_database, provider=provider
+                    )
+                assert first_retry.value.defer_score == 5000
+
+                retrying = await client.get(
+                    f"/api/v1/runs/{run_id}",
+                    headers={"Authorization": f"Bearer {owner_token}"},
+                )
+                assert retrying.status_code == 200
+                assert retrying.json()["state"] == "retrying"
+
+                with pytest.raises(Retry) as second_retry:
+                    await process_run_v1(
+                        context, payload, database=worker_database, provider=provider
+                    )
+                assert second_retry.value.defer_score == 30000
+
+                await process_run_v1(context, payload, database=worker_database, provider=provider)
+        finally:
+            await queue.aclose(close_connection_pool=True)
+            if job_id is not None:
+                await _remove_exact_queue_keys(job_id)
+
+        failed = await client.get(
+            f"/api/v1/runs/{run_id}",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        result = await client.get(
+            f"/api/v1/runs/{run_id}/result",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert failed.status_code == 200
+        assert failed.json()["state"] == "failed"
+        assert result.status_code == 404
+        assert provider.calls == 3

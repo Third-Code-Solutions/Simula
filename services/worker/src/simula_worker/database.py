@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Protocol, cast
+from typing import Any, Literal, Protocol, cast
 from uuid import UUID
 
 import psycopg
@@ -44,6 +44,14 @@ class ExecutionClaim:
     deterministic_seed: int | None
 
 
+@dataclass(frozen=True, slots=True)
+class FailureResolution:
+    """One terminal or retry disposition returned by the database CAS."""
+
+    state: Literal["retrying", "failed", "canceled", "no_work"]
+    retry_after_seconds: int | None = None
+
+
 class WorkerExecutionGateway(Protocol):
     """Lease-bound execution mutations available to the ARQ handler."""
 
@@ -70,7 +78,7 @@ class WorkerExecutionGateway(Protocol):
         lease_token: UUID,
         safe_error_code: str,
         retryable: bool,
-    ) -> str: ...
+    ) -> FailureResolution: ...
 
 
 class WorkerDatabase(WorkerExecutionGateway):
@@ -180,12 +188,29 @@ class WorkerDatabase(WorkerExecutionGateway):
         lease_token: UUID,
         safe_error_code: str,
         retryable: bool,
-    ) -> str:
+    ) -> FailureResolution:
         row = await self._fetchone(
             "select private.fail_run_execution(%s, %s, %s, %s, %s) as next_state",
             (run_id, attempt_id, lease_token, safe_error_code, retryable),
         )
-        return cast(str, row["next_state"])
+        return self._failure_resolution(cast(str, row["next_state"]))
+
+    @staticmethod
+    def _failure_resolution(raw_state: str) -> FailureResolution:
+        if raw_state in {"failed", "canceled", "no_work"}:
+            return FailureResolution(
+                state=cast(Literal["failed", "canceled", "no_work"], raw_state)
+            )
+        prefix, separator, raw_delay = raw_state.partition(":")
+        if prefix != "retrying" or separator != ":":
+            raise RuntimeError("worker database returned an invalid failure resolution")
+        try:
+            retry_after_seconds = int(raw_delay)
+        except ValueError as error:
+            raise RuntimeError("worker database returned an invalid retry delay") from error
+        if retry_after_seconds not in {5, 30}:
+            raise RuntimeError("worker database returned an unsupported retry delay")
+        return FailureResolution(state="retrying", retry_after_seconds=retry_after_seconds)
 
     async def _boolean_function(self, query: str, parameters: tuple[object, ...]) -> bool:
         row = await self._fetchone(query, parameters)

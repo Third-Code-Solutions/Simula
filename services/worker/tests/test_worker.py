@@ -5,7 +5,7 @@ import pytest
 from arq.worker import Retry
 from simula_core.runtime import RuntimeMetadata
 from simula_core.simulation import DeterministicMockProvider, ProviderRequest, SimulationResultV1
-from simula_worker.database import ExecutionClaim
+from simula_worker.database import ExecutionClaim, FailureResolution
 from simula_worker.main import process_run_v1
 
 
@@ -16,8 +16,11 @@ def test_worker_metadata_is_private_service() -> None:
 
 
 class RecordingDatabase:
-    def __init__(self, claim: ExecutionClaim) -> None:
+    def __init__(
+        self, claim: ExecutionClaim, failure_resolution: FailureResolution | None = None
+    ) -> None:
         self.claim = claim
+        self.failure_resolution = failure_resolution or FailureResolution(state="failed")
         self.claim_calls: list[tuple[UUID, int, str]] = []
         self.completions: list[tuple[UUID, UUID, UUID, Mapping[str, object]]] = []
         self.failures: list[tuple[UUID, UUID, UUID, str, bool]] = []
@@ -47,9 +50,9 @@ class RecordingDatabase:
         lease_token: UUID,
         safe_error_code: str,
         retryable: bool,
-    ) -> str:
+    ) -> FailureResolution:
         self.failures.append((run_id, attempt_id, lease_token, safe_error_code, retryable))
-        return "failed"
+        return self.failure_resolution
 
 
 class RecordingProvider:
@@ -59,6 +62,15 @@ class RecordingProvider:
     def run(self, request: ProviderRequest) -> SimulationResultV1:
         self.requests.append(request)
         raise AssertionError("test uses rejection paths only")
+
+
+class TimeoutProvider:
+    def __init__(self) -> None:
+        self.requests: list[object] = []
+
+    def run(self, request: ProviderRequest) -> SimulationResultV1:
+        self.requests.append(request)
+        raise TimeoutError
 
 
 def _claim(*, status: str) -> ExecutionClaim:
@@ -166,5 +178,31 @@ async def test_worker_records_a_safe_terminal_failure_for_provider_error() -> No
             claim.lease_token,
             "execution_provider_failure",
             False,
+        )
+    ]
+
+
+async def test_worker_defers_only_the_database_authorized_timeout_retry() -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim, FailureResolution(state="retrying", retry_after_seconds=5))
+    provider = TimeoutProvider()
+
+    with pytest.raises(Retry) as raised:
+        await process_run_v1(
+            {"job_id": f"run:{run_id}:dispatch:1"},
+            {"schema_version": 1, "run_id": str(run_id)},
+            database=database,
+            provider=provider,
+        )
+
+    assert raised.value.defer_score == 5000
+    assert database.completions == []
+    assert database.failures == [
+        (
+            run_id,
+            claim.attempt_id,
+            claim.lease_token,
+            "execution_timed_out",
+            True,
         )
     ]
