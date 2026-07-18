@@ -126,7 +126,7 @@ tests/                     cross-service, security, load, E2E
 
 - Historical self-audit: structured telemetry/audit/correlation, security/secret/SCA/container checks, load/backpressure/resource tests, clean migration/contract generation, browser E2E, local database gates, and evidence update are recorded in E-5022.
 - Automated gate evidence: clean local reset/lint/41 pgTAP assertions; ten real API/Redis/worker integrations; five browser flows; `pnpm check`; explicit Linux mypy; hosted migration equality; and GitHub Actions run `29640798631` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
-- Formal exit status: FAIL. E-5023 records unresolved High findings. E-5024 closes expired-lease mutation authority and stale/canceled attempt corruption; E-5025 closes arbitrary result persistence and frozen-provenance drift; E-5026 closes worker retry/deadline/heartbeat/rejection-telemetry drift; E-5027 closes the deterministic worker's missing fail-closed no-egress proof; E-5028 closes the SBOM/container-scan portion of R-025; E-5029 closes its history-secret and Windows gaps. All other Critical/High findings remain blocking.
+- Formal exit status: FAIL. E-5023 records unresolved High findings. E-5024 closes expired-lease mutation authority and stale/canceled attempt corruption; E-5025 closes arbitrary result persistence and frozen-provenance drift; E-5026 closes worker retry/deadline/heartbeat/rejection-telemetry drift; E-5027 closes the deterministic worker's missing fail-closed no-egress proof; E-5028–E-5030 close R-025's technical CI gaps. Enforceable required-check governance and all other Critical/High findings remain blocking.
 - Rollback: telemetry export may be disabled independently; core audit remains; revert only to a schema-compatible artifact.
 
 # 7. Risks
@@ -176,6 +176,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: the deterministic worker now exposes a fixed no-egress probe and mandatory CI runs it as non-root with Docker networking disabled, a read-only root filesystem, all capabilities dropped, and `no-new-privileges`. Focused local gates and GitHub Actions `29645866096` for `b732a5b` pass (E-5027). With E-5025, R-026 is Mitigated for Phase 2; real-provider egress remains prohibited and P2-07 remains open.
 - 2026-07-18 — OBSERVED: checksum-pinned Syft/Grype generate and archive CycloneDX/full vulnerability reports for all three images and block fixable High/Critical findings. The first CI execution rejected vulnerable bundled web runtime tooling; `bffe83b` removed npm/Corepack, and GitHub Actions `29646850994` passed in 8m38s with six uploaded reports (E-5028). R-025 remains Open for its other gaps; P2-07 remains open.
 - 2026-07-18 — OBSERVED: checksum-pinned Gitleaks now scans every reachable commit and exact Windows Server 2025 quality/SCA runs beside the Linux/database/browser/container gates. GitHub Actions `29647492906` passed all four jobs, including 52-commit history scanning and the exact Windows toolchain (E-5029). Required-check governance remains plan-blocked by GitHub API `403`; no visibility or billing change was made. R-025 and P2-07 remain open.
+- 2026-07-18 — OBSERVED: root `pnpm verify` now orders the complete disposable API/database/browser/repository/integration/SCA foundation gate. GitHub Actions `29648136756` passed it plus history, exact Windows, no-egress, and three-image SBOM/vulnerability gates in about eight minutes (E-5030). R-025 now remains Open only for plan-blocked required-check governance; P2-07 remains open.
 
 # 9. Progress
 
@@ -226,6 +227,7 @@ tests/                     cross-service, security, load, E2E
   - [x] Deterministic worker fail-closed no-egress remediation (E-5027).
   - [x] Three-image SBOM and fixable High/Critical vulnerability gate (E-5028).
   - [x] Complete-history secret scan and exact Windows quality/SCA gate (E-5029).
+  - [x] Consolidated root `pnpm verify` foundation gate (E-5030).
   - [ ] Remaining E-5023 Critical/High findings cleared and independently re-reviewed.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 
@@ -283,4 +285,4 @@ M4 evidence on 2026-07-18:
 
 # 11. Final Outcome
 
-Phase 2 remains open after independent exit-review failure (E-5023). M0 through M5 retain recorded evidence; M6/P2-07 is reopened. Lease/attempt and result-contract remediations pass locally and are applied seed-free to the hosted schema (E-5024, E-5025); worker contract, no-egress, container supply-chain, complete-history secret, and Windows CI remediations pass locally and/or in CI without hosted mutation (E-5026–E-5029). Remaining High findings block re-review and Phase 3. Production deployment remains unauthorized.
+Phase 2 remains open after independent exit-review failure (E-5023). M0 through M5 retain recorded evidence; M6/P2-07 is reopened. Lease/attempt and result-contract remediations pass locally and are applied seed-free to the hosted schema (E-5024, E-5025); worker contract, no-egress, container supply-chain, complete-history secret, Windows, and root verification CI remediations pass locally and/or in CI without hosted mutation (E-5026–E-5030). Required-check governance and remaining High findings block re-review and Phase 3. Production deployment remains unauthorized.
