@@ -4,13 +4,15 @@ import asyncio
 import json
 from collections.abc import Callable, Coroutine
 from types import TracebackType
-from typing import Any
+from typing import Any, cast
 
 import pytest
+from arq.connections import ArqRedis
 from redis.exceptions import TimeoutError as RedisTimeoutError
 from simula_worker import __main__
 from simula_worker import main as worker_main
 from simula_worker.config import WorkerSettings
+from simula_worker.database import WorkerDatabase
 from simula_worker.telemetry import WorkerTelemetry
 
 
@@ -64,6 +66,29 @@ def test_no_egress_probe_runs_the_fixed_deterministic_provider(
     }
 
 
+def test_arq_worker_disables_redis_result_retention(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_worker(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return object()
+
+    monkeypatch.setenv("SIMULA_RELEASE_SHA", "a" * 40)
+    monkeypatch.setattr(worker_main, "Worker", fake_worker)
+
+    worker_main._create_arq_worker(
+        cast(ArqRedis, object()),
+        cast(WorkerDatabase, object()),
+        WorkerTelemetry(),
+    )
+
+    assert captured["keep_result"] == 0
+    ctx = cast(dict[str, object], captured["ctx"])
+    assert ctx["release_sha"] == "a" * 40
+
+
 async def test_worker_supervisor_restarts_after_bounded_redis_poll_timeout(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -102,6 +127,7 @@ async def test_worker_supervisor_restarts_after_bounded_redis_poll_timeout(
         stop,
         settings=WorkerSettings(
             environment="test",
+            release_sha="a" * 40,
             database_url=(
                 "postgresql://simula_worker:test@127.0.0.1:54322/postgres?sslmode=disable"
             ),

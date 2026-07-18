@@ -413,6 +413,7 @@ async def test_m2_real_auth_api_database_and_tenant_boundaries(
         me = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {owner_a_token}"})
         assert me.status_code == 200
         assert me.json() == {"user_id": LOCAL_USERS[OWNER_A]}
+        assert _sign_in_audit_count(owner_a_session_id) == 1
 
         created_auth_event = await client.post(
             "/api/v1/auth-events",
@@ -424,8 +425,8 @@ async def test_m2_real_auth_api_database_and_tenant_boundaries(
             headers={"Authorization": f"Bearer {owner_a_token}"},
             json={"kind": "sign_in"},
         )
-        assert created_auth_event.status_code == 201
-        assert created_auth_event.json() == {"kind": "sign_in", "recorded": True}
+        assert created_auth_event.status_code == 200
+        assert created_auth_event.json() == {"kind": "sign_in", "recorded": False}
         assert replayed_auth_event.status_code == 200
         assert replayed_auth_event.json() == {"kind": "sign_in", "recorded": False}
         assert _sign_in_audit_count(owner_a_session_id) == 1

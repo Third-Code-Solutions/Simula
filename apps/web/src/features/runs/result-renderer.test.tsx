@@ -48,6 +48,8 @@ function unavailableResult() {
         method_version: "phase2_demo_v1",
         provider_id: "deterministic_mock",
         provider_version: 1,
+        code_release_sha: "a".repeat(40),
+        configuration_sha256: "c".repeat(64),
         frozen_manifest_sha256: "b".repeat(64),
         deterministic_seed: "7",
         output_schema_version: 1,

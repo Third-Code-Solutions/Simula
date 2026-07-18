@@ -177,6 +177,8 @@ export const simulationResultSchema = z
         method_version: z.literal("phase2_demo_v1"),
         provider_id: z.literal("deterministic_mock"),
         provider_version: z.literal(1),
+        code_release_sha: z.string().regex(/^[0-9a-f]{40}$/),
+        configuration_sha256: SHA256,
         frozen_manifest_sha256: SHA256,
         deterministic_seed: z.string().regex(/^-?[0-9]{1,19}$/),
         output_schema_version: z.literal(1),
@@ -244,6 +246,8 @@ const provenanceAvailableSchema = z
         provider_id: z.literal("deterministic_mock"),
         provider_version: z.literal(1),
         pipeline_release_id: z.string().regex(/^[a-z0-9][a-z0-9._-]{2,63}$/),
+        code_release_sha: z.string().regex(/^[0-9a-f]{40}$/),
+        configuration_sha256: SHA256,
       })
       .strict(),
     limits: z

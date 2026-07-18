@@ -21,6 +21,7 @@ SESSION_ID = "00000000-0000-4000-8000-000000000011"
 def _settings(*, environment: str = "test") -> ApiSettings:
     return ApiSettings(
         environment=environment,
+        release_sha="a" * 40,
         database_url="postgresql://simula_api:password@127.0.0.1:54322/postgres?sslmode=disable",
         supabase_url="https://auth.example.test",
         supabase_issuer=ISSUER,

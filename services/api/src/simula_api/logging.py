@@ -15,6 +15,9 @@ _API_LOG_FIELDS = {
     "api_request_denied": frozenset(
         {"code", "correlation_id", "route_template", "span_id", "status", "trace_id"}
     ),
+    "api_request_deadline_exceeded": frozenset(
+        {"budget_seconds", "correlation_id", "route_template"}
+    ),
     "audit_evidence_incomplete": frozenset(
         {"action", "correlation_id", "error_code", "object_type"}
     ),

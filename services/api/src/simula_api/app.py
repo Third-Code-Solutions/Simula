@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 import re
 from collections.abc import AsyncIterator
@@ -340,6 +341,66 @@ class JsonCommandMediaTypeMiddleware:
         await response(scope, receive, send)
 
 
+class RequestDeadlineMiddleware:
+    """Enforce aggregate non-streaming API budgets and discard partial responses."""
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        default_seconds: float = 10.0,
+        run_create_seconds: float = 5.0,
+    ) -> None:
+        self.app = app
+        self.default_seconds = default_seconds
+        self.run_create_seconds = run_create_seconds
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        path = scope.get("path", "")
+        if scope["type"] != "http" or not (path == "/api/v1" or path.startswith("/api/v1/")):
+            await self.app(scope, receive, send)
+            return
+
+        is_run_create = (
+            scope.get("method") == "POST"
+            and re.fullmatch(r"/api/v1/projects/[0-9a-fA-F-]{36}/runs", path) is not None
+        )
+        budget = self.run_create_seconds if is_run_create else self.default_seconds
+        buffered: list[Message] = []
+
+        async def buffer_message(message: Message) -> None:
+            buffered.append(message)
+
+        try:
+            async with asyncio.timeout(budget):
+                await self.app(scope, receive, buffer_message)
+        except TimeoutError:
+            correlation_id = scope.get("state", {}).get("correlation_id", "unavailable")
+            logger.warning(
+                "api_request_deadline_exceeded",
+                budget_seconds=budget,
+                correlation_id=correlation_id,
+                route_template=_route_template(scope),
+            )
+            response = JSONResponse(
+                _safe_problem(
+                    correlation_id=correlation_id,
+                    status=503,
+                    code="request_deadline_exceeded",
+                    title="Request deadline exceeded",
+                    detail="The request exceeded its bounded processing time. Retry shortly.",
+                ),
+                media_type="application/problem+json",
+                status_code=503,
+                headers={"Retry-After": "5", **_allowed_cors_headers(scope)},
+            )
+            await response(scope, receive, send)
+            return
+
+        for message in buffered:
+            await send(message)
+
+
 class PreAuthRateLimitMiddleware:
     """Charge unverified API requests before parsing, auth, or route dispatch."""
 
@@ -406,6 +467,8 @@ class PreAuthRateLimitMiddleware:
                 status=error.status,
                 trace_id=state.get("trace_id", "unavailable"),
             )
+            if error.code == "rate_limited":
+                self.telemetry.observe_rejection("rate")
             duration_seconds = perf_counter() - started_at
             route_template = _route_template(scope)
             self.telemetry.observe_http(
@@ -565,6 +628,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
             expose_headers=list(CORS_EXPOSE_HEADERS),
             max_age=600,
         )
+    app.add_middleware(RequestDeadlineMiddleware)
     app.add_middleware(JsonCommandMediaTypeMiddleware)
     app.add_middleware(CorrelationMiddleware, telemetry=telemetry)
     app.add_middleware(PreAuthRateLimitMiddleware, telemetry=telemetry)

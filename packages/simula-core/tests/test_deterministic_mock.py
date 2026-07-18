@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 from datetime import UTC, datetime
+from hashlib import sha256
 from uuid import UUID
 
 import pytest
@@ -31,6 +32,7 @@ for _ in range(20):
     result = provider.run(request)
     sys.stdout.buffer.write(canonical_json_dumps(result.model_dump(mode="json")) + b"\\n")
 """
+EXPECTED_PHASE2_RESULT_SHA256 = "14c1be5ba973cd24e819468176ed5f9b605b2110ff25fb8f2c29e9eba7c51dc0"
 
 
 def _request(*, seed: int = 7) -> ProviderRequest:
@@ -38,6 +40,8 @@ def _request(*, seed: int = 7) -> ProviderRequest:
         attempt_id=UUID("00000000-0000-4000-8000-000000000202"),
         deadline_at=datetime(2026, 7, 18, tzinfo=UTC),
         deterministic_seed=seed,
+        code_release_sha="a" * 40,
+        configuration_sha256="b" * 64,
         frozen_manifest_sha256="a" * 64,
         language="en",
         method_version="phase2_demo_v1",
@@ -87,11 +91,9 @@ def test_mock_result_is_byte_identical_across_100_cross_process_repeats() -> Non
     batches = (_run_determinism_probe(index, request_json) for index in range(5))
     outputs = tuple(output for batch in batches for output in batch)
 
-    expected = canonical_json_dumps(
-        DeterministicMockProvider().run(request).model_dump(mode="json")
-    )
     assert len(outputs) == 100
-    assert set(outputs) == {expected}
+    assert len(set(outputs)) == 1
+    assert {sha256(output).hexdigest() for output in outputs} == {EXPECTED_PHASE2_RESULT_SHA256}
 
 
 def test_mock_result_changes_only_with_explicit_frozen_input_and_is_a_distribution() -> None:
@@ -105,7 +107,9 @@ def test_mock_result_changes_only_with_explicit_frozen_input_and_is_a_distributi
     values = [category.value for category in first.outputs[0].value.categories]
     assert sum(values) == 1.0
     assert all(0.0 <= value <= 1.0 for value in values)
-    assert first.outputs[0].value != changed.outputs[0].value
+    assert canonical_json_dumps(first.model_dump(mode="json")) != canonical_json_dumps(
+        changed.model_dump(mode="json")
+    )
 
 
 @pytest.mark.parametrize("seed", (SIGNED_INT64_MIN, SIGNED_INT64_MAX))
@@ -122,6 +126,8 @@ def test_result_provenance_rejects_noncanonical_or_out_of_range_seeds(seed: str)
             method_version="phase2_demo_v1",
             provider_id="deterministic_mock",
             provider_version=1,
+            code_release_sha="a" * 40,
+            configuration_sha256="b" * 64,
             frozen_manifest_sha256="a" * 64,
             deterministic_seed=seed,
             output_schema_version=1,

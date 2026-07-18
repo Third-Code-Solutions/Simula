@@ -97,7 +97,16 @@ async def current_identity(
 ) -> VerifiedIdentity:
     if credentials is None or credentials.scheme.lower() != "bearer":
         raise unauthenticated()
-    return await _services(request).verifier.verify(credentials.credentials)
+    services = _services(request)
+    identity = await services.verifier.verify(credentials.credentials)
+    if identity.session_id is None:
+        raise unauthenticated()
+    request.state.sign_in_audit_recorded = await services.database.record_sign_in_success(
+        identity,
+        session_id=identity.session_id,
+        correlation_id=_correlation_id(request),
+    )
+    return identity
 
 
 async def rate_limited_identity(
@@ -250,11 +259,7 @@ async def create_auth_event(
 ) -> AuthEventResponse:
     if body.kind != "sign_in" or identity.session_id is None:
         raise unauthenticated()
-    recorded = await _services(request).database.record_sign_in_success(
-        identity,
-        session_id=identity.session_id,
-        correlation_id=_correlation_id(request),
-    )
+    recorded = bool(getattr(request.state, "sign_in_audit_recorded", False))
     response.status_code = 201 if recorded else 200
     return AuthEventResponse(kind="sign_in", recorded=recorded)
 

@@ -69,6 +69,16 @@ def _dependency_unavailable() -> AppProblem:
 
 def _database_problem(error: psycopg.Error) -> AppProblem:
     message = error.diag.message_primary
+    if isinstance(
+        error,
+        (
+            psycopg.errors.DeadlockDetected,
+            psycopg.errors.LockNotAvailable,
+            psycopg.errors.QueryCanceled,
+            psycopg.errors.SerializationFailure,
+        ),
+    ):
+        return _dependency_unavailable()
     if message in {"unauthorized"}:
         return AppProblem(
             status=401,
@@ -143,6 +153,7 @@ def _database_problem(error: psycopg.Error) -> AppProblem:
 
 class DatabaseGateway:
     def __init__(self, settings: ApiSettings) -> None:
+        self._release_sha = settings.release_sha
         self._pool = AsyncConnectionPool(
             conninfo=settings.database_url,
             min_size=1,
@@ -187,9 +198,10 @@ class DatabaseGateway:
                           pg_catalog.set_config(
                             'idle_in_transaction_session_timeout', '10000', true
                           ),
-                          pg_catalog.set_config('request.jwt.claims', %s, true)
+                          pg_catalog.set_config('request.jwt.claims', %s, true),
+                          pg_catalog.set_config('simula.release_sha', %s, true)
                         """,
-                        (claims,),
+                        (claims, self._release_sha),
                     )
                     yield cast(AsyncConnection[DatabaseRow], connection)
         except PoolTimeout as error:
@@ -780,7 +792,12 @@ class DatabaseGateway:
             raise _not_found()
 
         manifest = row["frozen_manifest"]
-        if not isinstance(manifest, Mapping) or "code" not in manifest or "limits" not in manifest:
+        if (
+            not isinstance(manifest, Mapping)
+            or "code" not in manifest
+            or "configuration" not in manifest
+            or "limits" not in manifest
+        ):
             return SimulationProvenanceResponse(
                 availability="legacy_unavailable",
                 unavailable_reason="frozen_provenance_not_captured",
@@ -797,10 +814,19 @@ class DatabaseGateway:
         audience_manifest = audience.get("manifest") if isinstance(audience, Mapping) else None
         execution = manifest.get("execution")
         code = manifest.get("code")
+        configuration = manifest.get("configuration")
         limits = manifest.get("limits")
         if not all(
             isinstance(value, Mapping)
-            for value in (stimulus, audience, audience_manifest, execution, code, limits)
+            for value in (
+                stimulus,
+                audience,
+                audience_manifest,
+                execution,
+                code,
+                configuration,
+                limits,
+            )
         ):
             raise RuntimeError("stored run provenance is malformed")
         frozen_stimulus = cast(Mapping[str, object], stimulus)
@@ -808,6 +834,7 @@ class DatabaseGateway:
         frozen_audience_manifest = cast(Mapping[str, object], audience_manifest)
         frozen_execution = cast(Mapping[str, object], execution)
         frozen_code = cast(Mapping[str, object], code)
+        frozen_configuration = cast(Mapping[str, object], configuration)
         frozen_limits = cast(Mapping[str, object], limits)
         return SimulationProvenanceResponse(
             availability="available",
@@ -844,7 +871,9 @@ class DatabaseGateway:
                     "output_schema_version": frozen_execution["output_schema_version"],
                     "provider_id": frozen_execution["provider_id"],
                     "provider_version": frozen_execution["provider_version"],
-                    "pipeline_release_id": frozen_code["pipeline_release_id"],
+                    "pipeline_release_id": "phase2_deterministic_mock_v1",
+                    "code_release_sha": frozen_code["release_sha"],
+                    "configuration_sha256": frozen_configuration["sha256"],
                 }
             ),
             limits=ProvenanceExecutionLimits.model_validate(frozen_limits),

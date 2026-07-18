@@ -104,6 +104,8 @@ function resultFixture() {
         provider_id: "deterministic_mock",
         provider_version: 1,
         frozen_manifest_sha256: CHECKSUM,
+        code_release_sha: "a".repeat(40),
+        configuration_sha256: CHECKSUM,
         deterministic_seed: "1",
         output_schema_version: 1,
       },
@@ -196,7 +198,7 @@ test("E2E-RESULT-001 and A11Y-AXE-001: a terminal run explains deterministic lim
   await expect(page.getByText("phase2_deterministic_mock_v1")).toBeVisible();
   await expect(disclosure).toContainText("phase2_2026_07_17");
   await expect(disclosure).toContainText("30 seconds");
-  await expect(disclosure.locator("code")).toHaveCount(3);
+  await expect(disclosure.locator("code")).toHaveCount(5);
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);

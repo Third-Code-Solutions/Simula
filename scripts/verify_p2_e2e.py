@@ -192,6 +192,14 @@ def runtime_environments(
 ) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     """Construct per-service local-only environment maps."""
 
+    git = executable("git", environment=base)
+    release_sha = run(
+        (git, "rev-parse", "HEAD"),
+        environment=base,
+        capture_output=True,
+    ).stdout.strip()
+    if re.fullmatch(r"[0-9a-f]{40}", release_sha) is None:
+        raise BrowserGateError("git did not return an exact release SHA")
     public = {
         "NEXT_PUBLIC_SIMULA_API_URL": "http://127.0.0.1:8000",
         "NEXT_PUBLIC_SUPABASE_URL": supabase.api_url,
@@ -199,7 +207,7 @@ def runtime_environments(
     }
     common = {
         "SIMULA_ENVIRONMENT": "local",
-        "SIMULA_RELEASE_SHA": "p2-browser-e2e",
+        "SIMULA_RELEASE_SHA": release_sha,
         "SIMULA_LOG_LEVEL": "warning",
         "SIMULA_REDIS_URL": "redis://127.0.0.1:6379/0",
         "SIMULA_CORS_ORIGINS": "http://127.0.0.1:3100",

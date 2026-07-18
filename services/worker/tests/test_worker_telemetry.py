@@ -143,9 +143,13 @@ async def test_worker_emits_bounded_alert_when_run_creation_latches_closed() -> 
 
     assert logs == [
         {
+            "alert_owner": "release_on_call",
             "event": "run_creation_disabled",
             "log_level": "warning",
             "reason": "redis_memory_critical",
+            "runbook": "brain/Operations/RUNBOOK_RUN_CREATION_DISABLED.md",
+            "severity": "page",
+            "silence_rule": "recovery_verified",
         }
     ]
     rendered = telemetry.render().decode()

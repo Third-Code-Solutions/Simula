@@ -271,7 +271,9 @@ class ProvenanceExecution(StrictModel):
     output_schema_version: Literal[1]
     provider_id: Literal["deterministic_mock"]
     provider_version: Literal[1]
-    pipeline_release_id: Annotated[str, StringConstraints(pattern=r"^[a-z0-9][a-z0-9._-]{2,63}$")]
+    pipeline_release_id: Literal["phase2_deterministic_mock_v1"]
+    code_release_sha: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{40}$")]
+    configuration_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
 
 
 class ProvenanceExecutionLimits(StrictModel):

@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import asyncio
 import json
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from simula_api.app import CORRELATION_HEADER, create_app
+from simula_api.app import CORRELATION_HEADER, RequestDeadlineMiddleware, create_app
 from simula_api.telemetry import ApiTelemetry
 from simula_core.trace_context import TRACEPARENT_HEADER, TraceContext
+from starlette.types import Receive, Scope, Send
 from structlog.testing import capture_logs
 
 
@@ -138,3 +140,38 @@ def test_dependency_labels_fail_closed_to_the_allowlist() -> None:
         assert str(error) == "dependency metric label is not allowlisted"
     else:
         raise AssertionError("unknown dependency label was accepted")
+
+
+def test_rejection_metrics_cover_required_policy_classes_and_reject_unknown_labels() -> None:
+    telemetry = ApiTelemetry()
+    for kind in ("authentication", "authorization", "rate", "quota"):
+        telemetry.observe_rejection(kind)
+
+    rendered = telemetry.render().decode()
+    for kind in ("authentication", "authorization", "rate", "quota"):
+        assert f'simula_api_rejections_total{{kind="{kind}"}} 1.0' in rendered
+    with pytest.raises(ValueError, match="not allowlisted"):
+        telemetry.observe_rejection("tenant-controlled")
+
+
+async def test_request_deadline_discards_partial_response_and_uses_run_create_budget() -> None:
+    async def slow_partial_response(scope: Scope, receive: Receive, send: Send) -> None:
+        del scope, receive
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await asyncio.sleep(0.05)
+        await send({"type": "http.response.body", "body": b"late"})
+
+    app = RequestDeadlineMiddleware(
+        slow_partial_response,
+        default_seconds=0.04,
+        run_create_seconds=0.01,
+    )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/projects/00000000-0000-4000-8000-000000000001/runs",
+            json={},
+        )
+
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "5"
+    assert response.json()["code"] == "request_deadline_exceeded"

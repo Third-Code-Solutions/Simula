@@ -119,6 +119,14 @@ export function ProvenanceDisclosure({ runId }: Readonly<{ runId: string }>) {
               </dd>
               <dt>Pipeline code</dt>
               <dd>{provenance.execution.pipeline_release_id}</dd>
+              <dt>Code release</dt>
+              <dd>
+                <code>{provenance.execution.code_release_sha}</code>
+              </dd>
+              <dt>Configuration checksum</dt>
+              <dd>
+                <code>{provenance.execution.configuration_sha256}</code>
+              </dd>
               <dt>Seed</dt>
               <dd>{provenance.deterministic_seed}</dd>
               <dt>Manifest checksum</dt>

@@ -54,6 +54,9 @@ _SAFE_CLAIM_REJECTION_REASONS = frozenset(
     {"awaiting_confirmation", "busy", "no_work", "organization_capacity"}
 )
 WORKER_RESTART_DELAY_SECONDS = 1.0
+RUN_CONTROL_ALERT_OWNER = "release_on_call"
+RUN_CONTROL_ALERT_RUNBOOK = "brain/Operations/RUNBOOK_RUN_CREATION_DISABLED.md"
+RUN_CONTROL_ALERT_SILENCE_RULE = "recovery_verified"
 
 
 def _signals() -> Iterable[signal.Signals]:
@@ -172,7 +175,14 @@ async def _refresh_run_creation_control(
         )
         return
     if control.changed:
-        logger.warning("run_creation_disabled", reason=control.alert_reason)
+        logger.warning(
+            "run_creation_disabled",
+            alert_owner=RUN_CONTROL_ALERT_OWNER,
+            reason=control.alert_reason,
+            runbook=RUN_CONTROL_ALERT_RUNBOOK,
+            severity="page",
+            silence_rule=RUN_CONTROL_ALERT_SILENCE_RULE,
+        )
 
 
 async def _dispatch_forever(
@@ -224,6 +234,7 @@ def _create_arq_worker(
         handle_signals=False,
         max_jobs=4,
         max_tries=MAX_ARQ_TRIES,
+        keep_result=0,
         job_timeout=30,
         poll_delay=0.25,
         job_serializer=arq_json_dumps,
@@ -232,6 +243,7 @@ def _create_arq_worker(
             "database": database,
             "provider": DeterministicMockProvider(),
             "telemetry": telemetry,
+            "release_sha": RuntimeMetadata.from_environment(service="worker").release_sha,
         },
     )
 
@@ -416,11 +428,16 @@ def _provider_request(
     frozen_manifest: Mapping[str, object],
     frozen_manifest_sha256: str,
     deterministic_seed: int,
+    runtime_release_sha: str,
 ) -> ProviderRequest:
     stimulus = cast(Mapping[str, object], frozen_manifest["stimulus"])
     audience = cast(Mapping[str, object], frozen_manifest["audience"])
     audience_manifest = cast(Mapping[str, object], audience["manifest"])
     raw_cells = cast(list[object], audience_manifest["audience_cells"])
+    code = cast(Mapping[str, object], frozen_manifest["code"])
+    configuration = cast(Mapping[str, object], frozen_manifest["configuration"])
+    if code.get("release_sha") != runtime_release_sha:
+        raise ValueError("worker release does not match the frozen run release")
     return ProviderRequest(
         request_id=claim_attempt_id,
         attempt_id=claim_attempt_id,
@@ -431,6 +448,8 @@ def _provider_request(
         audience_cells=tuple(AudienceCell.model_validate(cell) for cell in raw_cells),
         deterministic_seed=deterministic_seed,
         output_schema_version=1,
+        code_release_sha=runtime_release_sha,
+        configuration_sha256=cast(str, configuration["sha256"]),
         frozen_manifest_sha256=frozen_manifest_sha256,
         deadline_at=datetime.now(UTC) + timedelta(seconds=30),
         cost_ceiling=0,
@@ -445,6 +464,7 @@ async def _process_claimed_run(
     provider: SimulationProvider,
     telemetry: WorkerTelemetry | None,
     observation: JobObservation,
+    runtime_release_sha: str,
 ) -> None:
     attempt_id = cast(UUID, claim.attempt_id)
     lease_token = cast(UUID, claim.lease_token)
@@ -471,6 +491,7 @@ async def _process_claimed_run(
             frozen_manifest=frozen_manifest,
             frozen_manifest_sha256=frozen_manifest_sha256,
             deterministic_seed=deterministic_seed,
+            runtime_release_sha=runtime_release_sha,
         )
         if telemetry is not None and not isinstance(provider, DeterministicMockProvider):
             telemetry.observe_external_provider_call()
@@ -596,6 +617,12 @@ async def process_run_v1(
             return None
 
         trace = TraceContext.from_header(claim.traceparent)
+        claim_manifest = claim.frozen_manifest
+        claim_code = cast(Mapping[str, object], claim_manifest["code"])
+        runtime_release_sha = cast(
+            str,
+            ctx.get("release_sha") or claim_code["release_sha"],
+        )
         with bound_contextvars(
             correlation_id=str(claim.correlation_id),
             span_id=trace.span_id,
@@ -608,6 +635,7 @@ async def process_run_v1(
                 provider=provider,
                 telemetry=active_telemetry,
                 observation=observation,
+                runtime_release_sha=runtime_release_sha,
             )
         return None
     finally:

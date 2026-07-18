@@ -169,7 +169,7 @@ def test_phase2_full_database_backup_restores_into_isolated_database() -> None:
                 "select pg_catalog.max(version) from supabase_migrations.schema_migrations;",
                 password=password,
             )
-            == "20260719020000"
+            == "20260719030000"
         )
         assert (
             _psql(

@@ -638,6 +638,10 @@ export interface components {
         };
         /** ProvenanceExecution */
         ProvenanceExecution: {
+            /** Code Release Sha */
+            code_release_sha: string;
+            /** Configuration Sha256 */
+            configuration_sha256: string;
             /**
              * Disclosure Version
              * @constant
@@ -658,8 +662,11 @@ export interface components {
              * @constant
              */
             output_schema_version: 1;
-            /** Pipeline Release Id */
-            pipeline_release_id: string;
+            /**
+             * Pipeline Release Id
+             * @constant
+             */
+            pipeline_release_id: "phase2_deterministic_mock_v1";
             /**
              * Provider Id
              * @constant
@@ -738,6 +745,10 @@ export interface components {
         };
         /** ResultProvenance */
         ResultProvenance: {
+            /** Code Release Sha */
+            code_release_sha: string;
+            /** Configuration Sha256 */
+            configuration_sha256: string;
             /** Deterministic Seed */
             deterministic_seed: string;
             /** Frozen Manifest Sha256 */

@@ -130,6 +130,8 @@ def _claimed_run() -> tuple[UUID, ExecutionClaim]:
                 "audience": {
                     "manifest": {"audience_cells": [{"key": "authored_demo", "weight": 1.0}]}
                 },
+                "code": {"release_sha": "a" * 40},
+                "configuration": {"sha256": "b" * 64},
             },
             frozen_manifest_sha256="a" * 64,
             deterministic_seed=42,
@@ -271,6 +273,31 @@ async def test_worker_completes_a_claimed_deterministic_run() -> None:
     assert 'simula_worker_jobs_total{outcome="completed"} 1.0' in rendered
     assert 'simula_worker_deterministic_provider_calls_total{outcome="completed"} 1.0' in rendered
     assert "simula_worker_external_provider_calls_total 0.0" in rendered
+
+
+async def test_worker_rejects_a_claim_frozen_for_another_code_release() -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim)
+    provider = RecordingProvider()
+
+    await process_run_v1(
+        {"job_id": f"run:{run_id}:dispatch:1", "release_sha": "c" * 40},
+        {"schema_version": 1, "run_id": str(run_id)},
+        database=database,
+        provider=provider,
+    )
+
+    assert provider.requests == []
+    assert database.completions == []
+    assert database.failures == [
+        (
+            run_id,
+            UUID("00000000-0000-4000-8000-0000000000b4"),
+            UUID("00000000-0000-4000-8000-0000000000b5"),
+            "execution_provider_failure",
+            False,
+        )
+    ]
 
 
 async def test_worker_discards_work_when_the_current_lease_cannot_heartbeat() -> None:

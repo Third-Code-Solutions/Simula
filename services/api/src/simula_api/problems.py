@@ -76,6 +76,16 @@ def problem_response(request: Request, problem: AppProblem) -> JSONResponse:
         route_template=route_template,
         status=problem.status,
     )
+    rejection_kind = {
+        "forbidden": "authorization",
+        "quota_exceeded": "quota",
+        "rate_limited": "rate",
+        "unauthenticated": "authentication",
+    }.get(problem.code)
+    telemetry = getattr(request.app.state, "telemetry", None)
+    observe_rejection = getattr(telemetry, "observe_rejection", None)
+    if rejection_kind is not None and callable(observe_rejection):
+        observe_rejection(rejection_kind)
     return JSONResponse(
         _payload(request, problem),
         status_code=problem.status,

@@ -158,6 +158,8 @@ class FakeDatabase:
                     "provider_id": "deterministic_mock",
                     "provider_version": 1,
                     "pipeline_release_id": "phase2_deterministic_mock_v1",
+                    "code_release_sha": "a" * 40,
+                    "configuration_sha256": "b" * 64,
                 },
                 "limits": {
                     "version": "phase2_2026_07_17",
@@ -512,6 +514,8 @@ async def test_published_result_is_returned_as_the_generated_typed_contract() ->
             stimulus_content="Test response typing.",
             deterministic_seed=7,
             output_schema_version=1,
+            code_release_sha="a" * 40,
+            configuration_sha256="b" * 64,
             frozen_manifest_sha256="b" * 64,
             deadline_at=NOW,
             cost_ceiling=0,
@@ -549,6 +553,8 @@ async def test_authorized_provenance_is_a_closed_projection_not_the_raw_manifest
     body = response.json()
     assert body["availability"] == "available"
     assert body["stimulus"]["content"] == "Test response typing."
+    assert body["execution"]["code_release_sha"] == "a" * 40
+    assert body["execution"]["configuration_sha256"] == "b" * 64
     assert body["execution"]["pipeline_release_id"] == "phase2_deterministic_mock_v1"
     assert "frozen_manifest" not in body
     assert "job_id" not in body

@@ -6,6 +6,7 @@ from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, gene
 
 _HTTP_METHODS = frozenset({"DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"})
 _DEPENDENCIES = frozenset({"auth", "database", "queue", "rate_limit", "run_admission"})
+_REJECTION_KINDS = frozenset({"authentication", "authorization", "quota", "rate"})
 
 
 class ApiTelemetry:
@@ -32,6 +33,12 @@ class ApiTelemetry:
             ("dependency",),
             registry=self.registry,
         )
+        self._rejections = Counter(
+            "simula_api_rejections_total",
+            "API requests rejected by bounded policy class.",
+            ("kind",),
+            registry=self.registry,
+        )
         for dependency in sorted(_DEPENDENCIES):
             self._dependency_ready.labels(dependency=dependency).set(0)
 
@@ -50,6 +57,11 @@ class ApiTelemetry:
         if dependency not in _DEPENDENCIES:
             raise ValueError("dependency metric label is not allowlisted")
         self._dependency_ready.labels(dependency=dependency).set(1 if ready else 0)
+
+    def observe_rejection(self, kind: str) -> None:
+        if kind not in _REJECTION_KINDS:
+            raise ValueError("rejection metric label is not allowlisted")
+        self._rejections.labels(kind=kind).inc()
 
     def render(self) -> bytes:
         return generate_latest(self.registry)

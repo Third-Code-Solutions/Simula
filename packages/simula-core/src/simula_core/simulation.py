@@ -20,6 +20,7 @@ from pydantic import (
 from simula_core.json_codec import canonical_json_dumps
 
 Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+CodeReleaseSha = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{40}$")]
 FixtureKey = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{0,63}$")]
 CanonicalSignedInt64 = Annotated[str, StringConstraints(pattern=r"^(?:0|-?[1-9][0-9]{0,18})$")]
 SIGNED_INT64_MIN = -(2**63)
@@ -69,6 +70,8 @@ class ProviderRequest(StrictFrozenModel):
     audience_cells: tuple[AudienceCell, ...] = (AudienceCell(key="authored_demo", weight=1.0),)
     deterministic_seed: int = Field(ge=SIGNED_INT64_MIN, le=SIGNED_INT64_MAX)
     output_schema_version: Literal[1]
+    code_release_sha: CodeReleaseSha
+    configuration_sha256: Sha256
     frozen_manifest_sha256: Sha256
     deadline_at: datetime
     cost_ceiling: Literal[0] = 0
@@ -138,6 +141,8 @@ class ResultProvenance(StrictFrozenModel):
     method_version: Literal["phase2_demo_v1"]
     provider_id: Literal["deterministic_mock"]
     provider_version: Literal[1]
+    code_release_sha: CodeReleaseSha
+    configuration_sha256: Sha256
     frozen_manifest_sha256: Sha256
     # JSON numbers cannot preserve every PostgreSQL bigint in browser code.
     # Persist the exact signed decimal representation with the immutable result.
@@ -191,6 +196,8 @@ class DeterministicMockProvider(SimulationProvider):
                         cell.model_dump(mode="json") for cell in request.audience_cells
                     ],
                     "deterministic_seed": request.deterministic_seed,
+                    "code_release_sha": request.code_release_sha,
+                    "configuration_sha256": request.configuration_sha256,
                     "frozen_manifest_sha256": request.frozen_manifest_sha256,
                     "language": request.language,
                     "method_version": request.method_version,
@@ -248,6 +255,8 @@ class DeterministicMockProvider(SimulationProvider):
                 method_version=request.method_version,
                 provider_id="deterministic_mock",
                 provider_version=1,
+                code_release_sha=request.code_release_sha,
+                configuration_sha256=request.configuration_sha256,
                 frozen_manifest_sha256=request.frozen_manifest_sha256,
                 deterministic_seed=str(request.deterministic_seed),
                 output_schema_version=request.output_schema_version,

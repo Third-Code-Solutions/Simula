@@ -41,6 +41,7 @@ def _is_loopback(hostname: str | None) -> bool:
 @dataclass(frozen=True)
 class ApiSettings:
     environment: str
+    release_sha: str
     database_url: str
     supabase_url: str
     supabase_issuer: str
@@ -56,6 +57,9 @@ class ApiSettings:
         environment = _required("SIMULA_ENVIRONMENT")
         if environment not in {"local", "test", "preview", "staging", "production"}:
             raise ConfigurationError("SIMULA_ENVIRONMENT is unsupported")
+        release_sha = _required("SIMULA_RELEASE_SHA")
+        if not re.fullmatch(r"[0-9a-f]{40}", release_sha):
+            raise ConfigurationError("SIMULA_RELEASE_SHA must be an exact 40-character git SHA")
 
         database_url = _required("SIMULA_DATABASE_URL")
         database = urlsplit(database_url)
@@ -122,6 +126,7 @@ class ApiSettings:
 
         return cls(
             environment=environment,
+            release_sha=release_sha,
             database_url=database_url,
             supabase_url=supabase_url,
             supabase_issuer=issuer,

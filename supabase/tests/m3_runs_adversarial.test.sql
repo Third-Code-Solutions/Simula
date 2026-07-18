@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(24);
+select extensions.plan(25);
 
 select extensions.has_function(
   'api',
@@ -258,6 +258,22 @@ select extensions.is(
   ),
   true,
   'fresh environments admit runs until a critical signal latches them closed'
+);
+
+select extensions.ok(
+  pg_catalog.strpos(
+    pg_catalog.pg_get_functiondef(
+      'private.create_simulation_run_atomic(uuid,uuid,text,text,uuid)'::pg_catalog.regprocedure
+    ),
+    'simula.release_sha'
+  ) > 0
+  and pg_catalog.strpos(
+    pg_catalog.pg_get_functiondef(
+      'private.phase2_result_artifact_is_valid(jsonb,uuid,text,bigint)'::pg_catalog.regprocedure
+    ),
+    'configuration_sha256'
+  ) > 0,
+  'run admission and result validation bind exact code and configuration provenance'
 );
 
 select * from extensions.finish();

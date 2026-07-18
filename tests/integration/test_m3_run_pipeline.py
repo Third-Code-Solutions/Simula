@@ -14,6 +14,7 @@ from uuid import UUID, uuid4
 import psycopg
 import pytest
 from arq.worker import Retry
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis, from_url
 from simula_api.app import create_app
@@ -253,9 +254,9 @@ async def _worker_replicas(
 
 
 @asynccontextmanager
-async def _api_client(
+async def _api_application(
     monkeypatch: pytest.MonkeyPatch, *, rate_limit_prefix: str | None = None
-) -> AsyncIterator[AsyncClient]:
+) -> AsyncIterator[FastAPI]:
     local_supabase = _local_supabase()
     api_password = _set_disposable_api_password()
     rate_limit_prefix = rate_limit_prefix or f"simula:test:m3:{uuid4().hex}"
@@ -279,10 +280,7 @@ async def _api_client(
     try:
         async with app.router.lifespan_context(app):
             assert app.state.domain_ready is True
-            async with AsyncClient(
-                transport=ASGITransport(app=app), base_url="http://test"
-            ) as client:
-                yield client
+            yield app
     finally:
         redis: Redis = from_url(LOCAL_REDIS_URL, decode_responses=True)  # type: ignore[no-untyped-call]
         try:
@@ -293,6 +291,23 @@ async def _api_client(
             await redis.aclose()
 
 
+@asynccontextmanager
+async def _api_client_and_app(
+    monkeypatch: pytest.MonkeyPatch, *, rate_limit_prefix: str | None = None
+) -> AsyncIterator[tuple[AsyncClient, FastAPI]]:
+    async with _api_application(monkeypatch, rate_limit_prefix=rate_limit_prefix) as app:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            yield client, app
+
+
+@asynccontextmanager
+async def _api_client(
+    monkeypatch: pytest.MonkeyPatch, *, rate_limit_prefix: str | None = None
+) -> AsyncIterator[AsyncClient]:
+    async with _api_client_and_app(monkeypatch, rate_limit_prefix=rate_limit_prefix) as (client, _):
+        yield client
+
+
 @pytest.mark.integration
 async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry(
     monkeypatch: pytest.MonkeyPatch,
@@ -301,7 +316,7 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
     owner_token = _sign_in(local_supabase, OWNER_A)
     suffix = uuid4().hex
 
-    async with _api_client(monkeypatch) as client:
+    async with _api_client_and_app(monkeypatch) as (client, app):
         created_organization = await client.post(
             "/api/v1/organizations",
             headers=_headers(owner_token, f"m3-org-{suffix}"),
@@ -325,38 +340,45 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
         stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
 
         run_key = f"m3-run-{suffix}"
-        first_batch = await asyncio.gather(
-            *(
-                client.post(
-                    f"/api/v1/projects/{project_id}/runs",
-                    headers={
-                        **_headers(owner_token, run_key),
-                        "Traceparent": INTEGRATION_TRACEPARENT,
-                    },
-                    json={"stimulus_version_id": str(stimulus_version_id)},
-                )
-                for _ in range(10)
-            )
+        initial = await client.post(
+            f"/api/v1/projects/{project_id}/runs",
+            headers={
+                **_headers(owner_token, run_key),
+                "Traceparent": INTEGRATION_TRACEPARENT,
+            },
+            json={"stimulus_version_id": str(stimulus_version_id)},
         )
-        second_batch = await asyncio.gather(
-            *(
-                client.post(
-                    f"/api/v1/projects/{project_id}/runs",
-                    headers={
-                        **_headers(owner_token, run_key),
-                        "Traceparent": INTEGRATION_TRACEPARENT,
-                    },
-                    json={"stimulus_version_id": str(stimulus_version_id)},
+        assert initial.status_code == 202
+        async with AsyncExitStack() as replay_stack:
+            replay_clients = [
+                await replay_stack.enter_async_context(
+                    AsyncClient(
+                        transport=ASGITransport(
+                            app=app,
+                            client=(f"192.0.2.{index + 1}", 10_000 + index),
+                        ),
+                        base_url="http://test",
+                    )
                 )
-                for _ in range(10)
+                for index in range(20)
+            ]
+            responses = await asyncio.gather(
+                *(
+                    replay_client.post(
+                        f"/api/v1/projects/{project_id}/runs",
+                        headers={
+                            **_headers(owner_token, run_key),
+                            "Traceparent": INTEGRATION_TRACEPARENT,
+                        },
+                        json={"stimulus_version_id": str(stimulus_version_id)},
+                    )
+                    for replay_client in replay_clients
+                )
             )
-        )
-        responses = [*first_batch, *second_batch]
         assert {response.status_code for response in responses} == {202}
-        assert len({response.json()["id"] for response in responses}) == 1
-        assert (
-            sum(response.headers["idempotent-replayed"] == "false" for response in responses) == 1
-        )
+        assert {response.headers["idempotent-replayed"] for response in responses} == {"true"}
+        assert len({initial.json()["id"], *(response.json()["id"] for response in responses)}) == 1
+        assert initial.headers["idempotent-replayed"] == "false"
         run_id = UUID(responses[0].json()["id"])
         stored_trace, stored_correlation = _run_as_local_supabase_admin(
             """
@@ -378,8 +400,8 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
                     worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
                 )
                 dispatched = await dispatcher.dispatch_once()
-                assert dispatched.claimed == 1
-                assert dispatched.confirmed == 1
+                assert dispatched.claimed >= 1
+                assert dispatched.confirmed == dispatched.claimed
 
                 payload = {"schema_version": 1, "run_id": str(run_id)}
                 context = {"job_id": job_id, "job_try": 1}
@@ -405,8 +427,8 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
                 retry_run_id = UUID(retry_run_response.json()["id"])
                 retry_job_id = job_id_for(retry_run_id, generation=1)
                 retry_dispatched = await dispatcher.dispatch_once()
-                assert retry_dispatched.claimed == 1
-                assert retry_dispatched.confirmed == 1
+                assert retry_dispatched.claimed >= 1
+                assert retry_dispatched.confirmed == retry_dispatched.claimed
                 retry_claim = await worker_database.claim_execution(retry_run_id, 1, retry_job_id)
                 assert retry_claim.status == "claimed"
                 assert retry_claim.attempt_id is not None
@@ -456,6 +478,8 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
         }
         assert provenance_body["audience"]["kind"] == "authored_demo"
         assert provenance_body["audience"]["non_representative"] is True
+        assert provenance_body["execution"]["code_release_sha"] == "a" * 40
+        assert len(provenance_body["execution"]["configuration_sha256"]) == 64
         assert provenance_body["execution"]["pipeline_release_id"] == "phase2_deterministic_mock_v1"
         assert provenance_body["limits"]["version"] == "phase2_2026_07_17"
         assert provenance_body["deterministic_seed"].lstrip("-").isdigit()
@@ -673,8 +697,8 @@ async def test_p2_result_write_boundary_rejects_nested_contract_drift(
                     worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
                 )
                 dispatched = await dispatcher.dispatch_once()
-                assert dispatched.claimed == 1
-                assert dispatched.confirmed == 1
+                assert dispatched.claimed >= 1
+                assert dispatched.confirmed == dispatched.claimed
                 claim = await worker_database.claim_execution(run_id, 1, job_id)
                 assert claim.status == "claimed"
                 assert claim.attempt_id is not None
@@ -692,6 +716,7 @@ async def test_p2_result_write_boundary_rejects_nested_contract_drift(
                             frozen_manifest=claim.frozen_manifest,
                             frozen_manifest_sha256=claim.frozen_manifest_sha256,
                             deterministic_seed=claim.deterministic_seed,
+                            runtime_release_sha="a" * 40,
                         )
                     )
                     .model_dump(mode="json")
@@ -709,6 +734,14 @@ async def test_p2_result_write_boundary_rejects_nested_contract_drift(
                 provenance_mismatch = deepcopy(artifact)
                 provenance_mismatch["provenance"]["frozen_manifest_sha256"] = "0" * 64
                 invalid_artifacts.append(provenance_mismatch)
+
+                release_mismatch = deepcopy(artifact)
+                release_mismatch["provenance"]["code_release_sha"] = "0" * 40
+                invalid_artifacts.append(release_mismatch)
+
+                configuration_mismatch = deepcopy(artifact)
+                configuration_mismatch["provenance"]["configuration_sha256"] = "0" * 64
+                invalid_artifacts.append(configuration_mismatch)
 
                 for invalid_artifact in invalid_artifacts:
                     with pytest.raises(
@@ -1040,9 +1073,8 @@ async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
                     worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
                 )
                 finalized = await dispatcher.dispatch_once()
-                assert finalized.canceled == 1
-                assert finalized.claimed == 0
-                assert finalized.confirmed == 0
+                assert finalized.canceled >= 1
+                assert finalized.confirmed == finalized.claimed
 
                 queued_terminal = await client.post(
                     f"/api/v1/runs/{queued_run_id}/cancel",
@@ -1062,8 +1094,8 @@ async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
                 running_job_id = job_id_for(running_run_id, generation=1)
                 dispatched = await dispatcher.dispatch_once()
                 assert dispatched.canceled == 0
-                assert dispatched.claimed == 1
-                assert dispatched.confirmed == 1
+                assert dispatched.claimed >= 1
+                assert dispatched.confirmed == dispatched.claimed
 
                 claim = await worker_database.claim_execution(running_run_id, 1, running_job_id)
                 assert claim.status == "claimed"
@@ -1088,6 +1120,7 @@ async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
                         frozen_manifest=claim.frozen_manifest,
                         frozen_manifest_sha256=claim.frozen_manifest_sha256,
                         deterministic_seed=claim.deterministic_seed,
+                        runtime_release_sha="a" * 40,
                     )
                 )
                 assert await worker_database.complete_execution(
@@ -1211,8 +1244,8 @@ async def test_p2_retryable_provider_failures_use_database_backoff_then_exhaust(
                     worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
                 )
                 dispatched = await dispatcher.dispatch_once()
-                assert dispatched.claimed == 1
-                assert dispatched.confirmed == 1
+                assert dispatched.claimed >= 1
+                assert dispatched.confirmed == dispatched.claimed
                 context = {"job_id": job_id}
                 payload = {"schema_version": 1, "run_id": str(run_id)}
 

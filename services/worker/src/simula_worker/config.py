@@ -8,6 +8,7 @@ execution functions granted in the schema.
 from __future__ import annotations
 
 import os
+import re
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlparse
 
@@ -65,6 +66,7 @@ def _parse_redis_url(url: str, *, environment: str) -> None:
 @dataclass(frozen=True, slots=True)
 class WorkerSettings:
     environment: str
+    release_sha: str
     database_url: str
     redis_url: str
     metrics_port: int
@@ -74,6 +76,9 @@ class WorkerSettings:
         environment = _required("SIMULA_ENVIRONMENT").lower()
         if environment not in _VALID_ENVIRONMENTS:
             raise ConfigurationError("SIMULA_ENVIRONMENT is unsupported")
+        release_sha = _required("SIMULA_RELEASE_SHA")
+        if not re.fullmatch(r"[0-9a-f]{40}", release_sha):
+            raise ConfigurationError("SIMULA_RELEASE_SHA must be an exact 40-character git SHA")
         database_url = _required("SIMULA_WORKER_DATABASE_URL")
         redis_url = _required("SIMULA_REDIS_URL")
         raw_metrics_port = os.getenv("SIMULA_WORKER_METRICS_PORT", "9464")
@@ -87,6 +92,7 @@ class WorkerSettings:
         _parse_redis_url(redis_url, environment=environment)
         return cls(
             environment=environment,
+            release_sha=release_sha,
             database_url=database_url,
             redis_url=redis_url,
             metrics_port=metrics_port,

@@ -4,12 +4,14 @@ from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
 
+import psycopg
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from simula_api.app import CORRELATION_HEADER, create_app
 from simula_api.auth import SupabaseTokenVerifier, VerifiedIdentity
 from simula_api.cursor import CursorCodec
-from simula_api.database import DatabaseGateway
+from simula_api.database import DatabaseGateway, _database_problem
 from simula_api.models import (
     OrganizationResponse,
     OrganizationRole,
@@ -26,8 +28,28 @@ from simula_core.trace_context import TRACEPARENT_HEADER
 OWNER_ID = UUID("00000000-0000-4000-8000-000000000001")
 ORGANIZATION_ID = UUID("10000000-0000-4000-8000-000000000001")
 PROJECT_ID = UUID("20000000-0000-4000-8000-000000000001")
+SESSION_ID = UUID("30000000-0000-4000-8000-000000000001")
 NOW = datetime(2026, 7, 17, tzinfo=UTC)
 TEST_BEARER = "synthetic-bearer-value"
+
+
+@pytest.mark.parametrize(
+    "error_type",
+    (
+        psycopg.errors.DeadlockDetected,
+        psycopg.errors.LockNotAvailable,
+        psycopg.errors.QueryCanceled,
+        psycopg.errors.SerializationFailure,
+    ),
+)
+def test_transient_postgres_failures_are_retryable_dependency_problems(
+    error_type: type[psycopg.Error],
+) -> None:
+    problem = _database_problem(error_type("safe test failure"))
+
+    assert problem.status == 503
+    assert problem.code == "dependency_unavailable"
+    assert problem.retry_after == 5
 
 
 class FakeVerifier:
@@ -38,6 +60,7 @@ class FakeVerifier:
             user_id=OWNER_ID,
             issuer="http://127.0.0.1:54321/auth/v1",
             expires_at=4_102_444_800,
+            session_id=SESSION_ID,
         )
 
 
@@ -45,6 +68,11 @@ class FakeDatabase:
     def __init__(self) -> None:
         self.organization_names: list[str] = []
         self.project_updates: list[tuple[UUID, int, ProjectPatch]] = []
+
+    async def record_sign_in_success(self, _: VerifiedIdentity, **kwargs: object) -> bool:
+        assert kwargs["session_id"] == SESSION_ID
+        assert isinstance(kwargs["correlation_id"], UUID)
+        return True
 
     async def create_organization(
         self, _: VerifiedIdentity, **kwargs: Any

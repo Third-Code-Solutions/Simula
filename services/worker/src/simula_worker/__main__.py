@@ -45,6 +45,8 @@ def _verify_no_egress() -> None:
             stimulus_content="A fictional no-egress worker probe.",
             deterministic_seed=7,
             output_schema_version=1,
+            code_release_sha="a" * 40,
+            configuration_sha256="b" * 64,
             frozen_manifest_sha256="a" * 64,
             deadline_at=datetime(2026, 7, 18, tzinfo=UTC),
             cost_ceiling=0,

@@ -51,6 +51,8 @@ describe("ProvenanceDisclosure", () => {
           provider_id: "deterministic_mock",
           provider_version: 1,
           pipeline_release_id: "phase2_deterministic_mock_v1",
+          code_release_sha: "d".repeat(40),
+          configuration_sha256: "e".repeat(64),
         },
         limits: {
           version: "phase2_2026_07_17",
