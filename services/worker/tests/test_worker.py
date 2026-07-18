@@ -14,6 +14,7 @@ from simula_core.simulation import (
 from simula_worker.database import ExecutionClaim, FailureResolution
 from simula_worker.main import process_run_v1
 from simula_worker.telemetry import WorkerTelemetry
+from structlog.contextvars import merge_contextvars
 from structlog.testing import capture_logs
 
 
@@ -132,6 +133,8 @@ def _claimed_run() -> tuple[UUID, ExecutionClaim]:
             },
             frozen_manifest_sha256="a" * 64,
             deterministic_seed=42,
+            correlation_id=UUID("00000000-0000-4000-8000-0000000000b6"),
+            traceparent="00-0123456789abcdef0123456789abcdef-0123456789abcdef-01",
         ),
     )
 
@@ -297,12 +300,13 @@ async def test_worker_records_a_safe_terminal_failure_for_provider_error() -> No
     database = RecordingDatabase(claim)
     provider = RecordingProvider()
 
-    await process_run_v1(
-        {"job_id": f"run:{run_id}:dispatch:1"},
-        {"schema_version": 1, "run_id": str(run_id)},
-        database=database,
-        provider=provider,
-    )
+    with capture_logs(processors=[merge_contextvars]) as logs:
+        await process_run_v1(
+            {"job_id": f"run:{run_id}:dispatch:1"},
+            {"schema_version": 1, "run_id": str(run_id)},
+            database=database,
+            provider=provider,
+        )
 
     assert database.completions == []
     assert database.failures == [
@@ -314,6 +318,11 @@ async def test_worker_records_a_safe_terminal_failure_for_provider_error() -> No
             False,
         )
     ]
+    failed = next(log for log in logs if log["event"] == "run_execution_provider_failed")
+    assert failed["correlation_id"] == "00000000-0000-4000-8000-0000000000b6"
+    assert failed["trace_id"] == "0123456789abcdef0123456789abcdef"
+    assert len(failed["span_id"]) == 16
+    assert failed["span_id"] != "0123456789abcdef"
 
 
 async def test_worker_defers_only_the_database_authorized_timeout_retry() -> None:

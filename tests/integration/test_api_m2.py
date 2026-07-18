@@ -167,6 +167,68 @@ def _audit_outcomes(organization_id: UUID, action: str) -> list[tuple[str, str, 
     return rows
 
 
+def _sign_in_audit_count(session_id: UUID) -> int:
+    inspect = _run_captured(
+        [
+            "docker",
+            "inspect",
+            "--format",
+            "{{range .Config.Env}}{{println .}}{{end}}",
+            SUPABASE_DB_CONTAINER,
+        ]
+    )
+    root_password_line = next(
+        (line for line in inspect.stdout.splitlines() if line.startswith("POSTGRES_PASSWORD=")),
+        None,
+    )
+    if inspect.returncode != 0 or root_password_line is None:
+        pytest.fail("local Supabase bootstrap password is unavailable")
+    result = _run_captured(
+        [
+            "docker",
+            "exec",
+            "-i",
+            "-e",
+            "PGPASSWORD",
+            SUPABASE_DB_CONTAINER,
+            "psql",
+            "-h",
+            "127.0.0.1",
+            "-U",
+            "postgres",
+            "-d",
+            "postgres",
+            "-X",
+            "-A",
+            "-t",
+            "-v",
+            "ON_ERROR_STOP=1",
+            "-v",
+            f"session_id={session_id}",
+        ],
+        environment={
+            **os.environ,
+            "PGPASSWORD": root_password_line.removeprefix("POSTGRES_PASSWORD="),
+        },
+        input_text="""
+          select count(*)
+          from private.audit_events
+          where organization_id is null
+            and actor_type = 'user'
+            and actor_user_id = '00000000-0000-4000-8000-000000000001'::uuid
+            and action = 'auth.sign_in'
+            and object_type = 'auth_session'
+            and object_id = :'session_id'::uuid
+            and outcome = 'success'
+            and source_service = 'api'
+            and metadata = '{}'::jsonb;
+        """,
+    )
+    if result.returncode != 0:
+        pytest.fail(f"could not inspect sign-in audit evidence: {result.stderr.strip()}")
+    return int(result.stdout.strip())
+
+
 async def _delete_local_rate_limit_keys(key_prefix: str) -> None:
     client: Redis = from_url(LOCAL_REDIS_URL, decode_responses=True)  # type: ignore[no-untyped-call]
     try:
@@ -324,6 +386,7 @@ async def test_m2_real_auth_api_database_and_tenant_boundaries(
     viewer_a_token = _sign_in(local_supabase, VIEWER_A)
     owner_b_token = _sign_in(local_supabase, OWNER_B)
     expired_claims = jwt.decode(owner_a_token, options={"verify_signature": False})
+    owner_a_session_id = UUID(str(expired_claims["session_id"]))
     expired_claims["exp"] = int(time()) - 60
     expired_owner_a_token = jwt.encode(
         expired_claims,
@@ -350,6 +413,22 @@ async def test_m2_real_auth_api_database_and_tenant_boundaries(
         me = await client.get("/api/v1/me", headers={"Authorization": f"Bearer {owner_a_token}"})
         assert me.status_code == 200
         assert me.json() == {"user_id": LOCAL_USERS[OWNER_A]}
+
+        created_auth_event = await client.post(
+            "/api/v1/auth-events",
+            headers={"Authorization": f"Bearer {owner_a_token}"},
+            json={"kind": "sign_in"},
+        )
+        replayed_auth_event = await client.post(
+            "/api/v1/auth-events",
+            headers={"Authorization": f"Bearer {owner_a_token}"},
+            json={"kind": "sign_in"},
+        )
+        assert created_auth_event.status_code == 201
+        assert created_auth_event.json() == {"kind": "sign_in", "recorded": True}
+        assert replayed_auth_event.status_code == 200
+        assert replayed_auth_event.json() == {"kind": "sign_in", "recorded": False}
+        assert _sign_in_audit_count(owner_a_session_id) == 1
 
         audience = await client.get(
             "/api/v1/audiences/demo",

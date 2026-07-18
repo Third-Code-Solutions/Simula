@@ -19,6 +19,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
 from simula_core.queue_runtime import ArqEnqueuer, create_queue_client
 from simula_core.runtime import RuntimeMetadata
+from simula_core.trace_context import TRACEPARENT_HEADER, TraceContext
 from starlette.datastructures import Headers, MutableHeaders
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
@@ -41,7 +42,7 @@ from simula_api.readiness import DependencyReadiness
 from simula_api.routes import router
 from simula_api.run_admission import RedisRunAdmission
 from simula_api.services import AppServices
-from simula_api.telemetry import TRACEPARENT_HEADER, ApiTelemetry, TraceContext
+from simula_api.telemetry import ApiTelemetry
 
 CORRELATION_HEADER = "x-correlation-id"
 RELEASE_SHA_PATTERN = re.compile(r"^[A-Za-z0-9._-]{1,64}$")

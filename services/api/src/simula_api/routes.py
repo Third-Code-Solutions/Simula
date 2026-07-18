@@ -18,6 +18,8 @@ from simula_api.cursor import CursorPosition
 from simula_api.database import canonical_request_sha256
 from simula_api.models import (
     AudienceDisclosureResponse,
+    AuthEventCreate,
+    AuthEventResponse,
     MeResponse,
     OrganizationCreate,
     OrganizationPage,
@@ -136,6 +138,13 @@ def _correlation_id(request: Request) -> UUID:
     return UUID(value)
 
 
+def _traceparent(request: Request) -> str:
+    value = getattr(request.state, "traceparent", None)
+    if not isinstance(value, str):
+        raise RuntimeError("correlation middleware did not set trace context")
+    return value
+
+
 def _page[T](
     *,
     items: list[T],
@@ -224,6 +233,30 @@ async def _best_effort_publish_run(*, request: Request, run: SimulationRunRespon
 @router.get("/me", operation_id="get_current_identity", response_model=MeResponse)
 async def me(identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)]) -> MeResponse:
     return MeResponse(user_id=identity.user_id)
+
+
+@router.post(
+    "/auth-events",
+    operation_id="create_auth_event",
+    response_model=AuthEventResponse,
+    status_code=201,
+    responses={200: {"model": AuthEventResponse}},
+)
+async def create_auth_event(
+    request: Request,
+    response: Response,
+    body: AuthEventCreate,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> AuthEventResponse:
+    if body.kind != "sign_in" or identity.session_id is None:
+        raise unauthenticated()
+    recorded = await _services(request).database.record_sign_in_success(
+        identity,
+        session_id=identity.session_id,
+        correlation_id=_correlation_id(request),
+    )
+    response.status_code = 201 if recorded else 200
+    return AuthEventResponse(kind="sign_in", recorded=recorded)
 
 
 @router.get(
@@ -579,6 +612,7 @@ async def create_simulation_run(
         idempotency_key=idempotency_key,
         request_sha256=request_sha256,
         correlation_id=_correlation_id(request),
+        traceparent=_traceparent(request),
     )
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     response.headers["ETag"] = f'"{run.version}"'

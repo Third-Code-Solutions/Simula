@@ -15,6 +15,7 @@ from simula_api.problems import AppProblem
 
 ISSUER = "https://auth.example.test/auth/v1"
 USER_ID = "00000000-0000-4000-8000-000000000001"
+SESSION_ID = "00000000-0000-4000-8000-000000000011"
 
 
 def _settings(*, environment: str = "test") -> ApiSettings:
@@ -38,6 +39,7 @@ def _claims(**overrides: object) -> dict[str, object]:
         "iss": ISSUER,
         "aud": "authenticated",
         "role": "authenticated",
+        "session_id": SESSION_ID,
         "exp": int(time()) + 600,
         **overrides,
     }
@@ -80,6 +82,7 @@ async def test_asymmetric_verifier_rejects_invalid_required_claims_and_signature
         verifier = SupabaseTokenVerifier(_settings(), client)
         identity = await verifier.verify(_token(private_key, key_id="key-1"))
         assert identity.user_id == UUID(USER_ID)
+        assert identity.session_id == UUID(SESSION_ID)
 
         for claims in (
             _claims(aud="other"),
@@ -87,6 +90,7 @@ async def test_asymmetric_verifier_rejects_invalid_required_claims_and_signature
             _claims(iss="https://other.example.test/auth/v1"),
             _claims(nbf=int(time()) + 60),
             _claims(role="service_role"),
+            _claims(session_id="not-a-canonical-uuid"),
             _claims(sub="not-a-canonical-uuid"),
         ):
             await _assert_unauthenticated(

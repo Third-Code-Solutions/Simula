@@ -12,6 +12,7 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
   assert.ok(document.paths["/health/ready"]);
   assert.deepEqual(Object.keys(document.paths).sort(), [
     "/api/v1/audiences/demo",
+    "/api/v1/auth-events",
     "/api/v1/me",
     "/api/v1/organizations",
     "/api/v1/organizations/{organization_id}/projects",
@@ -27,6 +28,7 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
     "/health/ready",
   ]);
   assert.ok(document.paths["/api/v1/audiences/demo"].get);
+  assert.ok(document.paths["/api/v1/auth-events"].post);
   assert.ok(document.paths["/api/v1/organizations"].post);
   assert.ok(document.paths["/api/v1/projects/{project_id}/runs"].post);
   assert.ok(document.paths["/api/v1/runs/{run_id}/cancel"].post);

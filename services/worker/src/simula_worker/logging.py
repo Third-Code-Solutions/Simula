@@ -29,6 +29,8 @@ _WORKER_LOG_FIELDS = {
     "service_started": frozenset({"payload_contract"}),
     "service_stopped": frozenset({"payload_contract"}),
 }
+_TRACE_FIELDS = frozenset({"correlation_id", "span_id", "trace_id"})
+_WORKER_LOG_FIELDS = {event: fields | _TRACE_FIELDS for event, fields in _WORKER_LOG_FIELDS.items()}
 
 
 def _enforce_log_allowlist(

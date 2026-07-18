@@ -21,7 +21,7 @@ from simula_api.models import (
 from simula_api.problems import AppProblem, unauthenticated
 from simula_api.rate_limits import RateLimiter
 from simula_api.services import AppServices
-from simula_api.telemetry import TRACEPARENT_HEADER
+from simula_core.trace_context import TRACEPARENT_HEADER
 
 OWNER_ID = UUID("00000000-0000-4000-8000-000000000001")
 ORGANIZATION_ID = UUID("10000000-0000-4000-8000-000000000001")

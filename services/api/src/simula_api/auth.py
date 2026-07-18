@@ -24,6 +24,7 @@ class VerifiedIdentity:
     user_id: UUID
     issuer: str
     expires_at: int
+    session_id: UUID | None = None
 
     def database_claims(self) -> dict[str, str | int]:
         return {
@@ -74,7 +75,7 @@ class SupabaseTokenVerifier:
                 audience="authenticated",
                 issuer=self._settings.supabase_issuer,
                 options={
-                    "require": ["aud", "exp", "iss", "role", "sub"],
+                    "require": ["aud", "exp", "iss", "role", "session_id", "sub"],
                     "verify_aud": True,
                     "verify_exp": True,
                     "verify_iss": True,
@@ -111,7 +112,7 @@ class SupabaseTokenVerifier:
                 audience="authenticated",
                 issuer=self._settings.supabase_issuer,
                 options={
-                    "require": ["aud", "exp", "iss", "role", "sub"],
+                    "require": ["aud", "exp", "iss", "role", "session_id", "sub"],
                     "verify_aud": True,
                     "verify_exp": True,
                     "verify_iss": True,
@@ -181,6 +182,7 @@ class SupabaseTokenVerifier:
             issuer = claims["iss"]
             audience = claims["aud"]
             role = claims["role"]
+            raw_session_id = claims["session_id"]
             expires_at = claims["exp"]
             if (
                 not isinstance(subject, str)
@@ -193,11 +195,17 @@ class SupabaseTokenVerifier:
             ):
                 raise ValueError
             user_id = UUID(subject)
-            if str(user_id) != subject:
+            session_id = UUID(raw_session_id) if isinstance(raw_session_id, str) else None
+            if str(user_id) != subject or session_id is None or str(session_id) != raw_session_id:
                 raise ValueError
         except (KeyError, TypeError, ValueError) as error:
             raise unauthenticated() from error
-        return VerifiedIdentity(user_id=user_id, issuer=issuer, expires_at=expires_at)
+        return VerifiedIdentity(
+            user_id=user_id,
+            issuer=issuer,
+            expires_at=expires_at,
+            session_id=session_id,
+        )
 
     @staticmethod
     def _dependency_unavailable() -> AppProblem:

@@ -338,6 +338,26 @@ class DatabaseGateway:
         except psycopg.Error as error:
             raise _database_problem(error) from error
 
+    async def record_sign_in_success(
+        self,
+        identity: VerifiedIdentity,
+        *,
+        session_id: UUID,
+        correlation_id: UUID,
+    ) -> bool:
+        try:
+            async with self._transaction(identity) as connection:
+                cursor = await connection.execute(
+                    "select api.record_sign_in_success(%s, %s) as recorded",
+                    (session_id, correlation_id),
+                )
+                row = await cursor.fetchone()
+        except psycopg.Error as error:
+            raise _database_problem(error) from error
+        if row is None:
+            raise RuntimeError("sign-in audit command returned no row")
+        return bool(row["recorded"])
+
     async def create_project(
         self,
         identity: VerifiedIdentity,
@@ -556,12 +576,13 @@ class DatabaseGateway:
         idempotency_key: str,
         request_sha256: str,
         correlation_id: UUID,
+        traceparent: str,
     ) -> tuple[SimulationRunResponse, bool]:
         try:
             async with self._transaction(identity) as connection:
                 cursor = await connection.execute(
                     """
-                    select * from api.create_simulation_run(%s, %s, %s, %s, %s)
+                    select * from api.create_simulation_run(%s, %s, %s, %s, %s, %s)
                     """,
                     (
                         project_id,
@@ -569,6 +590,7 @@ class DatabaseGateway:
                         idempotency_key,
                         request_sha256,
                         correlation_id,
+                        traceparent,
                     ),
                 )
                 row = await cursor.fetchone()

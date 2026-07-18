@@ -29,6 +29,7 @@ ORGANIZATION_ID = UUID("00000000-0000-4000-8000-0000000000e2")
 PROJECT_ID = UUID("00000000-0000-4000-8000-0000000000e3")
 STIMULUS_VERSION_ID = UUID("00000000-0000-4000-8000-0000000000e4")
 RUN_ID = UUID("00000000-0000-4000-8000-0000000000e5")
+SESSION_ID = UUID("00000000-0000-4000-8000-0000000000e6")
 TEST_BEARER = "m3-synthetic-bearer"
 NOW = datetime(2026, 7, 18, tzinfo=UTC)
 
@@ -40,6 +41,7 @@ class FakeVerifier:
             user_id=OWNER_ID,
             issuer="http://127.0.0.1:54321/auth/v1",
             expires_at=4_102_444_800,
+            session_id=SESSION_ID,
         )
 
 
@@ -98,6 +100,7 @@ class FakeRateLimiter:
 class FakeDatabase:
     def __init__(self) -> None:
         self.run_commands: list[dict[str, object]] = []
+        self.auth_events: list[dict[str, object]] = []
         self.cancel_commands: list[dict[str, object]] = []
         self.cancel_response = _run()
         self.run_response = _run()
@@ -170,6 +173,10 @@ class FakeDatabase:
     async def organization_for_project(self, _: VerifiedIdentity, *, project_id: UUID) -> UUID:
         assert project_id == PROJECT_ID
         return ORGANIZATION_ID
+
+    async def record_sign_in_success(self, _: VerifiedIdentity, **kwargs: object) -> bool:
+        self.auth_events.append(dict(kwargs))
+        return len(self.auth_events) == 1
 
     async def create_simulation_run(
         self, _: VerifiedIdentity, **kwargs: object
@@ -293,6 +300,7 @@ async def test_run_create_is_atomic_then_best_effort_published_without_confirmat
                 "Authorization": f"Bearer {TEST_BEARER}",
                 "Idempotency-Key": "m3-run-create-key-0001",
                 CORRELATION_HEADER: "018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4",
+                "Traceparent": "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01",
             },
             json={"stimulus_version_id": str(STIMULUS_VERSION_ID)},
         )
@@ -301,9 +309,40 @@ async def test_run_create_is_atomic_then_best_effort_published_without_confirmat
     assert response.headers["idempotent-replayed"] == "false"
     assert response.json()["state"] == "queued"
     assert len(database.run_commands) == 1
+    assert database.run_commands[0]["traceparent"] == response.headers["traceparent"]
     assert len(publisher.intents) == 1
     intent = cast(RunDispatchIntent, publisher.intents[0])
     assert intent.job_id == f"run:{RUN_ID}:dispatch:1"
+
+
+async def test_sign_in_audit_is_authenticated_and_naturally_idempotent() -> None:
+    app, database, _ = app_with_fakes()
+    headers = {
+        "Authorization": f"Bearer {TEST_BEARER}",
+        CORRELATION_HEADER: "018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4",
+    }
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        created = await client.post(
+            "/api/v1/auth-events", headers=headers, json={"kind": "sign_in"}
+        )
+        replayed = await client.post(
+            "/api/v1/auth-events", headers=headers, json={"kind": "sign_in"}
+        )
+
+    assert created.status_code == 201
+    assert created.json() == {"kind": "sign_in", "recorded": True}
+    assert replayed.status_code == 200
+    assert replayed.json() == {"kind": "sign_in", "recorded": False}
+    assert database.auth_events == [
+        {
+            "session_id": SESSION_ID,
+            "correlation_id": UUID("018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4"),
+        },
+        {
+            "session_id": SESSION_ID,
+            "correlation_id": UUID("018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4"),
+        },
+    ]
 
 
 async def test_run_create_rejects_before_durable_command_when_queue_is_saturated() -> None:

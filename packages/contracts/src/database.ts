@@ -266,6 +266,7 @@ export type Database = {
           state: Database["api"]["Enums"]["run_state"]
           stimulus_version_id: string
           terminal_at: string | null
+          traceparent: string | null
           updated_at: string
           version: number
           worker_lease_expires_at: string | null
@@ -289,6 +290,7 @@ export type Database = {
           state?: Database["api"]["Enums"]["run_state"]
           stimulus_version_id: string
           terminal_at?: string | null
+          traceparent?: string | null
           updated_at?: string
           version?: number
           worker_lease_expires_at?: string | null
@@ -312,6 +314,7 @@ export type Database = {
           state?: Database["api"]["Enums"]["run_state"]
           stimulus_version_id?: string
           terminal_at?: string | null
+          traceparent?: string | null
           updated_at?: string
           version?: number
           worker_lease_expires_at?: string | null
@@ -486,29 +489,54 @@ export type Database = {
           updated_at: string
         }[]
       }
-      create_simulation_run: {
-        Args: {
-          requested_correlation_id: string
-          requested_idempotency_key: string
-          requested_project_id: string
-          requested_sha256: string
-          requested_stimulus_version_id: string
-        }
-        Returns: {
-          audience_version_id: string
-          created_at: string
-          dispatch_generation: number
-          job_id: string
-          organization_id: string
-          project_id: string
-          replayed: boolean
-          run_id: string
-          run_state: Database["api"]["Enums"]["run_state"]
-          run_version: number
-          schema_version: number
-          stimulus_version_id: string
-        }[]
-      }
+      create_simulation_run:
+        | {
+            Args: {
+              requested_correlation_id: string
+              requested_idempotency_key: string
+              requested_project_id: string
+              requested_sha256: string
+              requested_stimulus_version_id: string
+            }
+            Returns: {
+              audience_version_id: string
+              created_at: string
+              dispatch_generation: number
+              job_id: string
+              organization_id: string
+              project_id: string
+              replayed: boolean
+              run_id: string
+              run_state: Database["api"]["Enums"]["run_state"]
+              run_version: number
+              schema_version: number
+              stimulus_version_id: string
+            }[]
+          }
+        | {
+            Args: {
+              requested_correlation_id: string
+              requested_idempotency_key: string
+              requested_project_id: string
+              requested_sha256: string
+              requested_stimulus_version_id: string
+              requested_traceparent: string
+            }
+            Returns: {
+              audience_version_id: string
+              created_at: string
+              dispatch_generation: number
+              job_id: string
+              organization_id: string
+              project_id: string
+              replayed: boolean
+              run_id: string
+              run_state: Database["api"]["Enums"]["run_state"]
+              run_version: number
+              schema_version: number
+              stimulus_version_id: string
+            }[]
+          }
       create_stimulus: {
         Args: {
           requested_content: string
@@ -580,6 +608,10 @@ export type Database = {
           requested_organization_id: string
         }
         Returns: undefined
+      }
+      record_sign_in_success: {
+        Args: { requested_correlation_id: string; requested_session_id: string }
+        Returns: boolean
       }
       request_run_cancel: {
         Args: { requested_correlation_id: string; requested_run_id: string }
@@ -916,6 +948,24 @@ export type Database = {
           lease_token: string
         }[]
       }
+      claim_run_execution_traced: {
+        Args: {
+          requested_generation: number
+          requested_job_id: string
+          requested_run_id: string
+        }
+        Returns: {
+          attempt_id: string
+          claim_status: string
+          correlation_id: string
+          deterministic_seed: number
+          frozen_manifest: Json
+          frozen_manifest_sha256: string
+          lease_expires_at: string
+          lease_token: string
+          traceparent: string
+        }[]
+      }
       complete_run_execution: {
         Args: {
           requested_artifact: Json
@@ -977,6 +1027,30 @@ export type Database = {
           requested_project_id: string
           requested_sha256: string
           requested_stimulus_version_id: string
+        }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          replayed: boolean
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
+        }[]
+      }
+      create_simulation_run_traced: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_project_id: string
+          requested_sha256: string
+          requested_stimulus_version_id: string
+          requested_traceparent: string
         }
         Returns: {
           audience_version_id: string
@@ -1120,6 +1194,10 @@ export type Database = {
           requested_organization_id: string
         }
         Returns: undefined
+      }
+      record_sign_in_success: {
+        Args: { requested_correlation_id: string; requested_session_id: string }
+        Returns: boolean
       }
       request_run_cancel_atomic: {
         Args: { requested_correlation_id: string; requested_run_id: string }

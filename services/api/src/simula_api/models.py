@@ -37,6 +37,15 @@ class ProblemDocument(StrictModel):
     errors: list[dict[str, str]] | None = None
 
 
+class AuthEventCreate(StrictModel):
+    kind: Literal["sign_in"]
+
+
+class AuthEventResponse(StrictModel):
+    kind: Literal["sign_in"]
+    recorded: bool
+
+
 class OrganizationRole(StrEnum):
     OWNER = "owner"
     EDITOR = "editor"

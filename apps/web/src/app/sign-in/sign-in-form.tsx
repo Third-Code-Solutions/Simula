@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { recordSignIn } from "@/lib/api";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 export function SignInForm({ nextPath }: Readonly<{ nextPath: string }>) {
@@ -23,13 +24,20 @@ export function SignInForm({ nextPath }: Readonly<{ nextPath: string }>) {
 
     setSubmitting(true);
     try {
-      const { error: signInError } =
-        await getBrowserSupabaseClient().auth.signInWithPassword({
-          email,
-          password,
-        });
+      const supabase = getBrowserSupabaseClient();
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       if (signInError) {
         setError("Sign-in failed. Check your credentials and try again.");
+        return;
+      }
+      try {
+        await recordSignIn();
+      } catch {
+        await supabase.auth.signOut({ scope: "local" });
+        setError("Sign-in could not be audited safely. Retry shortly.");
         return;
       }
       router.replace(nextPath);

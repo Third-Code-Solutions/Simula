@@ -20,6 +20,7 @@ export type ProjectPage = Schemas["ProjectPage"];
 export type Stimulus = Schemas["StimulusResponse"];
 export type StimulusVersion = Schemas["StimulusVersionResponse"];
 export type AudienceDisclosure = Schemas["AudienceDisclosureResponse"];
+export type AuthEvent = Schemas["AuthEventResponse"];
 export type { SimulationProvenance, SimulationResult, SimulationRun };
 
 export type ApiProblemDocument = Readonly<{
@@ -204,6 +205,13 @@ export function createOrganization(name: string): Promise<Organization> {
   return request<Organization>("/api/v1/organizations", {
     body: { name },
     headers: idempotencyHeaders(),
+    method: "POST",
+  });
+}
+
+export function recordSignIn(): Promise<AuthEvent> {
+  return request<AuthEvent>("/api/v1/auth-events", {
+    body: { kind: "sign_in" },
     method: "POST",
   });
 }

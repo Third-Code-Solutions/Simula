@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(11);
+select extensions.plan(19);
 
 select extensions.has_function(
   'api',
@@ -108,6 +108,92 @@ select extensions.is(
   ),
   'c',
   'stimulus-version deletion cascades through the complete run graph'
+);
+
+select extensions.has_column(
+  'api',
+  'simulation_runs',
+  'traceparent',
+  'run intent retains the originating W3C trace context'
+);
+
+select extensions.has_function(
+  'api',
+  'create_simulation_run',
+  array['uuid', 'uuid', 'text', 'text', 'uuid', 'text']::text[],
+  'API has an additive traced run-creation wrapper'
+);
+
+select extensions.has_function(
+  'private',
+  'create_simulation_run_traced',
+  array['uuid', 'uuid', 'text', 'text', 'uuid', 'text']::text[],
+  'trace storage remains inside the atomic command transaction'
+);
+
+select extensions.has_function(
+  'api',
+  'record_sign_in_success',
+  array['uuid', 'uuid']::text[],
+  'API exposes the fixed successful-session audit command'
+);
+
+select extensions.has_function(
+  'private',
+  'claim_run_execution_traced',
+  array['uuid', 'smallint', 'text']::text[],
+  'worker claim continues the durable trace without Redis payload expansion'
+);
+
+select extensions.ok(
+  pg_catalog.has_function_privilege(
+    'simula_api',
+    'api.create_simulation_run(uuid,uuid,text,text,uuid,text)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and pg_catalog.has_function_privilege(
+    'simula_api',
+    'api.record_sign_in_success(uuid,uuid)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and not pg_catalog.has_function_privilege(
+    'simula_worker',
+    'api.record_sign_in_success(uuid,uuid)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and pg_catalog.has_function_privilege(
+    'simula_worker',
+    'private.claim_run_execution_traced(uuid,smallint,text)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and not pg_catalog.has_function_privilege(
+    'simula_api',
+    'private.claim_run_execution_traced(uuid,smallint,text)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  ),
+  'traced run and sign-in helpers retain exact runtime-role separation'
+);
+
+select extensions.ok(
+  exists (
+    select 1
+    from pg_catalog.pg_constraint as constraints
+    where constraints.conrelid = 'api.simulation_runs'::pg_catalog.regclass
+      and constraints.conname = 'simulation_runs_traceparent_valid'
+      and constraints.contype = 'c'
+  ),
+  'traceparent shape and nonzero identifiers are database constrained'
+);
+
+select extensions.ok(
+  exists (
+    select 1
+    from pg_catalog.pg_class as indexes
+    join pg_catalog.pg_index as definitions on definitions.indexrelid = indexes.oid
+    where indexes.relname = 'audit_events_sign_in_session_unique'
+      and definitions.indisunique
+  ),
+  'one successful sign-in audit exists per Supabase session'
 );
 
 select * from extensions.finish();

@@ -45,6 +45,8 @@ from tests.integration.test_database_boundary import (
     _sign_in,
 )
 
+INTEGRATION_TRACEPARENT = "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01"
+
 
 def _set_disposable_worker_password() -> str:
     inspect = _run_captured(
@@ -307,7 +309,10 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
             *(
                 client.post(
                     f"/api/v1/projects/{project_id}/runs",
-                    headers=_headers(owner_token, run_key),
+                    headers={
+                        **_headers(owner_token, run_key),
+                        "Traceparent": INTEGRATION_TRACEPARENT,
+                    },
                     json={"stimulus_version_id": str(stimulus_version_id)},
                 )
                 for _ in range(10)
@@ -317,7 +322,10 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
             *(
                 client.post(
                     f"/api/v1/projects/{project_id}/runs",
-                    headers=_headers(owner_token, run_key),
+                    headers={
+                        **_headers(owner_token, run_key),
+                        "Traceparent": INTEGRATION_TRACEPARENT,
+                    },
                     json={"stimulus_version_id": str(stimulus_version_id)},
                 )
                 for _ in range(10)
@@ -330,6 +338,16 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
             sum(response.headers["idempotent-replayed"] == "false" for response in responses) == 1
         )
         run_id = UUID(responses[0].json()["id"])
+        stored_trace, stored_correlation = _run_as_local_supabase_admin(
+            """
+            select traceparent || '|' || correlation_id::text
+            from api.simulation_runs
+            where id = :'run_id'::uuid;
+            """,
+            run_id=run_id,
+        ).split("|", maxsplit=1)
+        assert stored_trace.startswith("00-4bf92f3577b34da6a3ce929d0e0e4736-")
+        assert str(UUID(stored_correlation)) == stored_correlation
         job_id = job_id_for(run_id, generation=1)
         retry_job_id: str | None = None
 
@@ -373,6 +391,10 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
                 assert retry_claim.status == "claimed"
                 assert retry_claim.attempt_id is not None
                 assert retry_claim.lease_token is not None
+                assert retry_claim.correlation_id == UUID(
+                    retry_run_response.headers["x-correlation-id"]
+                )
+                assert retry_claim.traceparent == retry_run_response.headers["traceparent"]
                 retry_resolution = await worker_database.fail_execution(
                     retry_run_id,
                     retry_claim.attempt_id,

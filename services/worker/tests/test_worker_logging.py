@@ -10,6 +10,9 @@ def test_worker_log_allowlist_removes_payload_and_exception_details() -> None:
             "level": "error",
             "run_id": "00000000-0000-4000-8000-000000000001",
             "error_class": "RuntimeError",
+            "correlation_id": "00000000-0000-4000-8000-000000000002",
+            "span_id": "0123456789abcdef",
+            "trace_id": "0123456789abcdef0123456789abcdef",
             "provider_request": "sensitive-stimulus",
             "provider_response": "sensitive-result",
             "exc_info": RuntimeError("sensitive-token"),
@@ -21,6 +24,9 @@ def test_worker_log_allowlist_removes_payload_and_exception_details() -> None:
         "level": "error",
         "run_id": "00000000-0000-4000-8000-000000000001",
         "error_class": "RuntimeError",
+        "correlation_id": "00000000-0000-4000-8000-000000000002",
+        "span_id": "0123456789abcdef",
+        "trace_id": "0123456789abcdef0123456789abcdef",
     }
     assert "sensitive" not in str(result)
 

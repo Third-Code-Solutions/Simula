@@ -44,6 +44,8 @@ class ExecutionClaim:
     frozen_manifest: Mapping[str, object] | None
     frozen_manifest_sha256: str | None
     deterministic_seed: int | None
+    correlation_id: UUID | None = None
+    traceparent: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -164,7 +166,7 @@ class WorkerDatabase(WorkerExecutionGateway):
 
     async def claim_execution(self, run_id: UUID, generation: int, job_id: str) -> ExecutionClaim:
         row = await self._fetchone(
-            "select * from private.claim_run_execution(%s, %s, %s)",
+            "select * from private.claim_run_execution_traced(%s, %s, %s)",
             (run_id, generation, job_id),
         )
         manifest = row["frozen_manifest"]
@@ -179,6 +181,8 @@ class WorkerDatabase(WorkerExecutionGateway):
             deterministic_seed=int(row["deterministic_seed"])
             if row["deterministic_seed"] is not None
             else None,
+            correlation_id=cast(UUID | None, row["correlation_id"]),
+            traceparent=cast(str | None, row["traceparent"]),
         )
 
     async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:

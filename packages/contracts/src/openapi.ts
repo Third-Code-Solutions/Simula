@@ -21,6 +21,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth-events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Auth Event */
+        post: operations["create_auth_event"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -295,6 +312,24 @@ export interface components {
             transformation: string;
             /** Version */
             version: number;
+        };
+        /** AuthEventCreate */
+        AuthEventCreate: {
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "sign_in";
+        };
+        /** AuthEventResponse */
+        AuthEventResponse: {
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "sign_in";
+            /** Recorded */
+            recorded: boolean;
         };
         /** DistributionCategory */
         DistributionCategory: {
@@ -1024,6 +1059,318 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AudienceDisclosureResponse"];
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Only JSON command bodies are supported. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** Code */
+                        code: string;
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    create_auth_event: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthEventCreate"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthEventResponse"];
+                };
+            };
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthEventResponse"];
                 };
             };
             /** @description Authentication is missing, expired, or invalid. */

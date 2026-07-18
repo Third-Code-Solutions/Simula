@@ -35,9 +35,11 @@ from simula_core.simulation import (
     SimulationProvider,
     SimulationResultV1,
 )
+from simula_core.trace_context import TraceContext
+from structlog.contextvars import bound_contextvars
 
 from simula_worker.config import WorkerSettings
-from simula_worker.database import WorkerDatabase, WorkerExecutionGateway
+from simula_worker.database import ExecutionClaim, WorkerDatabase, WorkerExecutionGateway
 from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
 from simula_worker.telemetry import JobObservation, WorkerMetricsServer, WorkerTelemetry
 
@@ -362,6 +364,107 @@ def _provider_request(
     )
 
 
+async def _process_claimed_run(
+    *,
+    run_id: UUID,
+    claim: ExecutionClaim,
+    database: WorkerExecutionGateway,
+    provider: SimulationProvider,
+    telemetry: WorkerTelemetry | None,
+    observation: JobObservation,
+) -> None:
+    attempt_id = cast(UUID, claim.attempt_id)
+    lease_token = cast(UUID, claim.lease_token)
+    frozen_manifest = cast(Mapping[str, object], claim.frozen_manifest)
+    frozen_manifest_sha256 = cast(str, claim.frozen_manifest_sha256)
+    deterministic_seed = cast(int, claim.deterministic_seed)
+
+    observation.outcome = "failed"
+    if not await _heartbeat_execution(
+        database,
+        run_id,
+        attempt_id,
+        lease_token,
+        checkpoint="before_provider",
+    ):
+        observation.outcome = "lease_rejected"
+        return
+
+    provider_called = False
+    try:
+        request = _provider_request(
+            run_id=run_id,
+            claim_attempt_id=attempt_id,
+            frozen_manifest=frozen_manifest,
+            frozen_manifest_sha256=frozen_manifest_sha256,
+            deterministic_seed=deterministic_seed,
+        )
+        if telemetry is not None and not isinstance(provider, DeterministicMockProvider):
+            telemetry.observe_external_provider_call()
+        provider_called = True
+        result: SimulationResultV1 = provider.run(request)
+        if telemetry is not None:
+            telemetry.observe_provider("completed")
+    except asyncio.CancelledError:
+        raise
+    except (
+        TimeoutError,
+        ProviderPreflightUnavailableError,
+        ProviderRateLimitedError,
+    ) as error:
+        if telemetry is not None and provider_called:
+            telemetry.observe_provider("retryable_failure")
+        if isinstance(error, TimeoutError):
+            safe_error_code = "execution_timed_out"
+        elif isinstance(error, ProviderRateLimitedError):
+            safe_error_code = "execution_rate_limited"
+        else:
+            safe_error_code = "execution_provider_preflight_unavailable"
+        logger.warning(
+            "run_execution_retryable_failure",
+            reason=safe_error_code,
+            run_id=str(run_id),
+        )
+        resolution = await database.fail_execution(
+            run_id,
+            attempt_id,
+            lease_token,
+            safe_error_code,
+            True,
+        )
+        if resolution.state == "retrying":
+            observation.outcome = "retrying"
+            if resolution.retry_after_seconds is None:
+                raise RuntimeError("retrying resolution is missing its delay") from None
+            raise Retry(defer=resolution.retry_after_seconds) from None
+        return
+    except Exception as error:
+        if telemetry is not None and provider_called:
+            telemetry.observe_provider("failed")
+        logger.error(
+            "run_execution_provider_failed",
+            error_class=type(error).__name__,
+            run_id=str(run_id),
+        )
+        await database.fail_execution(
+            run_id,
+            attempt_id,
+            lease_token,
+            "execution_provider_failure",
+            False,
+        )
+        return
+    completed = await database.complete_execution(
+        run_id,
+        attempt_id,
+        lease_token,
+        result.model_dump(mode="json"),
+    )
+    observation.outcome = "completed" if completed else "completion_rejected"
+    if not completed:
+        logger.warning("run_execution_completion_rejected", run_id=str(run_id))
+
+
 async def process_run_v1(
     ctx: Mapping[str, object],
     payload: object,
@@ -414,93 +517,25 @@ async def process_run_v1(
             or claim.frozen_manifest is None
             or claim.frozen_manifest_sha256 is None
             or claim.deterministic_seed is None
+            or claim.correlation_id is None
+            or claim.traceparent is None
         ):
             return None
 
-        observation.outcome = "failed"
-        if not await _heartbeat_execution(
-            database,
-            context_run_id,
-            claim.attempt_id,
-            claim.lease_token,
-            checkpoint="before_provider",
+        trace = TraceContext.from_header(claim.traceparent)
+        with bound_contextvars(
+            correlation_id=str(claim.correlation_id),
+            span_id=trace.span_id,
+            trace_id=trace.trace_id,
         ):
-            observation.outcome = "lease_rejected"
-            return None
-
-        provider_called = False
-        try:
-            request = _provider_request(
+            await _process_claimed_run(
                 run_id=context_run_id,
-                claim_attempt_id=claim.attempt_id,
-                frozen_manifest=claim.frozen_manifest,
-                frozen_manifest_sha256=claim.frozen_manifest_sha256,
-                deterministic_seed=claim.deterministic_seed,
+                claim=claim,
+                database=database,
+                provider=provider,
+                telemetry=active_telemetry,
+                observation=observation,
             )
-            if active_telemetry is not None and not isinstance(provider, DeterministicMockProvider):
-                active_telemetry.observe_external_provider_call()
-            provider_called = True
-            result: SimulationResultV1 = provider.run(request)
-            if active_telemetry is not None:
-                active_telemetry.observe_provider("completed")
-        except asyncio.CancelledError:
-            raise
-        except (
-            TimeoutError,
-            ProviderPreflightUnavailableError,
-            ProviderRateLimitedError,
-        ) as error:
-            if active_telemetry is not None and provider_called:
-                active_telemetry.observe_provider("retryable_failure")
-            if isinstance(error, TimeoutError):
-                safe_error_code = "execution_timed_out"
-            elif isinstance(error, ProviderRateLimitedError):
-                safe_error_code = "execution_rate_limited"
-            else:
-                safe_error_code = "execution_provider_preflight_unavailable"
-            logger.warning(
-                "run_execution_retryable_failure",
-                reason=safe_error_code,
-                run_id=str(context_run_id),
-            )
-            resolution = await database.fail_execution(
-                context_run_id,
-                claim.attempt_id,
-                claim.lease_token,
-                safe_error_code,
-                True,
-            )
-            if resolution.state == "retrying":
-                observation.outcome = "retrying"
-                if resolution.retry_after_seconds is None:
-                    raise RuntimeError("retrying resolution is missing its delay") from None
-                raise Retry(defer=resolution.retry_after_seconds) from None
-            return None
-        except Exception as error:
-            if active_telemetry is not None and provider_called:
-                active_telemetry.observe_provider("failed")
-            logger.error(
-                "run_execution_provider_failed",
-                error_class=type(error).__name__,
-                run_id=str(context_run_id),
-            )
-            await database.fail_execution(
-                context_run_id,
-                claim.attempt_id,
-                claim.lease_token,
-                "execution_provider_failure",
-                False,
-            )
-            return None
-        completed = await database.complete_execution(
-            context_run_id,
-            claim.attempt_id,
-            claim.lease_token,
-            result.model_dump(mode="json"),
-        )
-        observation.outcome = "completed" if completed else "completion_rejected"
-        if not completed:
-            logger.warning("run_execution_completion_rejected", run_id=str(context_run_id))
         return None
     finally:
         observation.finish()

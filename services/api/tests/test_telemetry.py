@@ -5,7 +5,8 @@ import json
 import pytest
 from httpx import ASGITransport, AsyncClient
 from simula_api.app import CORRELATION_HEADER, create_app
-from simula_api.telemetry import TRACEPARENT_HEADER, ApiTelemetry, TraceContext
+from simula_api.telemetry import ApiTelemetry
+from simula_core.trace_context import TRACEPARENT_HEADER, TraceContext
 from structlog.testing import capture_logs
 
 
