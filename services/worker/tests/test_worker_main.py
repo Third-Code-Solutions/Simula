@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Callable, Coroutine
 from types import TracebackType
 from typing import Any
@@ -37,3 +38,23 @@ def test_windows_worker_uses_a_selector_runner_for_psycopg(
     __main__._serve_windows()
 
     assert loop_factories == [asyncio.SelectorEventLoop]
+
+
+def test_no_egress_probe_rejects_any_non_loopback_interface() -> None:
+    with pytest.raises(RuntimeError, match="isolated network namespace"):
+        __main__._assert_no_egress_interfaces(((1, "lo"), (2, "eth0")))
+
+
+def test_no_egress_probe_runs_the_fixed_deterministic_provider(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr("simula_worker.__main__.socket.if_nameindex", lambda: [(1, "lo")])
+
+    __main__._verify_no_egress()
+
+    assert json.loads(capsys.readouterr().out) == {
+        "network_interfaces": ["lo"],
+        "provider_id": "deterministic_mock",
+        "status": "no_egress_ok",
+    }

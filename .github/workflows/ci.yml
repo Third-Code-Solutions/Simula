@@ -111,3 +111,9 @@ jobs:
           test "$(docker image inspect --format '{{.Config.User}}' simula-worker:m0)" = "simula"
           docker run --rm simula-api:m0 python -c "import simula_api"
           docker run --rm simula-worker:m0 python -m simula_worker --check
+
+      - name: Prove deterministic worker has no network egress
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL \
+            --security-opt no-new-privileges \
+            simula-worker:m0 python -m simula_worker --verify-no-egress
