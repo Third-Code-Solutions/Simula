@@ -1009,6 +1009,10 @@ export type Database = {
         }
         Returns: string
       }
+      finalize_poisoned_dispatches: {
+        Args: { requested_batch_size: number }
+        Returns: number
+      }
       finalize_requested_cancellations: {
         Args: { requested_batch_size: number }
         Returns: number

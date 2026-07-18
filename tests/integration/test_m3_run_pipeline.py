@@ -149,6 +149,26 @@ def _expire_local_run_lease(run_id: UUID) -> None:
     )
 
 
+def _poison_local_dispatch(run_id: UUID) -> None:
+    _run_as_local_supabase_admin(
+        """
+        update private.run_outbox
+        set dispatch_attempt_count = 10,
+            claim_expires_at = pg_catalog.statement_timestamp() - interval '1 second'
+        where run_id = :'run_id'::uuid and status = 'claimed';
+        """,
+        run_id=run_id,
+    )
+
+
+class _NoDispatchQueue:
+    async def enqueue(self, _: object) -> None:
+        raise AssertionError("poison/cancel finalization must not enqueue a job")
+
+    async def proves_queued(self, _: object) -> bool:
+        raise AssertionError("poison/cancel finalization must not inspect a job")
+
+
 async def _remove_exact_queue_keys(job_id: str) -> None:
     client: Redis = from_url(LOCAL_REDIS_URL, decode_responses=False)  # type: ignore[no-untyped-call]
     try:
@@ -711,3 +731,93 @@ async def test_p2_stale_lease_recovery_supersedes_dispatch_generation(
         assert recovered_run.status_code == 200
         assert recovered_run.json()["state"] == "running"
         assert recovered_run.json()["dispatch_generation"] == 2
+
+
+async def _create_p2_dispatch_run(
+    client: AsyncClient, owner_token: str, *, suffix: str, label: str
+) -> UUID:
+    created_organization = await client.post(
+        "/api/v1/organizations",
+        headers=_headers(owner_token, f"{label}-org-{suffix}"),
+        json={"name": f"{label} {suffix[:8]}"},
+    )
+    assert created_organization.status_code == 201
+    organization_id = UUID(created_organization.json()["id"])
+    created_project = await client.post(
+        f"/api/v1/organizations/{organization_id}/projects",
+        headers=_headers(owner_token, f"{label}-project-{suffix}"),
+        json=_project_payload(f"{label} {suffix[:8]}"),
+    )
+    assert created_project.status_code == 201
+    project_id = UUID(created_project.json()["id"])
+    created_stimulus = await client.post(
+        f"/api/v1/projects/{project_id}/stimuli",
+        headers=_headers(owner_token, f"{label}-stimulus-{suffix}"),
+        json={"name": f"{label} Message", "content": "Bounded fictional dispatch."},
+    )
+    assert created_stimulus.status_code == 201
+    stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+    created_run = await client.post(
+        f"/api/v1/projects/{project_id}/runs",
+        headers=_headers(owner_token, f"{label}-run-{suffix}"),
+        json={"stimulus_version_id": str(stimulus_version_id)},
+    )
+    assert created_run.status_code == 202
+    return UUID(created_run.json()["id"])
+
+
+@pytest.mark.integration
+async def test_p2_poisoned_dispatch_exhaustion_is_terminal_and_cancel_wins(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+
+    async with _api_client(monkeypatch) as client:
+        poisoned_run_id = await _create_p2_dispatch_run(
+            client, owner_token, suffix=suffix, label="p2-poison"
+        )
+        async with _worker_database(monkeypatch) as worker_database:
+            poisoned_claims = await worker_database.claim_due_dispatches()
+            assert [claim.run_id for claim in poisoned_claims] == [poisoned_run_id]
+            _poison_local_dispatch(poisoned_run_id)
+
+            # The API's deliberately small general bucket allows the first
+            # complete vertical setup only.  A second disposable app has an
+            # isolated test prefix while still exercising the same local DB.
+            async with _api_client(monkeypatch) as cancel_client:
+                canceled_run_id = await _create_p2_dispatch_run(
+                    cancel_client, owner_token, suffix=f"cancel-{suffix}", label="p2-poison"
+                )
+                canceled_claims = await worker_database.claim_due_dispatches()
+                assert [claim.run_id for claim in canceled_claims] == [canceled_run_id]
+                _poison_local_dispatch(canceled_run_id)
+                cancel_response = await cancel_client.post(
+                    f"/api/v1/runs/{canceled_run_id}/cancel",
+                    headers=_headers(owner_token, f"p2-poison-cancel-{suffix}"),
+                    json={},
+                )
+                assert cancel_response.status_code == 202
+
+                dispatcher = RunDispatcher(worker_database, _NoDispatchQueue())
+                result = await dispatcher.dispatch_once()
+                assert result.canceled == 1
+                assert result.poisoned == 1
+                assert result.recovered == 0
+                assert result.claimed == 0
+                assert result.confirmed == 0
+
+                canceled = await cancel_client.get(
+                    f"/api/v1/runs/{canceled_run_id}",
+                    headers={"Authorization": f"Bearer {owner_token}"},
+                )
+                assert canceled.status_code == 200
+                assert canceled.json()["state"] == "canceled"
+
+        poisoned = await client.get(
+            f"/api/v1/runs/{poisoned_run_id}",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert poisoned.status_code == 200
+        assert poisoned.json()["state"] == "failed"

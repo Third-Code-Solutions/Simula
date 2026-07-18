@@ -425,6 +425,7 @@ select extensions.ok(
     'private.confirm_run_dispatch(uuid,uuid)',
     'private.fail_run_dispatch(uuid,uuid,text)',
     'private.fail_run_execution(uuid,uuid,uuid,text,boolean)',
+    'private.finalize_poisoned_dispatches(integer)',
     'private.finalize_requested_cancellations(integer)',
     'private.heartbeat_run_execution(uuid,uuid,uuid)',
     'private.reconcile_run_dispatch(integer,boolean)'
@@ -482,6 +483,7 @@ select extensions.ok(
           'confirm_run_dispatch',
           'fail_run_dispatch',
           'fail_run_execution',
+          'finalize_poisoned_dispatches',
           'finalize_requested_cancellations',
           'heartbeat_run_execution',
           'reconcile_run_dispatch'
@@ -497,6 +499,7 @@ select extensions.ok(
           'confirm_run_dispatch',
           'fail_run_dispatch',
           'fail_run_execution',
+          'finalize_poisoned_dispatches',
           'finalize_requested_cancellations',
           'heartbeat_run_execution',
           'reconcile_run_dispatch'
@@ -534,6 +537,7 @@ select extensions.ok(
         'confirm_run_dispatch',
         'fail_run_dispatch',
         'fail_run_execution',
+        'finalize_poisoned_dispatches',
         'finalize_requested_cancellations',
         'heartbeat_run_execution',
         'reconcile_run_dispatch',

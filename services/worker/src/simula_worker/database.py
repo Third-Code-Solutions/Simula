@@ -133,6 +133,13 @@ class WorkerDatabase(WorkerExecutionGateway):
         )
         return int(row["finalized"])
 
+    async def finalize_poisoned_dispatches(self, requested_batch_size: int = 10) -> int:
+        row = await self._fetchone(
+            "select private.finalize_poisoned_dispatches(%s) as finalized",
+            (requested_batch_size,),
+        )
+        return int(row["finalized"])
+
     async def reconcile_stale_dispatches(
         self, requested_batch_size: int = 10, *, force_recovery: bool = False
     ) -> int:
