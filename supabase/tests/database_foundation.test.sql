@@ -483,6 +483,7 @@ select extensions.ok(
           'confirm_run_dispatch',
           'fail_run_dispatch',
           'fail_run_execution',
+          'enforce_global_run_backpressure',
           'finalize_poisoned_dispatches',
           'finalize_requested_cancellations',
           'heartbeat_run_execution',
@@ -499,6 +500,7 @@ select extensions.ok(
           'confirm_run_dispatch',
           'fail_run_dispatch',
           'fail_run_execution',
+          'enforce_global_run_backpressure',
           'finalize_poisoned_dispatches',
           'finalize_requested_cancellations',
           'heartbeat_run_execution',
@@ -537,6 +539,7 @@ select extensions.ok(
         'confirm_run_dispatch',
         'fail_run_dispatch',
         'fail_run_execution',
+        'enforce_global_run_backpressure',
         'finalize_poisoned_dispatches',
         'finalize_requested_cancellations',
         'heartbeat_run_execution',
@@ -603,9 +606,10 @@ select extensions.is(
   ),
   array[
     'audience_versions_organization_guard',
-    'simulation_runs_audience_guard'
+    'simulation_runs_audience_guard',
+    'simulation_runs_global_backpressure_before_insert'
   ]::name[],
-  'tenant-scope guard trigger inventory is exact'
+  'tenant-scope and global-admission trigger inventory is exact'
 );
 
 -- 28

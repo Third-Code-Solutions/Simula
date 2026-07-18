@@ -544,6 +544,8 @@ async def create_simulation_run(
         idempotency_key=idempotency_key,
         idempotency_scope=_idempotency_scope(request),
     )
+    if services.run_admission is not None:
+        await services.run_admission.require_run_creation_capacity()
     run, replayed = await services.database.create_simulation_run(
         identity,
         project_id=project_id,

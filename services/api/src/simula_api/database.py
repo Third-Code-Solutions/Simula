@@ -104,6 +104,14 @@ def _database_problem(error: psycopg.Error) -> AppProblem:
             title="Resource quota reached",
             detail="Remove or retire an existing resource before retrying.",
         )
+    if message == "queue_backpressure":
+        return AppProblem(
+            status=503,
+            code="queue_backpressure",
+            title="Run queue is recovering",
+            detail="Run creation is temporarily paused while queued work recovers.",
+            retry_after=30,
+        )
     if message == "unsupported_scope":
         return AppProblem(
             status=422,

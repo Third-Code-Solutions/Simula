@@ -16,8 +16,9 @@ from simula_api.models import (
     SimulationRunResponse,
     SimulationRunState,
 )
+from simula_api.problems import AppProblem
 from simula_api.rate_limits import RateLimiter
-from simula_api.services import AppServices, RunPublisher
+from simula_api.services import AppServices, RunAdmission, RunPublisher
 from simula_core.queue_runtime import QueuePublishAmbiguousError, RunDispatchIntent
 from simula_core.simulation import DeterministicMockProvider, ProviderRequest
 
@@ -185,6 +186,17 @@ class RecordingPublisher:
             raise self.error
 
 
+class QueueBackpressureAdmission:
+    async def require_run_creation_capacity(self) -> None:
+        raise AppProblem(
+            status=503,
+            code="queue_backpressure",
+            title="Run queue is recovering",
+            detail="Run creation is temporarily paused while queued work recovers.",
+            retry_after=30,
+        )
+
+
 def _run(
     *, state: SimulationRunState = SimulationRunState.QUEUED, version: int = 1
 ) -> SimulationRunResponse:
@@ -204,7 +216,9 @@ def _run(
 
 
 def app_with_fakes(
-    *, publisher_error: Exception | None = None
+    *,
+    publisher_error: Exception | None = None,
+    run_admission: RunAdmission | None = None,
 ) -> tuple[FastAPI, FakeDatabase, RecordingPublisher]:
     database = FakeDatabase()
     publisher = RecordingPublisher(publisher_error)
@@ -214,6 +228,7 @@ def app_with_fakes(
         cursors=CursorCodec(b"m" * 32),
         rate_limiter=cast(RateLimiter, FakeRateLimiter()),
         run_publisher=cast(RunPublisher, publisher),
+        run_admission=run_admission,
     )
     return create_app(services=services), database, publisher
 
@@ -238,6 +253,25 @@ async def test_run_create_is_atomic_then_best_effort_published_without_confirmat
     assert len(publisher.intents) == 1
     intent = cast(RunDispatchIntent, publisher.intents[0])
     assert intent.job_id == f"run:{RUN_ID}:dispatch:1"
+
+
+async def test_run_create_rejects_before_durable_command_when_queue_is_saturated() -> None:
+    app, database, publisher = app_with_fakes(run_admission=QueueBackpressureAdmission())
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            f"/api/v1/projects/{PROJECT_ID}/runs",
+            headers={
+                "Authorization": f"Bearer {TEST_BEARER}",
+                "Idempotency-Key": "m3-run-create-key-0001",
+            },
+            json={"stimulus_version_id": str(STIMULUS_VERSION_ID)},
+        )
+
+    assert response.status_code == 503
+    assert response.headers["retry-after"] == "30"
+    assert response.json()["code"] == "queue_backpressure"
+    assert database.run_commands == []
+    assert publisher.intents == []
 
 
 async def test_run_create_remains_accepted_when_post_commit_publish_is_ambiguous() -> None:

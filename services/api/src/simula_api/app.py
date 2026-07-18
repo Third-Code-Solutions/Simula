@@ -38,6 +38,7 @@ from simula_api.problems import (
 from simula_api.queue import ArqRunPublisher
 from simula_api.rate_limits import RedisRateLimiter
 from simula_api.routes import router
+from simula_api.run_admission import RedisRunAdmission
 from simula_api.services import AppServices
 
 CORRELATION_HEADER = "x-correlation-id"
@@ -402,6 +403,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
         owned_client: httpx.AsyncClient | None = None
         owned_database: DatabaseGateway | None = None
         owned_rate_limiter: RedisRateLimiter | None = None
+        owned_run_admission: RedisRunAdmission | None = None
         owned_run_queue = None
         app.state.domain_services = services
         app.state.domain_ready = services is not None
@@ -412,15 +414,18 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
                 owned_client = httpx.AsyncClient(timeout=httpx.Timeout(2.0), follow_redirects=False)
                 owned_database = DatabaseGateway(settings)
                 owned_rate_limiter = RedisRateLimiter.from_settings(settings)
+                owned_run_admission = RedisRunAdmission.from_settings(settings)
                 owned_run_queue = create_queue_client(settings.redis_url, max_connections=4)
                 await owned_database.open()
                 await owned_rate_limiter.open()
+                await owned_run_admission.open()
                 app.state.domain_services = AppServices(
                     verifier=SupabaseTokenVerifier(settings, owned_client),
                     database=owned_database,
                     cursors=CursorCodec(settings.cursor_secret),
                     rate_limiter=owned_rate_limiter,
                     run_publisher=ArqRunPublisher(cast(ArqEnqueuer, owned_run_queue)),
+                    run_admission=owned_run_admission,
                 )
                 app.state.domain_ready = await owned_database.ready()
             except (AppProblem, ConfigurationError) as error:
@@ -434,6 +439,8 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
                 await owned_run_queue.aclose(close_connection_pool=True)
             if owned_rate_limiter is not None:
                 await owned_rate_limiter.close()
+            if owned_run_admission is not None:
+                await owned_run_admission.close()
             if owned_database is not None:
                 await owned_database.close()
             if owned_client is not None:

@@ -13,6 +13,12 @@ from simula_api.database import DatabaseGateway
 from simula_api.rate_limits import RateLimiter
 
 
+class RunAdmission(Protocol):
+    """Read-only global queue guard for creating new runs."""
+
+    async def require_run_creation_capacity(self) -> None: ...
+
+
 class RunPublisher(Protocol):
     """Best-effort post-commit publisher with no outbox confirmation authority."""
 
@@ -26,3 +32,4 @@ class AppServices:
     cursors: CursorCodec
     rate_limiter: RateLimiter
     run_publisher: RunPublisher | None = None
+    run_admission: RunAdmission | None = None

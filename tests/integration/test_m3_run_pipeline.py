@@ -395,6 +395,92 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
 
 
 @pytest.mark.integration
+async def test_p2_stalled_outbox_backpressure_rejects_new_run_but_allows_replay(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+    run_id: UUID | None = None
+    job_id: str | None = None
+
+    try:
+        async with _api_client(monkeypatch) as client:
+            created_organization = await client.post(
+                "/api/v1/organizations",
+                headers=_headers(owner_token, f"p2-backpressure-org-{suffix}"),
+                json={"name": f"P2 Backpressure {suffix[:8]}"},
+            )
+            assert created_organization.status_code == 201
+            organization_id = UUID(created_organization.json()["id"])
+            created_project = await client.post(
+                f"/api/v1/organizations/{organization_id}/projects",
+                headers=_headers(owner_token, f"p2-backpressure-project-{suffix}"),
+                json=_project_payload(f"P2 Backpressure {suffix[:8]}"),
+            )
+            assert created_project.status_code == 201
+            project_id = UUID(created_project.json()["id"])
+            created_stimulus = await client.post(
+                f"/api/v1/projects/{project_id}/stimuli",
+                headers=_headers(owner_token, f"p2-backpressure-stimulus-{suffix}"),
+                json={"name": "P2 Backpressure", "content": "Try fictional backpressure now."},
+            )
+            assert created_stimulus.status_code == 201
+            stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+            first_key = f"p2-backpressure-run-{suffix}"
+            created_run = await client.post(
+                f"/api/v1/projects/{project_id}/runs",
+                headers=_headers(owner_token, first_key),
+                json={"stimulus_version_id": str(stimulus_version_id)},
+            )
+            assert created_run.status_code == 202
+            run_id = UUID(created_run.json()["id"])
+            job_id = job_id_for(run_id, generation=1)
+            _run_as_local_supabase_admin(
+                """
+                update private.run_outbox
+                set created_at = pg_catalog.statement_timestamp() - interval '61 seconds'
+                where run_id = :'run_id'::uuid;
+                """,
+                run_id=run_id,
+            )
+
+            blocked = await client.post(
+                f"/api/v1/projects/{project_id}/runs",
+                headers=_headers(owner_token, f"p2-backpressure-next-{suffix}"),
+                json={"stimulus_version_id": str(stimulus_version_id)},
+            )
+            assert blocked.status_code == 503
+            assert blocked.headers["retry-after"] == "30"
+            assert blocked.json()["code"] == "queue_backpressure"
+
+            replay = await client.post(
+                f"/api/v1/projects/{project_id}/runs",
+                headers=_headers(owner_token, first_key),
+                json={"stimulus_version_id": str(stimulus_version_id)},
+            )
+            assert replay.status_code == 202
+            assert replay.headers["idempotent-replayed"] == "true"
+            assert replay.json()["id"] == str(run_id)
+    finally:
+        if run_id is not None:
+            _run_as_local_supabase_admin(
+                """
+                update private.run_outbox
+                set status = 'terminal',
+                    claim_token = null,
+                    claim_expires_at = null,
+                    confirmed_at = null,
+                    terminal_error_code = 'integration_backpressure_cleanup'
+                where run_id = :'run_id'::uuid;
+                """,
+                run_id=run_id,
+            )
+        if job_id is not None:
+            await _remove_exact_queue_keys(job_id)
+
+
+@pytest.mark.integration
 async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
