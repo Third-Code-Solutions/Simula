@@ -316,42 +316,44 @@ export function ProjectWorkspace({
             </p>
           ) : null}
           <div className="stimulus-grid">
-            {project.stimuli.map((stimulus) => (
+            {project.stimuli.map((stimulus: Stimulus) => (
               <article className="panel stimulus-card" key={stimulus.id}>
                 <h3>{stimulus.name}</h3>
                 <p className="resource-meta">
                   {stimulus.versions.length} immutable version(s)
                 </p>
                 <ol className="version-list">
-                  {stimulus.versions.map((version) => (
-                    <li key={version.id}>
-                      <div className="version-heading">
-                        <strong>Version {version.version}</strong>
-                        <code title="SHA-256 checksum">
-                          {version.content_sha256}
-                        </code>
-                      </div>
-                      <p>{version.content}</p>
-                      <div className="run-launch">
-                        <div>
-                          <strong>Authored demo audience</strong>
-                          <p className="field-note">
-                            Experimental and non-representative. It estimates
-                            nobody.
-                          </p>
+                  {stimulus.versions.map(
+                    (version: Stimulus["versions"][number]) => (
+                      <li key={version.id}>
+                        <div className="version-heading">
+                          <strong>Version {version.version}</strong>
+                          <code title="SHA-256 checksum">
+                            {version.content_sha256}
+                          </code>
                         </div>
-                        <button
-                          disabled={startingRunVersion === version.id}
-                          onClick={() => void startRun(version.id)}
-                          type="button"
-                        >
-                          {startingRunVersion === version.id
-                            ? "Starting run…"
-                            : `Run version ${version.version}`}
-                        </button>
-                      </div>
-                    </li>
-                  ))}
+                        <p>{version.content}</p>
+                        <div className="run-launch">
+                          <div>
+                            <strong>Authored demo audience</strong>
+                            <p className="field-note">
+                              Experimental and non-representative. It estimates
+                              nobody.
+                            </p>
+                          </div>
+                          <button
+                            disabled={startingRunVersion === version.id}
+                            onClick={() => void startRun(version.id)}
+                            type="button"
+                          >
+                            {startingRunVersion === version.id
+                              ? "Starting run…"
+                              : `Run version ${version.version}`}
+                          </button>
+                        </div>
+                      </li>
+                    ),
+                  )}
                 </ol>
                 <form
                   className="form-stack"
