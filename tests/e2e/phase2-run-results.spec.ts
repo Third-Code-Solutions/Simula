@@ -25,7 +25,7 @@ function requiredFixturePassword(): string {
 }
 
 function runFixture(
-  state: "queued" | "cancel_requested" | "canceled" | "succeeded",
+  state: "queued" | "cancel_requested" | "canceled" | "failed" | "succeeded",
   version = 1,
 ) {
   return {
@@ -282,6 +282,60 @@ test("E2E-POLL-001: a run poll transitions once and stops at terminal state", as
   });
   await page.waitForTimeout(1_500);
   expect(statusRequests).toBe(2);
+});
+
+test("E2E-FAIL-001: a failed run has safe no-substitute copy and stops polling", async ({
+  page,
+}) => {
+  let statusRequests = 0;
+  let resultRequests = 0;
+  await page.route(
+    new RegExp(`/api/v1/runs/${POLL_RUN_ID}$`),
+    async (route) => {
+      if (route.request().method() === "OPTIONS") {
+        await route.fulfill({
+          headers: {
+            ...API_CORS_HEADERS,
+            "access-control-allow-headers": "authorization,accept",
+            "access-control-allow-methods": "GET, OPTIONS",
+          },
+          status: 204,
+        });
+        return;
+      }
+      statusRequests += 1;
+      await route.fulfill({
+        contentType: "application/json",
+        headers: API_CORS_HEADERS,
+        body: JSON.stringify(runFixture("failed")),
+      });
+    },
+  );
+  await page.route(
+    new RegExp(`/api/v1/runs/${POLL_RUN_ID}/result$`),
+    async (route) => {
+      resultRequests += 1;
+      await route.fulfill({
+        contentType: "application/problem+json",
+        headers: API_CORS_HEADERS,
+        status: 500,
+        body: JSON.stringify({ code: "unexpected_result_fetch" }),
+      });
+    },
+  );
+
+  await signIn(page);
+  await page.goto(`/runs/${POLL_RUN_ID}`);
+  await expect(page.getByRole("heading", { name: "Failed" })).toBeVisible();
+  await expect(
+    page.getByText(/SIMULA will not substitute a result/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Pipeline demo values", level: 2 }),
+  ).toHaveCount(0);
+  await page.waitForTimeout(1_500);
+  expect(statusRequests).toBe(1);
+  expect(resultRequests).toBe(0);
 });
 
 test("E2E-CANCEL-001: a user can request cancellation and no substitute result appears", async ({

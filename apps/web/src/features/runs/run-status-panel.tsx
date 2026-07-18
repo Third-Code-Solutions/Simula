@@ -29,7 +29,7 @@ const stateCopy: Record<
   },
   failed: {
     detail:
-      "Processing stopped without a result. Retry only after reviewing the recovery guidance.",
+      "Processing stopped without a result. SIMULA will not substitute a result. Review the run status before creating a new experimental run.",
     label: "Failed",
   },
   canceled: {

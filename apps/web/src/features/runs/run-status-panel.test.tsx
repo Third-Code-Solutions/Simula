@@ -54,4 +54,12 @@ describe("RunStatusPanel", () => {
     rerender(<RunStatusPanel isSlow run={runFixture("running")} />);
     expect(screen.getByText(/Taking longer than expected/)).toBeInTheDocument();
   });
+
+  it("explains failed runs without presenting a substitute result", () => {
+    render(<RunStatusPanel isSlow={false} run={runFixture("failed")} />);
+
+    expect(
+      screen.getByText(/SIMULA will not substitute a result/),
+    ).toBeInTheDocument();
+  });
 });
