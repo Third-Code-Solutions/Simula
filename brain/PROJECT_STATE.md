@@ -24,8 +24,8 @@ Clear the independent Phase 2 exit-review findings in risk-first increments, rer
 
 ## Repository state
 
-- OBSERVED 2026-07-18: prior audit head `0dfaaef` is pushed to `main`. Its GitHub Actions run `29641168307` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
-- OBSERVED 2026-07-18: the independent exit review failed with unresolved High findings across product evidence, database/worker authority, API/auth, accessibility, CI/supply chain, observability/operations, and method/data controls (E-5023). The first risk-first remediation closes expired-lease mutation authority and stale/canceled attempt-state corruption; local reset/lint/41 pgTAP/type/advisor, 10/10 run integrations, and full repository gates pass (E-5024). Commit/CI evidence remains pending.
+- OBSERVED 2026-07-18: remediation head `941f825` is pushed to `main`. GitHub Actions run `29643209461` passed the disposable Supabase/browser/Linux quality-security and non-root image/import gates.
+- OBSERVED 2026-07-18: the independent exit review failed with unresolved High findings across product evidence, database/worker authority, API/auth, accessibility, CI/supply chain, observability/operations, and method/data controls (E-5023). The first risk-first remediation closes expired-lease mutation authority and stale/canceled attempt-state corruption; local reset/lint/41 pgTAP/type/advisor, 10/10 run integrations, full repository gates, and CI pass (E-5024).
 - OBSERVED 2026-07-17: P2-01 foundation and P2-02 database source are complete: exact manifests/locks, health/runtime proof, first ordered migration, local Auth fixtures, generated database types, least-privilege roles, forced RLS, complete organization command, and adversarial database gates. No hosted resource or production change exists.
 - OBSERVED 2026-07-17: brain/ is the authoritative Obsidian-readable vault.
 - OBSERVED 2026-07-17 Phase 0 close: 33/33 required notes/YAML, 36/36 Home targets, 49/49 vault wikilinks, 53 evidence IDs defined, 49 referenced, 0 undefined, and 0 application scaffold directories.

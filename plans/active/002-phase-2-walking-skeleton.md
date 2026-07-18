@@ -170,7 +170,7 @@ tests/                     cross-service, security, load, E2E
 
 - 2026-07-18 — OBSERVED: P2-07 implementation gates pass (E-5022): clean reset/lint/41 pgTAP assertions, ten real integration cases, five browser cases, full repository check, Linux mypy, hosted migration equality through `20260718094407`, and GitHub Actions `29640798631` all pass. This is a self-audit, not the required independent Phase 2 exit review; Phase 3 remains blocked.
 - 2026-07-18 — OBSERVED: ten bounded independent reviewer assignments returned Phase 2 exit FAIL with unresolved High findings across acceptance, worker/database authority, API/auth, accessibility, CI/supply chain, observability/operations, and method/data controls (E-5023). P2-07 is reopened; Phase 3 remains blocked.
-- 2026-07-18 — OBSERVED: the first remediation rejects expired lease heartbeat/failure authority and terminalizes stale/canceled attempts. Clean local database/repository gates and 10/10 run integrations pass; seed-free hosted migration version `20260718113445` is applied with zero security-advisor lints (E-5024). This does not close P2-07.
+- 2026-07-18 — OBSERVED: the first remediation rejects expired lease heartbeat/failure authority and terminalizes stale/canceled attempts. Clean local database/repository gates, 10/10 run integrations, and GitHub Actions `29643209461` for `941f825` pass; seed-free hosted migration version `20260718113445` is applied with zero security-advisor lints (E-5024). This does not close P2-07.
 
 # 9. Progress
 
