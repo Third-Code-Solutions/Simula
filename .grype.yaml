@@ -1,0 +1,11 @@
+# Reviewed exception: CVE-2026-15308 affects html.parser.HTMLParser when it
+# parses attacker-controlled HTML. SIMULA accepts JSON only and neither the
+# API nor worker imports or invokes HTMLParser. Python has no stable 3.14 fix;
+# the upstream issue is https://github.com/python/cpython/issues/153030.
+# Accepted 2026-07-18. Review no later than 2026-08-01 or before hosted use.
+ignore:
+  - vulnerability: CVE-2026-15308
+    package:
+      name: python
+      version: 3.14.6
+      type: binary

@@ -92,6 +92,10 @@ jobs:
     needs: foundation
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      GRYPE_CHECK_FOR_APP_UPDATE: "false"
+      GRYPE_DB_REQUIRE_UPDATE_CHECK: "true"
+      SYFT_CHECK_FOR_APP_UPDATE: "false"
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -117,3 +121,58 @@ jobs:
           docker run --rm --network none --read-only --cap-drop ALL \
             --security-opt no-new-privileges \
             simula-worker:m0 python -m simula_worker --verify-no-egress
+
+      - name: Install checksum-pinned container scanners
+        env:
+          GRYPE_SHA256: 40aff724297312f91ea390d003bed8d8651c74cc7f5b26732db80b3a408d2fc5
+          GRYPE_VERSION: 0.116.0
+          SYFT_SHA256: 6cef9a7f37220d9067eaf9cfaaa2fce986e9f320a8d42cbc36658c99af78ea04
+          SYFT_VERSION: 1.48.0
+        run: |
+          set -euo pipefail
+          install -d "$RUNNER_TEMP/simula-security/bin"
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "$RUNNER_TEMP/simula-security/syft.tar.gz" \
+            "https://github.com/anchore/syft/releases/download/v${SYFT_VERSION}/syft_${SYFT_VERSION}_linux_amd64.tar.gz"
+          echo "${SYFT_SHA256}  $RUNNER_TEMP/simula-security/syft.tar.gz" | sha256sum --check --strict
+          tar --extract --gzip --file "$RUNNER_TEMP/simula-security/syft.tar.gz" \
+            --directory "$RUNNER_TEMP/simula-security/bin" syft
+          curl --fail --location --retry 3 --silent --show-error \
+            --output "$RUNNER_TEMP/simula-security/grype.tar.gz" \
+            "https://github.com/anchore/grype/releases/download/v${GRYPE_VERSION}/grype_${GRYPE_VERSION}_linux_amd64.tar.gz"
+          echo "${GRYPE_SHA256}  $RUNNER_TEMP/simula-security/grype.tar.gz" | sha256sum --check --strict
+          tar --extract --gzip --file "$RUNNER_TEMP/simula-security/grype.tar.gz" \
+            --directory "$RUNNER_TEMP/simula-security/bin" grype
+          "$RUNNER_TEMP/simula-security/bin/syft" version
+          "$RUNNER_TEMP/simula-security/bin/grype" version
+          echo "$RUNNER_TEMP/simula-security/bin" >> "$GITHUB_PATH"
+
+      - name: Generate SBOMs and block fixable High or Critical findings
+        run: |
+          set -euo pipefail
+          report_dir="$RUNNER_TEMP/simula-security/reports"
+          install -d "$report_dir"
+          failed=0
+          for image in web api worker; do
+            syft "docker:simula-${image}:m0" \
+              --output "cyclonedx-json=${report_dir}/simula-${image}.cdx.json"
+            grype "sbom:${report_dir}/simula-${image}.cdx.json" \
+              --config .grype.yaml \
+              --output json \
+              --file "${report_dir}/simula-${image}.grype.json"
+            grype "sbom:${report_dir}/simula-${image}.cdx.json" \
+              --config .grype.yaml \
+              --only-fixed \
+              --fail-on high \
+              --output table || failed=1
+          done
+          exit "$failed"
+
+      - name: Upload container security evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: container-security-${{ github.sha }}
+          path: ${{ runner.temp }}/simula-security/reports/
+          if-no-files-found: error
+          retention-days: 14
