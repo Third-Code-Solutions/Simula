@@ -70,8 +70,10 @@ async def test_worker_database_sets_every_approved_transaction_timeout() -> None
     pool = _Pool(connection)
     database = WorkerDatabase.__new__(WorkerDatabase)
     database._pool = cast(Any, pool)
+    database._telemetry = None
 
-    rows = await database._fetchall("select true as changed", ())
+    query = "select private.complete_run_execution() as changed"
+    rows = await database._fetchall(query, ())
 
     assert pool.acquisition_timeouts == [2.0]
     assert rows == [{"changed": True}]
@@ -82,4 +84,4 @@ async def test_worker_database_sets_every_approved_transaction_timeout() -> None
     assert "set_config('statement_timeout', '8000', true)" in timeout_query
     assert "set_config('lock_timeout', '2000', true)" in timeout_query
     assert "'idle_in_transaction_session_timeout', '10000', true" in timeout_query
-    assert connection.queries[1] == ("select true as changed", ())
+    assert connection.queries[1] == (query, ())

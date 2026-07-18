@@ -14,7 +14,7 @@ source_of_truth: true
 - Owner: Principal program and engineering lead
 - Created: 2026-07-17
 - Last updated: 2026-07-18
-- Status: Independent Phase 2 exit review failed; P2-07 remediation active. Phase 3 remains blocked.
+- Status: P2-07 implementation/remediation is green; independent exit re-review and manual accessibility evidence remain open. Phase 3 remains blocked.
 
 # 2. Purpose and User Outcome
 
@@ -27,7 +27,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 - [[../../brain/QA/PHASE_2_BACKLOG|Phase 2 Backlog]] contains seven ordered vertical stories with all Ready fields.
 - [[../../brain/Product/ACCEPTANCE_CRITERIA|Acceptance Criteria]] and [[../../brain/QA/TRACEABILITY_MATRIX|Traceability Matrix]] define the required behavior and tests.
 - Phase 1 closed with 55/55 governed Markdown YAML, 128/128 links, 68 unique evidence IDs, 21/21 acceptance criteria traced, 7/7 Ready stories, exact dependency resolution, and zero scaffold.
-- Repository implementation head is `a521926`. Green, focused increments are committed and pushed under the user's standing instruction; preserve unrelated user-owned changes.
+- Prior pushed remediation head is `95d71ed`; the current green observability/audit increment follows it. Green, focused increments are committed and pushed under the user's standing instruction; preserve unrelated user-owned changes.
 
 # 4. Scope
 
@@ -45,7 +45,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 
 - Real model/provider calls, real Philippine population claims, official/microdata ingestion, scraping, uploads, calibrated or predictive output.
 - Membership management, exports/shares, realtime subscriptions, billing, customer data, hosted analytics.
-- Paid resource creation, hosted Supabase/Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user authorized named Supabase Phase 2 schema migrations through remediation version `20260718122048`; no seed, customer, or production data was applied.
+- Paid resource creation, hosted Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user authorized named Supabase Phase 2 schema migrations through remediation version `20260719040000`; no seed, customer, or production data was applied.
 - Phase 3 methodology expansion, Phase 4 MVP breadth, and any representativeness/survey-replacement claim.
 
 # 5. Proposed Design
@@ -126,7 +126,7 @@ tests/                     cross-service, security, load, E2E
 
 - Historical self-audit: structured telemetry/audit/correlation, security/secret/SCA/container checks, load/backpressure/resource tests, clean migration/contract generation, browser E2E, local database gates, and evidence update are recorded in E-5022.
 - Automated gate evidence: clean local reset/lint/41 pgTAP assertions; ten real API/Redis/worker integrations; five browser flows; `pnpm check`; explicit Linux mypy; hosted migration equality; and GitHub Actions run `29640798631` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
-- Formal exit status: FAIL. E-5023 records unresolved High findings. E-5024 closes expired-lease mutation authority and stale/canceled attempt corruption; E-5025 closes arbitrary result persistence and frozen-provenance drift; E-5026 closes worker retry/deadline/heartbeat/rejection-telemetry drift; E-5027 closes the deterministic worker's missing fail-closed no-egress proof; E-5028–E-5030 close R-025's technical CI gaps. Enforceable required-check governance and all other Critical/High findings remain blocking.
+- Formal exit status: OPEN. E-5031 records a green root/CI/hosted-schema remediation gate and closes the remaining automated High code themes. Independent re-review, a human screen-reader smoke, and GitHub-plan-blocked required-check governance remain blocking; five Medium findings remain recorded in [[../../brain/QA/PHASE_2_AUDIT_2026-07-18|the final audit]], not hidden.
 - Rollback: telemetry export may be disabled independently; core audit remains; revert only to a schema-compatible artifact.
 
 # 7. Risks
@@ -177,6 +177,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: checksum-pinned Syft/Grype generate and archive CycloneDX/full vulnerability reports for all three images and block fixable High/Critical findings. The first CI execution rejected vulnerable bundled web runtime tooling; `bffe83b` removed npm/Corepack, and GitHub Actions `29646850994` passed in 8m38s with six uploaded reports (E-5028). R-025 remains Open for its other gaps; P2-07 remains open.
 - 2026-07-18 — OBSERVED: checksum-pinned Gitleaks now scans every reachable commit and exact Windows Server 2025 quality/SCA runs beside the Linux/database/browser/container gates. GitHub Actions `29647492906` passed all four jobs, including 52-commit history scanning and the exact Windows toolchain (E-5029). Required-check governance remains plan-blocked by GitHub API `403`; no visibility or billing change was made. R-025 and P2-07 remain open.
 - 2026-07-18 — OBSERVED: root `pnpm verify` now orders the complete disposable API/database/browser/repository/integration/SCA foundation gate. GitHub Actions `29648136756` passed it plus history, exact Windows, no-egress, and three-image SBOM/vulnerability gates in about eight minutes (E-5030). R-025 now remains Open only for plan-blocked required-check governance; P2-07 remains open.
+- 2026-07-18 — OBSERVED: the final implementation increment orders general rate admission before sign-in audit DB work and adds bounded database/run/queue/provider observability plus an executable run-disable runbook. Root `pnpm verify` passes 58 pgTAP, 60 API, 9 browser, 198 non-integration Python, 43 web, and 22 integration cases; migration `20260719040000` is applied seed-free to hosted Supabase with exact history parity and clean linked lint (E-5031). The final audit keeps Phase 2 open.
 
 # 9. Progress
 
@@ -228,14 +229,16 @@ tests/                     cross-service, security, load, E2E
   - [x] Three-image SBOM and fixable High/Critical vulnerability gate (E-5028).
   - [x] Complete-history secret scan and exact Windows quality/SCA gate (E-5029).
   - [x] Consolidated root `pnpm verify` foundation gate (E-5030).
+  - [x] Remaining automated High proof themes and hosted schema parity (E-5031).
   - [ ] Remaining E-5023 Critical/High findings cleared and independently re-reviewed.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 
 ## Phase 2 exit criteria
 
 - [x] End-to-end local strategist journey works against generated contracts.
-- [ ] Automated acceptance and traceability gates have complete local/disposable evidence, including concurrent replay, deterministic cross-process repeats, 30-run p95, deletion, and manual accessibility proof.
-- [ ] Tenant isolation, Data API denial, claims cleanup, helper atomicity, queue forgery/loss/race, explicit no-egress, accessibility, resource, and recovery gates pass in their recorded local gates.
+- [x] Automated acceptance and traceability gates have complete local/disposable evidence, including concurrent replay, deterministic cross-process repeats, 30-run p95, and PostgreSQL deletion cascade.
+- [x] Tenant isolation, Data API denial, claims cleanup, helper atomicity, queue forgery/loss/race, explicit no-egress, automated accessibility, resource, and recovery gates pass in their recorded local gates.
+- [ ] Human keyboard/screen-reader smoke is recorded against the current build.
 - [x] Clean exact installs/locks, migration reset, generated artifact drift, lint/type/test/build/security checks pass.
 - [x] Result says authored demo/non-representative/estimates nobody and exposes frozen provenance/limits.
 - [x] Obsidian state/changelog/risks/evidence/runbooks reflect implemented truth.
@@ -285,4 +288,4 @@ M4 evidence on 2026-07-18:
 
 # 11. Final Outcome
 
-Phase 2 remains open after independent exit-review failure (E-5023). M0 through M5 retain recorded evidence; M6/P2-07 is reopened. Lease/attempt and result-contract remediations pass locally and are applied seed-free to the hosted schema (E-5024, E-5025); worker contract, no-egress, container supply-chain, complete-history secret, Windows, and root verification CI remediations pass locally and/or in CI without hosted mutation (E-5026–E-5030). Required-check governance and remaining High findings block re-review and Phase 3. Production deployment remains unauthorized.
+Phase 2 remains open. M0 through M5 retain recorded evidence; M6/P2-07 implementation/remediation is green through E-5031, including hosted schema parity at `20260719040000` and prior CI run `29661559207`. Independent exit re-review, human screen-reader evidence, and required-check governance still block Phase 3. Five non-blocking-but-real Medium findings remain: audience-version governance, user-triggered deletion/cache cleanup, application-compatible restore scope, rejected-attempt idempotency rate markers, and breaking OpenAPI/error-inventory governance. Production deployment remains unauthorized.

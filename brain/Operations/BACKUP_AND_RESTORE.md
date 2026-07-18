@@ -2,7 +2,7 @@
 title: SIMULA Backup and Restore
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 owner: Data and SRE leads
 classification: PROPOSED
 source_of_truth: true
@@ -26,6 +26,10 @@ PostgreSQL data, storage objects, configuration/version registries, evaluation a
 - Restore tests use isolated environments and synthetic or appropriately protected data.
 - Evidence records backup version, checksum where applicable, start/end, errors, operator/service, restore test, and deletion expiry.
 - Retention reconciles recovery, contract, privacy, deletion, and legal-hold needs.
+
+## Phase 2 evidence
+
+`OPS-RESTORE-001` creates a checksumed full PostgreSQL dump, restores it into a separate isolated database, verifies application row counts and migration head `20260719040000`, and removes the temporary database/artifact. It runs inside root `pnpm verify` and CI. This proves synthetic Phase 2 database recoverability only; runtime-role ACL/Auth/API/worker compatibility and provider-managed services remain staging drill requirements.
 
 ## Failure cases
 

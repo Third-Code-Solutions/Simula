@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(25);
+select extensions.plan(26);
 
 select extensions.has_function(
   'api',
@@ -274,6 +274,25 @@ select extensions.ok(
     'configuration_sha256'
   ) > 0,
   'run admission and result validation bind exact code and configuration provenance'
+);
+
+select extensions.ok(
+  pg_catalog.has_function_privilege(
+    'simula_api',
+    'private.runtime_observability_snapshot()'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and pg_catalog.has_function_privilege(
+    'simula_worker',
+    'private.runtime_observability_snapshot()'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and not pg_catalog.has_function_privilege(
+    'authenticated',
+    'private.runtime_observability_snapshot()'::pg_catalog.regprocedure,
+    'EXECUTE'
+  ),
+  'runtime observability is aggregate-only and unavailable to browser roles'
 );
 
 select * from extensions.finish();

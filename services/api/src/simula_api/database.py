@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
+from time import perf_counter
 from typing import Any, cast
 from uuid import UUID
 
@@ -35,6 +36,7 @@ from simula_api.models import (
     StimulusVersionResponse,
 )
 from simula_api.problems import AppProblem, ProblemError
+from simula_api.telemetry import ApiTelemetry
 
 JsonObject = Mapping[str, Any]
 DatabaseRow = dict[str, Any]
@@ -152,8 +154,9 @@ def _database_problem(error: psycopg.Error) -> AppProblem:
 
 
 class DatabaseGateway:
-    def __init__(self, settings: ApiSettings) -> None:
+    def __init__(self, settings: ApiSettings, *, telemetry: ApiTelemetry | None = None) -> None:
         self._release_sha = settings.release_sha
+        self._telemetry = telemetry
         self._pool = AsyncConnectionPool(
             conninfo=settings.database_url,
             min_size=1,
@@ -173,20 +176,34 @@ class DatabaseGateway:
         await self._pool.close(timeout=2.0)
 
     async def ready(self) -> bool:
+        started_at = perf_counter()
+        outcome = "error"
         try:
             async with self._pool.connection(timeout=2.0) as connection:
                 async with connection.transaction():
                     cursor = await connection.execute("select 1 as ready")
                     row = await cursor.fetchone()
-            return row is not None and cast(DatabaseRow, row)["ready"] == 1
+                    snapshot_cursor = await connection.execute(
+                        "select * from private.runtime_observability_snapshot()"
+                    )
+                    snapshot = await snapshot_cursor.fetchone()
+            ready = row is not None and cast(DatabaseRow, row)["ready"] == 1
+            if ready and snapshot is not None and self._telemetry is not None:
+                self._record_runtime_snapshot(cast(DatabaseRow, snapshot))
+            outcome = "success" if ready else "error"
+            return ready
         except PoolTimeout, psycopg.Error:
             return False
+        finally:
+            self._observe_database("readiness", outcome, started_at)
 
     @asynccontextmanager
     async def _transaction(
-        self, identity: VerifiedIdentity
+        self, identity: VerifiedIdentity, *, operation: str
     ) -> AsyncIterator[AsyncConnection[DatabaseRow]]:
         claims = canonical_json_dumps(identity.database_claims()).decode("utf-8")
+        started_at = perf_counter()
+        outcome = "error"
         try:
             async with self._pool.connection(timeout=2.0) as connection:
                 async with connection.transaction():
@@ -204,6 +221,7 @@ class DatabaseGateway:
                         (claims, self._release_sha),
                     )
                     yield cast(AsyncConnection[DatabaseRow], connection)
+                outcome = "success"
         except PoolTimeout as error:
             raise _dependency_unavailable() from error
         except psycopg.OperationalError as error:
@@ -214,6 +232,40 @@ class DatabaseGateway:
             if isinstance(error, psycopg.errors.ConnectionException):
                 raise _dependency_unavailable() from error
             raise
+        finally:
+            self._observe_database(operation, outcome, started_at)
+
+    def _observe_database(self, operation: str, outcome: str, started_at: float) -> None:
+        if self._telemetry is None:
+            return
+        stats = self._pool.get_stats()
+        self._telemetry.observe_database(
+            operation,
+            outcome,
+            duration_seconds=perf_counter() - started_at,
+            pool_size=int(stats.get("pool_size", 0)),
+            pool_available=int(stats.get("pool_available", 0)),
+        )
+
+    def _record_runtime_snapshot(self, row: DatabaseRow) -> None:
+        if self._telemetry is None:
+            return
+        states = (
+            "queued",
+            "running",
+            "retrying",
+            "cancel_requested",
+            "succeeded",
+            "failed",
+            "canceled",
+        )
+        self._telemetry.set_runtime_snapshot(
+            migration_version=int(row["migration_version"]),
+            rls_force_enabled=bool(row["rls_force_enabled"]),
+            state_counts={state: int(row[f"{state}_count"]) for state in states},
+            stuck_lease_count=int(row["stuck_lease_count"]),
+            oldest_cancellation_age_seconds=float(row["oldest_cancel_requested_age_seconds"]),
+        )
 
     async def create_organization(
         self,
@@ -225,7 +277,7 @@ class DatabaseGateway:
         correlation_id: UUID,
     ) -> tuple[OrganizationResponse, bool]:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="create_organization") as connection:
                 cursor = await connection.execute(
                     """
                     select * from api.create_organization(%s, %s, %s, %s)
@@ -266,7 +318,7 @@ class DatabaseGateway:
         after: CursorPosition | None,
         limit: int,
     ) -> list[OrganizationResponse]:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="list_organizations") as connection:
             parameters: tuple[Any, ...]
             predicate = ""
             if after is None:
@@ -298,7 +350,7 @@ class DatabaseGateway:
     async def visible_organization(
         self, identity: VerifiedIdentity, *, organization_id: UUID
     ) -> UUID:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="get_organization") as connection:
             cursor = await connection.execute(
                 "select id from api.organizations where id = %s", (organization_id,)
             )
@@ -310,7 +362,7 @@ class DatabaseGateway:
     async def organization_for_project(
         self, identity: VerifiedIdentity, *, project_id: UUID
     ) -> UUID:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="get_project_organization") as connection:
             cursor = await connection.execute(
                 "select organization_id from api.projects where id = %s", (project_id,)
             )
@@ -322,7 +374,7 @@ class DatabaseGateway:
     async def organization_for_stimulus(
         self, identity: VerifiedIdentity, *, stimulus_id: UUID
     ) -> UUID:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="get_stimulus_organization") as connection:
             cursor = await connection.execute(
                 "select organization_id from api.stimuli where id = %s", (stimulus_id,)
             )
@@ -342,7 +394,9 @@ class DatabaseGateway:
         correlation_id: UUID,
     ) -> None:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(
+                identity, operation="privileged_denial_audit"
+            ) as connection:
                 await connection.execute(
                     "select api.record_privileged_denial(%s, %s, %s, %s, %s)",
                     (organization_id, action, object_type, object_id, correlation_id),
@@ -358,7 +412,7 @@ class DatabaseGateway:
         correlation_id: UUID,
     ) -> bool:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="auth_audit") as connection:
                 cursor = await connection.execute(
                     "select api.record_sign_in_success(%s, %s) as recorded",
                     (session_id, correlation_id),
@@ -381,7 +435,7 @@ class DatabaseGateway:
         correlation_id: UUID,
     ) -> tuple[ProjectResponse, bool]:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="create_project") as connection:
                 cursor = await connection.execute(
                     """
                     select * from api.create_project(
@@ -415,7 +469,7 @@ class DatabaseGateway:
         after: CursorPosition | None,
         limit: int,
     ) -> list[ProjectResponse]:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="list_projects") as connection:
             visible = await connection.execute(
                 "select 1 from api.organizations where id = %s", (organization_id,)
             )
@@ -459,7 +513,7 @@ class DatabaseGateway:
         return [ProjectResponse.model_validate(row) for row in rows]
 
     async def get_project(self, identity: VerifiedIdentity, *, project_id: UUID) -> ProjectDetail:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="get_project") as connection:
             return await self._project_detail(connection, project_id)
 
     async def update_project(
@@ -472,7 +526,7 @@ class DatabaseGateway:
         correlation_id: UUID,
     ) -> ProjectResponse:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="update_project") as connection:
                 current_cursor = await connection.execute(
                     """
                     select name, objective, market, language, category
@@ -521,7 +575,7 @@ class DatabaseGateway:
         correlation_id: UUID,
     ) -> tuple[StimulusResponse, bool]:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="create_stimulus") as connection:
                 cursor = await connection.execute(
                     """
                     select * from api.create_stimulus(
@@ -556,7 +610,7 @@ class DatabaseGateway:
         correlation_id: UUID,
     ) -> tuple[StimulusVersionResponse, bool]:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="version_stimulus") as connection:
                 cursor = await connection.execute(
                     """
                     select * from api.append_stimulus_version(
@@ -591,7 +645,7 @@ class DatabaseGateway:
         traceparent: str,
     ) -> tuple[SimulationRunResponse, bool]:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="create_run") as connection:
                 cursor = await connection.execute(
                     """
                     select * from api.create_simulation_run(%s, %s, %s, %s, %s, %s)
@@ -624,7 +678,7 @@ class DatabaseGateway:
         request_sha256: str,
     ) -> SimulationRunResponse | None:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="get_run_replay") as connection:
                 cursor = await connection.execute(
                     "select * from api.get_simulation_run_replay(%s, %s, %s)",
                     (project_id, idempotency_key, request_sha256),
@@ -647,7 +701,7 @@ class DatabaseGateway:
         correlation_id: UUID,
     ) -> SimulationRunResponse:
         try:
-            async with self._transaction(identity) as connection:
+            async with self._transaction(identity, operation="request_cancellation") as connection:
                 cursor = await connection.execute(
                     "select * from api.request_run_cancel(%s, %s)",
                     (run_id, correlation_id),
@@ -665,7 +719,7 @@ class DatabaseGateway:
     async def get_simulation_run(
         self, identity: VerifiedIdentity, *, run_id: UUID
     ) -> SimulationRunResponse:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="get_run") as connection:
             cursor = await connection.execute(
                 """
                 select
@@ -694,7 +748,7 @@ class DatabaseGateway:
         return run
 
     async def get_demo_audience(self, identity: VerifiedIdentity) -> AudienceDisclosureResponse:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="get_audience") as connection:
             cursor = await connection.execute(
                 """
                 select
@@ -747,7 +801,7 @@ class DatabaseGateway:
     async def get_simulation_result(
         self, identity: VerifiedIdentity, *, run_id: UUID
     ) -> SimulationResultResponse | None:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="get_result") as connection:
             cursor = await connection.execute(
                 """
                 select run_id, schema_version, artifact, artifact_sha256, created_at
@@ -770,7 +824,7 @@ class DatabaseGateway:
     async def get_simulation_provenance(
         self, identity: VerifiedIdentity, *, run_id: UUID
     ) -> SimulationProvenanceResponse:
-        async with self._transaction(identity) as connection:
+        async with self._transaction(identity, operation="get_provenance") as connection:
             cursor = await connection.execute(
                 """
                 select

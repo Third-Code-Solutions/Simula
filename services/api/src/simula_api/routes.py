@@ -101,11 +101,6 @@ async def current_identity(
     identity = await services.verifier.verify(credentials.credentials)
     if identity.session_id is None:
         raise unauthenticated()
-    request.state.sign_in_audit_recorded = await services.database.record_sign_in_success(
-        identity,
-        session_id=identity.session_id,
-        correlation_id=_correlation_id(request),
-    )
     return identity
 
 
@@ -123,6 +118,13 @@ async def rate_limited_identity(
         user_id=identity.user_id,
         idempotency_key=idempotency_key,
         idempotency_scope=_idempotency_scope(request) if idempotency_key is not None else None,
+    )
+    if identity.session_id is None:
+        raise unauthenticated()
+    request.state.sign_in_audit_recorded = await services.database.record_sign_in_success(
+        identity,
+        session_id=identity.session_id,
+        correlation_id=_correlation_id(request),
     )
     return identity
 

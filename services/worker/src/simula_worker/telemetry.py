@@ -35,6 +35,38 @@ _JOB_OUTCOMES = frozenset(
     }
 )
 _PROVIDER_OUTCOMES = frozenset({"completed", "failed", "retryable_failure"})
+_PROVIDER_FAILURE_KINDS = frozenset({"policy", "rate_limit", "schema", "timeout", "unavailable"})
+_RUN_EVENTS = frozenset(
+    {
+        "duplicate_delivery",
+        "invalid_transition",
+        "retry",
+        "stuck_lease_recovered",
+        "terminal_failure",
+        "visibility_extension",
+    }
+)
+_RUN_STATES = frozenset(
+    {"cancel_requested", "canceled", "failed", "queued", "retrying", "running", "succeeded"}
+)
+_DATABASE_OPERATIONS = frozenset(
+    {
+        "claim_dispatch",
+        "claim_execution",
+        "complete_execution",
+        "confirm_dispatch",
+        "evaluate_run_control",
+        "fail_dispatch",
+        "fail_execution",
+        "finalize_cancellations",
+        "finalize_poison",
+        "heartbeat_execution",
+        "readiness",
+        "reconcile_dispatch",
+        "runtime_snapshot",
+    }
+)
+_DATABASE_OUTCOMES = frozenset({"error", "success"})
 _RUN_CONTROL_ALERT_REASONS = frozenset(
     {
         "oldest_undispatched_critical",
@@ -75,6 +107,82 @@ class WorkerTelemetry:
             "simula_worker_deterministic_provider_calls_total",
             "Phase 2 deterministic provider calls by bounded outcome.",
             ("outcome",),
+            registry=self.registry,
+        )
+        self._provider_failures = Counter(
+            "simula_worker_provider_failures_total",
+            "Provider failures by bounded safe failure kind.",
+            ("kind",),
+            registry=self.registry,
+        )
+        self._run_events = Counter(
+            "simula_worker_run_events_total",
+            "Run lifecycle events by bounded event kind.",
+            ("event",),
+            registry=self.registry,
+        )
+        self._run_state_transitions = Counter(
+            "simula_worker_run_state_transitions_total",
+            "Observed worker run transitions by bounded destination state.",
+            ("state",),
+            registry=self.registry,
+        )
+        self._run_transition_duration = Histogram(
+            "simula_worker_run_transition_duration_seconds",
+            "Worker processing duration by bounded destination state.",
+            ("state",),
+            buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0, 30.0),
+            registry=self.registry,
+        )
+        self._cancellation_finalize_duration = Histogram(
+            "simula_worker_cancellation_finalize_duration_seconds",
+            "Duration of a bounded durable cancellation finalization pass.",
+            buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0),
+            registry=self.registry,
+        )
+        self._database_queries = Counter(
+            "simula_worker_database_queries_total",
+            "Worker database transactions by fixed operation and outcome.",
+            ("operation", "outcome"),
+            registry=self.registry,
+        )
+        self._database_duration = Histogram(
+            "simula_worker_database_query_duration_seconds",
+            "Worker database transaction duration by fixed operation and outcome.",
+            ("operation", "outcome"),
+            buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 8.0),
+            registry=self.registry,
+        )
+        self._database_pool = Gauge(
+            "simula_worker_database_pool_connections",
+            "Worker database pool connections by bounded state.",
+            ("state",),
+            registry=self.registry,
+        )
+        self._migration_version = Gauge(
+            "simula_worker_database_migration_version",
+            "Latest application migration version observed by the worker.",
+            registry=self.registry,
+        )
+        self._rls_force_enabled = Gauge(
+            "simula_worker_database_rls_force_enabled",
+            "Whether all application tables have RLS enabled and forced.",
+            registry=self.registry,
+        )
+        self._run_states = Gauge(
+            "simula_worker_run_state_count",
+            "Current durable simulation runs by bounded state.",
+            ("state",),
+            registry=self.registry,
+        )
+        self._stuck_leases = Gauge(
+            "simula_worker_run_stuck_lease_count",
+            "Current expired worker leases on non-terminal runs.",
+            registry=self.registry,
+        )
+        self._oldest_cancellation = Gauge(
+            "simula_worker_run_oldest_cancellation_age_seconds",
+            "Age of the oldest durable cancellation request.",
             registry=self.registry,
         )
         self._external_provider_calls = Counter(
@@ -120,6 +228,10 @@ class WorkerTelemetry:
         self._run_creation_enabled.set(1)
         for reason in sorted(_RUN_CONTROL_ALERT_REASONS):
             self._run_control_alert.labels(reason=reason).set(0)
+        for state in ("available", "in_use"):
+            self._database_pool.labels(state=state).set(0)
+        for state in sorted(_RUN_STATES):
+            self._run_states.labels(state=state).set(0)
 
     def observe_job(self, outcome: str, *, duration_seconds: float) -> None:
         _require_label(outcome, _JOB_OUTCOMES, name="job outcome")
@@ -135,6 +247,66 @@ class WorkerTelemetry:
     def observe_provider(self, outcome: str) -> None:
         _require_label(outcome, _PROVIDER_OUTCOMES, name="provider outcome")
         self._provider_calls.labels(outcome=outcome).inc()
+
+    def observe_provider_failure(self, kind: str) -> None:
+        _require_label(kind, _PROVIDER_FAILURE_KINDS, name="provider failure")
+        self._provider_failures.labels(kind=kind).inc()
+
+    def observe_run_event(self, event: str, *, count: int = 1) -> None:
+        _require_label(event, _RUN_EVENTS, name="run event")
+        if isinstance(count, bool) or count < 0:
+            raise ValueError("run event count must be a non-negative integer")
+        self._run_events.labels(event=event).inc(count)
+
+    def observe_run_transition(self, state: str, *, duration_seconds: float) -> None:
+        _require_label(state, _RUN_STATES, name="run state")
+        self._run_state_transitions.labels(state=state).inc()
+        self._run_transition_duration.labels(state=state).observe(max(0.0, duration_seconds))
+
+    def observe_cancellation_finalize(self, *, duration_seconds: float) -> None:
+        self._cancellation_finalize_duration.observe(max(0.0, duration_seconds))
+
+    def observe_database(
+        self,
+        operation: str,
+        outcome: str,
+        *,
+        duration_seconds: float,
+        pool_size: int,
+        pool_available: int,
+    ) -> None:
+        _require_label(operation, _DATABASE_OPERATIONS, name="database operation")
+        _require_label(outcome, _DATABASE_OUTCOMES, name="database outcome")
+        if pool_size < 0 or pool_available < 0 or pool_available > pool_size:
+            raise ValueError("database pool snapshot is invalid")
+        labels = {"operation": operation, "outcome": outcome}
+        self._database_queries.labels(**labels).inc()
+        self._database_duration.labels(**labels).observe(max(0.0, duration_seconds))
+        self._database_pool.labels(state="available").set(pool_available)
+        self._database_pool.labels(state="in_use").set(pool_size - pool_available)
+
+    def set_runtime_snapshot(
+        self,
+        *,
+        migration_version: int,
+        rls_force_enabled: bool,
+        state_counts: dict[str, int],
+        stuck_lease_count: int,
+        oldest_cancellation_age_seconds: float,
+    ) -> None:
+        if set(state_counts) != _RUN_STATES:
+            raise ValueError("run state snapshot labels are not allowlisted")
+        values = [*state_counts.values(), stuck_lease_count]
+        if any(isinstance(value, bool) or value < 0 for value in values):
+            raise ValueError("runtime snapshot counts must be non-negative integers")
+        if migration_version < 0 or oldest_cancellation_age_seconds < 0:
+            raise ValueError("runtime snapshot values must be non-negative")
+        self._migration_version.set(migration_version)
+        self._rls_force_enabled.set(1 if rls_force_enabled else 0)
+        for state, count in state_counts.items():
+            self._run_states.labels(state=state).set(count)
+        self._stuck_leases.set(stuck_lease_count)
+        self._oldest_cancellation.set(oldest_cancellation_age_seconds)
 
     def observe_external_provider_call(self) -> None:
         self._external_provider_calls.inc()
@@ -244,10 +416,16 @@ class JobObservation:
 
     def finish(self) -> None:
         if self._telemetry is not None:
+            duration_seconds = perf_counter() - self._started_at
             self._telemetry.observe_job(
                 self.outcome,
-                duration_seconds=perf_counter() - self._started_at,
+                duration_seconds=duration_seconds,
             )
+            state = {"completed": "succeeded", "failed": "failed", "retrying": "retrying"}.get(
+                self.outcome
+            )
+            if state is not None:
+                self._telemetry.observe_run_transition(state, duration_seconds=duration_seconds)
 
 
 def _require_label(value: str, allowed: frozenset[str], *, name: str) -> None:

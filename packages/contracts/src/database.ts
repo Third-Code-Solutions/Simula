@@ -1250,6 +1250,22 @@ export type Database = {
           stimulus_version_id: string
         }[]
       }
+      runtime_observability_snapshot: {
+        Args: never
+        Returns: {
+          cancel_requested_count: number
+          canceled_count: number
+          failed_count: number
+          migration_version: number
+          oldest_cancel_requested_age_seconds: number
+          queued_count: number
+          retrying_count: number
+          rls_force_enabled: boolean
+          running_count: number
+          stuck_lease_count: number
+          succeeded_count: number
+        }[]
+      }
       set_run_creation_control: {
         Args: {
           requested_correlation_id: string

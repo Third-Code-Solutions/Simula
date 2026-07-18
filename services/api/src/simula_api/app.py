@@ -535,7 +535,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
             try:
                 settings = ApiSettings.from_environment()
                 owned_client = httpx.AsyncClient(timeout=httpx.Timeout(2.0), follow_redirects=False)
-                owned_database = DatabaseGateway(settings)
+                owned_database = DatabaseGateway(settings, telemetry=telemetry)
                 owned_rate_limiter = RedisRateLimiter.from_settings(settings)
                 owned_run_admission = RedisRunAdmission.from_settings(settings)
                 owned_run_queue = create_queue_client(settings.redis_url, max_connections=4)

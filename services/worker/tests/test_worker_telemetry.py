@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from time import time
 
 import pytest
-from simula_worker.database import RunCreationControl
+from simula_worker.database import RunCreationControl, RuntimeObservabilitySnapshot
 from simula_worker.main import (
     _queue_memory_percent,
     _refresh_dependency_readiness,
@@ -19,6 +20,31 @@ def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -
     telemetry.observe_job("completed", duration_seconds=0.25)
     telemetry.observe_dispatch("confirmed", count=2)
     telemetry.observe_provider("completed")
+    telemetry.observe_provider_failure("timeout")
+    telemetry.observe_run_event("visibility_extension")
+    telemetry.observe_run_transition("succeeded", duration_seconds=0.25)
+    telemetry.observe_database(
+        "complete_execution",
+        "success",
+        duration_seconds=0.01,
+        pool_size=4,
+        pool_available=3,
+    )
+    telemetry.set_runtime_snapshot(
+        migration_version=20260719040000,
+        rls_force_enabled=True,
+        state_counts={
+            "queued": 1,
+            "running": 0,
+            "retrying": 0,
+            "cancel_requested": 1,
+            "succeeded": 2,
+            "failed": 0,
+            "canceled": 1,
+        },
+        stuck_lease_count=0,
+        oldest_cancellation_age_seconds=2.0,
+    )
     telemetry.set_dependency_ready("database", True)
     telemetry.set_queue_snapshot(
         depth=3,
@@ -38,6 +64,14 @@ def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -
     assert "simula_worker_queue_memory_percent 50.0" in rendered
     assert "simula_worker_run_creation_enabled 0.0" in rendered
     assert 'simula_worker_run_control_alert_active{reason="poison_outbox"} 1.0' in rendered
+    assert 'simula_worker_provider_failures_total{kind="timeout"} 1.0' in rendered
+    assert 'simula_worker_run_events_total{event="visibility_extension"} 1.0' in rendered
+    assert 'simula_worker_run_state_transitions_total{state="succeeded"} 1.0' in rendered
+    assert (
+        'simula_worker_database_queries_total{operation="complete_execution",outcome="success"}'
+        " 1.0" in rendered
+    )
+    assert 'simula_worker_run_state_count{state="cancel_requested"} 1.0' in rendered
     assert "run_id" not in rendered
     with pytest.raises(ValueError, match="not allowlisted"):
         telemetry.observe_job("sensitive-unbounded-status", duration_seconds=0)
@@ -78,6 +112,23 @@ class _ReadyDatabase:
     async def ready(self) -> bool:
         return True
 
+    async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
+        return RuntimeObservabilitySnapshot(
+            migration_version=20260719040000,
+            rls_force_enabled=True,
+            state_counts={
+                "queued": 2,
+                "running": 0,
+                "retrying": 0,
+                "cancel_requested": 0,
+                "succeeded": 0,
+                "failed": 0,
+                "canceled": 0,
+            },
+            stuck_lease_count=0,
+            oldest_cancellation_age_seconds=0,
+        )
+
 
 class _ReadyQueue:
     async def ping(self) -> bool:
@@ -107,6 +158,8 @@ async def test_worker_dependency_probe_refreshes_queue_readiness_and_age() -> No
     assert 'simula_worker_dependency_ready{dependency="queue"} 1.0' in rendered
     assert "simula_worker_queue_depth 2.0" in rendered
     assert "simula_worker_queue_memory_percent 50.0" in rendered
+    assert "simula_worker_database_migration_version 2.026071904e+013" in rendered
+    assert 'simula_worker_run_state_count{state="queued"} 2.0' in rendered
     assert memory_percent == 50.0
 
 
@@ -155,3 +208,9 @@ async def test_worker_emits_bounded_alert_when_run_creation_latches_closed() -> 
     rendered = telemetry.render().decode()
     assert "simula_worker_run_creation_enabled 0.0" in rendered
     assert 'simula_worker_run_control_alert_active{reason="redis_memory_critical"} 1.0' in rendered
+
+    runbook = Path(__file__).parents[3] / logs[0]["runbook"]
+    runbook_text = runbook.read_text(encoding="utf-8")
+    assert "run_creation_disabled" in runbook_text
+    assert "release_on_call" in runbook_text
+    assert "recovery_verified" in runbook_text

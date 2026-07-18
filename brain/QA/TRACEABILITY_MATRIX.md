@@ -12,7 +12,7 @@ source_of_truth: true
 
 ## Exit-audit snapshot — 2026-07-18
 
-E-5022 records passing local/disposable database, integration, browser, repository, Linux type, hosted-migration-equality, and GitHub Actions gates for the implemented rows below. This is implementation evidence, not the independent Phase 2 exit review required by the ExecPlan; Phase 3 remains unauthorized.
+E-5031 records the current green implementation gate: root `pnpm verify`, 20 simultaneous durable replays, 30-run p95, 100 subprocess repeats against a committed golden, exact release/configuration provenance, API deadlines/auth audit/rejection metrics, bounded runtime/database observability, local run-disable runbook contract, hosted migration equality through `20260719040000`, remote lint, and prior green GitHub Actions run `29661559207`. [[PHASE_2_AUDIT_2026-07-18|The final audit]] records remaining governance, manual, and Medium findings. Phase 3 is unauthorized.
 
 ## Product acceptance to tests
 
@@ -29,7 +29,7 @@ E-5022 records passing local/disposable database, integration, browser, reposito
 | AC-RUN-005, AC-RUN-006 | `INT-RETRY-001`, `E2E-FAIL-001` | safe-error copy review | Worker/Web |
 | AC-RES-001, AC-RES-002, AC-RES-003 | `SCHEMA-RESULT-001`, `INT-PROV-001`, `E2E-RESULT-001` | no-false-claim review | Method/API/Web |
 | AC-ERR-001 | `CONTRACT-PROBLEM-001`, `E2E-ERROR-001` | recovery copy review | API/Web |
-| AC-A11Y-001, AC-A11Y-002 | `A11Y-AXE-001`, component tests | keyboard + screen-reader smoke | Web/QA |
+| AC-A11Y-001, AC-A11Y-002 | `A11Y-AXE-001`, component tests, Playwright skip-link/disclosure keyboard proof | human screen-reader smoke outstanding | Web/QA |
 
 Acceptance IDs are defined in [[../Product/ACCEPTANCE_CRITERIA|Product Acceptance Criteria]].
 
@@ -53,9 +53,9 @@ Acceptance IDs are defined in [[../Product/ACCEPTANCE_CRITERIA|Product Acceptanc
 |---|---|
 | Output kinds cannot blur | schema enums; compile-time UI exhaustiveness; snapshot copy; unknown-kind fail-closed test |
 | Demo values estimate nobody | fixture manifest/checksum; result limitations; forbidden-claim scan; E2E comprehension copy |
-| Determinism | 100 repeated outputs equal canonical golden; cross-process hash check |
+| Determinism | `test_deterministic_mock.py`: 100 subprocess outputs equal committed SHA-256 golden `14c1be5ba973cd24e819468176ed5f9b605b2110ff25fb8f2c29e9eba7c51dc0` |
 | No predictive threshold/claim | prohibited output kinds rejected; copy scan for banned terms; independent method review |
-| Provenance complete | schema-required frozen fields; database FK/hash checks; E2E provenance view |
+| Provenance complete | schema-required frozen fields including exact code release/configuration hashes; database equality checks; E2E provenance view |
 | No unapproved data/provider | seed inventory; egress denial; dependency/config route inventory |
 | Privacy/deletion | `PRIV-DEL-001`; forbidden-field log tests; non-production retention configuration |
 | Threats T-01–T-13 | evidence named in [[../Security/CONTROL_TEST_MATRIX|Security Control and Test Matrix]] |

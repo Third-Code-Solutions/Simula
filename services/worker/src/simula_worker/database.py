@@ -10,6 +10,7 @@ from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from time import perf_counter
 from typing import Any, Literal, Protocol, cast
 from uuid import UUID
 
@@ -20,6 +21,7 @@ from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
 
 from simula_worker.config import WorkerSettings
+from simula_worker.telemetry import WorkerTelemetry
 
 DatabaseRow = dict[str, Any]
 
@@ -65,6 +67,15 @@ class RunCreationControl:
     changed: bool
 
 
+@dataclass(frozen=True, slots=True)
+class RuntimeObservabilitySnapshot:
+    migration_version: int
+    rls_force_enabled: bool
+    state_counts: Mapping[str, int]
+    stuck_lease_count: int
+    oldest_cancellation_age_seconds: float
+
+
 class WorkerExecutionGateway(Protocol):
     """Lease-bound execution mutations available to the ARQ handler."""
 
@@ -97,7 +108,10 @@ class WorkerExecutionGateway(Protocol):
 class WorkerDatabase(WorkerExecutionGateway):
     """Bounded worker connection pool with function-only database access."""
 
-    def __init__(self, settings: WorkerSettings) -> None:
+    def __init__(
+        self, settings: WorkerSettings, *, telemetry: WorkerTelemetry | None = None
+    ) -> None:
+        self._telemetry = telemetry
         self._pool = AsyncConnectionPool(
             conninfo=settings.database_url,
             min_size=1,
@@ -114,14 +128,42 @@ class WorkerDatabase(WorkerExecutionGateway):
         await self._pool.close(timeout=2.0)
 
     async def ready(self) -> bool:
+        started_at = perf_counter()
+        outcome = "error"
         try:
             async with self._pool.connection(timeout=2.0) as connection:
                 async with connection.transaction():
                     cursor = await connection.execute("select 1 as ready")
                     row = await cursor.fetchone()
-            return row is not None and cast(DatabaseRow, row)["ready"] == 1
+            ready = row is not None and cast(DatabaseRow, row)["ready"] == 1
+            outcome = "success" if ready else "error"
+            return ready
         except PoolTimeout, psycopg.Error:
             return False
+        finally:
+            self._observe_database("readiness", outcome, started_at)
+
+    async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
+        row = await self._fetchone(
+            "select * from private.runtime_observability_snapshot()",
+            (),
+        )
+        states = (
+            "queued",
+            "running",
+            "retrying",
+            "cancel_requested",
+            "succeeded",
+            "failed",
+            "canceled",
+        )
+        return RuntimeObservabilitySnapshot(
+            migration_version=int(row["migration_version"]),
+            rls_force_enabled=bool(row["rls_force_enabled"]),
+            state_counts={state: int(row[f"{state}_count"]) for state in states},
+            stuck_lease_count=int(row["stuck_lease_count"]),
+            oldest_cancellation_age_seconds=float(row["oldest_cancel_requested_age_seconds"]),
+        )
 
     async def claim_due_dispatches(self, requested_batch_size: int = 10) -> list[DispatchClaim]:
         rows = await self._fetchall(
@@ -267,10 +309,50 @@ class WorkerDatabase(WorkerExecutionGateway):
         return rows[0]
 
     async def _fetchall(self, query: str, parameters: tuple[object, ...]) -> list[DatabaseRow]:
-        async with self._transaction() as connection:
-            cursor = await connection.execute(query, parameters)
-            rows = await cursor.fetchall()
-        return list(rows)
+        operation = self._database_operation(query)
+        started_at = perf_counter()
+        outcome = "error"
+        try:
+            async with self._transaction() as connection:
+                cursor = await connection.execute(query, parameters)
+                rows = await cursor.fetchall()
+            outcome = "success"
+            return list(rows)
+        finally:
+            self._observe_database(operation, outcome, started_at)
+
+    @staticmethod
+    def _database_operation(query: str) -> str:
+        operations = {
+            "claim_due_run_outbox": "claim_dispatch",
+            "claim_run_execution_traced": "claim_execution",
+            "complete_run_execution": "complete_execution",
+            "confirm_run_dispatch": "confirm_dispatch",
+            "evaluate_run_creation_control": "evaluate_run_control",
+            "fail_run_dispatch": "fail_dispatch",
+            "fail_run_execution": "fail_execution",
+            "finalize_requested_cancellations": "finalize_cancellations",
+            "finalize_poisoned_dispatches": "finalize_poison",
+            "heartbeat_run_execution": "heartbeat_execution",
+            "reconcile_run_dispatch": "reconcile_dispatch",
+            "runtime_observability_snapshot": "runtime_snapshot",
+        }
+        matches = [operation for marker, operation in operations.items() if marker in query]
+        if len(matches) != 1:
+            raise ValueError("worker database query operation is not allowlisted")
+        return matches[0]
+
+    def _observe_database(self, operation: str, outcome: str, started_at: float) -> None:
+        if self._telemetry is None:
+            return
+        stats = self._pool.get_stats()
+        self._telemetry.observe_database(
+            operation,
+            outcome,
+            duration_seconds=perf_counter() - started_at,
+            pool_size=int(stats.get("pool_size", 0)),
+            pool_available=int(stats.get("pool_available", 0)),
+        )
 
     @asynccontextmanager
     async def _transaction(self) -> AsyncIterator[AsyncConnection[DatabaseRow]]:

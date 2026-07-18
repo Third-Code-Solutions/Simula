@@ -42,6 +42,7 @@ from simula_worker.config import WorkerSettings
 from simula_worker.database import (
     ExecutionClaim,
     RunCreationControl,
+    RuntimeObservabilitySnapshot,
     WorkerDatabase,
     WorkerExecutionGateway,
 )
@@ -76,6 +77,8 @@ class ReadinessQueue(Protocol):
 class ReadinessDatabase(Protocol):
     async def ready(self) -> bool: ...
 
+    async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot: ...
+
 
 class RunControlDatabase(Protocol):
     async def evaluate_run_creation_control(
@@ -103,6 +106,19 @@ async def _refresh_dependency_readiness(
     )
     telemetry.set_dependency_ready("database", database_ready)
     telemetry.set_dependency_ready("queue", queue_ready)
+    if database_ready:
+        try:
+            async with asyncio.timeout(1.0):
+                snapshot = await database.runtime_observability_snapshot()
+            telemetry.set_runtime_snapshot(
+                migration_version=snapshot.migration_version,
+                rls_force_enabled=snapshot.rls_force_enabled,
+                state_counts=dict(snapshot.state_counts),
+                stuck_lease_count=snapshot.stuck_lease_count,
+                oldest_cancellation_age_seconds=snapshot.oldest_cancellation_age_seconds,
+            )
+        except Exception:
+            telemetry.set_dependency_ready("database", False)
     if not queue_ready:
         return None
     try:
@@ -325,10 +341,10 @@ async def serve() -> None:
 
     settings = WorkerSettings.from_environment()
     metadata = RuntimeMetadata.from_environment(service="worker")
-    database = WorkerDatabase(settings)
+    telemetry = WorkerTelemetry()
+    database = WorkerDatabase(settings, telemetry=telemetry)
     await database.open()
     dispatcher_redis = create_queue_client(settings.redis_url, max_connections=4)
-    telemetry = WorkerTelemetry()
     metrics_server = WorkerMetricsServer(telemetry, port=settings.metrics_port)
     await metrics_server.start()
     worker_task: asyncio.Task[None] | None = None
@@ -410,8 +426,11 @@ async def _heartbeat_execution(
     lease_token: UUID,
     *,
     checkpoint: Literal["before_provider"],
+    telemetry: WorkerTelemetry | None,
 ) -> bool:
     current = await database.heartbeat_execution(run_id, attempt_id, lease_token)
+    if current and telemetry is not None:
+        telemetry.observe_run_event("visibility_extension")
     if not current:
         logger.warning(
             "run_execution_lease_rejected",
@@ -479,6 +498,7 @@ async def _process_claimed_run(
         attempt_id,
         lease_token,
         checkpoint="before_provider",
+        telemetry=telemetry,
     ):
         observation.outcome = "lease_rejected"
         return
@@ -510,10 +530,15 @@ async def _process_claimed_run(
             telemetry.observe_provider("retryable_failure")
         if isinstance(error, TimeoutError):
             safe_error_code = "execution_timed_out"
+            provider_failure_kind = "timeout"
         elif isinstance(error, ProviderRateLimitedError):
             safe_error_code = "execution_rate_limited"
+            provider_failure_kind = "rate_limit"
         else:
             safe_error_code = "execution_provider_preflight_unavailable"
+            provider_failure_kind = "unavailable"
+        if telemetry is not None:
+            telemetry.observe_provider_failure(provider_failure_kind)
         logger.warning(
             "run_execution_retryable_failure",
             reason=safe_error_code,
@@ -528,25 +553,36 @@ async def _process_claimed_run(
         )
         if resolution.state == "retrying":
             observation.outcome = "retrying"
+            if telemetry is not None:
+                telemetry.observe_run_event("retry")
             if resolution.retry_after_seconds is None:
                 raise RuntimeError("retrying resolution is missing its delay") from None
             raise Retry(defer=resolution.retry_after_seconds) from None
         return
     except Exception as error:
-        if telemetry is not None and provider_called:
-            telemetry.observe_provider("failed")
+        if telemetry is not None:
+            if provider_called:
+                telemetry.observe_provider("failed")
+            telemetry.observe_provider_failure(
+                "policy" if isinstance(error, ValueError) else "schema"
+            )
         logger.error(
             "run_execution_provider_failed",
             error_class=type(error).__name__,
             run_id=str(run_id),
         )
-        await database.fail_execution(
+        resolution = await database.fail_execution(
             run_id,
             attempt_id,
             lease_token,
             "execution_provider_failure",
             False,
         )
+        if telemetry is not None:
+            if resolution.state == "failed":
+                telemetry.observe_run_event("terminal_failure")
+            elif resolution.state == "no_work":
+                telemetry.observe_run_event("invalid_transition")
         return
     completed = await database.complete_execution(
         run_id,
@@ -556,6 +592,8 @@ async def _process_claimed_run(
     )
     observation.outcome = "completed" if completed else "completion_rejected"
     if not completed:
+        if telemetry is not None:
+            telemetry.observe_run_event("invalid_transition")
         logger.warning("run_execution_completion_rejected", run_id=str(run_id))
 
 
@@ -595,6 +633,8 @@ async def process_run_v1(
         job_try = ctx.get("job_try")
         if claim.status != "claimed":
             observation.outcome = "claim_rejected"
+            if active_telemetry is not None and claim.status in {"busy", "no_work"}:
+                active_telemetry.observe_run_event("duplicate_delivery")
             logger.info(
                 "run_execution_claim_rejected",
                 reason=_safe_claim_rejection_reason(claim.status),

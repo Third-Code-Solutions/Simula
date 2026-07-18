@@ -440,7 +440,8 @@ select extensions.ok(
     'private.finalize_poisoned_dispatches(integer)',
     'private.finalize_requested_cancellations(integer)',
     'private.heartbeat_run_execution(uuid,uuid,uuid)',
-    'private.reconcile_run_dispatch(integer,boolean)'
+    'private.reconcile_run_dispatch(integer,boolean)',
+    'private.runtime_observability_snapshot()'
   ]::text[],
   'browser roles execute no application functions; worker has the exact helper allowlist'
 );
@@ -485,6 +486,7 @@ select extensions.is(
     'private.record_privileged_denial_atomic(uuid,text,text,uuid,uuid)',
     'private.record_sign_in_success(uuid,uuid)',
     'private.request_run_cancel_atomic(uuid,uuid)',
+    'private.runtime_observability_snapshot()',
     'private.update_project_atomic(uuid,integer,text,text,text,text,text,uuid)',
     'private.verified_subject()'
   ]::text[],
@@ -509,7 +511,8 @@ select extensions.ok(
           'finalize_poisoned_dispatches',
           'finalize_requested_cancellations',
           'heartbeat_run_execution',
-          'reconcile_run_dispatch'
+          'reconcile_run_dispatch',
+          'runtime_observability_snapshot'
         )
         and owner_roles.rolname = 'simula_worker_owner'
         and functions.prosecdef
@@ -528,7 +531,8 @@ select extensions.ok(
           'finalize_poisoned_dispatches',
           'finalize_requested_cancellations',
           'heartbeat_run_execution',
-          'reconcile_run_dispatch'
+          'reconcile_run_dispatch',
+          'runtime_observability_snapshot'
         )
         and owner_roles.rolname = 'simula_command_owner'
         and functions.prosecdef = (
@@ -577,6 +581,7 @@ select extensions.ok(
         'finalize_requested_cancellations',
         'heartbeat_run_execution',
         'reconcile_run_dispatch',
+        'runtime_observability_snapshot',
         'has_org_role',
         'is_org_member',
         'is_verified_api_subject',

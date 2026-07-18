@@ -97,6 +97,24 @@ class FakeRateLimiter:
         assert (user_id, organization_id) == (OWNER_ID, ORGANIZATION_ID)
 
 
+class RejectingGeneralRateLimiter(FakeRateLimiter):
+    async def require_general(
+        self,
+        *,
+        user_id: UUID,
+        idempotency_key: str | None = None,
+        idempotency_scope: str | None = None,
+    ) -> None:
+        del user_id, idempotency_key, idempotency_scope
+        raise AppProblem(
+            status=429,
+            code="rate_limited",
+            title="Rate limit reached",
+            detail="Too many requests. Retry after the indicated delay.",
+            retry_after=5,
+        )
+
+
 class FakeDatabase:
     def __init__(self) -> None:
         self.run_commands: list[dict[str, object]] = []
@@ -279,6 +297,7 @@ def app_with_fakes(
     *,
     publisher_error: Exception | None = None,
     run_admission: RunAdmission | None = None,
+    rate_limiter: RateLimiter | None = None,
 ) -> tuple[FastAPI, FakeDatabase, RecordingPublisher]:
     database = FakeDatabase()
     publisher = RecordingPublisher(publisher_error)
@@ -286,7 +305,7 @@ def app_with_fakes(
         verifier=cast(SupabaseTokenVerifier, FakeVerifier()),
         database=cast(DatabaseGateway, database),
         cursors=CursorCodec(b"m" * 32),
-        rate_limiter=cast(RateLimiter, FakeRateLimiter()),
+        rate_limiter=rate_limiter or cast(RateLimiter, FakeRateLimiter()),
         run_publisher=cast(RunPublisher, publisher),
         run_admission=run_admission,
     )
@@ -345,6 +364,18 @@ async def test_sign_in_audit_is_authenticated_and_naturally_idempotent() -> None
             "correlation_id": UUID("018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4"),
         },
     ]
+
+
+async def test_general_rate_rejection_precedes_sign_in_audit_database_work() -> None:
+    app, database, _ = app_with_fakes(rate_limiter=cast(RateLimiter, RejectingGeneralRateLimiter()))
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            "/api/v1/me",
+            headers={"Authorization": f"Bearer {TEST_BEARER}"},
+        )
+
+    assert response.status_code == 429
+    assert database.auth_events == []
 
 
 async def test_run_create_rejects_before_durable_command_when_queue_is_saturated() -> None:

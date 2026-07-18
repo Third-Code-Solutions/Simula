@@ -108,7 +108,7 @@ A story is Ready only when user/system outcome, linked `AC-*`/threat/ADR, bounda
 
 ### P2-07 — Integrated quality, telemetry, and security gate — 5 points
 
-- Status: reopened after independent exit-review failure; remediation active (E-5023–E-5030).
+- Status: implementation/remediation green through E-5031 and hosted migration `20260719040000`; independent re-review, human screen-reader smoke, and required-check governance remain open.
 - Outcome: release owner can prove walking skeleton contracts, isolation, accessibility, resource, and operational budgets.
 - Acceptance links: every AC-AUTH/ORG/TEN/PROJ/AUD/RUN/RES/ERR/A11Y criterion.
 - ADRs: ADR-0002 through ADR-0010.
@@ -117,7 +117,7 @@ A story is Ready only when user/system outcome, linked `AC-*`/threat/ADR, bounda
 - Contract/data change: normalized generated artifacts and verification reports only; no new product scope.
 - Tests: full TRACEABILITY_MATRIX, `SEC-LOG-001`, `SEC-SECRET-001`, `SEC-BUNDLE-001`, `SEC-LIMIT-001`, `LOAD-RATE-001`, `INT-WORKER-LIMIT-001`, `SEC-ROUTE-001/002`, clean migration/contract drift, E2E.
 - Dependencies: P2-01–P2-06 complete; all failures resolved.
-- Observability: ADR-0009 signals/objectives measured; alert/runbook links validated locally.
+- Observability: ADR-0009 signals/objectives measured; [[../Operations/RUNBOOK_RUN_CREATION_DISABLED|run-disable owner/runbook/silence contract]] validated locally. Hosted alert delivery remains a staging control.
 - Security/privacy: independent RLS/threat/copy review; deletion test; zero Critical/High unresolved.
 - Fixture/external state: synthetic fixtures only; artifacts contain no secrets/personal data. External deployment still unauthorized.
 - Rollback: telemetry exporter can be disabled independently; core audit remains; revert last compatible artifacts/migrations through documented path.

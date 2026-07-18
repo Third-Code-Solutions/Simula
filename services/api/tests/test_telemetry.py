@@ -154,6 +154,49 @@ def test_rejection_metrics_cover_required_policy_classes_and_reject_unknown_labe
         telemetry.observe_rejection("tenant-controlled")
 
 
+def test_database_and_runtime_metrics_are_bounded_and_payload_free() -> None:
+    telemetry = ApiTelemetry()
+    telemetry.observe_database(
+        "create_run",
+        "success",
+        duration_seconds=0.025,
+        pool_size=10,
+        pool_available=7,
+    )
+    telemetry.set_runtime_snapshot(
+        migration_version=20260719040000,
+        rls_force_enabled=True,
+        state_counts={
+            "queued": 2,
+            "running": 1,
+            "retrying": 0,
+            "cancel_requested": 1,
+            "succeeded": 3,
+            "failed": 0,
+            "canceled": 1,
+        },
+        stuck_lease_count=0,
+        oldest_cancellation_age_seconds=4.5,
+    )
+
+    rendered = telemetry.render().decode()
+    assert (
+        'simula_api_database_queries_total{operation="create_run",outcome="success"} 1.0'
+        in rendered
+    )
+    assert 'simula_api_database_pool_connections{state="in_use"} 3.0' in rendered
+    assert 'simula_run_state_count{state="cancel_requested"} 1.0' in rendered
+    assert "simula_run_oldest_cancellation_age_seconds 4.5" in rendered
+    with pytest.raises(ValueError, match="not allowlisted"):
+        telemetry.observe_database(
+            "tenant-controlled",
+            "success",
+            duration_seconds=0,
+            pool_size=1,
+            pool_available=1,
+        )
+
+
 async def test_request_deadline_discards_partial_response_and_uses_run_create_budget() -> None:
     async def slow_partial_response(scope: Scope, receive: Receive, send: Send) -> None:
         del scope, receive

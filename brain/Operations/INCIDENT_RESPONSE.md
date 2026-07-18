@@ -2,7 +2,7 @@
 title: SIMULA Incident Response
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-18
 owner: Security and SRE leads
 classification: PROPOSED
 source_of_truth: true
@@ -28,6 +28,8 @@ Tenant/data exposure, credential leakage, provider disclosure, authorization/RLS
 ## Readiness needs
 
 Severity matrix, on-call ownership, contact tree, provider/vendor escalation, secure incident channel, evidence-retention rules, notification decision tree, runbooks, tabletop exercises, and recovery drills.
+
+Phase 2's executable local run-disable response is [[RUNBOOK_RUN_CREATION_DISABLED|Run Creation Disabled Runbook]]. It defines the structured alert contract, release-owner response, audited recovery, and `recovery_verified` silence rule. Hosted paging/contact delivery remains unprovisioned.
 
 ## Severity and authority
 

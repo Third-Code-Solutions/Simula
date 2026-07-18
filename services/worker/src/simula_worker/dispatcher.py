@@ -90,7 +90,12 @@ class RunDispatcher:
         self._next_recovery_at = 0.0
 
     async def dispatch_once(self, *, batch_size: int = 10) -> DispatchPass:
+        cancellation_started_at = asyncio.get_running_loop().time()
         canceled = await self._database.finalize_requested_cancellations(batch_size)
+        if self._telemetry is not None:
+            self._telemetry.observe_cancellation_finalize(
+                duration_seconds=asyncio.get_running_loop().time() - cancellation_started_at
+            )
         poisoned = await self._database.finalize_poisoned_dispatches(batch_size)
         now = asyncio.get_running_loop().time()
         recovered = 0
@@ -153,6 +158,8 @@ class RunDispatcher:
         self._observe("canceled", count=canceled)
         self._observe("poisoned", count=poisoned)
         self._observe("recovered", count=recovered)
+        if self._telemetry is not None:
+            self._telemetry.observe_run_event("stuck_lease_recovered", count=recovered)
         self._observe("claimed", count=len(claims))
         return DispatchPass(
             canceled=canceled,
