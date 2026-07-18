@@ -1037,6 +1037,13 @@ export type Database = {
         Args: { expected_user_id: string }
         Returns: boolean
       }
+      reconcile_run_dispatch: {
+        Args: {
+          requested_batch_size: number
+          requested_force_recovery: boolean
+        }
+        Returns: number
+      }
       record_privileged_denial_atomic: {
         Args: {
           requested_action: string

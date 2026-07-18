@@ -133,6 +133,15 @@ class WorkerDatabase(WorkerExecutionGateway):
         )
         return int(row["finalized"])
 
+    async def reconcile_stale_dispatches(
+        self, requested_batch_size: int = 10, *, force_recovery: bool = False
+    ) -> int:
+        row = await self._fetchone(
+            "select private.reconcile_run_dispatch(%s, %s) as reconciled",
+            (requested_batch_size, force_recovery),
+        )
+        return int(row["reconciled"])
+
     async def confirm_dispatch(self, outbox_id: UUID, claim_token: UUID) -> bool:
         return await self._boolean_function(
             "select private.confirm_run_dispatch(%s, %s) as changed", (outbox_id, claim_token)

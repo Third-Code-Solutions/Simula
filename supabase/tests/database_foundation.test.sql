@@ -101,6 +101,7 @@ select extensions.is(
     'run_events_command_insert',
     'run_events_worker_owner_insert',
     'run_outbox_command_insert',
+    'run_outbox_worker_owner_recovery_insert',
     'run_outbox_worker_owner_select',
     'run_outbox_worker_owner_update',
     'simulation_results_api_select',
@@ -372,6 +373,7 @@ select extensions.is(
     'simula_worker_owner|private.run_attempts|SELECT',
     'simula_worker_owner|private.run_attempts|UPDATE',
     'simula_worker_owner|private.run_events|INSERT',
+    'simula_worker_owner|private.run_outbox|INSERT',
     'simula_worker_owner|private.run_outbox|SELECT',
     'simula_worker_owner|private.run_outbox|UPDATE'
   ]::text[],
@@ -424,7 +426,8 @@ select extensions.ok(
     'private.fail_run_dispatch(uuid,uuid,text)',
     'private.fail_run_execution(uuid,uuid,uuid,text,boolean)',
     'private.finalize_requested_cancellations(integer)',
-    'private.heartbeat_run_execution(uuid,uuid,uuid)'
+    'private.heartbeat_run_execution(uuid,uuid,uuid)',
+    'private.reconcile_run_dispatch(integer,boolean)'
   ]::text[],
   'browser roles execute no application functions; worker has the exact helper allowlist'
 );
@@ -480,7 +483,8 @@ select extensions.ok(
           'fail_run_dispatch',
           'fail_run_execution',
           'finalize_requested_cancellations',
-          'heartbeat_run_execution'
+          'heartbeat_run_execution',
+          'reconcile_run_dispatch'
         )
         and owner_roles.rolname = 'simula_worker_owner'
         and functions.prosecdef
@@ -494,7 +498,8 @@ select extensions.ok(
           'fail_run_dispatch',
           'fail_run_execution',
           'finalize_requested_cancellations',
-          'heartbeat_run_execution'
+          'heartbeat_run_execution',
+          'reconcile_run_dispatch'
         )
         and owner_roles.rolname = 'simula_command_owner'
         and functions.prosecdef = (
@@ -531,6 +536,7 @@ select extensions.ok(
         'fail_run_execution',
         'finalize_requested_cancellations',
         'heartbeat_run_execution',
+        'reconcile_run_dispatch',
         'has_org_role',
         'is_org_member',
         'is_verified_api_subject',

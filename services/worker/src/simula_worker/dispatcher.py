@@ -20,10 +20,15 @@ from simula_core.queue_runtime import (
 from simula_worker.database import DispatchClaim
 
 logger = structlog.get_logger()
+RECOVERY_INTERVAL_SECONDS = 30.0
 
 
 class DispatcherDatabase(Protocol):
     async def finalize_requested_cancellations(self, requested_batch_size: int = 10) -> int: ...
+
+    async def reconcile_stale_dispatches(
+        self, requested_batch_size: int = 10, *, force_recovery: bool = False
+    ) -> int: ...
 
     async def claim_due_dispatches(self, requested_batch_size: int = 10) -> list[DispatchClaim]: ...
 
@@ -56,6 +61,7 @@ class RedisRunQueue(DispatcherQueue):
 @dataclass(frozen=True, slots=True)
 class DispatchPass:
     canceled: int
+    recovered: int
     claimed: int
     confirmed: int
 
@@ -66,9 +72,15 @@ class RunDispatcher:
     def __init__(self, database: DispatcherDatabase, queue: DispatcherQueue) -> None:
         self._database = database
         self._queue = queue
+        self._next_recovery_at = 0.0
 
     async def dispatch_once(self, *, batch_size: int = 10) -> DispatchPass:
         canceled = await self._database.finalize_requested_cancellations(batch_size)
+        now = asyncio.get_running_loop().time()
+        recovered = 0
+        if now >= self._next_recovery_at:
+            recovered = await self._database.reconcile_stale_dispatches(batch_size)
+            self._next_recovery_at = now + RECOVERY_INTERVAL_SECONDS
         claims = await self._database.claim_due_dispatches(batch_size)
         confirmed = 0
         for claim in claims:
@@ -96,4 +108,6 @@ class RunDispatcher:
                 confirmed += 1
             else:
                 logger.warning("run_dispatch_confirmation_rejected", outbox_id=str(claim.outbox_id))
-        return DispatchPass(canceled=canceled, claimed=len(claims), confirmed=confirmed)
+        return DispatchPass(
+            canceled=canceled, recovered=recovered, claimed=len(claims), confirmed=confirmed
+        )

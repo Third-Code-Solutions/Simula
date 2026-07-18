@@ -16,7 +16,7 @@ from simula_core.arq_codec import ARQ_QUEUE_NAME, job_id_for
 from simula_core.queue_runtime import create_queue_client
 from simula_core.simulation import DeterministicMockProvider, ProviderRequest, SimulationResultV1
 from simula_worker.config import WorkerSettings
-from simula_worker.database import WorkerDatabase
+from simula_worker.database import ExecutionClaim, WorkerDatabase
 from simula_worker.dispatcher import RedisDispatchClient, RedisRunQueue, RunDispatcher
 from simula_worker.main import _provider_request, process_run_v1
 
@@ -82,6 +82,71 @@ def _set_disposable_worker_password() -> str:
     if changed.returncode != 0:
         pytest.fail("could not inject the disposable simula_worker password")
     return role_password
+
+
+def _run_as_local_supabase_admin(sql: str, *, run_id: UUID | None = None) -> None:
+    inspect = _run_captured(
+        [
+            "docker",
+            "inspect",
+            "--format",
+            "{{range .Config.Env}}{{println .}}{{end}}",
+            SUPABASE_DB_CONTAINER,
+        ]
+    )
+    if inspect.returncode != 0:
+        pytest.fail("local Supabase database container is unavailable")
+    password_line = next(
+        (line for line in inspect.stdout.splitlines() if line.startswith("POSTGRES_PASSWORD=")),
+        None,
+    )
+    if password_line is None:
+        pytest.fail("local Supabase bootstrap password is unavailable")
+    command = [
+        "docker",
+        "exec",
+        "-i",
+        "-e",
+        "PGPASSWORD",
+        SUPABASE_DB_CONTAINER,
+        "psql",
+        "-h",
+        "127.0.0.1",
+        "-U",
+        "supabase_admin",
+        "-d",
+        "postgres",
+        "-X",
+        "-v",
+        "ON_ERROR_STOP=1",
+    ]
+    if run_id is not None:
+        command.extend(["-v", f"run_id={run_id}"])
+    result = _run_captured(
+        command,
+        environment={
+            **os.environ,
+            "PGPASSWORD": password_line.removeprefix("POSTGRES_PASSWORD="),
+        },
+        input_text=sql,
+    )
+    if result.returncode != 0:
+        pytest.fail("could not prepare local stale-run recovery fixture")
+
+
+def _expire_local_run_lease(run_id: UUID) -> None:
+    _run_as_local_supabase_admin(
+        """
+        update api.simulation_runs
+        set worker_lease_expires_at = pg_catalog.statement_timestamp() - interval '1 second',
+            last_progress_at = pg_catalog.statement_timestamp() - interval '121 seconds'
+        where id = :'run_id'::uuid;
+        update private.run_attempts
+        set lease_expires_at = pg_catalog.statement_timestamp() - interval '1 second'
+        where run_id = :'run_id'::uuid and status = 'running';
+        """,
+        run_id=run_id,
+    )
 
 
 async def _remove_exact_queue_keys(job_id: str) -> None:
@@ -552,3 +617,97 @@ async def test_p2_timeout_retries_use_database_backoff_then_exhaust(
         assert failed.json()["state"] == "failed"
         assert result.status_code == 404
         assert provider.calls == 3
+
+
+@pytest.mark.integration
+async def test_p2_stale_lease_recovery_supersedes_dispatch_generation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    local_supabase = _local_supabase()
+    owner_token = _sign_in(local_supabase, OWNER_A)
+    suffix = uuid4().hex
+    first_job_id: str | None = None
+    second_job_id: str | None = None
+
+    async with _api_client(monkeypatch) as client:
+        created_organization = await client.post(
+            "/api/v1/organizations",
+            headers=_headers(owner_token, f"p2-recovery-org-{suffix}"),
+            json={"name": f"P2 Recovery {suffix[:8]}"},
+        )
+        assert created_organization.status_code == 201
+        organization_id = UUID(created_organization.json()["id"])
+        created_project = await client.post(
+            f"/api/v1/organizations/{organization_id}/projects",
+            headers=_headers(owner_token, f"p2-recovery-project-{suffix}"),
+            json=_project_payload(f"P2 Recovery {suffix[:8]}"),
+        )
+        assert created_project.status_code == 201
+        project_id = UUID(created_project.json()["id"])
+        created_stimulus = await client.post(
+            f"/api/v1/projects/{project_id}/stimuli",
+            headers=_headers(owner_token, f"p2-recovery-stimulus-{suffix}"),
+            json={"name": "P2 Recovery Message", "content": "Recover this fictional run."},
+        )
+        assert created_stimulus.status_code == 201
+        stimulus_version_id = UUID(created_stimulus.json()["versions"][0]["id"])
+        created_run = await client.post(
+            f"/api/v1/projects/{project_id}/runs",
+            headers=_headers(owner_token, f"p2-recovery-run-{suffix}"),
+            json={"stimulus_version_id": str(stimulus_version_id)},
+        )
+        assert created_run.status_code == 202
+        run_id = UUID(created_run.json()["id"])
+        first_job_id = job_id_for(run_id, generation=1)
+        second_job_id = job_id_for(run_id, generation=2)
+        queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
+        try:
+            async with _worker_database(monkeypatch) as worker_database:
+                initial_dispatcher = RunDispatcher(
+                    worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
+                )
+                initial = await initial_dispatcher.dispatch_once()
+                assert initial.recovered == 0
+                assert initial.claimed == 1
+                assert initial.confirmed == 1
+                first_claim = await worker_database.claim_execution(run_id, 1, first_job_id)
+                assert first_claim.status == "claimed"
+
+                _expire_local_run_lease(run_id)
+
+                recovery_dispatcher = RunDispatcher(
+                    worker_database, RedisRunQueue(cast(RedisDispatchClient, queue))
+                )
+                recovered = await recovery_dispatcher.dispatch_once()
+                assert recovered.canceled == 0
+                assert recovered.recovered == 1
+                assert recovered.claimed == 1
+                assert recovered.confirmed == 1
+                assert await worker_database.claim_execution(
+                    run_id, 1, first_job_id
+                ) == ExecutionClaim(
+                    status="no_work",
+                    attempt_id=None,
+                    lease_token=None,
+                    frozen_manifest=None,
+                    frozen_manifest_sha256=None,
+                    deterministic_seed=None,
+                )
+                second_claim = await worker_database.claim_execution(run_id, 2, second_job_id)
+                assert second_claim.status == "claimed"
+                assert second_claim.attempt_id is not None
+                assert second_claim.lease_token is not None
+        finally:
+            await queue.aclose(close_connection_pool=True)
+            if first_job_id is not None:
+                await _remove_exact_queue_keys(first_job_id)
+            if second_job_id is not None:
+                await _remove_exact_queue_keys(second_job_id)
+
+        recovered_run = await client.get(
+            f"/api/v1/runs/{run_id}",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert recovered_run.status_code == 200
+        assert recovered_run.json()["state"] == "running"
+        assert recovered_run.json()["dispatch_generation"] == 2
