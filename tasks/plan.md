@@ -6,7 +6,7 @@
 - P2-01 through P2-04 are complete with recorded local evidence E-5008 through E-5013.
 - Hosted schema migrations through `20260718070000` match the repository. The `api` schema contains the application tables; `private` holds worker/audit internals.
 - P2-05 is complete and evidenced by E-5014. The disposable local browser result/error/poll/accessibility gate and repository quality gate pass.
-- P2-06 cancellation, timeout retry/exhaustion, stale lease/Redis-loss dispatch recovery, and poison terminalization are locally and hosted-schema proven in E-5015–E-5019; additional retry classes and user-facing failure proof remain active. P2-07 is not implemented. Phases 3–7 have roadmap gates but no authorized active ExecPlans.
+- P2-06 cancellation, timeout retry/exhaustion, stale lease/Redis-loss dispatch recovery, poison terminalization, and user-facing failure proof are locally and hosted-schema proven in E-5015–E-5020; additional safe retry classes remain active. P2-07 is not implemented. Phases 3–7 have roadmap gates but no authorized active ExecPlans.
 
 ## Delivery order
 
@@ -38,7 +38,7 @@
 
 **Dependencies:** P2-05 browser gate green.
 
-**Current verified increment:** owner/editor `POST /runs/{id}/cancel` with explicit empty JSON, `202 cancel_requested` or terminal-race `200`, cancellation-aware dispatcher/worker terminalization, atomic timeout retry/exhaustion, worker-only stale-dispatch supersession with bounded generation recovery, and worker-only terminal poison handling for expired tenth claims. Additional retry classes and user-facing failure proof remain required before P2-06 can close.
+**Current verified increment:** owner/editor `POST /runs/{id}/cancel` with explicit empty JSON, `202 cancel_requested` or terminal-race `200`, cancellation-aware dispatcher/worker terminalization, atomic timeout retry/exhaustion, worker-only stale-dispatch supersession with bounded generation recovery, worker-only terminal poison handling for expired tenth claims, and a browser-proven safe failed state that never substitutes/fetches a result. Additional safe retry classes remain required before P2-06 can close.
 
 ### P2-07 — Integrated quality and independent exit gate
 

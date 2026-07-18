@@ -117,7 +117,8 @@ tests/                     cross-service, security, load, E2E
 - Complete timeout-retry sub-slice: only provider timeout receives a DB-authorized ARQ defer; the function atomically returns 5s then 30s after attempts one/two and terminalizes attempt three. Local integration proves timing/exhaustion; `20260718050000` is hosted and ACL-verified seed-free (E-5017).
 - Complete stale-dispatch sub-slice: worker-only lock-ordered reconciliation excludes active leases, terminalizes the old outbox, increments bounded dispatch generation, creates exactly one canonical replacement, and terminalizes recovery exhaustion. Dispatcher runs it before due dispatches on a bounded cadence; local stale-lease recovery and hosted schema/ACL verification pass. `20260718060000` is hosted seed-free (E-5018).
 - Complete poison-dispatch sub-slice: definite transport errors use the dispatch-failure CAS; only expired, unconfirmed tenth claims terminalize through a worker-only lock-ordered helper. Local integration proves terminal poison exhaustion and cancel-wins against the same stale tenth claim; `20260718070000` is hosted seed-free (E-5019).
-- Remaining: additional safe retry classes and user-facing failure proof.
+- Complete failed-run experience sub-slice: terminal failed state says that no result will be substituted; browser E2E proves it never requests/renders a result and stops polling. Full five-test local browser gate passes (E-5020).
+- Remaining: additional safe retry classes.
 - Gate: cancel-vs-result and poison-vs-cancel dual-winner tests, retry timing/exhaustion, worker crash/ack, stale lease, active-cancel occupancy, and user-facing failure E2E.
 - Rollback: disable cancel UI/route, pause consumer, reconcile from authoritative Postgres; never rewrite a terminal result.
 
@@ -163,6 +164,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: timeout retry/backoff/exhaustion is proven locally and migration `20260718050000` is applied seed-free to `ywiwmczccktwzqyhzhiz`; history, delay-token function, worker execute/API denial, and worker-owner CREATE revocation are verified (E-5017). Lease/poison/Redis-loss recovery remains open; M5 is not complete.
 - 2026-07-18 — OBSERVED: stale lease/Redis-loss generation reconciliation is proven locally and migration `20260718060000` is applied seed-free to `ywiwmczccktwzqyhzhiz`; history, worker-only execute, API denial, owner CREATE revocation, recovery INSERT policy/grant, and replacement/exhaustion guards are verified (E-5018). Additional retry classes, poison, and user-facing failure proof remain open; M5 is not complete.
 - 2026-07-18 — OBSERVED: poison-dispatch terminalization is proven locally and migration `20260718070000` is applied seed-free to `ywiwmczccktwzqyhzhiz`; history, worker-only execute, browser/API denial, owner CREATE revocation, bounded tenth-claim terminalization, and lock guard are verified (E-5019). Additional retry classes and user-facing failure proof remain open; M5 is not complete.
+- 2026-07-18 — OBSERVED: failed-run browser experience is proven locally: `E2E-FAIL-001` verifies explicit no-substitute-result copy, no result request/render, and terminal polling stop; all five browser flows pass (E-5020). Additional safe retry classes remain open; M5 is not complete.
 
 # 9. Progress
 
@@ -203,7 +205,8 @@ tests/                     cross-service, security, load, E2E
   - [x] Timeout retry timing and three-attempt exhaustion proof (E-5017).
   - [x] Stale lease and Redis-loss generation recovery proof (E-5018).
   - [x] Bounded poison dispatch terminalization and poison/cancel race proof (E-5019).
-  - [ ] Additional safe retry classes and user-facing failure proof.
+  - [x] User-facing failed-run browser proof (E-5020).
+  - [ ] Additional safe retry classes.
 - [ ] M6 / P2-07 integrated quality gate.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 

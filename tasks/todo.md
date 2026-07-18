@@ -7,7 +7,7 @@
 - [x] P2-05: Commit and push the documented green slice.
 - [x] P2-06: Implement and prove API/UI cancellation and exact terminal-race behavior (E-5015).
 - [x] P2-06: Implement and prove timeout retries, exact backoff, and three-attempt exhaustion (E-5017).
-- [ ] P2-06: Implement and prove additional safe retry classes and user-facing failure proof. Lease/Redis-loss recovery and poison handling are proven (E-5018, E-5019).
+- [ ] P2-06: Implement and prove additional safe retry classes. Lease/Redis-loss recovery, poison handling, and failure UX are proven (E-5018–E-5020).
 - [x] P2-06: Pass focused cancellation migration/API/worker/E2E gates and update evidence (E-5015).
 - [x] P2-06: Commit/push the verified cancellation slice and apply its forward migrations to authorized hosted Supabase (E-5016).
 - [ ] P2-07: Add the integrated traceability, telemetry, load, security, and CI gate.
