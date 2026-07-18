@@ -9,6 +9,7 @@ from simula_core.arq_codec import (
     ARQ_QUEUE_NAME,
     MAX_ARQ_BYTES,
     MAX_ARQ_DEPTH,
+    MAX_ARQ_TRIES,
     MAX_STRING_BYTES,
     MAX_UNIX_MILLISECONDS,
     ArqCodecError,
@@ -58,6 +59,7 @@ def test_run_job_v1_and_arq_envelope_have_one_canonical_encoding() -> None:
     assert RunJobV1.model_validate(envelope["a"][0]).run_id == RUN_ID
     assert job_id_for(RUN_ID, generation=1) == "run:00000000-0000-4000-8000-000000000101:dispatch:1"
     assert ARQ_QUEUE_NAME == "simula:runs:v1"
+    assert MAX_ARQ_TRIES == 16
 
 
 def test_result_envelope_has_one_canonical_encoding_and_round_trips() -> None:

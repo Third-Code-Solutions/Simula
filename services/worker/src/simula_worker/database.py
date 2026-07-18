@@ -6,13 +6,15 @@ execution functions.  It has no direct table DML surface in application code.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import AsyncIterator, Mapping
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Literal, Protocol, cast
 from uuid import UUID
 
 import psycopg
+from psycopg import AsyncConnection
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 from psycopg_pool import AsyncConnectionPool, PoolTimeout
@@ -239,8 +241,23 @@ class WorkerDatabase(WorkerExecutionGateway):
         return rows[0]
 
     async def _fetchall(self, query: str, parameters: tuple[object, ...]) -> list[DatabaseRow]:
+        async with self._transaction() as connection:
+            cursor = await connection.execute(query, parameters)
+            rows = await cursor.fetchall()
+        return list(rows)
+
+    @asynccontextmanager
+    async def _transaction(self) -> AsyncIterator[AsyncConnection[DatabaseRow]]:
         async with self._pool.connection(timeout=2.0) as connection:
             async with connection.transaction():
-                cursor = await connection.execute(query, parameters)
-                rows = await cursor.fetchall()
-        return [cast(DatabaseRow, row) for row in rows]
+                await connection.execute(
+                    """
+                    select
+                      pg_catalog.set_config('statement_timeout', '8000', true),
+                      pg_catalog.set_config('lock_timeout', '2000', true),
+                      pg_catalog.set_config(
+                        'idle_in_transaction_session_timeout', '10000', true
+                      )
+                    """
+                )
+                yield cast(AsyncConnection[DatabaseRow], connection)

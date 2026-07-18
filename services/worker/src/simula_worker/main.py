@@ -14,6 +14,7 @@ from arq.worker import Retry
 from pydantic import ValidationError
 from simula_core.arq_codec import (
     ARQ_QUEUE_NAME,
+    MAX_ARQ_TRIES,
     ArqCodecError,
     RunJobV1,
     arq_json_dumps,
@@ -88,7 +89,7 @@ async def serve() -> None:
             redis_pool=redis,
             handle_signals=False,
             max_jobs=4,
-            max_tries=5,
+            max_tries=MAX_ARQ_TRIES,
             job_timeout=30,
             poll_delay=0.25,
             job_serializer=arq_json_dumps,

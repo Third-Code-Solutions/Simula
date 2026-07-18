@@ -11,6 +11,7 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict, field_validator
 
 ARQ_QUEUE_NAME = "simula:runs:v1"
+MAX_ARQ_TRIES = 16
 MAX_ARQ_BYTES = 16 * 1024
 MAX_ARQ_DEPTH = 8
 MAX_CONTAINER_ENTRIES = 64
@@ -159,7 +160,7 @@ def _validate_job_envelope(value: Mapping[str, object]) -> dict[str, object]:
         raise ArqCodecError("ARQ keyword arguments must be empty")
     job_try = value["t"]
     if job_try is not None:
-        _require_int(job_try, name="ARQ job try", minimum=1, maximum=16)
+        _require_int(job_try, name="ARQ job try", minimum=1, maximum=MAX_ARQ_TRIES)
     return {
         "a": [_validated_run_job(arguments[0])],
         "et": _require_int(
@@ -174,7 +175,7 @@ def _validate_job_envelope(value: Mapping[str, object]) -> dict[str, object]:
 def _validate_result_envelope(value: Mapping[str, object]) -> dict[str, object]:
     _require_keys(value, _RESULT_KEYS, name="result envelope")
     job = _validate_job_envelope({key: value[key] for key in _JOB_KEYS})
-    _require_int(value["t"], name="ARQ result job try", minimum=1, maximum=16)
+    _require_int(value["t"], name="ARQ result job try", minimum=1, maximum=MAX_ARQ_TRIES)
     run_job = job["a"]
     if not isinstance(run_job, list):  # pragma: no cover - validated by _validate_job_envelope.
         raise ArqCodecError("ARQ run job must be an array")
