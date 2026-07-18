@@ -107,7 +107,9 @@ export function ProjectWorkspace({
         name,
         objective,
       });
-      setProject((current) => (current ? { ...current, ...updated } : current));
+      setProject((current: ProjectDetail | undefined) =>
+        current ? { ...current, ...updated } : current,
+      );
     } catch (saveError) {
       setError(problemMessage(saveError));
       if (saveError instanceof ApiProblem && saveError.status === 409) {
