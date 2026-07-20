@@ -222,6 +222,7 @@ class WorkerTelemetry:
             ("reason",),
             registry=self.registry,
         )
+        self._dependency_status = {dependency: False for dependency in _DEPENDENCIES}
         for dependency in sorted(_DEPENDENCIES):
             self._dependency_ready.labels(dependency=dependency).set(0)
         self._external_provider_calls.inc(0)
@@ -313,7 +314,12 @@ class WorkerTelemetry:
 
     def set_dependency_ready(self, dependency: str, ready: bool) -> None:
         _require_label(dependency, _DEPENDENCIES, name="dependency")
+        self._dependency_status[dependency] = ready
         self._dependency_ready.labels(dependency=dependency).set(1 if ready else 0)
+
+    @property
+    def dependencies_ready(self) -> bool:
+        return all(self._dependency_status.values())
 
     def set_queue_snapshot(
         self, *, depth: int, oldest_ready_age_seconds: float, memory_percent: float
@@ -388,10 +394,24 @@ class WorkerMetricsServer:
             if len(request) <= _MAX_REQUEST_BYTES:
                 lines = request.decode("ascii", errors="strict").split("\r\n")
                 has_origin = any(line.lower().startswith("origin:") for line in lines[1:])
-                if lines[0] == "GET /internal/metrics HTTP/1.1" and not has_origin:
-                    status = "200 OK"
-                    content_type = _PROMETHEUS_CONTENT_TYPE
-                    body = self._telemetry.render()
+                if not has_origin:
+                    match lines[0]:
+                        case "GET /internal/metrics HTTP/1.1":
+                            status = "200 OK"
+                            content_type = _PROMETHEUS_CONTENT_TYPE
+                            body = self._telemetry.render()
+                        case "GET /health/live HTTP/1.1":
+                            status = "200 OK"
+                            content_type = "application/json"
+                            body = b'{"status":"live"}'
+                        case "GET /health/ready HTTP/1.1":
+                            content_type = "application/json"
+                            if self._telemetry.dependencies_ready:
+                                status = "200 OK"
+                                body = b'{"status":"ready"}'
+                            else:
+                                status = "503 Service Unavailable"
+                                body = b'{"status":"not_ready"}'
         except TimeoutError, UnicodeDecodeError, asyncio.IncompleteReadError, ValueError:
             pass
         response = (

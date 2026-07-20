@@ -23,5 +23,5 @@ RUN groupadd --gid 10001 simula && useradd --uid 10001 --gid simula --no-create-
 COPY --from=build --chown=simula:simula /app/.venv /app/.venv
 
 USER simula
-HEALTHCHECK --interval=10s --timeout=2s --retries=3 CMD ["python", "-m", "simula_worker", "--check"]
+HEALTHCHECK --interval=10s --timeout=2s --retries=3 CMD ["python", "-m", "simula_worker", "--health-check"]
 CMD ["python", "-m", "simula_worker"]

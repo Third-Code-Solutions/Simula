@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from collections.abc import Callable, Coroutine
 from types import TracebackType
 from typing import Any, cast
@@ -13,7 +14,7 @@ from simula_worker import __main__
 from simula_worker import main as worker_main
 from simula_worker.config import WorkerSettings
 from simula_worker.database import WorkerDatabase
-from simula_worker.telemetry import WorkerTelemetry
+from simula_worker.telemetry import WorkerMetricsServer, WorkerTelemetry
 
 
 def test_windows_worker_uses_a_selector_runner_for_psycopg(
@@ -64,6 +65,39 @@ def test_no_egress_probe_runs_the_fixed_deterministic_provider(
         "provider_id": "deterministic_mock",
         "status": "no_egress_ok",
     }
+
+
+async def test_worker_health_probe_calls_the_running_process() -> None:
+    server = WorkerMetricsServer(WorkerTelemetry(), port=0)
+    await server.start()
+    try:
+        await asyncio.to_thread(__main__._verify_live_worker, port=server.port)
+    finally:
+        await server.close()
+
+
+def test_worker_health_check_mode_uses_the_configured_port(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checked_ports: list[int] = []
+    settings = WorkerSettings(
+        environment="test",
+        release_sha="a" * 40,
+        database_url="postgresql://simula_worker:test@127.0.0.1:54322/postgres",
+        redis_url="redis://127.0.0.1:6379/15",
+        metrics_port=19464,
+    )
+    monkeypatch.setattr(sys, "argv", ["simula_worker", "--health-check"])
+    monkeypatch.setattr(WorkerSettings, "from_environment", lambda: settings)
+    monkeypatch.setattr(
+        __main__,
+        "_verify_live_worker",
+        lambda *, port: checked_ports.append(port),
+    )
+
+    __main__.main()
+
+    assert checked_ports == [19464]
 
 
 def test_arq_worker_disables_redis_result_retention(

@@ -108,6 +108,42 @@ async def test_worker_metrics_endpoint_is_loopback_and_rejects_browser_origin() 
     assert b"simula_worker_" not in browser
 
 
+async def test_worker_health_endpoints_report_live_process_and_current_dependencies() -> None:
+    telemetry = WorkerTelemetry()
+    server = WorkerMetricsServer(telemetry, port=0)
+    await server.start()
+    try:
+        live = await _request(
+            server.port,
+            b"GET /health/live HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n",
+        )
+        unavailable = await _request(
+            server.port,
+            b"GET /health/ready HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n",
+        )
+        telemetry.set_dependency_ready("database", True)
+        telemetry.set_dependency_ready("queue", True)
+        ready = await _request(
+            server.port,
+            b"GET /health/ready HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n",
+        )
+        telemetry.set_dependency_ready("queue", False)
+        degraded = await _request(
+            server.port,
+            b"GET /health/ready HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n",
+        )
+    finally:
+        await server.close()
+
+    assert live.startswith(b"HTTP/1.1 200 OK")
+    assert live.endswith(b'{"status":"live"}')
+    assert unavailable.startswith(b"HTTP/1.1 503 Service Unavailable")
+    assert unavailable.endswith(b'{"status":"not_ready"}')
+    assert ready.startswith(b"HTTP/1.1 200 OK")
+    assert ready.endswith(b'{"status":"ready"}')
+    assert degraded.startswith(b"HTTP/1.1 503 Service Unavailable")
+
+
 class _ReadyDatabase:
     async def ready(self) -> bool:
         return True
