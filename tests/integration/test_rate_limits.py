@@ -95,10 +95,10 @@ async def test_redis_token_buckets_enforce_burst_concurrency_and_partitioning() 
         assert replay_marker == []
 
         rejected_user = uuid4()
-        rejected_key = "rate-test-rejected-organization-key-0001"
+        rejected_idempotency_key = "rate-test-rejected-organization-key-0001"
         rejected_admission = await limiter.require_organization_create(
             user_id=rejected_user,
-            idempotency_key=rejected_key,
+            idempotency_key=rejected_idempotency_key,
             idempotency_scope="POST:/api/v1/organizations",
         )
         assert rejected_admission is not None and not rejected_admission.accepted_replay
@@ -106,7 +106,7 @@ async def test_redis_token_buckets_enforce_burst_concurrency_and_partitioning() 
         rejected_retry = await _attempt(
             lambda: limiter.require_organization_create(
                 user_id=rejected_user,
-                idempotency_key=rejected_key,
+                idempotency_key=rejected_idempotency_key,
                 idempotency_scope="POST:/api/v1/organizations",
             )
         )

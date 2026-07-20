@@ -8,7 +8,7 @@ description = "Test-only idempotency replay identifiers are not credentials"
 targetRules = ["generic-api-key"]
 condition = "AND"
 regexTarget = "line"
-regexes = ['''(?i)(?:create_key|idempotency[_-]?key|"Idempotency-Key")\s*[:=]''']
+regexes = ['''(?i)(?:create_key|rejected_key|idempotency[_-]?key|"Idempotency-Key")\s*[:=]''']
 paths = [
   '''^tests/integration/test_rate_limits\.py$''',
   '''^services/api/tests/test_m2_routes\.py$''',
