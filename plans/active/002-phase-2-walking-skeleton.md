@@ -127,6 +127,7 @@ tests/                     cross-service, security, load, E2E
 - Historical self-audit: structured telemetry/audit/correlation, security/secret/SCA/container checks, load/backpressure/resource tests, clean migration/contract generation, browser E2E, local database gates, and evidence update are recorded in E-5022.
 - Automated gate evidence: clean local reset/lint/41 pgTAP assertions; ten real API/Redis/worker integrations; five browser flows; `pnpm check`; explicit Linux mypy; hosted migration equality; and GitHub Actions run `29640798631` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
 - Formal exit status: OPEN. E-5032 records a green root/hosted-schema remediation gate and closes the audience-version, rate-marker, and contract-governance findings. Independent re-review, a human screen-reader smoke, and GitHub-plan-blocked required-check governance remain blocking; two Medium operational findings remain recorded in [[../../brain/QA/PHASE_2_AUDIT_2026-07-18|the final audit]], not hidden.
+- Release evidence: commits `d912b21` and `5ab8f6c` are pushed to `main`; GitHub Actions run `29718093557` passes Foundation, Windows quality, complete-history secret, and hardened non-root/no-egress/SBOM/vulnerability container jobs on the exact follow-up head.
 - Rollback: telemetry export may be disabled independently; core audit remains; revert only to a schema-compatible artifact.
 
 # 7. Risks

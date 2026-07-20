@@ -21,6 +21,7 @@ The working product passes the complete local database/API/worker/web journey an
 | Gate | Result |
 |---|---|
 | Root `pnpm verify` | PASS, exit 0 |
+| GitHub Actions | Run `29718093557` PASS on exact head `5ab8f6c1b598ca2a57c69ab7ab442333453dba4b`; Foundation, Windows, history-secret, and hardened three-image container jobs green |
 | Database replay | two clean resets; lint clean; pgTAP 59/59 |
 | API/database focused gate | API 61/61; Auth/API/Redis/database integration 5/5 |
 | Browser gate | Playwright 9/9; desktop/mobile Axe, keyboard focus, result/error/poll/failure/cancel flows |

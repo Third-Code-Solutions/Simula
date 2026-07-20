@@ -14,6 +14,8 @@ source_of_truth: true
 
 E-5032 records the current green implementation gate: root `pnpm verify`, immutable semantic audience v2 with full-manifest checksum authority, exact owned Redis admission markers and atomic run buckets, a governed stable RFC 9457 code inventory, base-aware fail-closed OpenAPI compatibility, and hosted migration equality through `20260719050000` with clean linked lint and security advisors. [[PHASE_2_AUDIT_2026-07-18|The final audit]] retains three formal exit blockers and two Medium operational findings. Phase 3 is unauthorized.
 
+Release evidence is exact: commits `d912b21` and `5ab8f6c` are on `main`, and GitHub Actions run `29718093557` passes all four jobs on head `5ab8f6c1b598ca2a57c69ab7ab442333453dba4b`.
+
 ## Product acceptance to tests
 
 | Acceptance | Automated proof | Manual/runtime proof | Owner |
