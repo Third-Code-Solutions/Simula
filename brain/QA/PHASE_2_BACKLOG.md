@@ -2,7 +2,7 @@
 title: Phase 2 Ordered Implementation Backlog
 status: active-remediation
 created: 2026-07-17
-updated: 2026-07-18
+updated: 2026-07-20
 owner: Engineering lead
 classification: PROPOSED
 source_of_truth: true
@@ -108,7 +108,7 @@ A story is Ready only when user/system outcome, linked `AC-*`/threat/ADR, bounda
 
 ### P2-07 — Integrated quality, telemetry, and security gate — 5 points
 
-- Status: implementation/remediation green through E-5031 and hosted migration `20260719040000`; independent re-review, human screen-reader smoke, and required-check governance remain open.
+- Status: implementation/remediation and independent code re-review green through E-5033 and hosted migration `20260720083000`; human screen-reader smoke and required-check governance remain open.
 - Outcome: release owner can prove walking skeleton contracts, isolation, accessibility, resource, and operational budgets.
 - Acceptance links: every AC-AUTH/ORG/TEN/PROJ/AUD/RUN/RES/ERR/A11Y criterion.
 - ADRs: ADR-0002 through ADR-0010.

@@ -10,6 +10,11 @@ source_of_truth: true
 
 # SIMULA Changelog
 
+## 2026-07-20
+
+- Completed the Phase 2 code remediation and independent re-review tree (E-5033): enforced database/provider receipt invariants, verified receipt provenance UI, source-state-preserving dynamic restore proof, exact historical-canary Gitleaks suppression, trusted API/worker log identity, live worker liveness/readiness, and an audited least-privilege operator run-control path. Root `pnpm verify` passes 68 pgTAP, 64 API, 11 browser, 231 Python plus 2 expected Windows skips, 57 web, and 23 complete integration tests. Seed-free hosted migration history matches through `20260720083000`; linked lint and security advisors are clean; exact-head GitHub Actions `29728979248` is green on `72f1a66cf1a0be8e589f9ef5f88a84eb5cfcb10d`.
+- Stopped implementation at the Phase 2 boundary. Formal exit remains open for human assistive-technology evidence and GitHub-plan-blocked enforceable required checks. User-facing deletion orchestration and a full application-compatible staging restore remain explicit Medium findings; existing performance-advisor notices remain monitored under R-031. Phase 3 and production deployment are not authorized.
+
 ## 2026-07-19
 
 - Closed three Phase 2 Medium findings: immutable authored-demo audience v2 with full canonical manifest/checksum and retained v1 history; owned, fixed-lifetime, resource-scoped Redis admission markers with atomic run user/organization buckets and durable-success-safe promotion; and governed stable RFC 9457 codes plus a base-aware breaking OpenAPI diff gate in Linux/Windows CI. Root `pnpm verify` passes the complete 59-pgTAP/61-API/9-browser/204-Python/43-web/22-integration/build/security/SCA gate. Migration `20260719050000` is applied seed-free to hosted Supabase with exact history parity, clean linked lint/security advisors, one active v2 checksum, stable runtime selection, and temporary CREATE revocation (E-5032). Phase 2 remains open for the human accessibility proof, full independent exit re-review, GitHub-plan required-check governance, user-facing deletion/cache orchestration, and application-compatible staging restore.

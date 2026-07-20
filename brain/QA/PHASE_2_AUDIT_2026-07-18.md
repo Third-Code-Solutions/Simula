@@ -14,22 +14,22 @@ source_of_truth: true
 
 Implementation gate: **PASS**. Formal Phase 2 exit: **OPEN**. Phase 3 is not authorized.
 
-The working product passes the complete local database/API/worker/web journey and the checked-in migration set is applied to hosted Supabase project `ywiwmczccktwzqyhzhiz` through `20260719050000`. No customer data, `seed.sql`, real-provider egress, hosted application deployment, or production-readiness claim is included.
+The working product passes the complete local database/API/worker/web journey and the checked-in migration set is applied to hosted Supabase project `ywiwmczccktwzqyhzhiz` through `20260720083000`. All Phase 2 code remediation and independent code review are complete. No customer data, `seed.sql`, real-provider egress, hosted application deployment, or production-readiness claim is included.
 
 ## Verified evidence
 
 | Gate | Result |
 |---|---|
 | Root `pnpm verify` | PASS, exit 0 |
-| GitHub Actions | Run `29718093557` PASS on exact head `5ab8f6c1b598ca2a57c69ab7ab442333453dba4b`; Foundation, Windows, history-secret, and hardened three-image container jobs green |
-| Database replay | two clean resets; lint clean; pgTAP 59/59 |
-| API/database focused gate | API 61/61; Auth/API/Redis/database integration 5/5 |
-| Browser gate | Playwright 9/9; desktop/mobile Axe, keyboard focus, result/error/poll/failure/cancel flows |
-| Repository unit gate | Python 204 passed, 2 expected Windows skips; web 43/43; contracts 2/2 |
-| Complete integration | 22/22, including replay/concurrency, queue recovery, deterministic golden, load, deletion, and isolated restore |
+| GitHub Actions | Run `29728979248` PASS on exact head `72f1a66cf1a0be8e589f9ef5f88a84eb5cfcb10d`; Foundation, Windows, history-secret, and hardened three-image container jobs green |
+| Database replay | two clean resets; lint clean; pgTAP 68/68 |
+| API/database focused gate | API 64/64; Auth/API/Redis/database integration 5/5 |
+| Browser gate | Playwright 11/11; desktop/mobile Axe, keyboard focus, result/error/poll/failure/cancel/provenance flows |
+| Repository unit gate | Python 231 passed, 2 expected Windows skips; web 57/57; contracts 2/2 |
+| Complete integration | 23/23, including replay/concurrency, queue recovery, deterministic golden, load, deletion, audited operator control, and isolated restore |
 | Build/contracts/security | Next and TypeScript builds, generated DB/OpenAPI drift, forbidden claims, secret baseline, npm/Python SCA all pass |
-| Hosted Supabase | dry-run named only `20260719050000`; push succeeded; local/remote histories match; linked lint and security advisors clean; v1 retained/revoked and v2 solely active with exact checksum |
-| Governance integrity | 58/58 frontmatter; 151/151 wikilinks; 105 unique evidence definitions; zero undefined references; active plan sections 1–11 intact |
+| Hosted Supabase | dry-run named only `20260720083000`; seed-free push succeeded; local/remote histories match; linked lint and security advisors clean; operator role/function ACLs verified; run creation remains enabled |
+| Governance integrity | 58/58 frontmatter; 152/152 wikilinks; 106 unique evidence definitions; zero duplicates or undefined references; active plan sections 1–11 intact |
 
 The Supabase Table Editor's `public` schema remains empty by design. Application relations live in non-exposed `api` and `private` schemas behind dedicated runtime roles, forced RLS, and function allowlists.
 
@@ -49,6 +49,16 @@ The Supabase Table Editor's `public` schema remains empty by design. Application
 - Root `pnpm verify` passed 59 pgTAP, 61 API, 9 browser, 204 non-integration Python with 2 expected Windows skips, 43 web, 2 contract, and 22 complete integration tests plus build, drift, policy, secret, and SCA gates.
 - Hosted migration history matches through `20260719050000`; linked lint and security advisors are clean. Existing performance-advisor recommendations remain monitored under R-031 rather than receiving speculative schema changes.
 
+## 2026-07-20 final implementation addendum
+
+- Forward database invariants now enforce frozen run provenance, provider receipt immutability, and exact successful-provider receipt persistence. The result interface renders the verified provider receipt without inventing historical receipts.
+- Restore verification derives the checked-in migration head and preserves the source run-creation control state. Complete integration now includes audited operator disable/status/verified-enable control through a dedicated least-privilege `simula_operator` login and fixed security-definer allowlist.
+- Every API and worker log is stamped with trusted service, environment, and release identity; forged values are overwritten while payload redaction remains enforced. Worker liveness now probes the running process and readiness reflects live dependencies.
+- Complete-history Gitleaks uses one exact fingerprint suppression for the intentional historical injection canary; pinned Gitleaks 8.30.1 scans the complete reachable history with no leak.
+- Root `pnpm verify` passes 68 pgTAP, 64 API, 11 browser, 231 non-integration Python with 2 expected Windows skips, 57 web, 2 contract, and 23 complete integration tests plus build, drift, policy, secret, and SCA gates. Hardened container gates pass in exact-head CI.
+- Hosted migration history matches through `20260720083000`; linked lint and security advisors report zero lints. The operator has no password, memberships, elevated attributes, table privileges, or arbitrary schema creation, and exposes only the two audited control functions. Existing performance-advisor recommendations remain monitored under R-031.
+- The bounded independent cross-domain code re-review is complete with no unresolved code Critical or High finding. Formal exit remains open because the required-check governance finding is High and human assistive-technology evidence is absent.
+
 ## Open findings
 
 No known Critical or High code finding remains from the focused remediation reviews. These exit items remain:
@@ -57,10 +67,9 @@ No known Critical or High code finding remains from the focused remediation revi
 |---|---|---|
 | High — governance | GitHub required-check enforcement is unavailable on the current private-repository plan; protection/ruleset APIs returned `403`. | Authorized plan/visibility change or equivalent enforceable merge control. |
 | Exit evidence | Human keyboard/screen-reader smoke is not recorded. Automated keyboard, accessibility-tree, responsive, and Axe proofs pass but are not a substitute. | Human assistive-technology pass on the current build. |
-| Exit evidence | A full independent cross-domain Phase 2 exit re-review has not passed after E-5032. The focused rate-state review passed but is not a substitute for the complete exit review. | Repeat the independent Phase 2 exit review against the current tree and record a pass. |
 | Medium | Deletion is proven as privileged PostgreSQL cascade, not as a user-facing API plus Redis/storage/cache cleanup workflow. | Add authorized deletion orchestration before user-facing retention/deletion claims. |
 | Medium | Restore proves PostgreSQL rows and migration history, not runtime owners/grants, Auth, API/worker, queue/storage, or tombstone compatibility. | Run the full application-compatible staging restore drill. |
 
 ## Stop condition
 
-Code/build/database deployment for the requested Phase 2 working skeleton is green. Implementation stops here pending the human accessibility proof, independent exit re-review, and governance decision. Those are not silently converted into code completion.
+Code/build/database deployment and independent code review for the requested Phase 2 working skeleton are green. Implementation stops here pending the human accessibility proof and governance decision. Those external exit requirements are not silently converted into code completion.

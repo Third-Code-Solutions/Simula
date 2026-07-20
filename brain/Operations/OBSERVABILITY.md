@@ -2,7 +2,7 @@
 title: SIMULA Observability
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-20
 owner: SRE lead
 classification: PROPOSED
 source_of_truth: true
@@ -42,6 +42,13 @@ Stable correlation IDs connect browser-visible errors, API request, queue messag
 ## Logging policy
 
 Allowlist fields. Redact secrets and sensitive content. Do not log raw credentials, full stimuli/responses by default, database/service-role keys, provider tokens, or personal research data. Define retention and access per signal class.
+
+## Phase 2 verified controls
+
+- API and worker processors stamp trusted `service`, `environment`, and `release_sha` on every log and overwrite forged caller values. Allowlisted event fields and payload redaction remain mandatory.
+- API liveness reports only process life; API readiness checks configured dependencies. Worker liveness probes the running worker process; worker readiness measures its live database and Redis dependencies.
+- Fixed-cardinality metrics cover database query count/duration, pool use, migration/RLS state, durable run states, cancellation age, stuck leases, visibility extension, duplicate delivery, invalid transitions, retries, terminal failures, provider failure classes, and cancellation finalization. Tenant, user, content, row, and credential labels remain forbidden.
+- Durable run-control alerts point to [[RUNBOOK_RUN_CREATION_DISABLED|the audited operator runbook]]. Hosted pager delivery and a named 24x7 contact tree remain staging requirements.
 
 ## SLO and alert design
 

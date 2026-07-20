@@ -2,7 +2,7 @@
 title: Run Creation Disabled Runbook
 status: approved-for-prototype
 created: 2026-07-18
-updated: 2026-07-18
+updated: 2026-07-20
 owner: Release on-call
 classification: OBSERVED
 source_of_truth: true
@@ -13,6 +13,18 @@ source_of_truth: true
 ## Trigger and ownership
 
 The worker emits `run_creation_disabled` with `severity=page`, `alert_owner=release_on_call`, `silence_rule=recovery_verified`, and this runbook path when the durable database control disables new runs. Phase 2 validates this local structured-alert contract; a hosted pager/contact route is not provisioned.
+
+## Operator access
+
+Provision `SIMULA_OPERATOR_DATABASE_URL` externally for the dedicated `simula_operator` login. Never use or copy the `postgres`, API, worker, browser, or service-role credential into this variable. Production-like targets require verified TLS; the CLI rejects broad or non-TLS production credentials. The checked-in role has no password, memberships, elevated attributes, table privileges, or schema-creation authority until an authorized operator password is provisioned outside Git.
+
+```powershell
+pnpm operator:run-control status
+pnpm operator:run-control disable --correlation-id <uuid>
+pnpm operator:run-control enable --correlation-id <uuid> --recovery-verified
+```
+
+`status` and mutations return content-free JSON suitable for the incident record. Enabling without `--recovery-verified` fails closed. Do not call the underlying functions through a broader database role.
 
 ## Immediate response
 
@@ -27,7 +39,7 @@ The worker emits `run_creation_disabled` with `severity=page`, `alert_owner=rele
 1. Repair the dependency or code/configuration mismatch. Use the exact release SHA and checked-in migration head.
 2. Run `pnpm verify` against disposable local services. Require exit 0.
 3. Verify pending work reconciles from PostgreSQL without duplicate results, false confirmation, or extra provider work.
-4. Use the audited operator recovery command to clear the durable disable control. Never clear it by direct table mutation.
+4. Run `pnpm operator:run-control enable --correlation-id <uuid> --recovery-verified` to clear the durable disable control. Never clear it by direct table mutation.
 5. Confirm run creation, one terminal deterministic result, queue/backlog recovery, and normal readiness/metrics.
 
 ## Silence and close
