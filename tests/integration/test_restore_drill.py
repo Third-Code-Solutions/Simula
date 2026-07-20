@@ -118,6 +118,12 @@ def test_phase2_full_database_backup_restores_into_isolated_database() -> None:
 
     try:
         source_counts = _psql("postgres", _APP_COUNT_QUERY, password=password)
+        source_run_creation_enabled = _psql(
+            "postgres",
+            "select enabled::text from private.runtime_controls "
+            "where control_name = 'run_creation';",
+            password=password,
+        )
         _database_command(
             [
                 "pg_dump",
@@ -193,7 +199,7 @@ def test_phase2_full_database_backup_restores_into_isolated_database() -> None:
                 "where control_name = 'run_creation';",
                 password=password,
             )
-            == "true"
+            == source_run_creation_enabled
         )
         assert perf_counter() - started_at < 15 * 60
     finally:
