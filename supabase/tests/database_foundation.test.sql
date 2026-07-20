@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(32);
+select extensions.plan(33);
 
 -- 01
 select extensions.ok(
@@ -644,6 +644,7 @@ select extensions.is(
       and not triggers.tgisinternal
   ),
   array[
+    'audience_versions_content_immutable',
     'audience_versions_organization_guard',
     'simulation_runs_audience_guard',
     'simulation_runs_global_backpressure_before_insert'
@@ -744,7 +745,14 @@ select extensions.ok(
     + (select pg_catalog.count(*) from api.stimuli)
     + (select pg_catalog.count(*) from api.stimulus_versions)
     + (select pg_catalog.count(*) from api.audiences where id <> '00000000-0000-4000-8000-0000000000d0'::uuid)
-    + (select pg_catalog.count(*) from api.audience_versions where id <> '00000000-0000-4000-8000-0000000000d1'::uuid)
+    + (
+      select pg_catalog.count(*)
+      from api.audience_versions
+      where id not in (
+        '00000000-0000-4000-8000-0000000000d1'::uuid,
+        '00000000-0000-4000-8000-0000000000d2'::uuid
+      )
+    )
     + (select pg_catalog.count(*) from api.simulation_runs)
     + (select pg_catalog.count(*) from api.simulation_results)
     + (select pg_catalog.count(*) from private.run_attempts)
@@ -753,6 +761,30 @@ select extensions.ok(
     + (select pg_catalog.count(*) from private.idempotency_keys)
     + (select pg_catalog.count(*) from private.audit_events)
   ) = 0
+  and 2 = (
+    select pg_catalog.count(*)
+    from api.audience_versions as versions
+    where versions.audience_id = '00000000-0000-4000-8000-0000000000d0'::uuid
+      and versions.organization_id is null
+      and versions.kind = 'authored_demo'
+  )
+  and 1 = (
+    select pg_catalog.count(*)
+    from api.audience_versions as versions
+    where versions.audience_id = '00000000-0000-4000-8000-0000000000d0'::uuid
+      and versions.organization_id is null
+      and versions.kind = 'authored_demo'
+      and versions.admission_status = 'approved_demo'
+  )
+  and exists (
+    select 1
+    from api.audience_versions as versions
+    where versions.id = '00000000-0000-4000-8000-0000000000d1'::uuid
+      and versions.version = 1
+      and versions.admission_status = 'revoked'
+      and versions.checksum_sha256 =
+        'a311857242b4b3979199db4007b1c0d775a9abdf457d7bb119c7fae63c9c0586'
+  )
   and exists (
     select 1
     from api.audiences as audiences
@@ -760,35 +792,62 @@ select extensions.ok(
     where audiences.id = '00000000-0000-4000-8000-0000000000d0'::uuid
       and audiences.organization_id is null
       and audiences.is_public_demo
-      and versions.id = '00000000-0000-4000-8000-0000000000d1'::uuid
+      and versions.id = '00000000-0000-4000-8000-0000000000d2'::uuid
+      and versions.version = 2
       and versions.organization_id is null
       and versions.kind = 'authored_demo'
       and versions.admission_status = 'approved_demo'
       and versions.is_non_representative
       and versions.manifest ?& array[
         'audience_cells',
+        'authoring_date',
+        'category_scope',
+        'checksum_algorithm',
+        'checksum_canonicalization',
         'dependencies',
         'disclosure_version',
+        'estimates_nobody',
+        'external_dependencies',
         'kind',
+        'language_scope',
         'lifecycle',
         'method_version',
         'non_representative',
         'owner',
         'prohibited_uses',
         'purpose',
+        'record_count',
+        'retention_state',
+        'retirement_state',
+        'schema_version',
+        'semantic_version',
         'scope',
         'source',
-        'transformation'
+        'source_type',
+        'stable_id',
+        'transformation',
+        'transformation_code_version'
       ]
-      and versions.checksum_sha256 = pg_catalog.encode(
-        extensions.digest(
-          pg_catalog.convert_to(versions.manifest::text, 'UTF8'),
-          'sha256'
-        ),
-        'hex'
-      )
+      and versions.checksum_sha256 =
+        'ec5a2cda8f71f55e15b9c0be31a03c19e39f0c47c911898c1b49b33d3ea14e6e'
+      and versions.manifest ->> 'semantic_version' = '2.0.0'
+      and versions.manifest ->> 'source_type' = 'internal_authored'
+      and versions.manifest -> 'external_dependencies' = '[]'::jsonb
+      and versions.manifest ->> 'retirement_state' = 'active'
   ),
-  'only the immutable global demo fixture is seeded; tenant and run data remain empty'
+  'only the versioned immutable global demo fixture is seeded; tenant and run data remain empty'
+);
+
+-- 33
+select extensions.throws_ok(
+  $sql$
+    update api.audience_versions
+    set manifest = manifest || '{"unauthorized_change": true}'::jsonb
+    where id = '00000000-0000-4000-8000-0000000000d2'::uuid
+  $sql$,
+  '55000',
+  'audience_version_content_immutable',
+  'demo audience version content cannot be changed in place'
 );
 
 select * from extensions.finish();

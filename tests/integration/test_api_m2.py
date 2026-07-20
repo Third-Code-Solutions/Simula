@@ -437,7 +437,8 @@ async def test_m2_real_auth_api_database_and_tenant_boundaries(
         )
         assert audience.status_code == 200
         audience_body = audience.json()
-        assert audience_body["id"] == "00000000-0000-4000-8000-0000000000d1"
+        assert audience_body["id"] == "00000000-0000-4000-8000-0000000000d2"
+        assert audience_body["version"] == 2
         assert audience_body["kind"] == "authored_demo"
         assert audience_body["non_representative"] is True
         assert audience_body["limitations"] == [
@@ -452,7 +453,10 @@ async def test_m2_real_auth_api_database_and_tenant_boundaries(
         assert audience_body["source"] == (
             "Repository-authored synthetic fixture; no participant or customer data."
         )
-        assert len(audience_body["checksum_sha256"]) == 64
+        assert (
+            audience_body["checksum_sha256"]
+            == "ec5a2cda8f71f55e15b9c0be31a03c19e39f0c47c911898c1b49b33d3ea14e6e"
+        )
 
         organization_key = f"m2-org-{suffix}"
         organization_payload = {"name": f"Fictional Studio {suffix[:8]}"}

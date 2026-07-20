@@ -349,6 +349,7 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
             json={"stimulus_version_id": str(stimulus_version_id)},
         )
         assert initial.status_code == 202
+        assert initial.json()["audience_version_id"] == "00000000-0000-4000-8000-0000000000d2"
         async with AsyncExitStack() as replay_stack:
             replay_clients = [
                 await replay_stack.enter_async_context(
@@ -477,6 +478,11 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
             "version_id": str(stimulus_version_id),
         }
         assert provenance_body["audience"]["kind"] == "authored_demo"
+        assert provenance_body["audience"]["version_id"] == "00000000-0000-4000-8000-0000000000d2"
+        assert (
+            provenance_body["audience"]["checksum_sha256"]
+            == "ec5a2cda8f71f55e15b9c0be31a03c19e39f0c47c911898c1b49b33d3ea14e6e"
+        )
         assert provenance_body["audience"]["non_representative"] is True
         assert provenance_body["execution"]["code_release_sha"] == "a" * 40
         assert len(provenance_body["execution"]["configuration_sha256"]) == 64

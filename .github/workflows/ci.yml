@@ -58,11 +58,15 @@ jobs:
       PYTHONUTF8: "1"
       SIMULA_ENVIRONMENT: test
       SIMULA_LOG_LEVEL: INFO
+      SIMULA_OPENAPI_BASE_REF:
+        ${{ github.event.pull_request.base.sha || github.event.before ||
+        github.sha }}
       SIMULA_RELEASE_SHA: ${{ github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Install exact Node.js
@@ -108,11 +112,15 @@ jobs:
       SUPABASE_TELEMETRY_DISABLED: "1"
       SIMULA_ENVIRONMENT: test
       SIMULA_LOG_LEVEL: INFO
+      SIMULA_OPENAPI_BASE_REF:
+        ${{ github.event.pull_request.base.sha || github.event.before ||
+        github.sha }}
       SIMULA_RELEASE_SHA: ${{ github.sha }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Install exact Node.js

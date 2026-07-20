@@ -2,7 +2,7 @@
 title: Phase 2 — Walking Skeleton ExecPlan
 status: active
 created: 2026-07-17
-updated: 2026-07-18
+updated: 2026-07-20
 owner: Principal program and engineering lead
 classification: PROPOSED
 source_of_truth: true
@@ -13,8 +13,8 @@ source_of_truth: true
 - Plan: Phase 2 — Walking Skeleton
 - Owner: Principal program and engineering lead
 - Created: 2026-07-17
-- Last updated: 2026-07-18
-- Status: P2-07 implementation/remediation is green; independent exit re-review and manual accessibility evidence remain open. Phase 3 remains blocked.
+- Last updated: 2026-07-20
+- Status: P2-07 implementation/remediation is green through E-5032; independent exit re-review, manual accessibility evidence, and required-check governance remain open. Phase 3 remains blocked.
 
 # 2. Purpose and User Outcome
 
@@ -45,7 +45,7 @@ Deliver the thinnest trustworthy end-to-end prototype: a strategist authenticate
 
 - Real model/provider calls, real Philippine population claims, official/microdata ingestion, scraping, uploads, calibrated or predictive output.
 - Membership management, exports/shares, realtime subscriptions, billing, customer data, hosted analytics.
-- Paid resource creation, hosted Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user authorized named Supabase Phase 2 schema migrations through remediation version `20260719040000`; no seed, customer, or production data was applied.
+- Paid resource creation, hosted Railway/Vercel mutation, staging/production deployment, or production data without explicit authority. The user authorized named Supabase Phase 2 schema migrations through remediation version `20260719050000`; no seed, customer, or production data was applied.
 - Phase 3 methodology expansion, Phase 4 MVP breadth, and any representativeness/survey-replacement claim.
 
 # 5. Proposed Design
@@ -126,7 +126,7 @@ tests/                     cross-service, security, load, E2E
 
 - Historical self-audit: structured telemetry/audit/correlation, security/secret/SCA/container checks, load/backpressure/resource tests, clean migration/contract generation, browser E2E, local database gates, and evidence update are recorded in E-5022.
 - Automated gate evidence: clean local reset/lint/41 pgTAP assertions; ten real API/Redis/worker integrations; five browser flows; `pnpm check`; explicit Linux mypy; hosted migration equality; and GitHub Actions run `29640798631` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
-- Formal exit status: OPEN. E-5031 records a green root/CI/hosted-schema remediation gate and closes the remaining automated High code themes. Independent re-review, a human screen-reader smoke, and GitHub-plan-blocked required-check governance remain blocking; five Medium findings remain recorded in [[../../brain/QA/PHASE_2_AUDIT_2026-07-18|the final audit]], not hidden.
+- Formal exit status: OPEN. E-5032 records a green root/hosted-schema remediation gate and closes the audience-version, rate-marker, and contract-governance findings. Independent re-review, a human screen-reader smoke, and GitHub-plan-blocked required-check governance remain blocking; two Medium operational findings remain recorded in [[../../brain/QA/PHASE_2_AUDIT_2026-07-18|the final audit]], not hidden.
 - Rollback: telemetry export may be disabled independently; core audit remains; revert only to a schema-compatible artifact.
 
 # 7. Risks
@@ -178,6 +178,7 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: checksum-pinned Gitleaks now scans every reachable commit and exact Windows Server 2025 quality/SCA runs beside the Linux/database/browser/container gates. GitHub Actions `29647492906` passed all four jobs, including 52-commit history scanning and the exact Windows toolchain (E-5029). Required-check governance remains plan-blocked by GitHub API `403`; no visibility or billing change was made. R-025 and P2-07 remain open.
 - 2026-07-18 — OBSERVED: root `pnpm verify` now orders the complete disposable API/database/browser/repository/integration/SCA foundation gate. GitHub Actions `29648136756` passed it plus history, exact Windows, no-egress, and three-image SBOM/vulnerability gates in about eight minutes (E-5030). R-025 now remains Open only for plan-blocked required-check governance; P2-07 remains open.
 - 2026-07-18 — OBSERVED: the final implementation increment orders general rate admission before sign-in audit DB work and adds bounded database/run/queue/provider observability plus an executable run-disable runbook. Root `pnpm verify` passes 58 pgTAP, 60 API, 9 browser, 198 non-integration Python, 43 web, and 22 integration cases; migration `20260719040000` is applied seed-free to hosted Supabase with exact history parity and clean linked lint (E-5031). The final audit keeps Phase 2 open.
+- 2026-07-19 — OBSERVED: E-5032 closes the audience-version, rejected-attempt rate-marker, and OpenAPI/error-inventory findings. Immutable semantic audience v2 is active with a canonical checksum; exact owned Redis markers and atomic run buckets pass focused independent review; and base-aware contract compatibility runs in Linux and Windows CI. Root verification is green and seed-free migration `20260719050000` is applied to hosted Supabase with exact history parity, clean linked lint, and zero security-advisor lints. Two Medium operational findings and all three formal exit blockers remain.
 
 # 9. Progress
 
@@ -230,7 +231,8 @@ tests/                     cross-service, security, load, E2E
   - [x] Complete-history secret scan and exact Windows quality/SCA gate (E-5029).
   - [x] Consolidated root `pnpm verify` foundation gate (E-5030).
   - [x] Remaining automated High proof themes and hosted schema parity (E-5031).
-  - [ ] Remaining E-5023 Critical/High findings cleared and independently re-reviewed.
+  - [x] Audience-version, rate-marker, and contract-governance remediation (E-5032).
+  - [ ] Complete cross-domain remediation tree independently re-reviewed.
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 
 ## Phase 2 exit criteria
@@ -288,4 +290,4 @@ M4 evidence on 2026-07-18:
 
 # 11. Final Outcome
 
-Phase 2 remains open. M0 through M5 retain recorded evidence; M6/P2-07 implementation/remediation is green through E-5031, including hosted schema parity at `20260719040000` and prior CI run `29661559207`. Independent exit re-review, human screen-reader evidence, and required-check governance still block Phase 3. Five non-blocking-but-real Medium findings remain: audience-version governance, user-triggered deletion/cache cleanup, application-compatible restore scope, rejected-attempt idempotency rate markers, and breaking OpenAPI/error-inventory governance. Production deployment remains unauthorized.
+Phase 2 remains open. M0 through M5 retain recorded evidence; M6/P2-07 implementation/remediation is green through E-5032, including hosted schema parity at `20260719050000`. Independent exit re-review, human screen-reader evidence, and required-check governance still block Phase 3. Two non-blocking-but-real Medium findings remain: user-triggered deletion/cache/storage orchestration and a full application-compatible staging restore. Production deployment remains unauthorized.

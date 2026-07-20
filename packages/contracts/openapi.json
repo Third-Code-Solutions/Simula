@@ -1661,7 +1661,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -1730,7 +1749,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -1799,7 +1837,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -1868,7 +1925,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -1937,7 +2013,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2006,7 +2101,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2075,7 +2189,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2144,7 +2277,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2213,7 +2365,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2325,7 +2496,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2394,7 +2584,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2463,7 +2672,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2532,7 +2760,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2601,7 +2848,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2670,7 +2936,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2739,7 +3024,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2808,7 +3112,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2877,7 +3200,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -2969,7 +3311,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3038,7 +3399,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3107,7 +3487,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3176,7 +3575,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3245,7 +3663,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3314,7 +3751,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3383,7 +3839,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3452,7 +3927,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3521,7 +4015,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3643,7 +4156,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3712,7 +4244,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3781,7 +4332,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3850,7 +4420,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3919,7 +4508,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -3988,7 +4596,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4057,7 +4684,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4126,7 +4772,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4195,7 +4860,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4309,7 +4993,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4378,7 +5081,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4447,7 +5169,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4516,7 +5257,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4585,7 +5345,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4654,7 +5433,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4723,7 +5521,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4792,7 +5609,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4861,7 +5697,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -4993,7 +5848,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5062,7 +5936,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5131,7 +6024,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5200,7 +6112,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5269,7 +6200,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5338,7 +6288,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5407,7 +6376,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5476,7 +6464,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5545,7 +6552,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5669,7 +6695,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5738,7 +6783,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5807,7 +6871,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5876,7 +6959,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -5945,7 +7047,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6014,7 +7135,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6083,7 +7223,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6152,7 +7311,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6221,7 +7399,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6325,7 +7522,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6394,7 +7610,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6463,7 +7698,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6532,7 +7786,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6601,7 +7874,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6670,7 +7962,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6739,7 +8050,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6808,7 +8138,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -6877,7 +8226,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7005,7 +8373,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7074,7 +8461,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7143,7 +8549,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7212,7 +8637,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7281,7 +8725,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7350,7 +8813,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7419,7 +8901,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7488,7 +8989,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7557,7 +9077,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7683,7 +9222,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7752,7 +9310,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7821,7 +9398,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7890,7 +9486,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -7959,7 +9574,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8028,7 +9662,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8097,7 +9750,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8166,7 +9838,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8235,7 +9926,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8361,7 +10071,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8430,7 +10159,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8499,7 +10247,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8568,7 +10335,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8637,7 +10423,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8706,7 +10511,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8775,7 +10599,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8844,7 +10687,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -8913,7 +10775,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9017,7 +10898,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9086,7 +10986,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9155,7 +11074,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9224,7 +11162,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9293,7 +11250,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9362,7 +11338,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9431,7 +11426,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9500,7 +11514,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9569,7 +11602,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9693,7 +11745,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9762,7 +11833,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9831,7 +11921,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9900,7 +12009,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -9969,7 +12097,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10038,7 +12185,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10107,7 +12273,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10176,7 +12361,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10245,7 +12449,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10349,7 +12572,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10418,7 +12660,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10487,7 +12748,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10556,7 +12836,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10625,7 +12924,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10694,7 +13012,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10763,7 +13100,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10832,7 +13188,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -10901,7 +13276,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11005,7 +13399,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11074,7 +13487,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11143,7 +13575,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11212,7 +13663,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11281,7 +13751,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11350,7 +13839,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11419,7 +13927,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11488,7 +14015,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11557,7 +14103,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11683,7 +14248,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11752,7 +14336,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11821,7 +14424,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11890,7 +14512,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -11959,7 +14600,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -12028,7 +14688,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -12097,7 +14776,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -12166,7 +14864,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -12235,7 +14952,26 @@
                   "additionalProperties": false,
                   "properties": {
                     "code": {
-                      "title": "Code",
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
                       "type": "string"
                     },
                     "correlation_id": {
@@ -12346,5 +15082,25 @@
       }
     }
   },
-  "x-generated-by": "scripts/generate_contracts.py"
+  "x-generated-by": "scripts/generate_contracts.py",
+  "x-simula-stable-problem-codes": [
+    "dependency_unavailable",
+    "forbidden",
+    "idempotency_key_reused",
+    "internal_error",
+    "invalid_request",
+    "method_not_allowed",
+    "not_found",
+    "queue_backpressure",
+    "quota_exceeded",
+    "rate_limited",
+    "request_deadline_exceeded",
+    "request_too_large",
+    "run_not_cancelable",
+    "unauthenticated",
+    "unsupported_media_type",
+    "unsupported_scope",
+    "validation_error",
+    "version_conflict"
+  ]
 }

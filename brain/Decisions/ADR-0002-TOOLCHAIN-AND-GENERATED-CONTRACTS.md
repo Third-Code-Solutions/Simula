@@ -2,7 +2,7 @@
 title: ADR-0002 Toolchain and Generated Contracts
 status: accepted
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-20
 owner: Architecture lead
 classification: PROPOSED
 source_of_truth: true
@@ -77,11 +77,13 @@ Dependency audit exits nonzero at Moderate or higher; there is no implicit sever
 ### Contract authority
 
 - FastAPI/Pydantic code is the source for the public OpenAPI document and result JSON Schema.
+- The typed FastAPI problem-code inventory is the source for the generated root `x-simula-stable-problem-codes` extension.
 - CI generates and commits normalized `packages/contracts/openapi.json`, JSON Schemas, and TypeScript types.
 - Generated files contain a header and are never hand-edited.
 - CI regenerates from a clean tree and fails on a diff.
 - Supabase SQL migrations are the database authority; generated database types are derived with pinned Supabase CLI and fail CI on drift.
-- OpenAPI and schema compatibility are checked before merge; breaking changes require `/v2` or an accepted compatibility ADR.
+- `scripts/check_generated.py` compares the current normalized contract against the explicit `SIMULA_OPENAPI_BASE_REF`, defaulting locally to `HEAD`; CI checks out full history and supplies its base in both Linux and Windows gates.
+- The compatibility classifier fails closed when the base cannot be read or parsed and rejects removed paths/operations, changed operation IDs or security, removed required request/response media/status/header coverage, and tightened or incompatible parameter/schema constraints. Breaking changes require `/v2` or an accepted compatibility ADR.
 
 ## Rejected options
 

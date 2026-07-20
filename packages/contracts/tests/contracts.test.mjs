@@ -40,6 +40,26 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
     ],
   );
   assert.equal(document.components.schemas.HTTPValidationError, undefined);
+  assert.deepEqual(document["x-simula-stable-problem-codes"], [
+    "dependency_unavailable",
+    "forbidden",
+    "idempotency_key_reused",
+    "internal_error",
+    "invalid_request",
+    "method_not_allowed",
+    "not_found",
+    "queue_backpressure",
+    "quota_exceeded",
+    "rate_limited",
+    "request_deadline_exceeded",
+    "request_too_large",
+    "run_not_cancelable",
+    "unauthenticated",
+    "unsupported_media_type",
+    "unsupported_scope",
+    "validation_error",
+    "version_conflict",
+  ]);
   assert.equal(
     document.paths["/api/v1/runs/{run_id}/cancel"].post.responses["202"]
       .description,

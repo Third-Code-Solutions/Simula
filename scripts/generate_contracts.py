@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from simula_api.app import app
+from simula_api.problem_codes import STABLE_PROBLEM_CODES
 from simula_core.simulation import SimulationResultV1
 
 GENERATED_BY = "scripts/generate_contracts.py"
@@ -25,6 +26,7 @@ def _write_json(path: Path, value: dict[str, Any]) -> None:
 def generate(output_directory: Path) -> None:
     openapi = app.openapi()
     openapi["x-generated-by"] = GENERATED_BY
+    openapi["x-simula-stable-problem-codes"] = list(STABLE_PROBLEM_CODES)
     _write_json(output_directory / "openapi.json", openapi)
     result_schema = SimulationResultV1.model_json_schema()
     result_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"

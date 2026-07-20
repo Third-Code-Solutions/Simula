@@ -762,7 +762,7 @@ class DatabaseGateway:
                   versions.manifest
                 from api.audience_versions as versions
                 join api.audiences as audiences on audiences.id = versions.audience_id
-                where versions.id = '00000000-0000-4000-8000-0000000000d1'::uuid
+                where versions.audience_id = '00000000-0000-4000-8000-0000000000d0'::uuid
                   and versions.organization_id is null
                   and versions.kind = 'authored_demo'
                   and versions.admission_status = 'approved_demo'

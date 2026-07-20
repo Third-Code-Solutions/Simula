@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from typing import Any, cast
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import psycopg
 import pytest
@@ -21,7 +21,7 @@ from simula_api.models import (
     ProjectStatus,
 )
 from simula_api.problems import AppProblem, unauthenticated
-from simula_api.rate_limits import RateLimiter
+from simula_api.rate_limits import RateAdmission, RateLimiter
 from simula_api.services import AppServices
 from simula_core.trace_context import TRACEPARENT_HEADER
 
@@ -143,10 +143,11 @@ class FakeRateLimiter:
         user_id: UUID,
         idempotency_key: str,
         idempotency_scope: str,
-    ) -> None:
+    ) -> RateAdmission | None:
         assert user_id == OWNER_ID
         assert idempotency_key
         assert idempotency_scope
+        return None
 
     async def require_organization_mutation(
         self,
@@ -193,6 +194,56 @@ async def test_authenticated_organization_create_trims_labels_and_emits_safe_hea
     assert response.headers[CORRELATION_HEADER] == "018f0bf1-0b2a-7c91-9d8a-d1bd92d5a4f4"
     assert response.json()["name"] == "Fictional Studio"
     assert database.organization_names == ["Fictional Studio"]
+
+
+async def test_durable_create_success_survives_rate_marker_promotion_failure() -> None:
+    class PromotionFailureRateLimiter(FakeRateLimiter):
+        def __init__(self) -> None:
+            self.accept_attempts = 0
+
+        async def require_organization_create(
+            self,
+            *,
+            user_id: UUID,
+            idempotency_key: str,
+            idempotency_scope: str,
+        ) -> RateAdmission:
+            assert user_id == OWNER_ID
+            assert idempotency_key
+            assert idempotency_scope
+            return RateAdmission(
+                marker_key="synthetic-rate-marker",
+                owner_token=uuid4().hex,
+                accepted_replay=False,
+            )
+
+        async def accept_idempotency(self, *admissions: RateAdmission) -> None:
+            assert len(admissions) == 1
+            self.accept_attempts += 1
+            raise AppProblem(
+                status=503,
+                code="dependency_unavailable",
+                title="Rate marker unavailable",
+                detail="Retry shortly.",
+                retry_after=5,
+            )
+
+    rate_limiter = PromotionFailureRateLimiter()
+    app, database = app_with_fakes(rate_limiter=cast(RateLimiter, rate_limiter))
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/v1/organizations",
+            headers={
+                "Authorization": f"Bearer {TEST_BEARER}",
+                "Idempotency-Key": "m2-promotion-failure-key-0001",
+            },
+            json={"name": "Durable Studio"},
+        )
+
+    assert response.status_code == 201
+    assert response.headers["idempotent-replayed"] == "false"
+    assert database.organization_names == ["Durable Studio"]
+    assert rate_limiter.accept_attempts == 1
 
 
 async def test_protected_route_fails_closed_without_a_bearer_token() -> None:

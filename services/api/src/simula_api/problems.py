@@ -12,6 +12,8 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import JSONResponse
 
+from simula_api.problem_codes import StableProblemCode
+
 logger = structlog.get_logger()
 
 
@@ -26,7 +28,7 @@ class AppProblem(Exception):
         self,
         *,
         status: int,
-        code: str,
+        code: StableProblemCode,
         title: str,
         detail: str,
         errors: Sequence[ProblemError] = (),

@@ -31,6 +31,7 @@ from simula_api.auth import SupabaseTokenVerifier
 from simula_api.config import ApiSettings, ConfigurationError
 from simula_api.cursor import CursorCodec
 from simula_api.database import DatabaseGateway
+from simula_api.problem_codes import StableProblemCode
 from simula_api.problems import (
     AppProblem,
     app_problem_handler,
@@ -121,7 +122,7 @@ def _runtime_metadata() -> dict[str, str]:
 
 
 def _safe_problem(
-    *, correlation_id: str, status: int, code: str, title: str, detail: str
+    *, correlation_id: str, status: int, code: StableProblemCode, title: str, detail: str
 ) -> dict[str, object]:
     return {
         "type": f"https://simula.invalid/problems/{code.replace('_', '-')}",

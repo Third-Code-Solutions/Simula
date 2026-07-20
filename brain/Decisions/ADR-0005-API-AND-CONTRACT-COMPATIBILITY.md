@@ -2,7 +2,7 @@
 title: ADR-0005 API and Contract Compatibility
 status: accepted
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-20
 owner: API and frontend leads
 classification: PROPOSED
 source_of_truth: true
@@ -34,15 +34,17 @@ The web, API, worker, database, and stored historical results need one contract 
 | `GET /api/v1/me` | Authenticated identity summary | none |
 | `POST /api/v1/organizations` | Create organization plus owner membership | required idempotency key |
 | `GET /api/v1/organizations` | List caller's organization memberships/roles | cursor |
-| `POST /api/v1/organizations/{org_id}/projects` | Create project | required idempotency key |
-| `GET /api/v1/organizations/{org_id}/projects` | List projects | cursor |
+| `POST /api/v1/organizations/{organization_id}/projects` | Create project | required idempotency key |
+| `GET /api/v1/organizations/{organization_id}/projects` | List projects | cursor |
 | `GET/PATCH /api/v1/projects/{project_id}` | Read/update project | PATCH requires `If-Match` |
 | `POST /api/v1/projects/{project_id}/stimuli` | Create stimulus plus v1 | required idempotency key |
 | `POST /api/v1/stimuli/{stimulus_id}/versions` | Append immutable version | required idempotency key |
-| `GET /api/v1/audiences` | List admitted audiences | cursor/filter |
+| `GET /api/v1/audiences/demo` | Read the one admitted authored demo audience and current immutable version | none |
+| `POST /api/v1/auth-events` | Record one allowlisted client authentication event | general rate admission; no idempotency key |
 | `POST /api/v1/projects/{project_id}/runs` | Atomically freeze run + persist dispatch intent; best-effort publish after commit | required idempotency key |
 | `GET /api/v1/runs/{run_id}` | State/progress/links | ETag |
 | `POST /api/v1/runs/{run_id}/cancel` | Request cancellation | idempotent command |
+| `GET /api/v1/runs/{run_id}/provenance` | Frozen release/configuration/audience provenance | none |
 | `GET /api/v1/runs/{run_id}/result` | Typed terminal result | `404` before publication |
 
 No list endpoint is unbounded. Cursor tokens are opaque, signed or integrity-protected, and bind sort/filter scope. Default/max page size is `25/100`.
@@ -69,10 +71,12 @@ Exact request size, field, rate, object/run quota, dependency timeout, polling, 
 ### Idempotency
 
 - Mutating create endpoints require `Idempotency-Key`, 16–128 printable ASCII characters.
-- Scope is authenticated subject + organization where present + method + normalized route + key.
+- Durable idempotency scope is authenticated subject + organization where present + method + normalized route + key.
 - Store canonical request SHA-256, status, resource/response reference, and timestamps.
 - Same scope/key/hash returns the original status/body. Same key with different hash returns `409 idempotency_key_reused`.
 - Run-creation keys live as long as the run; other keys live at least 24 hours in non-production. Concurrency is serialized by a unique constraint, not an in-memory lock.
+- Redis admission markers mirror durable scope and additionally bind the exact resource plus command route. Pending ownership is per attempt; only that owner may release a rejection. The 24-hour TTL is fixed and non-sliding, accepted promotion is best effort after durable commit, and a promotion failure cannot replace a successful database response.
+- General request admission always consumes regardless of idempotency key. Run user and organization buckets are acquired atomically so one denied bucket leaks no capacity from the other.
 
 ### Errors
 
@@ -91,14 +95,14 @@ Errors use `application/problem+json` compatible with RFC 9457:
 }
 ```
 
-No stack, SQL, key, provider payload, foreign object existence, or confidential content appears. Stable codes: `unauthenticated`, `forbidden`, `not_found`, `validation_error`, `request_too_large`, `version_conflict`, `idempotency_key_reused`, `unsupported_scope`, `quota_exceeded`, `rate_limited`, `queue_backpressure`, `run_not_cancelable`, `dependency_unavailable`, and `internal_error`. `Retry-After` appears only when retry is safe.
+No stack, SQL, key, provider payload, foreign object existence, or confidential content appears. One typed inventory governs these stable codes and is generated into OpenAPI: `dependency_unavailable`, `forbidden`, `idempotency_key_reused`, `internal_error`, `invalid_request`, `method_not_allowed`, `not_found`, `queue_backpressure`, `quota_exceeded`, `rate_limited`, `request_deadline_exceeded`, `request_too_large`, `run_not_cancelable`, `unauthenticated`, `unsupported_media_type`, `unsupported_scope`, `validation_error`, and `version_conflict`. `Retry-After` appears only when retry is safe.
 
 ### Compatibility
 
 - Additive optional response fields and new endpoints are allowed in v1.
 - Removing/renaming/changing meaning, tightening accepted input incompatibly, or changing enum handling requires v2 or a staged deprecation.
 - Every stored result declares `schema_version`; readers support all non-retired versions or return an explicit unsupported-version problem.
-- OpenAPI diff blocks accidental breaking changes. Contract examples are executable tests.
+- A base-aware, fail-closed OpenAPI classifier blocks incompatible path, operation, operation-ID, security, parameter, request-body, media, response, header, reference, and schema-constraint changes. Linux and Windows CI use full history and an explicit base ref. Contract examples are executable tests.
 - CORS allowlists exact environment origins, methods, and headers; credentials never use wildcard origins.
 
 ## Rejected options

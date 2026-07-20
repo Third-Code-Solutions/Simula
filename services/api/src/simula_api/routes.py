@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import re
 from collections.abc import Callable
-from typing import Annotated
+from typing import Annotated, Any
 from uuid import UUID
 
 import structlog
@@ -41,15 +41,32 @@ from simula_api.models import (
     StimulusVersionResponse,
 )
 from simula_api.problems import AppProblem, ProblemError, unauthenticated
+from simula_api.rate_limits import RateAdmission
 from simula_api.services import AppServices
 
 logger = structlog.get_logger()
 
 
 def _problem_response(description: str) -> dict[str, object]:
+    schema = ProblemDocument.model_json_schema()
+    definitions = schema.pop("$defs", {})
+
+    def inline_definitions(value: Any) -> Any:
+        if isinstance(value, dict):
+            reference = value.get("$ref")
+            if isinstance(reference, str) and reference.startswith("#/$defs/"):
+                name = reference.removeprefix("#/$defs/")
+                if name not in definitions:
+                    raise RuntimeError(f"unresolved problem schema definition: {name}")
+                return inline_definitions(definitions[name])
+            return {key: inline_definitions(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [inline_definitions(item) for item in value]
+        return value
+
     return {
         "description": description,
-        "content": {"application/problem+json": {"schema": ProblemDocument.model_json_schema()}},
+        "content": {"application/problem+json": {"schema": inline_definitions(schema)}},
     }
 
 
@@ -177,6 +194,48 @@ def _record_replay(*, route: str, replayed: bool, request: Request) -> None:
     )
 
 
+async def _accept_rate_admissions(
+    services: AppServices,
+    *values: RateAdmission | tuple[RateAdmission, ...] | None,
+) -> None:
+    admissions = tuple(
+        admission
+        for value in values
+        for admission in (value if isinstance(value, tuple) else (value,))
+        if admission is not None
+    )
+    if admissions:
+        try:
+            await services.rate_limiter.accept_idempotency(*admissions)
+        except AppProblem as error:
+            logger.warning(
+                "rate_marker_acceptance_deferred",
+                admissions_count=len(admissions),
+                error_code=error.code,
+            )
+
+
+async def _reject_rate_admissions(
+    services: AppServices,
+    *values: RateAdmission | tuple[RateAdmission, ...] | None,
+) -> None:
+    admissions = tuple(
+        admission
+        for value in values
+        for admission in (value if isinstance(value, tuple) else (value,))
+        if admission is not None
+    )
+    if admissions:
+        try:
+            await services.rate_limiter.reject_idempotency(*admissions)
+        except AppProblem as error:
+            logger.warning(
+                "rate_marker_rejection_deferred",
+                admissions_count=len(admissions),
+                error_code=error.code,
+            )
+
+
 async def _record_privileged_denial(
     *,
     request: Request,
@@ -292,18 +351,23 @@ async def create_organization(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> OrganizationResponse:
     services = _services(request)
-    await services.rate_limiter.require_organization_create(
+    rate_admission = await services.rate_limiter.require_organization_create(
         user_id=identity.user_id,
         idempotency_key=idempotency_key,
         idempotency_scope=_idempotency_scope(request),
     )
-    organization, replayed = await services.database.create_organization(
-        identity,
-        name=body.name,
-        idempotency_key=idempotency_key,
-        request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
-        correlation_id=_correlation_id(request),
-    )
+    try:
+        organization, replayed = await services.database.create_organization(
+            identity,
+            name=body.name,
+            idempotency_key=idempotency_key,
+            request_sha256=canonical_request_sha256(body.model_dump(mode="json")),
+            correlation_id=_correlation_id(request),
+        )
+    except Exception:
+        await _reject_rate_admissions(services, rate_admission)
+        raise
+    await _accept_rate_admissions(services, rate_admission)
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     _record_replay(route="/api/v1/organizations", replayed=replayed, request=request)
     return organization
@@ -351,7 +415,7 @@ async def create_project(
     organization_id = await services.database.visible_organization(
         identity, organization_id=organization_id
     )
-    await services.rate_limiter.require_organization_mutation(
+    rate_admission = await services.rate_limiter.require_organization_mutation(
         user_id=identity.user_id,
         organization_id=organization_id,
         idempotency_key=idempotency_key,
@@ -367,6 +431,7 @@ async def create_project(
             correlation_id=_correlation_id(request),
         )
     except AppProblem as error:
+        await _reject_rate_admissions(services, rate_admission)
         if error.code == "forbidden":
             await _record_privileged_denial(
                 request=request,
@@ -377,6 +442,10 @@ async def create_project(
                 object_id=None,
             )
         raise
+    except Exception:
+        await _reject_rate_admissions(services, rate_admission)
+        raise
+    await _accept_rate_admissions(services, rate_admission)
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     response.headers["ETag"] = f'"{project.version}"'
     _record_replay(
@@ -444,7 +513,7 @@ async def update_project(
     organization_id = await services.database.organization_for_project(
         identity, project_id=project_id
     )
-    await services.rate_limiter.require_organization_mutation(
+    rate_admission = await services.rate_limiter.require_organization_mutation(
         user_id=identity.user_id, organization_id=organization_id
     )
     try:
@@ -456,6 +525,7 @@ async def update_project(
             correlation_id=_correlation_id(request),
         )
     except AppProblem as error:
+        await _reject_rate_admissions(services, rate_admission)
         if error.code == "forbidden":
             await _record_privileged_denial(
                 request=request,
@@ -466,6 +536,10 @@ async def update_project(
                 object_id=project_id,
             )
         raise
+    except Exception:
+        await _reject_rate_admissions(services, rate_admission)
+        raise
+    await _accept_rate_admissions(services, rate_admission)
     response.headers["ETag"] = f'"{project.version}"'
     return project
 
@@ -488,11 +562,12 @@ async def create_stimulus(
     organization_id = await services.database.organization_for_project(
         identity, project_id=project_id
     )
-    await services.rate_limiter.require_organization_mutation(
+    rate_admission = await services.rate_limiter.require_organization_mutation(
         user_id=identity.user_id,
         organization_id=organization_id,
         idempotency_key=idempotency_key,
         idempotency_scope=_idempotency_scope(request),
+        idempotency_resource_id=project_id,
     )
     try:
         stimulus, replayed = await services.database.create_stimulus(
@@ -505,6 +580,7 @@ async def create_stimulus(
             correlation_id=_correlation_id(request),
         )
     except AppProblem as error:
+        await _reject_rate_admissions(services, rate_admission)
         if error.code == "forbidden":
             await _record_privileged_denial(
                 request=request,
@@ -515,6 +591,10 @@ async def create_stimulus(
                 object_id=None,
             )
         raise
+    except Exception:
+        await _reject_rate_admissions(services, rate_admission)
+        raise
+    await _accept_rate_admissions(services, rate_admission)
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     _record_replay(
         route="/api/v1/projects/{project_id}/stimuli", replayed=replayed, request=request
@@ -540,11 +620,12 @@ async def append_stimulus_version(
     organization_id = await services.database.organization_for_stimulus(
         identity, stimulus_id=stimulus_id
     )
-    await services.rate_limiter.require_organization_mutation(
+    rate_admission = await services.rate_limiter.require_organization_mutation(
         user_id=identity.user_id,
         organization_id=organization_id,
         idempotency_key=idempotency_key,
         idempotency_scope=_idempotency_scope(request),
+        idempotency_resource_id=stimulus_id,
     )
     try:
         version, replayed = await services.database.append_stimulus_version(
@@ -556,6 +637,7 @@ async def append_stimulus_version(
             correlation_id=_correlation_id(request),
         )
     except AppProblem as error:
+        await _reject_rate_admissions(services, rate_admission)
         if error.code == "forbidden":
             await _record_privileged_denial(
                 request=request,
@@ -566,6 +648,10 @@ async def append_stimulus_version(
                 object_id=stimulus_id,
             )
         raise
+    except Exception:
+        await _reject_rate_admissions(services, rate_admission)
+        raise
+    await _accept_rate_admissions(services, rate_admission)
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     _record_replay(
         route="/api/v1/stimuli/{stimulus_id}/versions", replayed=replayed, request=request
@@ -604,23 +690,29 @@ async def create_simulation_run(
         _record_replay(route="/api/v1/projects/{project_id}/runs", replayed=True, request=request)
         await _best_effort_publish_run(request=request, run=replay)
         return replay
-    await services.rate_limiter.require_run_create(
+    rate_admissions = await services.rate_limiter.require_run_create(
         user_id=identity.user_id,
         organization_id=organization_id,
+        project_id=project_id,
         idempotency_key=idempotency_key,
         idempotency_scope=_idempotency_scope(request),
     )
-    if services.run_admission is not None:
-        await services.run_admission.require_run_creation_capacity()
-    run, replayed = await services.database.create_simulation_run(
-        identity,
-        project_id=project_id,
-        stimulus_version_id=body.stimulus_version_id,
-        idempotency_key=idempotency_key,
-        request_sha256=request_sha256,
-        correlation_id=_correlation_id(request),
-        traceparent=_traceparent(request),
-    )
+    try:
+        if services.run_admission is not None:
+            await services.run_admission.require_run_creation_capacity()
+        run, replayed = await services.database.create_simulation_run(
+            identity,
+            project_id=project_id,
+            stimulus_version_id=body.stimulus_version_id,
+            idempotency_key=idempotency_key,
+            request_sha256=request_sha256,
+            correlation_id=_correlation_id(request),
+            traceparent=_traceparent(request),
+        )
+    except Exception:
+        await _reject_rate_admissions(services, rate_admissions)
+        raise
+    await _accept_rate_admissions(services, rate_admissions)
     response.headers["Idempotent-Replayed"] = str(replayed).lower()
     response.headers["ETag"] = f'"{run.version}"'
     _record_replay(route="/api/v1/projects/{project_id}/runs", replayed=replayed, request=request)

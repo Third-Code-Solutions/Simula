@@ -2,7 +2,7 @@
 title: SIMULA Demo Data and Admission Policy
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-20
 owner: Data and privacy leads
 classification: PROPOSED
 source_of_truth: true
@@ -14,7 +14,7 @@ source_of_truth: true
 
 Only repository-authored, fictional, non-personal fixtures are admitted:
 
-- one audience version labeled `authored_demo` and `non_representative`;
+- one active audience version labeled `authored_demo` and `non_representative`;
 - abstract demo segments with deliberately authored equal weights;
 - one neutral fictional text stimulus for seeds and tests;
 - deterministic expected outputs used to test contracts and rendering.
@@ -81,4 +81,3 @@ Phase 2 provider is a deterministic in-process mock with no network egress. Any 
 ## Decision
 
 `APPROVED FOR PHASE 2`: authored fixtures and deterministic mock only. All personal, client, scraped, official-statistics-derived, microdata, and real-provider data paths remain blocked.
-

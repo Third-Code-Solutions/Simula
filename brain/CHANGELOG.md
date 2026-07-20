@@ -2,13 +2,17 @@
 title: SIMULA Changelog
 status: active
 created: 2026-07-17
-updated: 2026-07-18
+updated: 2026-07-20
 owner: Principal program and engineering lead
 classification: OBSERVED
 source_of_truth: true
 ---
 
 # SIMULA Changelog
+
+## 2026-07-19
+
+- Closed three Phase 2 Medium findings: immutable authored-demo audience v2 with full canonical manifest/checksum and retained v1 history; owned, fixed-lifetime, resource-scoped Redis admission markers with atomic run user/organization buckets and durable-success-safe promotion; and governed stable RFC 9457 codes plus a base-aware breaking OpenAPI diff gate in Linux/Windows CI. Root `pnpm verify` passes the complete 59-pgTAP/61-API/9-browser/204-Python/43-web/22-integration/build/security/SCA gate. Migration `20260719050000` is applied seed-free to hosted Supabase with exact history parity, clean linked lint/security advisors, one active v2 checksum, stable runtime selection, and temporary CREATE revocation (E-5032). Phase 2 remains open for the human accessibility proof, full independent exit re-review, GitHub-plan required-check governance, user-facing deletion/cache orchestration, and application-compatible staging restore.
 
 ## 2026-07-18
 

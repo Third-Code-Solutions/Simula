@@ -17,6 +17,8 @@ from pydantic import (
 )
 from simula_core.simulation import SimulationResultV1
 
+from simula_api.problem_codes import StableProblemCode
+
 Label = Annotated[str, StringConstraints(strip_whitespace=True, min_length=2, max_length=80)]
 Objective = Annotated[str, StringConstraints(min_length=1, max_length=1000)]
 StimulusContent = Annotated[str, StringConstraints(min_length=1, max_length=5000)]
@@ -30,7 +32,7 @@ class ProblemDocument(StrictModel):
     type: str
     title: str
     status: int
-    code: str
+    code: StableProblemCode
     detail: str
     instance: str
     correlation_id: UUID

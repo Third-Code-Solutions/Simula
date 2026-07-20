@@ -2,7 +2,7 @@
 title: SIMULA Phase 2 Traceability Matrix
 status: approved
 created: 2026-07-17
-updated: 2026-07-18
+updated: 2026-07-20
 owner: QA lead
 classification: PROPOSED
 source_of_truth: true
@@ -10,9 +10,9 @@ source_of_truth: true
 
 # SIMULA Phase 2 Traceability Matrix
 
-## Exit-audit snapshot — 2026-07-18
+## Exit-audit snapshot — 2026-07-19
 
-E-5031 records the current green implementation gate: root `pnpm verify`, 20 simultaneous durable replays, 30-run p95, 100 subprocess repeats against a committed golden, exact release/configuration provenance, API deadlines/auth audit/rejection metrics, bounded runtime/database observability, local run-disable runbook contract, hosted migration equality through `20260719040000`, remote lint, and prior green GitHub Actions run `29661559207`. [[PHASE_2_AUDIT_2026-07-18|The final audit]] records remaining governance, manual, and Medium findings. Phase 3 is unauthorized.
+E-5032 records the current green implementation gate: root `pnpm verify`, immutable semantic audience v2 with full-manifest checksum authority, exact owned Redis admission markers and atomic run buckets, a governed stable RFC 9457 code inventory, base-aware fail-closed OpenAPI compatibility, and hosted migration equality through `20260719050000` with clean linked lint and security advisors. [[PHASE_2_AUDIT_2026-07-18|The final audit]] retains three formal exit blockers and two Medium operational findings. Phase 3 is unauthorized.
 
 ## Product acceptance to tests
 
@@ -40,7 +40,7 @@ Acceptance IDs are defined in [[../Product/ACCEPTANCE_CRITERIA|Product Acceptanc
 | ADR-0002 | exact manifests/locks; clean install; generated-contract drift check; runtime version check |
 | ADR-0003 | JWT positive/negative/rotation-cache; `SEC-DATA-API-001`; `SEC-RLS-001`; `SEC-ROLE-001` no-direct-DML/helper separation; `SEC-CLAIMS-001` claim injection/pool reset; self-only membership; browser bundle secret scan |
 | ADR-0004 | migration reset from zero; composite FK/immutability/deletion tests; result uniqueness |
-| ADR-0005 | OpenAPI lint/snapshot/diff; generated client compile; RFC 9457 examples; idempotency/concurrency |
+| ADR-0005 | base-aware fail-closed OpenAPI compatibility; generated client compile; governed RFC 9457 inventory/examples; exact owned idempotency/rate-marker concurrency |
 | ADR-0006 | canonical JSON serializer wired identically on producer/inspector/worker; pickle-gadget/no-fallback test; every transition; retry classes/budget; lease expiry; duplicate delivery; poison branches; cancel race |
 | ADR-0007 | deterministic byte-equivalence; network-deny; schema/failure injection; external-call count zero |
 | ADR-0008 | local images/config; health/readiness; non-root container; env schema; no external provisioning |
@@ -52,7 +52,7 @@ Acceptance IDs are defined in [[../Product/ACCEPTANCE_CRITERIA|Product Acceptanc
 | Requirement | Proof |
 |---|---|
 | Output kinds cannot blur | schema enums; compile-time UI exhaustiveness; snapshot copy; unknown-kind fail-closed test |
-| Demo values estimate nobody | fixture manifest/checksum; result limitations; forbidden-claim scan; E2E comprehension copy |
+| Demo values estimate nobody | immutable semantic v2 fixture manifest/full checksum; result limitations; forbidden-claim scan; E2E comprehension copy |
 | Determinism | `test_deterministic_mock.py`: 100 subprocess outputs equal committed SHA-256 golden `14c1be5ba973cd24e819468176ed5f9b605b2110ff25fb8f2c29e9eba7c51dc0` |
 | No predictive threshold/claim | prohibited output kinds rejected; copy scan for banned terms; independent method review |
 | Provenance complete | schema-required frozen fields including exact code release/configuration hashes; database equality checks; E2E provenance view |

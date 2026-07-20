@@ -74,18 +74,29 @@ class FakeRateLimiter:
         organization_id: UUID,
         idempotency_key: str | None = None,
         idempotency_scope: str | None = None,
+        idempotency_resource_id: UUID | None = None,
     ) -> None:
-        raise AssertionError((user_id, organization_id, idempotency_key, idempotency_scope))
+        raise AssertionError(
+            (
+                user_id,
+                organization_id,
+                idempotency_key,
+                idempotency_scope,
+                idempotency_resource_id,
+            )
+        )
 
     async def require_run_create(
         self,
         *,
         user_id: UUID,
         organization_id: UUID,
+        project_id: UUID,
         idempotency_key: str,
         idempotency_scope: str,
     ) -> None:
         assert (user_id, organization_id) == (OWNER_ID, ORGANIZATION_ID)
+        assert project_id == PROJECT_ID
         assert idempotency_key == "m3-run-create-key-0001"
         assert idempotency_scope == "POST:/api/v1/projects/{project_id}/runs"
 
@@ -126,9 +137,9 @@ class FakeDatabase:
         self.result: SimulationResultResponse | None = None
         self.audience = AudienceDisclosureResponse.model_validate(
             {
-                "id": "00000000-0000-4000-8000-0000000000d1",
+                "id": "00000000-0000-4000-8000-0000000000d2",
                 "name": "Authored deterministic demo audience",
-                "version": 1,
+                "version": 2,
                 "kind": "authored_demo",
                 "checksum_sha256": "d" * 64,
                 "non_representative": True,
@@ -159,7 +170,7 @@ class FakeDatabase:
                     "content_sha256": "a" * 64,
                 },
                 "audience": {
-                    "version_id": UUID("00000000-0000-4000-8000-0000000000d1"),
+                    "version_id": UUID("00000000-0000-4000-8000-0000000000d2"),
                     "kind": "authored_demo",
                     "checksum_sha256": "d" * 64,
                     "cells": [{"key": "authored_demo", "weight": 1.0}],
@@ -271,7 +282,7 @@ def _run(
         organization_id=ORGANIZATION_ID,
         project_id=PROJECT_ID,
         stimulus_version_id=STIMULUS_VERSION_ID,
-        audience_version_id=UUID("00000000-0000-4000-8000-0000000000d1"),
+        audience_version_id=UUID("00000000-0000-4000-8000-0000000000d2"),
         state=state,
         schema_version=1,
         dispatch_generation=1,
