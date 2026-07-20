@@ -1204,6 +1204,7 @@ export type Database = {
         Args: { expected_user_id: string }
         Returns: boolean
       }
+      latch_run_creation_for_poison: { Args: never; Returns: boolean }
       phase2_result_artifact_is_valid: {
         Args: {
           requested_artifact: Json

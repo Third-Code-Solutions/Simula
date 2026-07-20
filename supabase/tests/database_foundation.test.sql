@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(33);
+select extensions.plan(34);
 
 -- 01
 select extensions.ok(
@@ -848,6 +848,45 @@ select extensions.throws_ok(
   '55000',
   'audience_version_content_immutable',
   'demo audience version content cannot be changed in place'
+);
+
+-- 34
+select extensions.throws_ok(
+  $sql$
+    do $adversarial$
+    begin
+      insert into api.audiences (
+        id, organization_id, name, is_public_demo, created_by
+      ) values (
+        '00000000-0000-4000-8000-0000000000e0'::uuid,
+        null,
+        'Second global demo',
+        true,
+        null
+      );
+      insert into api.audience_versions (
+        id, organization_id, audience_id, version, kind, admission_status,
+        manifest, checksum_sha256, is_non_representative, limitations
+      )
+      select
+        '00000000-0000-4000-8000-0000000000e1'::uuid,
+        null,
+        '00000000-0000-4000-8000-0000000000e0'::uuid,
+        1,
+        kind,
+        admission_status,
+        manifest,
+        checksum_sha256,
+        is_non_representative,
+        limitations
+      from api.audience_versions
+      where id = '00000000-0000-4000-8000-0000000000d2'::uuid;
+    end
+    $adversarial$
+  $sql$,
+  '23505',
+  'duplicate key value violates unique constraint "audience_versions_one_active_global_demo_idx"',
+  'only one active global authored demo version exists across every audience'
 );
 
 select * from extensions.finish();

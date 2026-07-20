@@ -31,7 +31,7 @@ def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -
         pool_available=3,
     )
     telemetry.set_runtime_snapshot(
-        migration_version=20260719040000,
+        migration_version=20260720063411,
         rls_force_enabled=True,
         state_counts={
             "queued": 1,
@@ -114,7 +114,7 @@ class _ReadyDatabase:
 
     async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
         return RuntimeObservabilitySnapshot(
-            migration_version=20260719040000,
+            migration_version=20260720063411,
             rls_force_enabled=True,
             state_counts={
                 "queued": 2,
@@ -158,7 +158,7 @@ async def test_worker_dependency_probe_refreshes_queue_readiness_and_age() -> No
     assert 'simula_worker_dependency_ready{dependency="queue"} 1.0' in rendered
     assert "simula_worker_queue_depth 2.0" in rendered
     assert "simula_worker_queue_memory_percent 50.0" in rendered
-    assert "simula_worker_database_migration_version 2.026071904e+013" in rendered
+    assert "simula_worker_database_migration_version 2.0260720063411e+013" in rendered
     assert 'simula_worker_run_state_count{state="queued"} 2.0' in rendered
     assert memory_percent == 50.0
 

@@ -164,7 +164,7 @@ def test_database_and_runtime_metrics_are_bounded_and_payload_free() -> None:
         pool_available=7,
     )
     telemetry.set_runtime_snapshot(
-        migration_version=20260719040000,
+        migration_version=20260720063411,
         rls_force_enabled=True,
         state_counts={
             "queued": 2,

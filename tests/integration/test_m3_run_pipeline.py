@@ -104,6 +104,7 @@ def _run_as_local_supabase_admin(
     run_id: UUID | None = None,
     organization_id: UUID | None = None,
     attempt_id: UUID | None = None,
+    attempt_count: int | None = None,
     correlation_id: UUID | None = None,
     operator_correlation_id: UUID | None = None,
 ) -> str:
@@ -150,6 +151,8 @@ def _run_as_local_supabase_admin(
         command.extend(["-v", f"organization_id={organization_id}"])
     if attempt_id is not None:
         command.extend(["-v", f"attempt_id={attempt_id}"])
+    if attempt_count is not None:
+        command.extend(["-v", f"attempt_count={attempt_count}"])
     if correlation_id is not None:
         command.extend(["-v", f"correlation_id={correlation_id}"])
     if operator_correlation_id is not None:
@@ -191,6 +194,18 @@ def _poison_local_dispatch(run_id: UUID) -> None:
         where run_id = :'run_id'::uuid and status = 'claimed';
         """,
         run_id=run_id,
+    )
+
+
+def _set_local_dispatch_attempt_count(run_id: UUID, attempt_count: int) -> None:
+    _run_as_local_supabase_admin(
+        """
+        update private.run_outbox
+        set dispatch_attempt_count = :'attempt_count'::integer
+        where run_id = :'run_id'::uuid and status = 'claimed';
+        """,
+        run_id=run_id,
+        attempt_count=attempt_count,
     )
 
 
@@ -1778,6 +1793,46 @@ async def test_p2_poisoned_dispatch_exhaustion_is_terminal_and_cancel_wins(
                 )
                 assert cancel_response.status_code == 202
 
+                async with _api_client(monkeypatch) as synchronous_client:
+                    synchronous_run_id = await _create_p2_dispatch_run(
+                        synchronous_client,
+                        owner_token,
+                        suffix=f"synchronous-{suffix}",
+                        label="p2-poison",
+                    )
+                    synchronous_claims = await worker_database.claim_due_dispatches()
+                    assert [claim.run_id for claim in synchronous_claims] == [synchronous_run_id]
+                    synchronous_claim = synchronous_claims[0]
+                    _set_local_dispatch_attempt_count(synchronous_run_id, 10)
+                    assert await worker_database.fail_dispatch(
+                        synchronous_claim.outbox_id,
+                        synchronous_claim.claim_token,
+                        "dispatch_transport_failed",
+                    )
+                    assert (
+                        _run_as_local_supabase_admin(
+                            """
+                            set role postgres;
+                            select enabled::text || '|' || coalesce(reason, '')
+                            from private.runtime_controls
+                            where control_name = 'run_creation';
+                            """
+                        ).splitlines()[-1]
+                        == "false|poison_outbox"
+                    )
+
+                    _run_as_local_supabase_admin(
+                        """
+                        set role postgres;
+                        select private.set_run_creation_control(
+                          true,
+                          'operator_recovery_verified',
+                          :'operator_correlation_id'::uuid
+                        );
+                        """,
+                        operator_correlation_id=uuid4(),
+                    )
+
                 dispatcher = RunDispatcher(worker_database, _NoDispatchQueue())
                 result = await dispatcher.dispatch_once()
                 assert result.canceled == 1
@@ -1785,6 +1840,17 @@ async def test_p2_poisoned_dispatch_exhaustion_is_terminal_and_cancel_wins(
                 assert result.recovered == 0
                 assert result.claimed == 0
                 assert result.confirmed == 0
+                assert (
+                    _run_as_local_supabase_admin(
+                        """
+                        set role postgres;
+                        select enabled::text || '|' || coalesce(reason, '')
+                        from private.runtime_controls
+                        where control_name = 'run_creation';
+                        """
+                    ).splitlines()[-1]
+                    == "false|poison_outbox"
+                )
 
                 canceled = await cancel_client.get(
                     f"/api/v1/runs/{canceled_run_id}",
@@ -1804,3 +1870,10 @@ async def test_p2_poisoned_dispatch_exhaustion_is_terminal_and_cancel_wins(
         assert poisoned.json()["failure"]["guidance"] == (
             "No substitute result was generated. Retry or use the correlation ID for support."
         )
+        synchronous = await client.get(
+            f"/api/v1/runs/{synchronous_run_id}",
+            headers={"Authorization": f"Bearer {owner_token}"},
+        )
+        assert synchronous.status_code == 200
+        assert synchronous.json()["state"] == "failed"
+        assert synchronous.json()["failure"]["code"] == "dispatch_exhausted"

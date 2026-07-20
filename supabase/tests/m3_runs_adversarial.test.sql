@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(26);
+select extensions.plan(27);
 
 select extensions.has_function(
   'api',
@@ -293,6 +293,16 @@ select extensions.ok(
     'EXECUTE'
   ),
   'runtime observability is aggregate-only and unavailable to browser roles'
+);
+
+select extensions.ok(
+  pg_catalog.strpos(
+    pg_catalog.pg_get_functiondef(
+      'private.runtime_observability_snapshot()'::pg_catalog.regprocedure
+    ),
+    '20260720063411'
+  ) > 0,
+  'runtime observability reports the exact current compatibility migration'
 );
 
 select * from extensions.finish();
