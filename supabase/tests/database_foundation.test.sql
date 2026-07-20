@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(34);
+select extensions.plan(35);
 
 -- 01
 select extensions.ok(
@@ -144,6 +144,7 @@ select extensions.is(
   array[
     'simula_api',
     'simula_command_owner',
+    'simula_operator',
     'simula_worker',
     'simula_worker_owner'
   ]::name[],
@@ -171,7 +172,7 @@ select extensions.ok(
 select extensions.ok(
   (
     select pg_catalog.bool_and(
-      roles.rolcanlogin = (roles.rolname in ('simula_api', 'simula_worker'))
+      roles.rolcanlogin = (roles.rolname in ('simula_api', 'simula_operator', 'simula_worker'))
     )
     from pg_catalog.pg_roles as roles
     where roles.rolname like 'simula\_%' escape '\'
@@ -197,7 +198,7 @@ select extensions.ok(
     from pg_catalog.pg_auth_members as memberships
     join pg_catalog.pg_roles as granted_role on granted_role.oid = memberships.roleid
     join pg_catalog.pg_roles as member_role on member_role.oid = memberships.member
-    where member_role.rolname in ('simula_api', 'simula_worker')
+    where member_role.rolname in ('simula_api', 'simula_operator', 'simula_worker')
       and granted_role.rolname in ('simula_command_owner', 'simula_worker_owner')
   ),
   'runtime roles cannot assume owner roles'
@@ -896,6 +897,25 @@ select extensions.throws_ok(
   '23505',
   'duplicate key value violates unique constraint "audience_versions_one_active_global_demo_idx"',
   'only one active global authored demo version exists across every audience'
+);
+
+-- 35
+select extensions.is(
+  (
+    select pg_catalog.array_agg(
+      functions.oid::pg_catalog.regprocedure::text
+      order by functions.oid::pg_catalog.regprocedure::text
+    )
+    from pg_catalog.pg_proc as functions
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
+    where namespaces.nspname in ('api', 'private')
+      and pg_catalog.has_function_privilege('simula_operator', functions.oid, 'EXECUTE')
+  ),
+  array[
+    'private.get_run_creation_control()',
+    'private.set_run_creation_control(boolean,text,uuid)'
+  ]::text[],
+  'operator role can execute only the two run-control functions'
 );
 
 select * from extensions.finish();

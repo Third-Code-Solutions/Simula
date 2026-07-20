@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(32);
+select extensions.plan(33);
 
 select extensions.has_function(
   'api',
@@ -216,6 +216,13 @@ select extensions.has_function(
   'operator can explicitly disable or re-enable run admission'
 );
 
+select extensions.has_function(
+  'private',
+  'get_run_creation_control',
+  array[]::text[],
+  'operator can inspect the bounded durable run-admission latch'
+);
+
 select extensions.ok(
   pg_catalog.has_function_privilege(
     'simula_worker',
@@ -228,8 +235,13 @@ select extensions.ok(
     'EXECUTE'
   )
   and pg_catalog.has_function_privilege(
-    'postgres',
+    'simula_operator',
     'private.set_run_creation_control(boolean,text,uuid)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and pg_catalog.has_function_privilege(
+    'simula_operator',
+    'private.get_run_creation_control()'::pg_catalog.regprocedure,
     'EXECUTE'
   )
   and not pg_catalog.has_function_privilege(
@@ -244,6 +256,11 @@ select extensions.ok(
   )
   and not pg_catalog.has_table_privilege(
     'simula_worker',
+    'private.runtime_controls'::pg_catalog.regclass,
+    'SELECT,INSERT,UPDATE,DELETE'
+  )
+  and not pg_catalog.has_table_privilege(
+    'simula_operator',
     'private.runtime_controls'::pg_catalog.regclass,
     'SELECT,INSERT,UPDATE,DELETE'
   ),

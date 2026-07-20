@@ -18,6 +18,7 @@
     "format": "prettier --check .github .grype.yaml apps/web packages/contracts package.json pnpm-workspace.yaml prettier.config.mjs README.md compose.yaml tsconfig.base.json turbo.json && uv run --frozen ruff format --check .",
     "format:fix": "prettier --write .github .grype.yaml apps/web packages/contracts package.json pnpm-workspace.yaml prettier.config.mjs README.md compose.yaml tsconfig.base.json turbo.json && uv run --frozen ruff format .",
     "lint": "turbo run lint && uv run --frozen ruff check .",
+    "operator:run-control": "uv run --frozen python -m scripts.run_control",
     "redis:down": "docker compose down --volumes --remove-orphans",
     "redis:up": "docker compose up --detach --wait redis",
     "policy:claims": "uv run --frozen python -m scripts.check_forbidden_claims",

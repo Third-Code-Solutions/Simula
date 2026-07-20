@@ -1244,6 +1244,16 @@ export type Database = {
         Args: { requested_batch_size: number }
         Returns: number
       }
+      get_run_creation_control: {
+        Args: never
+        Returns: {
+          control_name: string
+          correlation_id: string
+          enabled: boolean
+          reason: string
+          updated_at: string
+        }[]
+      }
       get_run_failure_context: {
         Args: { requested_run_id: string }
         Returns: {

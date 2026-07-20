@@ -10,6 +10,9 @@ begin
   if not exists (select 1 from pg_catalog.pg_roles where rolname = 'simula_worker') then
     create role simula_worker login noinherit;
   end if;
+  if not exists (select 1 from pg_catalog.pg_roles where rolname = 'simula_operator') then
+    create role simula_operator login noinherit;
+  end if;
   if not exists (
     select 1 from pg_catalog.pg_roles where rolname = 'simula_command_owner'
   ) then
@@ -26,6 +29,8 @@ $roles$;
 alter role simula_api
   login nocreatedb nocreaterole noinherit;
 alter role simula_worker
+  login nocreatedb nocreaterole noinherit;
+alter role simula_operator
   login nocreatedb nocreaterole noinherit;
 alter role simula_command_owner
   nologin nocreatedb nocreaterole noinherit;
@@ -44,6 +49,7 @@ begin
     from pg_catalog.pg_roles
    where rolname in (
      'simula_api',
+     'simula_operator',
      'simula_worker',
      'simula_command_owner',
      'simula_worker_owner'
@@ -63,6 +69,7 @@ begin
 
   if not (
     (select rolcanlogin from pg_catalog.pg_roles where rolname = 'simula_api')
+    and (select rolcanlogin from pg_catalog.pg_roles where rolname = 'simula_operator')
     and (select rolcanlogin from pg_catalog.pg_roles where rolname = 'simula_worker')
     and not (
       select rolcanlogin
@@ -128,6 +135,12 @@ begin
   end if;
   if pg_catalog.pg_has_role('simula_worker', 'simula_worker_owner', 'member') then
     revoke simula_worker_owner from simula_worker;
+  end if;
+  if pg_catalog.pg_has_role('simula_operator', 'simula_command_owner', 'member') then
+    revoke simula_command_owner from simula_operator;
+  end if;
+  if pg_catalog.pg_has_role('simula_operator', 'simula_worker_owner', 'member') then
+    revoke simula_worker_owner from simula_operator;
   end if;
 end
 $memberships$;
