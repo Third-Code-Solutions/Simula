@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
@@ -26,12 +27,26 @@ select pg_catalog.concat_ws(
   (select pg_catalog.count(*) from api.stimulus_versions),
   (select pg_catalog.count(*) from private.audit_events),
   (select pg_catalog.count(*) from private.idempotency_keys),
+  (select pg_catalog.count(*) from private.provider_success_receipts),
   (select pg_catalog.count(*) from private.run_attempts),
   (select pg_catalog.count(*) from private.run_events),
   (select pg_catalog.count(*) from private.run_outbox),
   (select pg_catalog.count(*) from private.runtime_controls)
 );
 """
+
+_MIGRATIONS_DIRECTORY = Path(__file__).parents[2] / "supabase" / "migrations"
+
+
+def _repository_migration_head() -> str:
+    versions = {
+        migration.name.split("_", maxsplit=1)[0]
+        for migration in _MIGRATIONS_DIRECTORY.glob("*.sql")
+        if re.fullmatch(r"[0-9]{14}_.+\.sql", migration.name)
+    }
+    if not versions:
+        raise RuntimeError("repository has no timestamped Supabase migrations")
+    return max(versions)
 
 
 def _database_password() -> str:
@@ -169,7 +184,7 @@ def test_phase2_full_database_backup_restores_into_isolated_database() -> None:
                 "select pg_catalog.max(version) from supabase_migrations.schema_migrations;",
                 password=password,
             )
-            == "20260719050000"
+            == _repository_migration_head()
         )
         assert (
             _psql(
