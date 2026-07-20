@@ -128,7 +128,10 @@ function isTenantApi(url: string): boolean {
   return new URL(url).pathname.startsWith("/api/v1/");
 }
 
-async function expectSignInRedirect(page: Page, nextPath: string): Promise<void> {
+async function expectSignInRedirect(
+  page: Page,
+  nextPath: string,
+): Promise<void> {
   await expect.poll(() => new URL(page.url()).pathname).toBe("/sign-in");
   expect(new URL(page.url()).searchParams.get("next")).toBe(nextPath);
   await expect(
@@ -270,7 +273,14 @@ test("E2E-RESULT-001 and A11Y-AXE-001: a terminal run explains deterministic lim
     page.getByText("A neutral fictional local browser-test message."),
   ).toBeVisible();
   await expect(disclosure).toContainText("authored_demo");
-  await expect(page.getByText("phase2_deterministic_mock_v1")).toBeVisible();
+  await expect(
+    page.getByText("phase2_deterministic_mock_v1").first(),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Successful provider receipt" }),
+  ).toBeVisible();
+  await expect(disclosure).toContainText("0 micro-USD");
+  await expect(disclosure).toContainText("deterministic_fixture_v1");
   await expect(disclosure).toContainText("phase2_2026_07_17");
   await expect(disclosure).toContainText("30 seconds");
   await expect(disclosure.locator("code")).toHaveCount(5);

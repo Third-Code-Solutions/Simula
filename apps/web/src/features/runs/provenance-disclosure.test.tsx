@@ -25,7 +25,7 @@ describe("ProvenanceDisclosure", () => {
         run_id: RUN_ID,
         created_at: "2026-07-18T00:00:00Z",
         terminal_at: null,
-        result_created_at: null,
+        result_created_at: "2026-07-18T00:00:01Z",
         frozen_manifest_sha256: "a".repeat(64),
         deterministic_seed: "7",
         stimulus: {
@@ -62,6 +62,21 @@ describe("ProvenanceDisclosure", () => {
           max_dispatch_generations: 3,
           max_result_bytes: 131072,
         },
+        provider_receipt: {
+          availability: "available",
+          schema_version: 1,
+          receipt_kind: "successful_result",
+          provider_id: "deterministic_mock",
+          provider_version: 1,
+          model_id: "deterministic_fixture_v1",
+          template_id: "phase2_deterministic_mock_v1",
+          response_schema_version: 1,
+          finish_status: "completed",
+          usage: { input_tokens: 0, output_tokens: 0, cost_microusd: 0 },
+          started_at: "2026-07-18T00:00:00Z",
+          ended_at: "2026-07-18T00:00:01Z",
+          safe_error_class: null,
+        },
       }),
     );
   });
@@ -80,6 +95,10 @@ describe("ProvenanceDisclosure", () => {
     expect(await screen.findByText(hostileStimulus)).toBeInTheDocument();
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("script")).toBeNull();
+    expect(
+      screen.getByRole("heading", { name: "Successful provider receipt" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("0 micro-USD")).toBeInTheDocument();
     unmount();
   });
 
@@ -98,6 +117,7 @@ describe("ProvenanceDisclosure", () => {
         audience: null,
         execution: null,
         limits: null,
+        provider_receipt: null,
       }),
     );
     const { container, unmount } = render(

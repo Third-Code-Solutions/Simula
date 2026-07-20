@@ -206,6 +206,51 @@ export const simulationResultResponseSchema = z
     }
   });
 
+const providerReceiptAvailableSchema = z
+  .object({
+    availability: z.literal("available"),
+    schema_version: z.literal(1),
+    receipt_kind: z.literal("successful_result"),
+    provider_id: z.literal("deterministic_mock"),
+    provider_version: z.literal(1),
+    model_id: z.literal("deterministic_fixture_v1"),
+    template_id: z.literal("phase2_deterministic_mock_v1"),
+    response_schema_version: z.literal(1),
+    finish_status: z.literal("completed"),
+    usage: z
+      .object({
+        input_tokens: z.literal(0),
+        output_tokens: z.literal(0),
+        cost_microusd: z.literal(0),
+      })
+      .strict(),
+    started_at: TIMESTAMP,
+    ended_at: TIMESTAMP,
+    safe_error_class: z.null(),
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const duration = Date.parse(value.ended_at) - Date.parse(value.started_at);
+    if (duration < 0 || duration > 30_000) {
+      context.addIssue({
+        code: "custom",
+        message: "provider receipt duration is invalid",
+      });
+    }
+  });
+
+const providerReceiptLegacyUnavailableSchema = z
+  .object({
+    availability: z.literal("legacy_unavailable"),
+    unavailable_reason: z.literal("successful_result_receipt_not_captured"),
+  })
+  .strict();
+
+const providerReceiptSchema = z.discriminatedUnion("availability", [
+  providerReceiptAvailableSchema,
+  providerReceiptLegacyUnavailableSchema,
+]);
+
 const provenanceAvailableSchema = z
   .object({
     availability: z.literal("available"),
@@ -260,8 +305,21 @@ const provenanceAvailableSchema = z
         max_result_bytes: z.literal(131072),
       })
       .strict(),
+    provider_receipt: providerReceiptSchema.nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine((value, context) => {
+    if (
+      (value.result_created_at === null) !==
+      (value.provider_receipt === null)
+    ) {
+      context.addIssue({
+        code: "custom",
+        message:
+          "completed provenance must disclose provider receipt availability",
+      });
+    }
+  });
 
 const provenanceUnavailableSchema = z
   .object({
@@ -277,6 +335,7 @@ const provenanceUnavailableSchema = z
     audience: z.null(),
     execution: z.null(),
     limits: z.null(),
+    provider_receipt: z.null(),
   })
   .strict();
 

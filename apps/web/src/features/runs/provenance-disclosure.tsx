@@ -158,6 +158,52 @@ export function ProvenanceDisclosure({ runId }: Readonly<{ runId: string }>) {
               <dd>{timestamp(provenance.result_created_at)}</dd>
             </dl>
           </section>
+          {provenance.provider_receipt?.availability === "available" ? (
+            <section>
+              <h3>Successful provider receipt</h3>
+              <p>
+                This receipt covers the successful deterministic result only. It
+                is not a billable provider-attempt ledger.
+              </p>
+              <dl>
+                <dt>Provider</dt>
+                <dd>
+                  {provenance.provider_receipt.provider_id} v
+                  {provenance.provider_receipt.provider_version}
+                </dd>
+                <dt>Model</dt>
+                <dd>{provenance.provider_receipt.model_id}</dd>
+                <dt>Template</dt>
+                <dd>{provenance.provider_receipt.template_id}</dd>
+                <dt>Response schema</dt>
+                <dd>{provenance.provider_receipt.response_schema_version}</dd>
+                <dt>Finish status</dt>
+                <dd>{provenance.provider_receipt.finish_status}</dd>
+                <dt>Input tokens</dt>
+                <dd>{provenance.provider_receipt.usage.input_tokens}</dd>
+                <dt>Output tokens</dt>
+                <dd>{provenance.provider_receipt.usage.output_tokens}</dd>
+                <dt>Cost</dt>
+                <dd>
+                  {provenance.provider_receipt.usage.cost_microusd} micro-USD
+                </dd>
+                <dt>Provider started</dt>
+                <dd>{timestamp(provenance.provider_receipt.started_at)}</dd>
+                <dt>Provider completed</dt>
+                <dd>{timestamp(provenance.provider_receipt.ended_at)}</dd>
+              </dl>
+            </section>
+          ) : null}
+          {provenance.provider_receipt?.availability ===
+          "legacy_unavailable" ? (
+            <section>
+              <h3>Successful provider receipt unavailable</h3>
+              <p>
+                This historical result predates successful-result receipt
+                capture. SIMULA will not synthesize one.
+              </p>
+            </section>
+          ) : null}
         </div>
       ) : null}
     </details>

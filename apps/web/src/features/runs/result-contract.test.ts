@@ -169,6 +169,7 @@ describe("run/result browser contract decoder", () => {
         max_dispatch_generations: 3,
         max_result_bytes: 131072,
       },
+      provider_receipt: null,
     });
     expect(provenance.availability).toBe("available");
   });
