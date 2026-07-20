@@ -82,6 +82,33 @@ describe("SIMULA domain API client", () => {
     });
   });
 
+  it("preserves a bounded Retry-After delay for rate-limited guidance", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          code: "rate_limited",
+          detail: "Too many requests.",
+          status: 429,
+          title: "Rate limited",
+        }),
+        {
+          headers: {
+            "content-type": "application/problem+json",
+            "retry-after": "17",
+          },
+          status: 429,
+        },
+      ),
+    );
+
+    await expect(listOrganizations()).rejects.toMatchObject({
+      code: "rate_limited",
+      message: "Too many requests. Retry after 17 seconds.",
+      retryAfterSeconds: 17,
+      status: 429,
+    });
+  });
+
   it("fails closed when the Auth session is absent", async () => {
     getSession.mockResolvedValue({ data: { session: null }, error: null });
 

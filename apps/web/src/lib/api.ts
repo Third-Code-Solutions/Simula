@@ -36,16 +36,33 @@ export type ApiProblemDocument = Readonly<{
 
 export class ApiProblem extends Error {
   public readonly correlationId: string | undefined;
+  public readonly retryAfterSeconds: number | undefined;
 
   public constructor(
     public readonly status: number,
     public readonly code: string,
     detail: string,
     correlationId?: string,
+    retryAfterSeconds?: number,
   ) {
-    super(detail);
+    super(
+      retryAfterSeconds === undefined
+        ? detail
+        : `${detail} Retry after ${retryAfterSeconds} seconds.`,
+    );
     this.correlationId = correlationId;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
+}
+
+function retryAfterSeconds(value: string | null): number | undefined {
+  if (!value || !/^\d{1,4}$/.test(value)) {
+    return undefined;
+  }
+  const seconds = Number(value);
+  return Number.isSafeInteger(seconds) && seconds >= 1 && seconds <= 3600
+    ? seconds
+    : undefined;
 }
 
 function apiOrigin(): string {
@@ -168,6 +185,7 @@ async function request<T>(
       problem?.correlation_id ||
         response.headers.get("x-correlation-id") ||
         undefined,
+      retryAfterSeconds(response.headers.get("retry-after")),
     );
   }
   if (payload === undefined) {

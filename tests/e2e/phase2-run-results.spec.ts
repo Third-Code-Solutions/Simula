@@ -124,6 +124,21 @@ async function signIn(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/organizations$/);
 }
 
+function isTenantApi(url: string): boolean {
+  return new URL(url).pathname.startsWith("/api/v1/");
+}
+
+async function expectSignInRedirect(page: Page, nextPath: string): Promise<void> {
+  await expect.poll(() => new URL(page.url()).pathname).toBe("/sign-in");
+  expect(new URL(page.url()).searchParams.get("next")).toBe(nextPath);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Sign in" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Organizations" }),
+  ).toHaveCount(0);
+}
+
 async function createTerminalRun(page: Page): Promise<void> {
   const marker = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
   await signIn(page);
@@ -136,6 +151,17 @@ async function createTerminalRun(page: Page): Promise<void> {
     .fill("Pressure-test fictional wording before human research.");
   await page.getByRole("button", { name: "Create project" }).click();
   await expect(page).toHaveURL(/\/projects\/[^/]+$/);
+  const audienceDisclosure = page.locator(
+    "section[aria-labelledby='audience-disclosure-title']",
+  );
+  await expect(audienceDisclosure).toContainText("Required pre-run disclosure");
+  await expect(audienceDisclosure).toContainText("authored_demo");
+  await expect(audienceDisclosure).toContainText("version 2");
+  await expect(audienceDisclosure).toContainText("non-representative");
+  await expect(audienceDisclosure).toContainText("Estimates nobody");
+  await expect(audienceDisclosure).toContainText(
+    "ec5a2cda8f71f55e15b9c0be31a03c19e39f0c47c911898c1b49b33d3ea14e6e",
+  );
   await page.getByLabel("Stimulus name").fill("Fictional message");
   await page
     .getByLabel("Text", { exact: true })
@@ -147,6 +173,55 @@ async function createTerminalRun(page: Page): Promise<void> {
     timeout: 30_000,
   });
 }
+
+test("E2E-AUTH-001: signed-out protected route redirects before tenant API access", async ({
+  context,
+  page,
+}) => {
+  await context.clearCookies();
+  const tenantRequests: string[] = [];
+  page.on("request", (request) => {
+    if (isTenantApi(request.url())) {
+      tenantRequests.push(request.url());
+    }
+  });
+
+  await page.goto("/organizations");
+
+  await expectSignInRedirect(page, "/organizations");
+  expect(tenantRequests).toEqual([]);
+});
+
+test("E2E-AUTH-002: lost browser session fails closed before tenant API access", async ({
+  context,
+  page,
+}) => {
+  const initiallyLoaded = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/v1/organizations" &&
+      response.request().method() === "GET" &&
+      response.status() === 200,
+  );
+  await signIn(page);
+  await initiallyLoaded;
+
+  await context.clearCookies();
+  await page.evaluate(() => {
+    localStorage.clear();
+    sessionStorage.clear();
+  });
+  const postLossTenantRequests: string[] = [];
+  page.on("request", (request) => {
+    if (isTenantApi(request.url())) {
+      postLossTenantRequests.push(request.url());
+    }
+  });
+
+  await page.goto("/organizations");
+
+  await expectSignInRedirect(page, "/organizations");
+  expect(postLossTenantRequests).toEqual([]);
+});
 
 test("E2E-RESULT-001 and A11Y-AXE-001: a terminal run explains deterministic limits", async ({
   page,

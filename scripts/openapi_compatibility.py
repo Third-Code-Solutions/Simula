@@ -14,6 +14,8 @@ def find_breaking_changes(baseline: JsonObject, candidate: JsonObject) -> list[s
     """Return stable, human-readable incompatibilities from baseline to candidate."""
 
     changes: list[str] = []
+    _compare_stable_problem_codes(baseline, candidate, changes)
+    _compare_security_schemes(baseline, candidate, changes)
     baseline_paths = _mapping(baseline.get("paths"))
     candidate_paths = _mapping(candidate.get("paths"))
     for path, baseline_path_item_value in baseline_paths.items():
@@ -39,6 +41,28 @@ def find_breaking_changes(baseline: JsonObject, candidate: JsonObject) -> list[s
                 changes,
             )
     return changes
+
+
+def _compare_stable_problem_codes(
+    baseline: JsonObject, candidate: JsonObject, changes: list[str]
+) -> None:
+    baseline_codes = set(_strings(baseline.get("x-simula-stable-problem-codes")))
+    candidate_codes = set(_strings(candidate.get("x-simula-stable-problem-codes")))
+    for code in sorted(baseline_codes - candidate_codes):
+        changes.append(f"x-simula-stable-problem-codes.{code}: stable problem code removed")
+
+
+def _compare_security_schemes(
+    baseline: JsonObject, candidate: JsonObject, changes: list[str]
+) -> None:
+    baseline_schemes = _mapping(_mapping(baseline.get("components")).get("securitySchemes"))
+    candidate_schemes = _mapping(_mapping(candidate.get("components")).get("securitySchemes"))
+    for name, baseline_scheme in baseline_schemes.items():
+        location = f"components.securitySchemes.{name}"
+        if name not in candidate_schemes:
+            changes.append(f"{location}: security scheme removed")
+        elif baseline_scheme != candidate_schemes[name]:
+            changes.append(f"{location}: security scheme changed")
 
 
 def _compare_operation(
@@ -231,6 +255,10 @@ def _compare_schema(
     candidate_types = _types(candidate.get("type"))
     if baseline_types and candidate_types and baseline_types != candidate_types:
         changes.append(f"{location}: type changed from {baseline_types} to {candidate_types}")
+    elif not baseline_types and candidate_types and direction == "request":
+        changes.append(f"{location}: request type constraint added")
+    elif baseline_types and not candidate_types and direction == "response":
+        changes.append(f"{location}: response type constraint removed")
 
     if "const" in baseline and baseline.get("const") != candidate.get("const"):
         changes.append(f"{location}: const changed")

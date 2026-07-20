@@ -8,6 +8,7 @@ from scripts.openapi_compatibility import find_breaking_changes
 def _document() -> dict[str, object]:
     return {
         "openapi": "3.1.0",
+        "x-simula-stable-problem-codes": ["forbidden", "rate_limited"],
         "paths": {
             "/widgets": {
                 "post": {
@@ -43,6 +44,9 @@ def _document() -> dict[str, object]:
             }
         },
         "components": {
+            "securitySchemes": {
+                "bearer": {"type": "http", "scheme": "bearer", "bearerFormat": "JWT"}
+            },
             "schemas": {
                 "WidgetRequest": {
                     "type": "object",
@@ -59,7 +63,7 @@ def _document() -> dict[str, object]:
                     },
                     "required": ["id", "state"],
                 },
-            }
+            },
         },
     }
 
@@ -126,3 +130,39 @@ def test_broken_reference_fails_closed() -> None:
         assert "unresolved OpenAPI reference" in str(error)
     else:
         raise AssertionError("broken candidate reference was accepted")
+
+
+def test_security_scheme_definition_change_is_breaking() -> None:
+    baseline = _document()
+    candidate = deepcopy(baseline)
+    candidate["components"]["securitySchemes"]["bearer"]["type"] = "apiKey"  # type: ignore[index]
+
+    assert any(
+        "securitySchemes.bearer" in change for change in find_breaking_changes(baseline, candidate)
+    )
+
+
+def test_response_type_removal_fails_closed() -> None:
+    baseline = _document()
+    response_candidate = deepcopy(baseline)
+    response_id = response_candidate["components"]["schemas"]["WidgetResponse"][  # type: ignore[index]
+        "properties"
+    ]["id"]
+    del response_id["type"]
+    assert any("type" in change for change in find_breaking_changes(baseline, response_candidate))
+
+
+def test_added_request_type_constraint_and_removed_stable_code_are_breaking() -> None:
+    baseline = _document()
+    del baseline["components"]["schemas"]["WidgetRequest"]["properties"]["name"][  # type: ignore[index]
+        "type"
+    ]
+    candidate = deepcopy(baseline)
+    candidate["components"]["schemas"]["WidgetRequest"]["properties"]["name"][  # type: ignore[index]
+        "type"
+    ] = "string"
+    candidate["x-simula-stable-problem-codes"] = ["forbidden"]
+
+    breaking = find_breaking_changes(baseline, candidate)
+    assert any("request type constraint added" in change for change in breaking)
+    assert any("stable problem code removed" in change for change in breaking)

@@ -45,8 +45,10 @@ def _parse_postgres_url(url: str, *, environment: str) -> None:
         if parsed.hostname not in _LOOPBACK_HOSTS:
             raise ConfigurationError("local/test worker database must use a loopback host")
         return
-    if parsed.scheme != "postgresql" or sslmode not in {"require", "verify-ca", "verify-full"}:
-        raise ConfigurationError("non-local worker database must use postgresql with TLS sslmode")
+    if parsed.scheme != "postgresql" or sslmode != "verify-full":
+        raise ConfigurationError(
+            "non-local worker database must use postgresql with sslmode=verify-full"
+        )
 
 
 def _parse_redis_url(url: str, *, environment: str) -> None:

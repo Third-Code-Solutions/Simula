@@ -56,3 +56,22 @@ def test_worker_settings_require_an_exact_git_release(
 
     with pytest.raises(ConfigurationError, match="exact 40-character git SHA"):
         WorkerSettings.from_environment()
+
+
+@pytest.mark.parametrize("sslmode", ["require", "verify-ca"])
+def test_deployed_worker_rejects_database_tls_without_hostname_verification(
+    monkeypatch: pytest.MonkeyPatch,
+    sslmode: str,
+) -> None:
+    _environment(
+        monkeypatch,
+        SIMULA_ENVIRONMENT="production",
+        SIMULA_WORKER_DATABASE_URL=(
+            "postgresql://simula_worker:worker-password@db.example.test:5432/postgres"
+            f"?sslmode={sslmode}"
+        ),
+        SIMULA_REDIS_URL="rediss://redis.example.test:6379/0",
+    )
+
+    with pytest.raises(ConfigurationError, match="sslmode=verify-full"):
+        WorkerSettings.from_environment()

@@ -165,8 +165,21 @@ jobs:
         run: |
           pnpm exec playwright install --with-deps chromium
 
+      - name: Generate an ephemeral server-only bundle canary
+        run: |
+          canary="SIMULA_BUNDLE_CANARY_$(python -c 'import secrets; print(secrets.token_hex(32))')"
+          echo "SIMULA_BUNDLE_SECRET_CANARY=$canary" >> "$GITHUB_ENV"
+
       - name: Run root verification gate
         run: pnpm verify
+
+      - name: Prove server-only values are absent from browser artifacts
+        run: |
+          uv run --frozen python -m scripts.check_web_bundle_secrets \
+            --path apps/web/.next/static \
+            --path apps/web/.next/standalone \
+            --path apps/web/public \
+            --canary-env SIMULA_BUNDLE_SECRET_CANARY
 
       - name: Stop disposable services
         if: always()
@@ -189,11 +202,27 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Generate an ephemeral server-only image canary
+        run: |
+          canary="SIMULA_BUNDLE_CANARY_$(python -c 'import secrets; print(secrets.token_hex(32))')"
+          echo "SIMULA_BUNDLE_SECRET_CANARY=$canary" >> "$GITHUB_ENV"
+
       - name: Build pinned images
         run: |
-          docker build --pull --tag simula-web:m0 --file apps/web/Dockerfile .
+          docker build --pull \
+            --secret id=simula_bundle_canary,env=SIMULA_BUNDLE_SECRET_CANARY \
+            --tag simula-web:m0 --file apps/web/Dockerfile .
           docker build --pull --tag simula-api:m0 --file services/api/Dockerfile .
           docker build --pull --tag simula-worker:m0 --file services/worker/Dockerfile .
+
+      - name: Prove server-only values are absent from the final web image
+        run: |
+          container_id="$(docker create simula-web:m0)"
+          trap 'docker rm --force "$container_id" >/dev/null 2>&1 || true' EXIT
+          docker export --output "$RUNNER_TEMP/simula-web-image.tar" "$container_id"
+          python -m scripts.check_web_bundle_secrets \
+            --path "$RUNNER_TEMP/simula-web-image.tar" \
+            --canary-env SIMULA_BUNDLE_SECRET_CANARY
 
       - name: Prove non-root runtime users and imports
         run: |

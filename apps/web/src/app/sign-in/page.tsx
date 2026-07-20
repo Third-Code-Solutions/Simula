@@ -2,18 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SignInForm } from "./sign-in-form";
+import { safeNextPath } from "./safe-next-path";
 import styles from "../auth-proof.module.css";
 
 export const metadata: Metadata = {
   title: "Sign in",
 };
-
-function safeNextPath(value: string | undefined): string {
-  if (!value || !value.startsWith("/") || value.startsWith("//")) {
-    return "/organizations";
-  }
-  return value;
-}
 
 export default async function SignInPage({
   searchParams,

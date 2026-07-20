@@ -79,8 +79,8 @@ class ApiSettings:
             if database.scheme != "postgresql" or supabase.scheme != "https":
                 raise ConfigurationError("deployed Supabase and PostgreSQL endpoints require TLS")
             ssl_modes = parse_qs(database.query).get("sslmode", [])
-            if not ssl_modes or ssl_modes[-1] not in {"require", "verify-ca", "verify-full"}:
-                raise ConfigurationError("deployed PostgreSQL requires sslmode")
+            if not ssl_modes or ssl_modes[-1].lower() != "verify-full":
+                raise ConfigurationError("deployed PostgreSQL requires sslmode=verify-full")
 
         issuer = f"{supabase_url}/auth/v1"
         jwks_url = _required("SIMULA_SUPABASE_JWKS_URL").removesuffix("/")

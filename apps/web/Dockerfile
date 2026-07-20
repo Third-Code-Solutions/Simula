@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS build
 
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -12,7 +13,12 @@ RUN pnpm install --frozen-lockfile
 
 COPY apps/web apps/web
 COPY packages/contracts packages/contracts
-RUN pnpm --filter @simula/contracts build && pnpm --filter @simula/web build
+RUN --mount=type=secret,id=simula_bundle_canary,required=false \
+    if [ -f /run/secrets/simula_bundle_canary ]; then \
+      export SIMULA_BUNDLE_SECRET_CANARY="$(cat /run/secrets/simula_bundle_canary)"; \
+    fi \
+    && pnpm --filter @simula/contracts build \
+    && pnpm --filter @simula/web build
 
 FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd37b7e9a7285cf83b6951452d AS runtime
 
