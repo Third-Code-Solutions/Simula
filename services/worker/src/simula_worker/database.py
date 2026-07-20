@@ -93,6 +93,7 @@ class WorkerExecutionGateway(Protocol):
         attempt_id: UUID,
         lease_token: UUID,
         artifact: Mapping[str, object],
+        receipt: Mapping[str, object],
     ) -> bool: ...
 
     async def fail_execution(
@@ -261,10 +262,17 @@ class WorkerDatabase(WorkerExecutionGateway):
         attempt_id: UUID,
         lease_token: UUID,
         artifact: Mapping[str, object],
+        receipt: Mapping[str, object],
     ) -> bool:
         return await self._boolean_function(
-            "select private.complete_run_execution(%s, %s, %s, %s) as changed",
-            (run_id, attempt_id, lease_token, Jsonb(dict(artifact))),
+            "select private.complete_run_execution(%s, %s, %s, %s, %s) as changed",
+            (
+                run_id,
+                attempt_id,
+                lease_token,
+                Jsonb(dict(artifact)),
+                Jsonb(dict(receipt)),
+            ),
         )
 
     async def fail_execution(

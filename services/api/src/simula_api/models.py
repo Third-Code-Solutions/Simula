@@ -287,6 +287,48 @@ class ProvenanceExecutionLimits(StrictModel):
     max_result_bytes: Literal[131072]
 
 
+class ProvenanceProviderUsage(StrictModel):
+    input_tokens: Literal[0]
+    output_tokens: Literal[0]
+    cost_microusd: Literal[0]
+
+
+class ProvenanceProviderReceiptAvailable(StrictModel):
+    availability: Literal["available"]
+    schema_version: Literal[1]
+    receipt_kind: Literal["successful_result"]
+    provider_id: Literal["deterministic_mock"]
+    provider_version: Literal[1]
+    model_id: Literal["deterministic_fixture_v1"]
+    template_id: Literal["phase2_deterministic_mock_v1"]
+    response_schema_version: Literal[1]
+    finish_status: Literal["completed"]
+    usage: ProvenanceProviderUsage
+    started_at: datetime
+    ended_at: datetime
+    safe_error_class: None = None
+
+    @model_validator(mode="after")
+    def has_measured_bounded_timestamps(self) -> Self:
+        if self.started_at.utcoffset() is None or self.ended_at.utcoffset() is None:
+            raise ValueError("provider receipt timestamps must be timezone-aware")
+        duration = (self.ended_at - self.started_at).total_seconds()
+        if duration < 0 or duration > 30:
+            raise ValueError("provider receipt duration must be from 0 through 30 seconds")
+        return self
+
+
+class ProvenanceProviderReceiptLegacyUnavailable(StrictModel):
+    availability: Literal["legacy_unavailable"]
+    unavailable_reason: Literal["successful_result_receipt_not_captured"]
+
+
+ProvenanceProviderReceipt = Annotated[
+    ProvenanceProviderReceiptAvailable | ProvenanceProviderReceiptLegacyUnavailable,
+    Field(discriminator="availability"),
+]
+
+
 class SimulationProvenanceResponse(StrictModel):
     """Whitelisted immutable run provenance; generic manifests never cross the API boundary."""
 
@@ -302,6 +344,7 @@ class SimulationProvenanceResponse(StrictModel):
     audience: ProvenanceAudience | None = None
     execution: ProvenanceExecution | None = None
     limits: ProvenanceExecutionLimits | None = None
+    provider_receipt: ProvenanceProviderReceipt | None = None
 
     @model_validator(mode="after")
     def has_complete_or_explicitly_unavailable_provenance(self) -> Self:
@@ -309,8 +352,14 @@ class SimulationProvenanceResponse(StrictModel):
         if self.availability == "available":
             if self.unavailable_reason is not None or any(detail is None for detail in details):
                 raise ValueError("available provenance must include every frozen detail")
+            if (self.result_created_at is None) != (self.provider_receipt is None):
+                raise ValueError("completed provenance must disclose provider receipt availability")
             return self
-        if self.unavailable_reason is None or any(detail is not None for detail in details):
+        if (
+            self.unavailable_reason is None
+            or any(detail is not None for detail in details)
+            or self.provider_receipt is not None
+        ):
             raise ValueError("legacy provenance must disclose why details are unavailable")
         return self
 

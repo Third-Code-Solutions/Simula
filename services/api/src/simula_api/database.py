@@ -27,6 +27,9 @@ from simula_api.models import (
     ProvenanceAudience,
     ProvenanceExecution,
     ProvenanceExecutionLimits,
+    ProvenanceProviderReceipt,
+    ProvenanceProviderReceiptAvailable,
+    ProvenanceProviderReceiptLegacyUnavailable,
     ProvenanceStimulus,
     SimulationProvenanceResponse,
     SimulationResultResponse,
@@ -834,9 +837,25 @@ class DatabaseGateway:
                   runs.frozen_manifest,
                   runs.frozen_manifest_sha256,
                   runs.deterministic_seed,
-                  results.created_at as result_created_at
+                  results.created_at as result_created_at,
+                  receipts.receipt_version,
+                  receipts.receipt_kind,
+                  receipts.provider_id,
+                  receipts.provider_version,
+                  receipts.model_id,
+                  receipts.template_id,
+                  receipts.response_schema_version,
+                  receipts.finish_status,
+                  receipts.input_tokens,
+                  receipts.output_tokens,
+                  receipts.cost_microusd,
+                  receipts.started_at as provider_started_at,
+                  receipts.ended_at as provider_ended_at,
+                  receipts.safe_error_class
                 from api.simulation_runs as runs
                 left join api.simulation_results as results on results.run_id = runs.id
+                left join lateral private.provider_success_receipt_for_run(runs.id) as receipts
+                  on true
                 where runs.id = %s
                 """,
                 (run_id,),
@@ -890,6 +909,35 @@ class DatabaseGateway:
         frozen_code = cast(Mapping[str, object], code)
         frozen_configuration = cast(Mapping[str, object], configuration)
         frozen_limits = cast(Mapping[str, object], limits)
+        provider_receipt: ProvenanceProviderReceipt | None = None
+        if row["result_created_at"] is not None:
+            if row["receipt_version"] is None:
+                provider_receipt = ProvenanceProviderReceiptLegacyUnavailable(
+                    availability="legacy_unavailable",
+                    unavailable_reason="successful_result_receipt_not_captured",
+                )
+            else:
+                provider_receipt = ProvenanceProviderReceiptAvailable.model_validate(
+                    {
+                        "availability": "available",
+                        "schema_version": row["receipt_version"],
+                        "receipt_kind": row["receipt_kind"],
+                        "provider_id": row["provider_id"],
+                        "provider_version": row["provider_version"],
+                        "model_id": row["model_id"],
+                        "template_id": row["template_id"],
+                        "response_schema_version": row["response_schema_version"],
+                        "finish_status": row["finish_status"],
+                        "usage": {
+                            "input_tokens": row["input_tokens"],
+                            "output_tokens": row["output_tokens"],
+                            "cost_microusd": row["cost_microusd"],
+                        },
+                        "started_at": row["provider_started_at"],
+                        "ended_at": row["provider_ended_at"],
+                        "safe_error_class": row["safe_error_class"],
+                    }
+                )
         return SimulationProvenanceResponse(
             availability="available",
             run_id=row["id"],
@@ -931,6 +979,7 @@ class DatabaseGateway:
                 }
             ),
             limits=ProvenanceExecutionLimits.model_validate(frozen_limits),
+            provider_receipt=provider_receipt,
         )
 
     async def _project_detail(

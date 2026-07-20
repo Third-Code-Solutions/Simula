@@ -546,22 +546,30 @@ async def test_run_cancel_returns_existing_terminal_state_when_completion_won() 
 
 async def test_published_result_is_returned_as_the_generated_typed_contract() -> None:
     app, database, _ = app_with_fakes()
-    artifact = DeterministicMockProvider().run(
-        ProviderRequest(
-            request_id=UUID("00000000-0000-4000-8000-0000000000e6"),
-            attempt_id=UUID("00000000-0000-4000-8000-0000000000e7"),
-            run_id=RUN_ID,
-            method_version="phase2_demo_v1",
-            language="en",
-            stimulus_content="Test response typing.",
-            deterministic_seed=7,
-            output_schema_version=1,
-            code_release_sha="a" * 40,
-            configuration_sha256="b" * 64,
-            frozen_manifest_sha256="b" * 64,
-            deadline_at=NOW,
-            cost_ceiling=0,
+    artifact = (
+        DeterministicMockProvider()
+        .run(
+            ProviderRequest(
+                request_id=UUID("00000000-0000-4000-8000-0000000000e6"),
+                attempt_id=UUID("00000000-0000-4000-8000-0000000000e7"),
+                run_id=RUN_ID,
+                method_version="phase2_demo_v1",
+                language="en",
+                stimulus_content="Test response typing.",
+                deterministic_seed=7,
+                output_schema_version=1,
+                provider_id="deterministic_mock",
+                provider_version=1,
+                model_id="deterministic_fixture_v1",
+                template_id="phase2_deterministic_mock_v1",
+                code_release_sha="a" * 40,
+                configuration_sha256="b" * 64,
+                frozen_manifest_sha256="b" * 64,
+                deadline_at=NOW,
+                cost_ceiling=0,
+            )
         )
+        .result
     )
     database.result = SimulationResultResponse(
         run_id=RUN_ID,
@@ -584,7 +592,28 @@ async def test_published_result_is_returned_as_the_generated_typed_contract() ->
 
 
 async def test_authorized_provenance_is_a_closed_projection_not_the_raw_manifest() -> None:
-    app, _, _ = app_with_fakes()
+    app, database, _ = app_with_fakes()
+    database.provenance = SimulationProvenanceResponse.model_validate(
+        {
+            **database.provenance.model_dump(mode="python"),
+            "result_created_at": NOW,
+            "provider_receipt": {
+                "availability": "available",
+                "schema_version": 1,
+                "receipt_kind": "successful_result",
+                "provider_id": "deterministic_mock",
+                "provider_version": 1,
+                "model_id": "deterministic_fixture_v1",
+                "template_id": "phase2_deterministic_mock_v1",
+                "response_schema_version": 1,
+                "finish_status": "completed",
+                "usage": {"input_tokens": 0, "output_tokens": 0, "cost_microusd": 0},
+                "started_at": NOW,
+                "ended_at": NOW,
+                "safe_error_class": None,
+            },
+        }
+    )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get(
             f"/api/v1/runs/{RUN_ID}/provenance",
@@ -598,5 +627,20 @@ async def test_authorized_provenance_is_a_closed_projection_not_the_raw_manifest
     assert body["execution"]["code_release_sha"] == "a" * 40
     assert body["execution"]["configuration_sha256"] == "b" * 64
     assert body["execution"]["pipeline_release_id"] == "phase2_deterministic_mock_v1"
+    assert body["provider_receipt"] == {
+        "availability": "available",
+        "schema_version": 1,
+        "receipt_kind": "successful_result",
+        "provider_id": "deterministic_mock",
+        "provider_version": 1,
+        "model_id": "deterministic_fixture_v1",
+        "template_id": "phase2_deterministic_mock_v1",
+        "response_schema_version": 1,
+        "finish_status": "completed",
+        "usage": {"input_tokens": 0, "output_tokens": 0, "cost_microusd": 0},
+        "started_at": "2026-07-18T00:00:00Z",
+        "ended_at": "2026-07-18T00:00:00Z",
+        "safe_error_class": None,
+    }
     assert "frozen_manifest" not in body
     assert "job_id" not in body

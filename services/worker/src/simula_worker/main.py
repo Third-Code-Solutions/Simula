@@ -29,11 +29,11 @@ from simula_core.runtime import RuntimeMetadata
 from simula_core.simulation import (
     AudienceCell,
     DeterministicMockProvider,
+    ProviderExecutionReceiptV1,
     ProviderPreflightUnavailableError,
     ProviderRateLimitedError,
     ProviderRequest,
     SimulationProvider,
-    SimulationResultV1,
 )
 from simula_core.trace_context import TraceContext
 from structlog.contextvars import bound_contextvars
@@ -448,6 +448,7 @@ def _provider_request(
     frozen_manifest_sha256: str,
     deterministic_seed: int,
     runtime_release_sha: str,
+    deadline_at: datetime,
 ) -> ProviderRequest:
     stimulus = cast(Mapping[str, object], frozen_manifest["stimulus"])
     audience = cast(Mapping[str, object], frozen_manifest["audience"])
@@ -455,8 +456,13 @@ def _provider_request(
     raw_cells = cast(list[object], audience_manifest["audience_cells"])
     code = cast(Mapping[str, object], frozen_manifest["code"])
     configuration = cast(Mapping[str, object], frozen_manifest["configuration"])
+    execution = cast(Mapping[str, object], frozen_manifest["execution"])
     if code.get("release_sha") != runtime_release_sha:
         raise ValueError("worker release does not match the frozen run release")
+    if execution.get("provider_id") != "deterministic_mock":
+        raise ValueError("worker provider does not match the frozen run provider")
+    if execution.get("provider_version") != 1:
+        raise ValueError("worker provider version does not match the frozen run provider")
     return ProviderRequest(
         request_id=claim_attempt_id,
         attempt_id=claim_attempt_id,
@@ -467,10 +473,14 @@ def _provider_request(
         audience_cells=tuple(AudienceCell.model_validate(cell) for cell in raw_cells),
         deterministic_seed=deterministic_seed,
         output_schema_version=1,
+        provider_id="deterministic_mock",
+        provider_version=1,
+        model_id="deterministic_fixture_v1",
+        template_id="phase2_deterministic_mock_v1",
         code_release_sha=runtime_release_sha,
         configuration_sha256=cast(str, configuration["sha256"]),
         frozen_manifest_sha256=frozen_manifest_sha256,
-        deadline_at=datetime.now(UTC) + timedelta(seconds=30),
+        deadline_at=deadline_at,
         cost_ceiling=0,
     )
 
@@ -505,6 +515,7 @@ async def _process_claimed_run(
 
     provider_called = False
     try:
+        provider_started_at = datetime.now(UTC)
         request = _provider_request(
             run_id=run_id,
             claim_attempt_id=attempt_id,
@@ -512,11 +523,21 @@ async def _process_claimed_run(
             frozen_manifest_sha256=frozen_manifest_sha256,
             deterministic_seed=deterministic_seed,
             runtime_release_sha=runtime_release_sha,
+            deadline_at=provider_started_at + timedelta(seconds=30),
         )
         if telemetry is not None and not isinstance(provider, DeterministicMockProvider):
             telemetry.observe_external_provider_call()
         provider_called = True
-        result: SimulationResultV1 = provider.run(request)
+        provider_response = provider.run(request)
+        provider_ended_at = datetime.now(UTC)
+        result = provider_response.result
+        artifact = result.model_dump(mode="json")
+        receipt = ProviderExecutionReceiptV1.from_success(
+            request=request,
+            response=provider_response,
+            started_at=provider_started_at,
+            ended_at=provider_ended_at,
+        )
         if telemetry is not None:
             telemetry.observe_provider("completed")
     except asyncio.CancelledError:
@@ -588,7 +609,8 @@ async def _process_claimed_run(
         run_id,
         attempt_id,
         lease_token,
-        result.model_dump(mode="json"),
+        artifact,
+        receipt.model_dump(mode="json"),
     )
     observation.outcome = "completed" if completed else "completion_rejected"
     if not completed:

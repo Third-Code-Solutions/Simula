@@ -70,11 +70,21 @@ class ProviderRequest(StrictFrozenModel):
     audience_cells: tuple[AudienceCell, ...] = (AudienceCell(key="authored_demo", weight=1.0),)
     deterministic_seed: int = Field(ge=SIGNED_INT64_MIN, le=SIGNED_INT64_MAX)
     output_schema_version: Literal[1]
+    provider_id: Literal["deterministic_mock"]
+    provider_version: Literal[1]
+    model_id: Literal["deterministic_fixture_v1"]
+    template_id: Literal["phase2_deterministic_mock_v1"]
     code_release_sha: CodeReleaseSha
     configuration_sha256: Sha256
     frozen_manifest_sha256: Sha256
     deadline_at: datetime
     cost_ceiling: Literal[0] = 0
+
+    @model_validator(mode="after")
+    def has_aware_deadline(self) -> ProviderRequest:
+        if self.deadline_at.utcoffset() is None:
+            raise ValueError("provider deadline must be timezone-aware")
+        return self
 
 
 class DistributionCategory(StrictFrozenModel):
@@ -170,10 +180,134 @@ class SimulationResultV1(StrictFrozenModel):
     limitations: tuple[NonRepresentativeLimitation, ...]
 
 
+class ProviderUsage(StrictFrozenModel):
+    """Measured provider usage; the Phase 2 deterministic adapter is exactly zero-cost."""
+
+    input_tokens: Literal[0]
+    output_tokens: Literal[0]
+    cost_microusd: Literal[0]
+
+
+class ProviderMetadata(StrictFrozenModel):
+    """Pure provider metadata; no fabricated wall-clock observations."""
+
+    provider_id: Literal["deterministic_mock"]
+    provider_version: Literal[1]
+    model_id: Literal["deterministic_fixture_v1"]
+    template_id: Literal["phase2_deterministic_mock_v1"]
+    response_schema_version: Literal[1]
+    finish_status: Literal["completed"]
+    usage: ProviderUsage
+    safe_error_class: None = None
+
+
+class ProviderResponse(StrictFrozenModel):
+    """Typed deterministic output plus pure provider metadata."""
+
+    result: SimulationResultV1
+    metadata: ProviderMetadata
+
+    @model_validator(mode="after")
+    def metadata_matches_result(self) -> ProviderResponse:
+        if self.metadata.provider_id != self.result.provenance.provider_id:
+            raise ValueError("provider metadata does not match result provider")
+        if self.metadata.provider_version != self.result.provenance.provider_version:
+            raise ValueError("provider metadata does not match result version")
+        if self.metadata.response_schema_version != self.result.provenance.output_schema_version:
+            raise ValueError("provider metadata does not match result schema")
+        return self
+
+
+class ProviderExecutionReceiptV1(StrictFrozenModel):
+    """Worker-observed successful-result receipt; not a future billable cost ledger."""
+
+    schema_version: Literal[1]
+    receipt_kind: Literal["successful_result"]
+    request_id: UUID
+    attempt_id: UUID
+    run_id: UUID
+    provider_id: Literal["deterministic_mock"]
+    provider_version: Literal[1]
+    model_id: Literal["deterministic_fixture_v1"]
+    template_id: Literal["phase2_deterministic_mock_v1"]
+    response_schema_version: Literal[1]
+    finish_status: Literal["completed"]
+    usage: ProviderUsage
+    started_at: datetime
+    ended_at: datetime
+    safe_error_class: None = None
+
+    @model_validator(mode="after")
+    def has_bounded_aware_timestamps(self) -> ProviderExecutionReceiptV1:
+        if self.started_at.utcoffset() is None or self.ended_at.utcoffset() is None:
+            raise ValueError("provider receipt timestamps must be timezone-aware")
+        duration = (self.ended_at - self.started_at).total_seconds()
+        if duration < 0 or duration > 30:
+            raise ValueError("provider receipt duration must be from 0 through 30 seconds")
+        return self
+
+    @classmethod
+    def from_success(
+        cls,
+        *,
+        request: ProviderRequest,
+        response: ProviderResponse,
+        started_at: datetime,
+        ended_at: datetime,
+    ) -> ProviderExecutionReceiptV1:
+        result = response.result
+        metadata = response.metadata
+        if result.run_id != request.run_id:
+            raise ValueError("provider result run does not match request")
+        if result.provenance.code_release_sha != request.code_release_sha:
+            raise ValueError("provider result release does not match request")
+        if result.provenance.configuration_sha256 != request.configuration_sha256:
+            raise ValueError("provider result configuration does not match request")
+        if result.provenance.frozen_manifest_sha256 != request.frozen_manifest_sha256:
+            raise ValueError("provider result manifest does not match request")
+        if result.provenance.deterministic_seed != str(request.deterministic_seed):
+            raise ValueError("provider result seed does not match request")
+        expected_identity = (
+            request.provider_id,
+            request.provider_version,
+            request.model_id,
+            request.template_id,
+            request.output_schema_version,
+        )
+        actual_identity = (
+            metadata.provider_id,
+            metadata.provider_version,
+            metadata.model_id,
+            metadata.template_id,
+            metadata.response_schema_version,
+        )
+        if actual_identity != expected_identity:
+            raise ValueError("provider metadata does not match frozen request identity")
+        if started_at > request.deadline_at or ended_at > request.deadline_at:
+            raise ValueError("provider execution exceeded its frozen deadline")
+        return cls(
+            schema_version=1,
+            receipt_kind="successful_result",
+            request_id=request.request_id,
+            attempt_id=request.attempt_id,
+            run_id=request.run_id,
+            provider_id=metadata.provider_id,
+            provider_version=metadata.provider_version,
+            model_id=metadata.model_id,
+            template_id=metadata.template_id,
+            response_schema_version=metadata.response_schema_version,
+            finish_status=metadata.finish_status,
+            usage=metadata.usage,
+            started_at=started_at,
+            ended_at=ended_at,
+            safe_error_class=metadata.safe_error_class,
+        )
+
+
 class SimulationProvider(Protocol):
     """Provider boundary: deterministic input in, schema-validated result out."""
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1: ...
+    def run(self, request: ProviderRequest) -> ProviderResponse: ...
 
 
 class DeterministicMockProvider(SimulationProvider):
@@ -186,7 +320,7 @@ class DeterministicMockProvider(SimulationProvider):
         (0.30, 0.35, 0.35),
     )
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1:
+    def run(self, request: ProviderRequest) -> ProviderResponse:
         """Return the one deterministic, explicitly non-representative demo artifact."""
 
         digest = sha256(
@@ -211,7 +345,7 @@ class DeterministicMockProvider(SimulationProvider):
             digest[0] % len(self._DISTRIBUTIONS)
         ]
         non_representative: NonRepresentativeLimitation = NON_REPRESENTATIVE_LIMITATION
-        return SimulationResultV1(
+        result = SimulationResultV1(
             schema_version="1.0.0",
             run_id=request.run_id,
             validation_label="experimental",
@@ -262,4 +396,17 @@ class DeterministicMockProvider(SimulationProvider):
                 output_schema_version=request.output_schema_version,
             ),
             limitations=(non_representative,),
+        )
+        return ProviderResponse(
+            result=result,
+            metadata=ProviderMetadata(
+                provider_id="deterministic_mock",
+                provider_version=1,
+                model_id="deterministic_fixture_v1",
+                template_id="phase2_deterministic_mock_v1",
+                response_schema_version=request.output_schema_version,
+                finish_status="completed",
+                usage=ProviderUsage(input_tokens=0, output_tokens=0, cost_microusd=0),
+                safe_error_class=None,
+            ),
         )

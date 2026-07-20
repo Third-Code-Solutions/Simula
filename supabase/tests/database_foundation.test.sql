@@ -35,6 +35,7 @@ select extensions.is(
     'api.stimulus_versions',
     'private.audit_events',
     'private.idempotency_keys',
+    'private.provider_success_receipts',
     'private.run_attempts',
     'private.run_events',
     'private.run_outbox',
@@ -97,6 +98,9 @@ select extensions.is(
     'projects_command_insert',
     'projects_command_select',
     'projects_command_update',
+    'provider_success_receipts_command_owner_select',
+    'provider_success_receipts_worker_owner_insert',
+    'provider_success_receipts_worker_owner_select',
     'run_attempts_worker_owner_insert',
     'run_attempts_worker_owner_select',
     'run_attempts_worker_owner_update',
@@ -432,7 +436,7 @@ select extensions.ok(
     'private.claim_due_run_outbox(integer)',
     'private.claim_run_execution_traced(uuid,smallint,text)',
     'private.claim_run_execution(uuid,smallint,text)',
-    'private.complete_run_execution(uuid,uuid,uuid,jsonb)',
+    'private.complete_run_execution(uuid,uuid,uuid,jsonb,jsonb)',
     'private.confirm_run_dispatch(uuid,uuid)',
     'private.evaluate_run_creation_control(numeric,integer)',
     'private.fail_run_dispatch(uuid,uuid,text)',
@@ -483,6 +487,7 @@ select extensions.is(
     'private.has_org_role(uuid,uuid,api.organization_role[])',
     'private.is_org_member(uuid,uuid)',
     'private.is_verified_api_subject(uuid)',
+    'private.provider_success_receipt_for_run(uuid)',
     'private.record_privileged_denial_atomic(uuid,text,text,uuid,uuid)',
     'private.record_sign_in_success(uuid,uuid)',
     'private.request_run_cancel_atomic(uuid,uuid)',
@@ -547,6 +552,7 @@ select extensions.ok(
             'get_simulation_run_replay',
             'has_org_role',
             'is_org_member',
+            'provider_success_receipt_for_run',
             'record_privileged_denial_atomic',
             'record_sign_in_success',
             'request_run_cancel_atomic',
@@ -580,6 +586,7 @@ select extensions.ok(
         'finalize_poisoned_dispatches',
         'finalize_requested_cancellations',
         'heartbeat_run_execution',
+        'provider_success_receipt_for_run',
         'reconcile_run_dispatch',
         'runtime_observability_snapshot',
         'has_org_role',
@@ -664,6 +671,7 @@ select extensions.is(
       and pg_catalog.array_length(constraints.conkey, 1) = 2
   ),
   array[
+    'provider_success_receipts_run_foreign_key',
     'run_attempts_run_foreign_key',
     'run_events_run_foreign_key',
     'run_outbox_run_foreign_key',
@@ -758,6 +766,7 @@ select extensions.ok(
     + (select pg_catalog.count(*) from private.run_attempts)
     + (select pg_catalog.count(*) from private.run_events)
     + (select pg_catalog.count(*) from private.run_outbox)
+    + (select pg_catalog.count(*) from private.provider_success_receipts)
     + (select pg_catalog.count(*) from private.idempotency_keys)
     + (select pg_catalog.count(*) from private.audit_events)
   ) = 0

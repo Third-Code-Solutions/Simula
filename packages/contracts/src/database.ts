@@ -764,6 +764,86 @@ export type Database = {
         }
         Relationships: []
       }
+      provider_success_receipts: {
+        Row: {
+          artifact_sha256: string
+          attempt_id: string
+          cost_microusd: number
+          created_at: string
+          ended_at: string
+          finish_status: string
+          input_tokens: number
+          model_id: string
+          organization_id: string
+          output_tokens: number
+          provider_id: string
+          provider_version: number
+          receipt_kind: string
+          receipt_sha256: string
+          receipt_version: number
+          request_id: string
+          response_schema_version: number
+          run_id: string
+          safe_error_class: string | null
+          started_at: string
+          template_id: string
+        }
+        Insert: {
+          artifact_sha256: string
+          attempt_id: string
+          cost_microusd: number
+          created_at?: string
+          ended_at: string
+          finish_status: string
+          input_tokens: number
+          model_id: string
+          organization_id: string
+          output_tokens: number
+          provider_id: string
+          provider_version: number
+          receipt_kind: string
+          receipt_sha256: string
+          receipt_version: number
+          request_id: string
+          response_schema_version: number
+          run_id: string
+          safe_error_class?: string | null
+          started_at: string
+          template_id: string
+        }
+        Update: {
+          artifact_sha256?: string
+          attempt_id?: string
+          cost_microusd?: number
+          created_at?: string
+          ended_at?: string
+          finish_status?: string
+          input_tokens?: number
+          model_id?: string
+          organization_id?: string
+          output_tokens?: number
+          provider_id?: string
+          provider_version?: number
+          receipt_kind?: string
+          receipt_sha256?: string
+          receipt_version?: number
+          request_id?: string
+          response_schema_version?: number
+          run_id?: string
+          safe_error_class?: string | null
+          started_at?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "provider_success_receipts_attempt_foreign_key"
+            columns: ["organization_id", "run_id", "attempt_id"]
+            isOneToOne: false
+            referencedRelation: "run_attempts"
+            referencedColumns: ["organization_id", "run_id", "id"]
+          },
+        ]
+      }
       run_attempts: {
         Row: {
           attempt_number: number
@@ -990,15 +1070,26 @@ export type Database = {
           traceparent: string
         }[]
       }
-      complete_run_execution: {
-        Args: {
-          requested_artifact: Json
-          requested_attempt_id: string
-          requested_lease_token: string
-          requested_run_id: string
-        }
-        Returns: boolean
-      }
+      complete_run_execution:
+        | {
+            Args: {
+              requested_artifact: Json
+              requested_attempt_id: string
+              requested_lease_token: string
+              requested_run_id: string
+            }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              requested_artifact: Json
+              requested_attempt_id: string
+              requested_lease_token: string
+              requested_receipt: Json
+              requested_run_id: string
+            }
+            Returns: boolean
+          }
       confirm_run_dispatch: {
         Args: { requested_claim_token: string; requested_outbox_id: string }
         Returns: boolean
@@ -1205,6 +1296,15 @@ export type Database = {
         Returns: boolean
       }
       latch_run_creation_for_poison: { Args: never; Returns: boolean }
+      phase2_provider_success_receipt_is_valid: {
+        Args: {
+          requested_artifact: Json
+          requested_attempt_id: string
+          requested_receipt: Json
+          requested_run_id: string
+        }
+        Returns: boolean
+      }
       phase2_result_artifact_is_valid: {
         Args: {
           requested_artifact: Json
@@ -1213,6 +1313,25 @@ export type Database = {
           requested_run_id: string
         }
         Returns: boolean
+      }
+      provider_success_receipt_for_run: {
+        Args: { requested_run_id: string }
+        Returns: {
+          cost_microusd: number
+          ended_at: string
+          finish_status: string
+          input_tokens: number
+          model_id: string
+          output_tokens: number
+          provider_id: string
+          provider_version: number
+          receipt_kind: string
+          receipt_version: number
+          response_schema_version: number
+          safe_error_class: string
+          started_at: string
+          template_id: string
+        }[]
       }
       reconcile_run_dispatch: {
         Args: {

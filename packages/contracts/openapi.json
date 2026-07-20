@@ -917,6 +917,137 @@
         "title": "ProvenanceExecutionLimits",
         "type": "object"
       },
+      "ProvenanceProviderReceiptAvailable": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "const": "available",
+            "title": "Availability",
+            "type": "string"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "finish_status": {
+            "const": "completed",
+            "title": "Finish Status",
+            "type": "string"
+          },
+          "model_id": {
+            "const": "deterministic_fixture_v1",
+            "title": "Model Id",
+            "type": "string"
+          },
+          "provider_id": {
+            "const": "deterministic_mock",
+            "title": "Provider Id",
+            "type": "string"
+          },
+          "provider_version": {
+            "const": 1,
+            "title": "Provider Version",
+            "type": "integer"
+          },
+          "receipt_kind": {
+            "const": "successful_result",
+            "title": "Receipt Kind",
+            "type": "string"
+          },
+          "response_schema_version": {
+            "const": 1,
+            "title": "Response Schema Version",
+            "type": "integer"
+          },
+          "safe_error_class": {
+            "title": "Safe Error Class",
+            "type": "null"
+          },
+          "schema_version": {
+            "const": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "template_id": {
+            "const": "phase2_deterministic_mock_v1",
+            "title": "Template Id",
+            "type": "string"
+          },
+          "usage": {
+            "$ref": "#/components/schemas/ProvenanceProviderUsage"
+          }
+        },
+        "required": [
+          "availability",
+          "schema_version",
+          "receipt_kind",
+          "provider_id",
+          "provider_version",
+          "model_id",
+          "template_id",
+          "response_schema_version",
+          "finish_status",
+          "usage",
+          "started_at",
+          "ended_at"
+        ],
+        "title": "ProvenanceProviderReceiptAvailable",
+        "type": "object"
+      },
+      "ProvenanceProviderReceiptLegacyUnavailable": {
+        "additionalProperties": false,
+        "properties": {
+          "availability": {
+            "const": "legacy_unavailable",
+            "title": "Availability",
+            "type": "string"
+          },
+          "unavailable_reason": {
+            "const": "successful_result_receipt_not_captured",
+            "title": "Unavailable Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "availability",
+          "unavailable_reason"
+        ],
+        "title": "ProvenanceProviderReceiptLegacyUnavailable",
+        "type": "object"
+      },
+      "ProvenanceProviderUsage": {
+        "additionalProperties": false,
+        "properties": {
+          "cost_microusd": {
+            "const": 0,
+            "title": "Cost Microusd",
+            "type": "integer"
+          },
+          "input_tokens": {
+            "const": 0,
+            "title": "Input Tokens",
+            "type": "integer"
+          },
+          "output_tokens": {
+            "const": 0,
+            "title": "Output Tokens",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "input_tokens",
+          "output_tokens",
+          "cost_microusd"
+        ],
+        "title": "ProvenanceProviderUsage",
+        "type": "object"
+      },
       "ProvenanceStimulus": {
         "additionalProperties": false,
         "properties": {
@@ -1094,6 +1225,31 @@
                 "type": "null"
               }
             ]
+          },
+          "provider_receipt": {
+            "anyOf": [
+              {
+                "discriminator": {
+                  "mapping": {
+                    "available": "#/components/schemas/ProvenanceProviderReceiptAvailable",
+                    "legacy_unavailable": "#/components/schemas/ProvenanceProviderReceiptLegacyUnavailable"
+                  },
+                  "propertyName": "availability"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/ProvenanceProviderReceiptAvailable"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ProvenanceProviderReceiptLegacyUnavailable"
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider Receipt"
           },
           "result_created_at": {
             "anyOf": [

@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(27);
+select extensions.plan(32);
 
 select extensions.has_function(
   'api',
@@ -300,9 +300,82 @@ select extensions.ok(
     pg_catalog.pg_get_functiondef(
       'private.runtime_observability_snapshot()'::pg_catalog.regprocedure
     ),
-    '20260720063411'
+    '20260720072350'
   ) > 0,
   'runtime observability reports the exact current compatibility migration'
+);
+
+select extensions.has_table(
+  'private',
+  'provider_success_receipts',
+  'successful provider work has one immutable operational receipt'
+);
+
+select extensions.has_function(
+  'private',
+  'complete_run_execution',
+  array['uuid', 'uuid', 'uuid', 'jsonb', 'jsonb']::text[],
+  'worker completion atomically accepts the result and provider receipt'
+);
+
+select extensions.ok(
+  pg_catalog.has_function_privilege(
+    'simula_worker',
+    pg_catalog.to_regprocedure(
+      'private.complete_run_execution(uuid,uuid,uuid,jsonb,jsonb)'
+    ),
+    'EXECUTE'
+  )
+  and not pg_catalog.has_function_privilege(
+    'simula_worker',
+    'private.complete_run_execution(uuid,uuid,uuid,jsonb)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  ),
+  'worker cannot complete a successful run without an atomic provider receipt'
+);
+
+select extensions.ok(
+  not pg_catalog.has_table_privilege(
+    'simula_worker',
+    'private.provider_success_receipts'::pg_catalog.regclass,
+    'SELECT,INSERT,UPDATE,DELETE'
+  )
+  and (
+    select relations.relforcerowsecurity
+    from pg_catalog.pg_class as relations
+    where relations.oid = 'private.provider_success_receipts'::pg_catalog.regclass
+  )
+  and not exists (
+    select 1
+    from pg_catalog.pg_policy as policies
+    where policies.polrelid = 'private.provider_success_receipts'::pg_catalog.regclass
+      and policies.polcmd in ('w', 'd')
+  ),
+  'successful-result receipts are forced-RLS and have no runtime mutation path'
+);
+
+select extensions.ok(
+  pg_catalog.has_function_privilege(
+    'simula_api',
+    'private.provider_success_receipt_for_run(uuid)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and not pg_catalog.has_function_privilege(
+    'authenticated',
+    'private.provider_success_receipt_for_run(uuid)'::pg_catalog.regprocedure,
+    'EXECUTE'
+  )
+  and pg_catalog.has_table_privilege(
+    'simula_command_owner',
+    'private.provider_success_receipts'::pg_catalog.regclass,
+    'SELECT'
+  )
+  and not pg_catalog.has_table_privilege(
+    'simula_api',
+    'private.provider_success_receipts'::pg_catalog.regclass,
+    'SELECT'
+  ),
+  'API receives only a tenant-checked typed receipt projection'
 );
 
 select * from extensions.finish();

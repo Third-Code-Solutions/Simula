@@ -6,6 +6,7 @@ import secrets
 from collections.abc import AsyncIterator, Callable
 from contextlib import AsyncExitStack, asynccontextmanager
 from copy import deepcopy
+from datetime import UTC, datetime, timedelta
 from math import ceil
 from time import perf_counter
 from typing import Protocol, cast
@@ -22,10 +23,11 @@ from simula_core.arq_codec import ARQ_QUEUE_NAME, job_id_for
 from simula_core.queue_runtime import create_queue_client
 from simula_core.simulation import (
     DeterministicMockProvider,
+    ProviderExecutionReceiptV1,
     ProviderPreflightUnavailableError,
     ProviderRateLimitedError,
     ProviderRequest,
-    SimulationResultV1,
+    ProviderResponse,
 )
 from simula_worker.config import WorkerSettings
 from simula_worker.database import ExecutionClaim, WorkerDatabase
@@ -502,6 +504,18 @@ async def test_m3_real_api_dispatcher_worker_duplicate_delivery_result_and_retry
         assert provenance_body["execution"]["code_release_sha"] == "a" * 40
         assert len(provenance_body["execution"]["configuration_sha256"]) == 64
         assert provenance_body["execution"]["pipeline_release_id"] == "phase2_deterministic_mock_v1"
+        assert provenance_body["provider_receipt"]["provider_id"] == "deterministic_mock"
+        assert provenance_body["provider_receipt"]["model_id"] == "deterministic_fixture_v1"
+        assert provenance_body["provider_receipt"]["template_id"] == (
+            "phase2_deterministic_mock_v1"
+        )
+        assert provenance_body["provider_receipt"]["finish_status"] == "completed"
+        assert provenance_body["provider_receipt"]["usage"] == {
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "cost_microusd": 0,
+        }
+        assert provenance_body["provider_receipt"]["safe_error_class"] is None
         assert provenance_body["limits"]["version"] == "phase2_2026_07_17"
         assert provenance_body["deterministic_seed"].lstrip("-").isdigit()
         assert "frozen_manifest" not in provenance_body
@@ -728,20 +742,25 @@ async def test_p2_result_write_boundary_rejects_nested_contract_drift(
                 assert claim.frozen_manifest_sha256 is not None
                 assert claim.deterministic_seed is not None
 
-                artifact = (
-                    DeterministicMockProvider()
-                    .run(
-                        _provider_request(
-                            run_id=run_id,
-                            claim_attempt_id=claim.attempt_id,
-                            frozen_manifest=claim.frozen_manifest,
-                            frozen_manifest_sha256=claim.frozen_manifest_sha256,
-                            deterministic_seed=claim.deterministic_seed,
-                            runtime_release_sha="a" * 40,
-                        )
-                    )
-                    .model_dump(mode="json")
+                provider_started_at = datetime.now(UTC)
+                provider_request = _provider_request(
+                    run_id=run_id,
+                    claim_attempt_id=claim.attempt_id,
+                    frozen_manifest=claim.frozen_manifest,
+                    frozen_manifest_sha256=claim.frozen_manifest_sha256,
+                    deterministic_seed=claim.deterministic_seed,
+                    runtime_release_sha="a" * 40,
+                    deadline_at=provider_started_at + timedelta(seconds=30),
                 )
+                provider_response = DeterministicMockProvider().run(provider_request)
+                provider_ended_at = datetime.now(UTC)
+                artifact = provider_response.result.model_dump(mode="json")
+                receipt = ProviderExecutionReceiptV1.from_success(
+                    request=provider_request,
+                    response=provider_response,
+                    started_at=provider_started_at,
+                    ended_at=provider_ended_at,
+                ).model_dump(mode="json")
                 invalid_artifacts = []
 
                 top_level_extra = deepcopy(artifact)
@@ -774,6 +793,7 @@ async def test_p2_result_write_boundary_rejects_nested_contract_drift(
                             claim.attempt_id,
                             claim.lease_token,
                             invalid_artifact,
+                            receipt,
                         )
 
                 assert await worker_database.complete_execution(
@@ -781,6 +801,7 @@ async def test_p2_result_write_boundary_rejects_nested_contract_drift(
                     claim.attempt_id,
                     claim.lease_token,
                     artifact,
+                    receipt,
                 )
         finally:
             await queue.aclose(close_connection_pool=True)
@@ -1134,7 +1155,8 @@ async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
                 assert cancel_running.status_code == 202
                 assert cancel_running.json()["state"] == "cancel_requested"
 
-                artifact = DeterministicMockProvider().run(
+                provider_started_at = datetime.now(UTC)
+                provider_response = DeterministicMockProvider().run(
                     _provider_request(
                         run_id=running_run_id,
                         claim_attempt_id=claim.attempt_id,
@@ -1142,13 +1164,15 @@ async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
                         frozen_manifest_sha256=claim.frozen_manifest_sha256,
                         deterministic_seed=claim.deterministic_seed,
                         runtime_release_sha="a" * 40,
+                        deadline_at=provider_started_at + timedelta(seconds=30),
                     )
                 )
                 assert await worker_database.complete_execution(
                     running_run_id,
                     claim.attempt_id,
                     claim.lease_token,
-                    artifact.model_dump(mode="json"),
+                    provider_response.result.model_dump(mode="json"),
+                    {},
                 )
         finally:
             await queue.aclose(close_connection_pool=True)
@@ -1174,7 +1198,7 @@ class _TimeoutProvider:
     def __init__(self) -> None:
         self.calls = 0
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1:
+    def run(self, request: ProviderRequest) -> ProviderResponse:
         del request
         self.calls += 1
         raise TimeoutError
@@ -1184,7 +1208,7 @@ class _PreflightUnavailableProvider:
     def __init__(self) -> None:
         self.calls = 0
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1:
+    def run(self, request: ProviderRequest) -> ProviderResponse:
         del request
         self.calls += 1
         raise ProviderPreflightUnavailableError
@@ -1194,7 +1218,7 @@ class _RateLimitedProvider:
     def __init__(self) -> None:
         self.calls = 0
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1:
+    def run(self, request: ProviderRequest) -> ProviderResponse:
         del request
         self.calls += 1
         raise ProviderRateLimitedError
@@ -1203,7 +1227,7 @@ class _RateLimitedProvider:
 class _RetryableFailureProvider(Protocol):
     calls: int
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1: ...
+    def run(self, request: ProviderRequest) -> ProviderResponse: ...
 
 
 @pytest.mark.parametrize(

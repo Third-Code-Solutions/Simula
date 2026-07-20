@@ -711,6 +711,98 @@ export interface components {
              */
             version: "phase2_2026_07_17";
         };
+        /** ProvenanceProviderReceiptAvailable */
+        ProvenanceProviderReceiptAvailable: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            availability: "available";
+            /**
+             * Ended At
+             * Format: date-time
+             */
+            ended_at: string;
+            /**
+             * Finish Status
+             * @constant
+             */
+            finish_status: "completed";
+            /**
+             * Model Id
+             * @constant
+             */
+            model_id: "deterministic_fixture_v1";
+            /**
+             * Provider Id
+             * @constant
+             */
+            provider_id: "deterministic_mock";
+            /**
+             * Provider Version
+             * @constant
+             */
+            provider_version: 1;
+            /**
+             * Receipt Kind
+             * @constant
+             */
+            receipt_kind: "successful_result";
+            /**
+             * Response Schema Version
+             * @constant
+             */
+            response_schema_version: 1;
+            /** Safe Error Class */
+            safe_error_class?: null;
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: 1;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /**
+             * Template Id
+             * @constant
+             */
+            template_id: "phase2_deterministic_mock_v1";
+            usage: components["schemas"]["ProvenanceProviderUsage"];
+        };
+        /** ProvenanceProviderReceiptLegacyUnavailable */
+        ProvenanceProviderReceiptLegacyUnavailable: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            availability: "legacy_unavailable";
+            /**
+             * Unavailable Reason
+             * @constant
+             */
+            unavailable_reason: "successful_result_receipt_not_captured";
+        };
+        /** ProvenanceProviderUsage */
+        ProvenanceProviderUsage: {
+            /**
+             * Cost Microusd
+             * @constant
+             */
+            cost_microusd: 0;
+            /**
+             * Input Tokens
+             * @constant
+             */
+            input_tokens: 0;
+            /**
+             * Output Tokens
+             * @constant
+             */
+            output_tokens: 0;
+        };
         /** ProvenanceStimulus */
         ProvenanceStimulus: {
             /** Content */
@@ -796,6 +888,8 @@ export interface components {
             /** Frozen Manifest Sha256 */
             frozen_manifest_sha256: string;
             limits?: components["schemas"]["ProvenanceExecutionLimits"] | null;
+            /** Provider Receipt */
+            provider_receipt?: (components["schemas"]["ProvenanceProviderReceiptAvailable"] | components["schemas"]["ProvenanceProviderReceiptLegacyUnavailable"]) | null;
             /** Result Created At */
             result_created_at: string | null;
             /**

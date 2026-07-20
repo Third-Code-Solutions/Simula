@@ -45,6 +45,10 @@ def _verify_no_egress() -> None:
             stimulus_content="A fictional no-egress worker probe.",
             deterministic_seed=7,
             output_schema_version=1,
+            provider_id="deterministic_mock",
+            provider_version=1,
+            model_id="deterministic_fixture_v1",
+            template_id="phase2_deterministic_mock_v1",
             code_release_sha="a" * 40,
             configuration_sha256="b" * 64,
             frozen_manifest_sha256="a" * 64,
@@ -52,13 +56,17 @@ def _verify_no_egress() -> None:
             cost_ceiling=0,
         )
     )
-    if result.run_id != run_id or result.provenance.provider_id != "deterministic_mock":
+    if (
+        result.result.run_id != run_id
+        or result.result.provenance.provider_id != "deterministic_mock"
+        or result.metadata.usage.cost_microusd != 0
+    ):
         raise RuntimeError("no-egress provider probe returned an unexpected contract")
     print(
         json.dumps(
             {
                 "network_interfaces": list(interfaces),
-                "provider_id": result.provenance.provider_id,
+                "provider_id": result.result.provenance.provider_id,
                 "status": "no_egress_ok",
             },
             sort_keys=True,

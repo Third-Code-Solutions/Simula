@@ -1,4 +1,5 @@
 from collections.abc import Mapping
+from typing import cast
 from uuid import UUID
 
 import pytest
@@ -9,7 +10,7 @@ from simula_core.simulation import (
     ProviderPreflightUnavailableError,
     ProviderRateLimitedError,
     ProviderRequest,
-    SimulationResultV1,
+    ProviderResponse,
 )
 from simula_worker.database import ExecutionClaim, FailureResolution
 from simula_worker.main import process_run_v1
@@ -37,7 +38,9 @@ class RecordingDatabase:
         self.heartbeat_result = heartbeat_result
         self.claim_calls: list[tuple[UUID, int, str]] = []
         self.heartbeats: list[tuple[UUID, UUID, UUID]] = []
-        self.completions: list[tuple[UUID, UUID, UUID, Mapping[str, object]]] = []
+        self.completions: list[
+            tuple[UUID, UUID, UUID, Mapping[str, object], Mapping[str, object]]
+        ] = []
         self.failures: list[tuple[UUID, UUID, UUID, str, bool]] = []
 
     async def claim_execution(self, run_id: UUID, generation: int, job_id: str) -> ExecutionClaim:
@@ -50,8 +53,9 @@ class RecordingDatabase:
         attempt_id: UUID,
         lease_token: UUID,
         artifact: Mapping[str, object],
+        receipt: Mapping[str, object],
     ) -> bool:
-        self.completions.append((run_id, attempt_id, lease_token, artifact))
+        self.completions.append((run_id, attempt_id, lease_token, artifact, receipt))
         return True
 
     async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:
@@ -74,7 +78,7 @@ class RecordingProvider:
     def __init__(self) -> None:
         self.requests: list[object] = []
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1:
+    def run(self, request: ProviderRequest) -> ProviderResponse:
         self.requests.append(request)
         raise AssertionError("test uses rejection paths only")
 
@@ -83,7 +87,7 @@ class TimeoutProvider:
     def __init__(self) -> None:
         self.requests: list[object] = []
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1:
+    def run(self, request: ProviderRequest) -> ProviderResponse:
         self.requests.append(request)
         raise TimeoutError
 
@@ -92,7 +96,7 @@ class PreflightUnavailableProvider:
     def __init__(self) -> None:
         self.requests: list[object] = []
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1:
+    def run(self, request: ProviderRequest) -> ProviderResponse:
         self.requests.append(request)
         raise ProviderPreflightUnavailableError
 
@@ -101,7 +105,7 @@ class RateLimitedProvider:
     def __init__(self) -> None:
         self.requests: list[object] = []
 
-    def run(self, request: ProviderRequest) -> SimulationResultV1:
+    def run(self, request: ProviderRequest) -> ProviderResponse:
         self.requests.append(request)
         raise ProviderRateLimitedError
 
@@ -132,6 +136,7 @@ def _claimed_run() -> tuple[UUID, ExecutionClaim]:
                 },
                 "code": {"release_sha": "a" * 40},
                 "configuration": {"sha256": "b" * 64},
+                "execution": {"provider_id": "deterministic_mock", "provider_version": 1},
             },
             frozen_manifest_sha256="a" * 64,
             deterministic_seed=42,
@@ -264,11 +269,23 @@ async def test_worker_completes_a_claimed_deterministic_run() -> None:
         (run_id, claim.attempt_id, claim.lease_token),
     ]
     assert len(database.completions) == 1
-    _, attempt_id, lease_token, artifact = database.completions[0]
+    _, attempt_id, lease_token, artifact, receipt = database.completions[0]
     assert attempt_id == claim.attempt_id
     assert lease_token == claim.lease_token
     assert artifact["schema_version"] == "1.0.0"
     assert artifact["run_id"] == str(run_id)
+    assert receipt["provider_id"] == "deterministic_mock"
+    assert receipt["receipt_kind"] == "successful_result"
+    assert receipt["request_id"] == str(attempt_id)
+    assert receipt["attempt_id"] == str(attempt_id)
+    assert receipt["run_id"] == str(run_id)
+    assert receipt["finish_status"] == "completed"
+    assert receipt["usage"] == {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "cost_microusd": 0,
+    }
+    assert cast(str, receipt["started_at"]) <= cast(str, receipt["ended_at"])
     rendered = telemetry.render().decode()
     assert 'simula_worker_jobs_total{outcome="completed"} 1.0' in rendered
     assert 'simula_worker_deterministic_provider_calls_total{outcome="completed"} 1.0' in rendered
