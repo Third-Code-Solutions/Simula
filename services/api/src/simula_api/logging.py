@@ -9,7 +9,7 @@ from collections.abc import Mapping, MutableMapping
 from typing import Any
 
 import structlog
-from simula_core.safe_logs import sanitize_log_event
+from simula_core.safe_logs import runtime_metadata_processor, sanitize_log_event
 
 _API_LOG_FIELDS = {
     "api_request_denied": frozenset(
@@ -67,6 +67,7 @@ def configure_logging() -> None:
     level = os.getenv("SIMULA_LOG_LEVEL", "INFO").upper()
     shared_processors: list[structlog.types.Processor] = [
         structlog.contextvars.merge_contextvars,
+        runtime_metadata_processor(service="api"),
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         _enforce_log_allowlist,

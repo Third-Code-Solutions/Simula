@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping, MutableMapping
+from typing import Any, Literal
+
+from simula_core.runtime import RuntimeMetadata
 
 _COMMON_FIELDS = frozenset(
     {
@@ -15,6 +18,22 @@ _COMMON_FIELDS = frozenset(
         "timestamp",
     }
 )
+
+
+def runtime_metadata_processor(
+    *, service: Literal["api", "worker"]
+) -> Callable[[Any, str, MutableMapping[str, Any]], Mapping[str, Any]]:
+    """Build a processor that stamps trusted runtime identity on every log."""
+
+    metadata = RuntimeMetadata.from_environment(service=service).model_dump()
+
+    def add_runtime_metadata(
+        _logger: Any, _method_name: str, event_dict: MutableMapping[str, Any]
+    ) -> Mapping[str, Any]:
+        event_dict.update(metadata)
+        return event_dict
+
+    return add_runtime_metadata
 
 
 def sanitize_log_event(

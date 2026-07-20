@@ -8,7 +8,7 @@ from collections.abc import Mapping, MutableMapping
 from typing import Any
 
 import structlog
-from simula_core.safe_logs import sanitize_log_event
+from simula_core.safe_logs import runtime_metadata_processor, sanitize_log_event
 
 _WORKER_LOG_FIELDS = {
     "run_dispatch_ambiguous": frozenset({"outbox_id"}),
@@ -53,6 +53,7 @@ def configure_logging() -> None:
     structlog.configure(
         processors=[
             structlog.contextvars.merge_contextvars,
+            runtime_metadata_processor(service="worker"),
             structlog.processors.add_log_level,
             structlog.processors.TimeStamper(fmt="iso", utc=True),
             _enforce_log_allowlist,
