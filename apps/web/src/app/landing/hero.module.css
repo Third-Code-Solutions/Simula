@@ -953,7 +953,21 @@
 
   .signInLink,
   .workspaceLink {
-    display: none;
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .signInLink {
+    padding-inline: 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .workspaceLink {
+    min-height: 2.5rem;
+    padding-inline: 0.65rem;
+    font-size: 0.75rem;
   }
 
   .hero {
@@ -1238,22 +1252,51 @@
 
   .signInLink,
   .workspaceLink {
-    display: none;
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    white-space: nowrap;
+  }
+
+  .signInLink {
+    padding-inline: 0.4rem;
+    font-size: 0.75rem;
+  }
+
+  .workspaceLink {
+    min-height: 2.5rem;
+    padding-inline: 0.65rem;
+    font-size: 0.75rem;
   }
 }
 
 @media (max-width: 360px) {
   .wordmark > span:last-child {
-    display: inline;
+    display: none;
+  }
+
+  .headerFrame {
+    padding-inline: 1rem;
+  }
+
+  .headerActions {
+    gap: 0.15rem;
+  }
+
+  .signInLink {
+    padding-inline: 0.25rem;
+    font-size: 0.7rem;
   }
 
   .workspaceLink {
-    padding-inline: 0.75rem;
+    min-height: 2.5rem;
+    padding-inline: 0.5rem;
     font-size: 0.68rem;
   }
 
   .menuToggle {
-    padding-inline: 0.6rem;
+    width: 2.25rem;
+    padding-inline: 0.45rem;
   }
 
   .menuLabel {
