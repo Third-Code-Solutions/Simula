@@ -4,6 +4,10 @@ FROM node:24.18.0-bookworm-slim@sha256:6f7b03f7c2c8e2e784dcf9295400527b9b1270fd3
 ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /workspace
 
+ARG NEXT_PUBLIC_SIMULA_API_URL
+ARG NEXT_PUBLIC_SUPABASE_URL
+ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+
 RUN corepack enable && corepack install --global pnpm@11.13.1
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
@@ -37,5 +41,5 @@ COPY --from=build --chown=node:node /workspace/apps/web/.next/static ./apps/web/
 
 USER node
 EXPOSE 3000
-HEALTHCHECK --interval=10s --timeout=2s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+HEALTHCHECK --interval=10s --timeout=2s --retries=3 CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||'3000')+'/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
 CMD ["node", "apps/web/server.js"]
