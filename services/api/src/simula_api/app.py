@@ -554,7 +554,10 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
                 )
 
                 async def auth_ready() -> bool:
-                    response = await owned_client.get(f"{settings.supabase_url}/auth/v1/health")
+                    response = await owned_client.get(
+                        f"{settings.supabase_url}/auth/v1/health",
+                        headers={"apikey": settings.supabase_publishable_key},
+                    )
                     return 200 <= response.status_code < 300
 
                 async def queue_ready() -> bool:

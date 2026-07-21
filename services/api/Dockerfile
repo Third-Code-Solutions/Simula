@@ -21,6 +21,7 @@ WORKDIR /app
 
 RUN groupadd --gid 10001 simula && useradd --uid 10001 --gid simula --no-create-home simula
 COPY --from=build --chown=simula:simula /app/.venv /app/.venv
+COPY --from=build /app/services/api/certs/supabase-prod-ca-2021.crt /etc/ssl/certs/supabase-prod-ca-2021.crt
 
 USER simula
 EXPOSE 8000

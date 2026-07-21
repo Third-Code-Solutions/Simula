@@ -44,3 +44,14 @@ def test_web_image_accepts_public_build_values_and_dynamic_port() -> None:
         assert f"ARG {key}" in dockerfile
 
     assert "process.env.PORT||'3000'" in dockerfile
+
+
+def test_api_image_installs_the_pinned_supabase_ca() -> None:
+    dockerfile = (ROOT / "services" / "api" / "Dockerfile").read_text(encoding="utf-8")
+    certificate = (
+        ROOT / "services" / "api" / "certs" / "supabase-prod-ca-2021.crt"
+    ).read_text(encoding="utf-8")
+
+    assert "supabase-prod-ca-2021.crt /etc/ssl/certs/supabase-prod-ca-2021.crt" in dockerfile
+    assert certificate.startswith("-----BEGIN CERTIFICATE-----")
+    assert "PRIVATE KEY" not in certificate

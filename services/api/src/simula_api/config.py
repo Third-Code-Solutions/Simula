@@ -65,7 +65,9 @@ class ApiSettings:
         database = urlsplit(database_url)
         if database.scheme not in {"postgres", "postgresql"}:
             raise ConfigurationError("SIMULA_DATABASE_URL must be PostgreSQL")
-        if database.username != "simula_api":
+        if database.username != "simula_api" and not re.fullmatch(
+            r"simula_api\.[a-z0-9]{20}", database.username or ""
+        ):
             raise ConfigurationError("SIMULA_DATABASE_URL must use simula_api")
         if not database.password or not database.hostname:
             raise ConfigurationError("SIMULA_DATABASE_URL needs injected credentials and a host")

@@ -45,3 +45,18 @@ def test_deployed_api_accepts_database_hostname_verification(
     _environment(monkeypatch)
 
     assert ApiSettings.from_environment().environment == "production"
+
+
+def test_deployed_api_accepts_project_scoped_supavisor_role(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    project_ref = "a" * 20
+    _environment(
+        monkeypatch,
+        SIMULA_DATABASE_URL=(
+            f"postgresql://simula_api.{project_ref}:api-password@"
+            "pooler.example.test:5432/postgres?sslmode=verify-full"
+        ),
+    )
+
+    assert ApiSettings.from_environment().environment == "production"
