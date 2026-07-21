@@ -20,5 +20,12 @@
     "overlapSeconds": "30",
     "restartPolicyMaxRetries": 10,
     "restartPolicyType": "ON_FAILURE"
+  },
+  "environments": {
+    "production": {
+      "build": {
+        "buildEnvironment": "V2"
+      }
+    }
   }
 }

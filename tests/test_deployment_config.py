@@ -12,6 +12,7 @@ def test_railway_web_uses_the_pinned_monorepo_dockerfile() -> None:
     assert config["build"]["builder"] == "DOCKERFILE"
     assert config["build"]["dockerfilePath"] == "apps/web/Dockerfile"
     assert config["deploy"]["healthcheckPath"] == "/api/health"
+    assert config["environments"]["production"]["build"]["buildEnvironment"] == "V2"
 
 
 def test_web_image_accepts_public_build_values_and_dynamic_port() -> None:
