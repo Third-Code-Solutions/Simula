@@ -6,6 +6,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_railway_runtime_configs_use_valid_numeric_rollout_windows() -> None:
+    expected_windows = {
+        "railway.api.json": (15, 30),
+        "railway.worker.json": (30, 15),
+    }
+
+    for filename, (draining_seconds, overlap_seconds) in expected_windows.items():
+        config = json.loads((ROOT / filename).read_text(encoding="utf-8"))
+
+        assert config["build"]["builder"] == "DOCKERFILE"
+        assert config["deploy"]["drainingSeconds"] == draining_seconds
+        assert config["deploy"]["overlapSeconds"] == overlap_seconds
+
+
 def test_railway_web_uses_the_pinned_monorepo_dockerfile() -> None:
     config = json.loads((ROOT / "railway.web.json").read_text(encoding="utf-8"))
 

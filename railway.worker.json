@@ -11,8 +11,8 @@
     ]
   },
   "deploy": {
-    "drainingSeconds": "30",
-    "overlapSeconds": "15",
+    "drainingSeconds": 30,
+    "overlapSeconds": 15,
     "restartPolicyMaxRetries": 10,
     "restartPolicyType": "ON_FAILURE"
   }

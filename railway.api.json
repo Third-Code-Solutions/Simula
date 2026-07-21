@@ -11,10 +11,10 @@
     ]
   },
   "deploy": {
-    "drainingSeconds": "15",
+    "drainingSeconds": 15,
     "healthcheckPath": "/health/live",
     "healthcheckTimeout": 120,
-    "overlapSeconds": "30",
+    "overlapSeconds": 30,
     "restartPolicyMaxRetries": 10,
     "restartPolicyType": "ON_FAILURE"
   }
