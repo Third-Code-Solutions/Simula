@@ -75,3 +75,38 @@ def test_deployed_worker_rejects_database_tls_without_hostname_verification(
 
     with pytest.raises(ConfigurationError, match="sslmode=verify-full"):
         WorkerSettings.from_environment()
+
+
+def test_deployed_worker_accepts_railway_private_redis(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _environment(
+        monkeypatch,
+        SIMULA_ENVIRONMENT="production",
+        SIMULA_WORKER_DATABASE_URL=(
+            "postgresql://simula_worker:worker-password@db.example.test:5432/postgres"
+            "?sslmode=verify-full"
+        ),
+        SIMULA_REDIS_URL="redis://default:secret@redis.railway.internal:6379/0",
+    )
+
+    settings = WorkerSettings.from_environment()
+
+    assert settings.redis_url == "redis://default:secret@redis.railway.internal:6379/0"
+
+
+def test_deployed_worker_rejects_plaintext_public_redis(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _environment(
+        monkeypatch,
+        SIMULA_ENVIRONMENT="production",
+        SIMULA_WORKER_DATABASE_URL=(
+            "postgresql://simula_worker:worker-password@db.example.test:5432/postgres"
+            "?sslmode=verify-full"
+        ),
+        SIMULA_REDIS_URL="redis://redis.example.test:6379/0",
+    )
+
+    with pytest.raises(ConfigurationError, match="Railway private-network"):
+        WorkerSettings.from_environment()

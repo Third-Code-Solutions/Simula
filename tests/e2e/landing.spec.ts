@@ -11,22 +11,25 @@ async function expectLandingQuality(page: Page): Promise<void> {
     }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Start a rehearsal" }),
+    page.getByRole("link", { name: "Start a rehearsal" }).first(),
   ).toHaveAttribute("href", "/organizations");
 
-  const frameTab = page.getByRole("tab", { name: "Frame" });
-  await expect(frameTab).toHaveAttribute("aria-selected", "true");
-  await frameTab.press("ArrowRight");
-  await expect(page.getByRole("tab", { name: "Rehearse" })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await page.getByRole("tab", { name: "Decide" }).click();
   await expect(
-    page
-      .locator("#rehearsal-story-panel")
-      .getByText("Estimates nobody", { exact: true }),
+    page.getByRole("heading", { name: /One decision.*Five inspectable moves/ }),
   ).toBeVisible();
+
+  const frameStep = page.getByRole("button", { name: "Frame", exact: true });
+  if (await frameStep.isVisible()) {
+    await expect(frameStep).toHaveAttribute("aria-current", "step");
+    await page.getByRole("button", { name: "Rehearse", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Rehearse", exact: true }),
+    ).toHaveAttribute("aria-current", "step");
+    await page.getByRole("button", { name: "Decide", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Decide", exact: true }),
+    ).toHaveAttribute("aria-current", "step");
+  }
 
   const width = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,

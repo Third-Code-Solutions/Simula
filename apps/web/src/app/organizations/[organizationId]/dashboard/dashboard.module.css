@@ -1,0 +1,240 @@
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(16rem, 0.7fr);
+  gap: clamp(1rem, 3vw, 2.5rem);
+  align-items: end;
+  margin: 2rem 0;
+}
+
+.hero h1 {
+  max-width: 14ch;
+}
+
+.accessCard,
+.panel,
+.metrics article {
+  border: 1px solid var(--edge);
+  background: color-mix(in srgb, var(--paper) 94%, transparent);
+  box-shadow: 0 18px 50px rgb(31 37 34 / 7%);
+}
+
+.accessCard {
+  display: grid;
+  gap: 0.6rem;
+  padding: 1.25rem;
+}
+
+.accessCard p {
+  margin: 0;
+  color: var(--stone);
+}
+
+.role,
+.state {
+  width: fit-content;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  padding: 0.25rem 0.65rem;
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.metrics article {
+  display: grid;
+  gap: 0.45rem;
+  min-height: 8rem;
+  padding: 1rem;
+}
+
+.metrics span {
+  color: var(--stone);
+  font-size: 0.82rem;
+}
+
+.metrics strong {
+  align-self: end;
+  font-family: var(--font-playfair), serif;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 0.9;
+}
+
+.quickActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.quickActions a {
+  border: 1px solid var(--ink);
+  padding: 0.65rem 0.9rem;
+  text-decoration: none;
+}
+
+.quickActions span {
+  margin-left: auto;
+  color: var(--stone);
+  font-size: 0.8rem;
+}
+
+.activityGrid,
+.ownerGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.panel {
+  min-width: 0;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  overflow-wrap: anywhere;
+}
+
+.sectionHeading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+}
+
+.sectionHeading h2,
+.panel h3 {
+  margin-top: 0.25rem;
+}
+
+.activityList,
+.compactList,
+.auditList {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.activityList li + li,
+.compactList li + li,
+.auditList li + li {
+  border-top: 1px solid var(--edge);
+}
+
+.activityList a,
+.compactList li,
+.auditList li {
+  display: grid;
+  gap: 0.35rem;
+  padding: 0.9rem 0;
+}
+
+.activityList a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.activityList span,
+.activityList small,
+.compactList span,
+.auditList span,
+.auditList small {
+  color: var(--stone);
+}
+
+.activityList .state {
+  color: var(--paper);
+}
+
+.ownerArea {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 3px solid var(--ink);
+}
+
+.ownerHeading {
+  max-width: 52rem;
+  margin-bottom: 1.5rem;
+}
+
+.ownerGrid {
+  align-items: start;
+}
+
+.compactList li {
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.compactList button {
+  width: auto;
+  padding: 0.45rem 0.7rem;
+}
+
+.compactList strong {
+  display: block;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.ownerArea,
+.ownerGrid,
+.compactList,
+.compactList li,
+.compactList li > div {
+  min-width: 0;
+}
+
+.token {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 1rem;
+  padding: 0.8rem;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.token code {
+  overflow-wrap: anywhere;
+}
+
+.checkbox {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+}
+
+.checkbox input {
+  width: auto;
+}
+
+@media (max-width: 980px) {
+  .metrics,
+  .activityGrid,
+  .ownerGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .metrics,
+  .activityGrid,
+  .ownerGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .quickActions span {
+    width: 100%;
+    margin-left: 0;
+  }
+}

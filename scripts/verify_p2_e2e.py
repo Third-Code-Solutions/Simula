@@ -326,6 +326,10 @@ def main() -> None:
     node = node_executable(environment=environment)
     run((pnpm, "redis:up"), environment=environment)
     supabase = local_supabase(environment)
+    run(
+        (pnpm, "exec", "supabase", "db", "reset", "--local", "--yes"),
+        environment=environment,
+    )
     api_credential, worker_credential = configure_local_roles(environment)
     api_environment, worker_environment, web_environment = runtime_environments(
         base=environment,

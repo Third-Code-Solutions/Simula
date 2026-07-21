@@ -26,6 +26,8 @@ _DATABASE_OPERATIONS = frozenset(
         "list_organizations",
         "list_projects",
         "privileged_denial_audit",
+        "product_command",
+        "product_read",
         "readiness",
         "request_cancellation",
         "update_project",

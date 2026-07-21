@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation";
 
 import {
   ApiProblem,
+  type OrganizationDashboard,
   type Project,
   createProject,
+  getOrganizationDashboard,
   listProjects,
 } from "@/lib/api";
 import { SignOutButton } from "@/app/sign-out-button";
@@ -27,6 +29,7 @@ export function ProjectsWorkspace({
 }: Readonly<{ organizationId: string }>) {
   const router = useRouter();
   const [items, setItems] = useState<Project[]>([]);
+  const [dashboard, setDashboard] = useState<OrganizationDashboard>();
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
@@ -37,10 +40,14 @@ export function ProjectsWorkspace({
 
     async function loadInitialPage() {
       try {
-        const page = await listProjects(organizationId);
+        const [page, loadedDashboard] = await Promise.all([
+          listProjects(organizationId),
+          getOrganizationDashboard(organizationId),
+        ]);
         if (!stale) {
           setItems(page.items);
           setNextCursor(page.next_cursor);
+          setDashboard(loadedDashboard);
           setError(undefined);
         }
       } catch (loadError) {
@@ -111,7 +118,7 @@ export function ProjectsWorkspace({
         </Link>
         <SignOutButton />
       </header>
-      <WorkspaceSidebar current="projects" />
+      <WorkspaceSidebar current="projects" organizationId={organizationId} />
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href="/organizations">Organizations</Link>
         <span aria-hidden="true"> / </span>
@@ -126,31 +133,40 @@ export function ProjectsWorkspace({
             the Philippines only.
           </p>
         </div>
-        <form className="panel form-stack" onSubmit={submit}>
-          <h2>Create project</h2>
-          <label htmlFor="project-name">Project name</label>
-          <input
-            id="project-name"
-            maxLength={80}
-            minLength={2}
-            name="name"
-            required
-          />
-          <label htmlFor="project-objective">Objective</label>
-          <textarea
-            id="project-objective"
-            maxLength={1000}
-            name="objective"
-            required
-            rows={4}
-          />
-          <p className="field-note">
-            Market: Philippines · Language: English · Type: Campaign message
-          </p>
-          <button disabled={submitting} type="submit">
-            {submitting ? "Creating…" : "Create project"}
-          </button>
-        </form>
+        {dashboard?.permissions.can_create_projects ? (
+          <form className="panel form-stack" id="new-project" onSubmit={submit}>
+            <h2>Create project</h2>
+            <label htmlFor="project-name">Project name</label>
+            <input
+              id="project-name"
+              maxLength={80}
+              minLength={2}
+              name="name"
+              required
+            />
+            <label htmlFor="project-objective">Objective</label>
+            <textarea
+              id="project-objective"
+              maxLength={1000}
+              name="objective"
+              required
+              rows={4}
+            />
+            <p className="field-note">
+              Market: Philippines · Language: English · Type: Campaign message
+            </p>
+            <button disabled={submitting} type="submit">
+              {submitting ? "Creating…" : "Create project"}
+            </button>
+          </form>
+        ) : dashboard ? (
+          <div className="panel">
+            <h2>Read-only access</h2>
+            <p className="field-note">
+              Viewer role can inspect projects but cannot create or change them.
+            </p>
+          </div>
+        ) : null}
       </section>
       {error ? (
         <p className="problem" role="alert">

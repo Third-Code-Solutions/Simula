@@ -7,12 +7,14 @@ import { useEffect, useRef, useState } from "react";
 import {
   ApiProblem,
   type AudienceDisclosure,
+  type OrganizationDashboard,
   type ProjectDetail,
   type Stimulus,
   appendStimulusVersion,
   createSimulationRun,
   createStimulus,
   getDemoAudience,
+  getOrganizationDashboard,
   getProject,
   updateProject,
 } from "@/lib/api";
@@ -47,6 +49,7 @@ export function ProjectWorkspace({
   const runKeys = useRef(new Map<string, string>());
   const [project, setProject] = useState<ProjectDetail>();
   const [audience, setAudience] = useState<AudienceDisclosure>();
+  const [dashboard, setDashboard] = useState<OrganizationDashboard>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [savingProject, setSavingProject] = useState(false);
@@ -71,13 +74,15 @@ export function ProjectWorkspace({
 
     async function loadInitialProject() {
       try {
-        const [loadedProject, loadedAudience] = await Promise.all([
-          getProject(projectId),
+        const loadedProject = await getProject(projectId);
+        const [loadedAudience, loadedDashboard] = await Promise.all([
           getDemoAudience(),
+          getOrganizationDashboard(loadedProject.organization_id),
         ]);
         if (!stale) {
           setProject(loadedProject);
           setAudience(loadedAudience);
+          setDashboard(loadedDashboard);
           setError(undefined);
         }
       } catch (loadError) {
@@ -195,7 +200,7 @@ export function ProjectWorkspace({
   }
 
   async function startRun(stimulusVersionId: string) {
-    if (!project || !audience) {
+    if (!project || !audience || !dashboard?.permissions.can_create_runs) {
       return;
     }
     const idempotencyKey =
@@ -226,7 +231,11 @@ export function ProjectWorkspace({
         </Link>
         <SignOutButton />
       </header>
-      <WorkspaceSidebar current="project" />
+      <WorkspaceSidebar
+        current="project"
+        organizationId={project?.organization_id}
+        projectId={projectId}
+      />
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href="/organizations">Organizations</Link>
         <span aria-hidden="true"> / </span>
@@ -244,7 +253,7 @@ export function ProjectWorkspace({
           {error}
         </p>
       ) : null}
-      {project && audience ? (
+      {project && audience && dashboard ? (
         <>
           <section className="workspace-grid" aria-labelledby="page-title">
             <div>
@@ -256,31 +265,45 @@ export function ProjectWorkspace({
                 Version {project.version}. Text is confidential within this
                 workspace.
               </p>
+              <Link
+                className="primary-link"
+                href={`/projects/${project.id}/methodology`}
+              >
+                Open methodology lab
+              </Link>
             </div>
-            <form className="panel form-stack" onSubmit={saveProject}>
-              <h2>Project details</h2>
-              <label htmlFor="edit-project-name">Project name</label>
-              <input
-                defaultValue={project.name}
-                id="edit-project-name"
-                maxLength={80}
-                minLength={2}
-                name="name"
-                required
-              />
-              <label htmlFor="edit-project-objective">Objective</label>
-              <textarea
-                defaultValue={project.objective}
-                id="edit-project-objective"
-                maxLength={1000}
-                name="objective"
-                required
-                rows={4}
-              />
-              <button disabled={savingProject} type="submit">
-                {savingProject ? "Saving…" : "Save project"}
-              </button>
-            </form>
+            {dashboard.permissions.can_create_projects ? (
+              <form className="panel form-stack" onSubmit={saveProject}>
+                <h2>Project details</h2>
+                <label htmlFor="edit-project-name">Project name</label>
+                <input
+                  defaultValue={project.name}
+                  id="edit-project-name"
+                  maxLength={80}
+                  minLength={2}
+                  name="name"
+                  required
+                />
+                <label htmlFor="edit-project-objective">Objective</label>
+                <textarea
+                  defaultValue={project.objective}
+                  id="edit-project-objective"
+                  maxLength={1000}
+                  name="objective"
+                  required
+                  rows={4}
+                />
+                <button disabled={savingProject} type="submit">
+                  {savingProject ? "Saving…" : "Save project"}
+                </button>
+              </form>
+            ) : (
+              <div className="panel">
+                <h2>Project details</h2>
+                <p>{project.objective}</p>
+                <p className="field-note">Viewer role · read-only</p>
+              </div>
+            )}
           </section>
           <section
             className="panel"
@@ -316,32 +339,41 @@ export function ProjectWorkspace({
                 their checksums remain unchanged.
               </p>
             </div>
-            <form className="panel form-stack" onSubmit={addStimulus}>
-              <h3>Add text stimulus</h3>
-              <label htmlFor="stimulus-name">Stimulus name</label>
-              <input
-                id="stimulus-name"
-                maxLength={80}
-                minLength={2}
-                name="name"
-                required
-              />
-              <label htmlFor="stimulus-content">Text</label>
-              <textarea
-                id="stimulus-content"
-                maxLength={5000}
-                name="content"
-                required
-                rows={7}
-              />
-              <p className="field-note">
-                Maximum 5,000 characters. Do not enter personal or sensitive
-                data.
-              </p>
-              <button disabled={savingStimulus} type="submit">
-                {savingStimulus ? "Adding…" : "Add immutable stimulus"}
-              </button>
-            </form>
+            {dashboard.permissions.can_create_projects ? (
+              <form className="panel form-stack" onSubmit={addStimulus}>
+                <h3>Add text stimulus</h3>
+                <label htmlFor="stimulus-name">Stimulus name</label>
+                <input
+                  id="stimulus-name"
+                  maxLength={80}
+                  minLength={2}
+                  name="name"
+                  required
+                />
+                <label htmlFor="stimulus-content">Text</label>
+                <textarea
+                  id="stimulus-content"
+                  maxLength={5000}
+                  name="content"
+                  required
+                  rows={7}
+                />
+                <p className="field-note">
+                  Maximum 5,000 characters. Do not enter personal or sensitive
+                  data.
+                </p>
+                <button disabled={savingStimulus} type="submit">
+                  {savingStimulus ? "Adding…" : "Add immutable stimulus"}
+                </button>
+              </form>
+            ) : (
+              <div className="panel">
+                <h3>Read-only stimuli</h3>
+                <p className="field-note">
+                  Viewer role can inspect immutable versions only.
+                </p>
+              </div>
+            )}
           </section>
           {project.stimuli.length === 0 ? (
             <p className="empty-state">
@@ -367,53 +399,57 @@ export function ProjectWorkspace({
                           </code>
                         </div>
                         <p>{version.content}</p>
-                        <div className="run-launch">
-                          <div>
-                            <strong>Authored demo audience</strong>
-                            <p className="field-note">
-                              Experimental and non-representative. It estimates
-                              nobody.
-                            </p>
+                        {dashboard.permissions.can_create_runs ? (
+                          <div className="run-launch">
+                            <div>
+                              <strong>Authored demo audience</strong>
+                              <p className="field-note">
+                                Experimental and non-representative. It
+                                estimates nobody.
+                              </p>
+                            </div>
+                            <button
+                              disabled={
+                                !audience || startingRunVersion === version.id
+                              }
+                              onClick={() => void startRun(version.id)}
+                              type="button"
+                            >
+                              {startingRunVersion === version.id
+                                ? "Starting run…"
+                                : `Run version ${version.version}`}
+                            </button>
                           </div>
-                          <button
-                            disabled={
-                              !audience || startingRunVersion === version.id
-                            }
-                            onClick={() => void startRun(version.id)}
-                            type="button"
-                          >
-                            {startingRunVersion === version.id
-                              ? "Starting run…"
-                              : `Run version ${version.version}`}
-                          </button>
-                        </div>
+                        ) : null}
                       </li>
                     ),
                   )}
                 </ol>
-                <form
-                  className="form-stack"
-                  onSubmit={(event) => void addVersion(event, stimulus.id)}
-                >
-                  <label htmlFor={`version-${stimulus.id}`}>
-                    New version text
-                  </label>
-                  <textarea
-                    id={`version-${stimulus.id}`}
-                    maxLength={5000}
-                    name="content"
-                    required
-                    rows={5}
-                  />
-                  <button
-                    disabled={versioningStimulus === stimulus.id}
-                    type="submit"
+                {dashboard.permissions.can_create_projects ? (
+                  <form
+                    className="form-stack"
+                    onSubmit={(event) => void addVersion(event, stimulus.id)}
                   >
-                    {versioningStimulus === stimulus.id
-                      ? "Saving…"
-                      : "Save new immutable version"}
-                  </button>
-                </form>
+                    <label htmlFor={`version-${stimulus.id}`}>
+                      New version text
+                    </label>
+                    <textarea
+                      id={`version-${stimulus.id}`}
+                      maxLength={5000}
+                      name="content"
+                      required
+                      rows={5}
+                    />
+                    <button
+                      disabled={versioningStimulus === stimulus.id}
+                      type="submit"
+                    >
+                      {versioningStimulus === stimulus.id
+                        ? "Saving…"
+                        : "Save new immutable version"}
+                    </button>
+                  </form>
+                ) : null}
               </article>
             ))}
           </div>

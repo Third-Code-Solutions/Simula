@@ -9,20 +9,23 @@ describe("HomePage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Rehearse the decision. Keep the doubt.",
+        name: /Rehearse the decision\.\s*Keep the doubt\./,
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
-        name: "The full context stays attached.",
+        name: "Every rehearsal keeps its evidence.",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "A rehearsal you can follow." }),
+      screen.getByRole("heading", { name: "The full context stays attached." }),
     ).toBeInTheDocument();
     expect(screen.getAllByText(/estimates nobody/i)).not.toHaveLength(0);
     expect(
-      screen.getByRole("link", { name: "Start a rehearsal" }),
+      screen.getAllByRole("link", { name: /Start a rehearsal/ }),
+    ).not.toHaveLength(0);
+    expect(
+      screen.getAllByRole("link", { name: /Start a rehearsal/ })[0],
     ).toHaveAttribute("href", "/organizations");
   });
 });

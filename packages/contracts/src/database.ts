@@ -94,6 +94,260 @@ export type Database = {
           },
         ]
       }
+      evaluation_runs: {
+        Row: {
+          benchmark_checksum_sha256: string
+          created_at: string
+          created_by: string
+          id: string
+          limitations: string[]
+          methodology_version_id: string
+          metrics: Json
+          organization_id: string
+          simulation_configuration_version_id: string
+          slice_metrics: Json
+          status: Database["api"]["Enums"]["evaluation_status"]
+        }
+        Insert: {
+          benchmark_checksum_sha256: string
+          created_at?: string
+          created_by: string
+          id?: string
+          limitations: string[]
+          methodology_version_id: string
+          metrics: Json
+          organization_id: string
+          simulation_configuration_version_id: string
+          slice_metrics: Json
+          status: Database["api"]["Enums"]["evaluation_status"]
+        }
+        Update: {
+          benchmark_checksum_sha256?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          limitations?: string[]
+          methodology_version_id?: string
+          metrics?: Json
+          organization_id?: string
+          simulation_configuration_version_id?: string
+          slice_metrics?: Json
+          status?: Database["api"]["Enums"]["evaluation_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evaluation_runs_configuration_foreign_key"
+            columns: ["organization_id", "simulation_configuration_version_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_configuration_versions"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "evaluation_runs_methodology_version_id_fkey"
+            columns: ["methodology_version_id"]
+            isOneToOne: false
+            referencedRelation: "methodology_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evaluation_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_flags: {
+        Row: {
+          created_at: string
+          created_by: string
+          enabled: boolean
+          flag_key: string
+          id: string
+          organization_id: string
+          reason: string
+          updated_at: string
+          updated_by: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          enabled: boolean
+          flag_key: string
+          id?: string
+          organization_id: string
+          reason: string
+          updated_at?: string
+          updated_by: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          enabled?: boolean
+          flag_key?: string
+          id?: string
+          organization_id?: string
+          reason?: string
+          updated_at?: string
+          updated_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_flags_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feedback_records: {
+        Row: {
+          checksum_sha256: string
+          created_at: string
+          created_by: string
+          id: string
+          kind: Database["api"]["Enums"]["feedback_kind"]
+          observed_at: string
+          organization_id: string
+          payload: Json
+          provenance: Json
+          rights_basis: string
+          run_id: string | null
+        }
+        Insert: {
+          checksum_sha256: string
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: Database["api"]["Enums"]["feedback_kind"]
+          observed_at: string
+          organization_id: string
+          payload: Json
+          provenance: Json
+          rights_basis: string
+          run_id?: string | null
+        }
+        Update: {
+          checksum_sha256?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: Database["api"]["Enums"]["feedback_kind"]
+          observed_at?: string
+          organization_id?: string
+          payload?: Json
+          provenance?: Json
+          rights_basis?: string
+          run_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feedback_records_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "feedback_records_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_runs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      methodology_versions: {
+        Row: {
+          checksum_sha256: string
+          created_at: string
+          id: string
+          limitations: string[]
+          manifest: Json
+          methodology_key: string
+          validation_status: Database["api"]["Enums"]["validation_status"]
+          version: number
+        }
+        Insert: {
+          checksum_sha256: string
+          created_at?: string
+          id?: string
+          limitations: string[]
+          manifest: Json
+          methodology_key: string
+          validation_status?: Database["api"]["Enums"]["validation_status"]
+          version: number
+        }
+        Update: {
+          checksum_sha256?: string
+          created_at?: string
+          id?: string
+          limitations?: string[]
+          manifest?: Json
+          methodology_key?: string
+          validation_status?: Database["api"]["Enums"]["validation_status"]
+          version?: number
+        }
+        Relationships: []
+      }
+      organization_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          created_by: string
+          email: string
+          expires_at: string
+          id: string
+          organization_id: string
+          revoked_at: string | null
+          role: Database["api"]["Enums"]["organization_role"]
+          status: Database["api"]["Enums"]["invitation_status"]
+          token_sha256: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by: string
+          email: string
+          expires_at: string
+          id?: string
+          organization_id: string
+          revoked_at?: string | null
+          role: Database["api"]["Enums"]["organization_role"]
+          status?: Database["api"]["Enums"]["invitation_status"]
+          token_sha256: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          created_by?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          organization_id?: string
+          revoked_at?: string | null
+          role?: Database["api"]["Enums"]["organization_role"]
+          status?: Database["api"]["Enums"]["invitation_status"]
+          token_sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organization_memberships: {
         Row: {
           created_at: string
@@ -153,6 +407,94 @@ export type Database = {
         }
         Relationships: []
       }
+      population_frame_versions: {
+        Row: {
+          checksum_sha256: string
+          created_at: string
+          created_by: string | null
+          id: string
+          limitations: string[]
+          manifest: Json
+          organization_id: string | null
+          population_frame_id: string
+          validation_status: Database["api"]["Enums"]["validation_status"]
+          version: number
+        }
+        Insert: {
+          checksum_sha256: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          limitations: string[]
+          manifest: Json
+          organization_id?: string | null
+          population_frame_id: string
+          validation_status?: Database["api"]["Enums"]["validation_status"]
+          version: number
+        }
+        Update: {
+          checksum_sha256?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          limitations?: string[]
+          manifest?: Json
+          organization_id?: string | null
+          population_frame_id?: string
+          validation_status?: Database["api"]["Enums"]["validation_status"]
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "population_frame_versions_population_frame_id_fkey"
+            columns: ["population_frame_id"]
+            isOneToOne: false
+            referencedRelation: "population_frames"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      population_frames: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          geography: string
+          id: string
+          name: string
+          organization_id: string | null
+          target_population: string
+          validation_status: Database["api"]["Enums"]["validation_status"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          geography: string
+          id?: string
+          name: string
+          organization_id?: string | null
+          target_population: string
+          validation_status?: Database["api"]["Enums"]["validation_status"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          geography?: string
+          id?: string
+          name?: string
+          organization_id?: string | null
+          target_population?: string
+          validation_status?: Database["api"]["Enums"]["validation_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "population_frames_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           category: string
@@ -206,6 +548,324 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      provider_configuration_versions: {
+        Row: {
+          admission_status: Database["api"]["Enums"]["provider_admission_status"]
+          checksum_sha256: string
+          created_at: string
+          data_handling: Json
+          external_provider: boolean
+          id: string
+          limits: Json
+          model_id: string
+          pricing: Json
+          provider_id: string
+          provider_version: string
+          template_id: string
+          version: number
+        }
+        Insert: {
+          admission_status: Database["api"]["Enums"]["provider_admission_status"]
+          checksum_sha256: string
+          created_at?: string
+          data_handling: Json
+          external_provider: boolean
+          id?: string
+          limits: Json
+          model_id: string
+          pricing: Json
+          provider_id: string
+          provider_version: string
+          template_id: string
+          version: number
+        }
+        Update: {
+          admission_status?: Database["api"]["Enums"]["provider_admission_status"]
+          checksum_sha256?: string
+          created_at?: string
+          data_handling?: Json
+          external_provider?: boolean
+          id?: string
+          limits?: Json
+          model_id?: string
+          pricing?: Json
+          provider_id?: string
+          provider_version?: string
+          template_id?: string
+          version?: number
+        }
+        Relationships: []
+      }
+      report_artifacts: {
+        Row: {
+          artifact: Json
+          content_sha256: string
+          created_at: string
+          created_by: string
+          id: string
+          organization_id: string
+          run_id: string
+          schema_version: string
+        }
+        Insert: {
+          artifact: Json
+          content_sha256: string
+          created_at?: string
+          created_by: string
+          id?: string
+          organization_id: string
+          run_id: string
+          schema_version: string
+        }
+        Update: {
+          artifact?: Json
+          content_sha256?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          organization_id?: string
+          run_id?: string
+          schema_version?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_artifacts_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_runs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      report_exports: {
+        Row: {
+          content: string
+          content_sha256: string
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          expires_at: string
+          filename: string
+          format: Database["api"]["Enums"]["export_format"]
+          id: string
+          organization_id: string
+          report_artifact_id: string
+        }
+        Insert: {
+          content: string
+          content_sha256: string
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          expires_at: string
+          filename: string
+          format: Database["api"]["Enums"]["export_format"]
+          id?: string
+          organization_id: string
+          report_artifact_id: string
+        }
+        Update: {
+          content?: string
+          content_sha256?: string
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          expires_at?: string
+          filename?: string
+          format?: Database["api"]["Enums"]["export_format"]
+          id?: string
+          organization_id?: string
+          report_artifact_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_exports_report_foreign_key"
+            columns: ["organization_id", "report_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "report_artifacts"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      report_share_grants: {
+        Row: {
+          access_count: number
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          last_accessed_at: string | null
+          organization_id: string
+          permission: Database["api"]["Enums"]["share_permission"]
+          recipient_user_id: string
+          report_artifact_id: string
+          revoked_at: string | null
+          token_sha256: string
+        }
+        Insert: {
+          access_count?: number
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          last_accessed_at?: string | null
+          organization_id: string
+          permission: Database["api"]["Enums"]["share_permission"]
+          recipient_user_id: string
+          report_artifact_id: string
+          revoked_at?: string | null
+          token_sha256: string
+        }
+        Update: {
+          access_count?: number
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          organization_id?: string
+          permission?: Database["api"]["Enums"]["share_permission"]
+          recipient_user_id?: string
+          report_artifact_id?: string
+          revoked_at?: string | null
+          token_sha256?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_share_grants_recipient_foreign_key"
+            columns: ["organization_id", "recipient_user_id"]
+            isOneToOne: false
+            referencedRelation: "organization_memberships"
+            referencedColumns: ["organization_id", "user_id"]
+          },
+          {
+            foreignKeyName: "report_share_grants_report_foreign_key"
+            columns: ["organization_id", "report_artifact_id"]
+            isOneToOne: false
+            referencedRelation: "report_artifacts"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      simulation_configuration_versions: {
+        Row: {
+          audience_version_id: string
+          checksum_sha256: string
+          cost_ceiling_microusd: number
+          created_at: string
+          created_by: string
+          id: string
+          methodology_version_id: string
+          organization_id: string
+          population_frame_version_id: string
+          provider_configuration_version_id: string
+          sampling_configuration: Json
+          simulation_configuration_id: string
+          version: number
+        }
+        Insert: {
+          audience_version_id: string
+          checksum_sha256: string
+          cost_ceiling_microusd: number
+          created_at?: string
+          created_by: string
+          id?: string
+          methodology_version_id: string
+          organization_id: string
+          population_frame_version_id: string
+          provider_configuration_version_id: string
+          sampling_configuration: Json
+          simulation_configuration_id: string
+          version: number
+        }
+        Update: {
+          audience_version_id?: string
+          checksum_sha256?: string
+          cost_ceiling_microusd?: number
+          created_at?: string
+          created_by?: string
+          id?: string
+          methodology_version_id?: string
+          organization_id?: string
+          population_frame_version_id?: string
+          provider_configuration_version_id?: string
+          sampling_configuration?: Json
+          simulation_configuration_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulation_configuration_vers_provider_configuration_versi_fkey"
+            columns: ["provider_configuration_version_id"]
+            isOneToOne: false
+            referencedRelation: "provider_configuration_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "simulation_configuration_versi_population_frame_version_id_fkey"
+            columns: ["population_frame_version_id"]
+            isOneToOne: false
+            referencedRelation: "population_frame_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "simulation_configuration_versions_audience_version_id_fkey"
+            columns: ["audience_version_id"]
+            isOneToOne: false
+            referencedRelation: "audience_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "simulation_configuration_versions_config_foreign_key"
+            columns: ["organization_id", "simulation_configuration_id"]
+            isOneToOne: false
+            referencedRelation: "simulation_configurations"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "simulation_configuration_versions_methodology_version_id_fkey"
+            columns: ["methodology_version_id"]
+            isOneToOne: false
+            referencedRelation: "methodology_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      simulation_configurations: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          organization_id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          organization_id: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simulation_configurations_project_foreign_key"
+            columns: ["organization_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["organization_id", "id"]
           },
         ]
       }
@@ -423,11 +1083,113 @@ export type Database = {
           },
         ]
       }
+      variant_groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+          organization_id: string
+          project_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+          organization_id: string
+          project_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+          organization_id?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variant_groups_project_foreign_key"
+            columns: ["organization_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      variant_members: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          label: string
+          organization_id: string
+          sort_order: number
+          stimulus_version_id: string
+          variant_group_id: string
+          variant_key: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          label: string
+          organization_id: string
+          sort_order: number
+          stimulus_version_id: string
+          variant_group_id: string
+          variant_key: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          label?: string
+          organization_id?: string
+          sort_order?: number
+          stimulus_version_id?: string
+          variant_group_id?: string
+          variant_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "variant_members_group_foreign_key"
+            columns: ["organization_id", "variant_group_id"]
+            isOneToOne: false
+            referencedRelation: "variant_groups"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "variant_members_stimulus_version_foreign_key"
+            columns: ["organization_id", "stimulus_version_id"]
+            isOneToOne: false
+            referencedRelation: "stimulus_versions"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      accept_organization_invitation: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_sha256: string
+          requested_token_sha256: string
+        }
+        Returns: Json
+      }
+      access_shared_report: {
+        Args: {
+          requested_correlation_id: string
+          requested_token_sha256: string
+        }
+        Returns: Json
+      }
       append_stimulus_version: {
         Args: {
           requested_content: string
@@ -448,6 +1210,33 @@ export type Database = {
           version_id: string
         }[]
       }
+      create_audience_definition: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_limitations: string
+          requested_manifest: Json
+          requested_name: string
+          requested_organization_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_feedback_record: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_kind: Database["api"]["Enums"]["feedback_kind"]
+          requested_observed_at: string
+          requested_organization_id: string
+          requested_payload: Json
+          requested_provenance: Json
+          requested_rights_basis: string
+          requested_run_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       create_organization: {
         Args: {
           requested_correlation_id: string
@@ -461,6 +1250,19 @@ export type Database = {
           organization_name: string
           replayed: boolean
         }[]
+      }
+      create_organization_invitation: {
+        Args: {
+          requested_correlation_id: string
+          requested_email: string
+          requested_expires_at: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_role: Database["api"]["Enums"]["organization_role"]
+          requested_sha256: string
+          requested_token_sha256: string
+        }
+        Returns: Json
       }
       create_project: {
         Args: {
@@ -488,6 +1290,58 @@ export type Database = {
           replayed: boolean
           updated_at: string
         }[]
+      }
+      create_report_artifact: {
+        Args: {
+          requested_artifact: Json
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_run_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_report_export: {
+        Args: {
+          requested_content: string
+          requested_correlation_id: string
+          requested_expires_at: string
+          requested_filename: string
+          requested_format: Database["api"]["Enums"]["export_format"]
+          requested_idempotency_key: string
+          requested_report_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_report_share_grant: {
+        Args: {
+          requested_correlation_id: string
+          requested_expires_at: string
+          requested_idempotency_key: string
+          requested_permission: Database["api"]["Enums"]["share_permission"]
+          requested_recipient_user_id: string
+          requested_report_id: string
+          requested_sha256: string
+          requested_token_sha256: string
+        }
+        Returns: Json
+      }
+      create_simulation_configuration: {
+        Args: {
+          requested_audience_version_id: string
+          requested_correlation_id: string
+          requested_cost_ceiling_microusd: number
+          requested_idempotency_key: string
+          requested_methodology_version_id: string
+          requested_name: string
+          requested_population_frame_version_id: string
+          requested_project_id: string
+          requested_provider_configuration_version_id: string
+          requested_sampling_configuration: Json
+          requested_sha256: string
+        }
+        Returns: Json
       }
       create_simulation_run:
         | {
@@ -562,6 +1416,25 @@ export type Database = {
           version_created_at: string
         }[]
       }
+      create_variant_group: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_members: Json
+          requested_name: string
+          requested_project_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      get_organization_admin_summary: {
+        Args: { requested_organization_id: string }
+        Returns: Json
+      }
+      get_organization_audit_feed: {
+        Args: { requested_limit?: number; requested_organization_id: string }
+        Returns: Json
+      }
       get_run_failure_context: {
         Args: { requested_run_id: string }
         Returns: {
@@ -629,6 +1502,27 @@ export type Database = {
           stimulus_version_id: string
         }[]
       }
+      revoke_report_share_grant: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_sha256: string
+          requested_share_id: string
+        }
+        Returns: Json
+      }
+      set_feature_flag: {
+        Args: {
+          requested_correlation_id: string
+          requested_enabled: boolean
+          requested_flag_key: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_reason: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       update_project: {
         Args: {
           requested_category: string
@@ -656,11 +1550,29 @@ export type Database = {
       }
     }
     Enums: {
-      audience_admission_status: "approved_demo" | "revoked"
-      audience_kind: "authored_demo"
+      audience_admission_status:
+        | "approved_demo"
+        | "revoked"
+        | "approved_experimental"
+      audience_kind: "authored_demo" | "synthetic_cohort"
+      evaluation_status: "completed" | "failed" | "superseded"
+      export_format: "json" | "csv"
+      feedback_kind:
+        | "human_panel"
+        | "survey"
+        | "focus_group"
+        | "campaign_outcome"
+        | "user_correction"
+        | "post_launch_sentiment"
+      invitation_status: "pending" | "accepted" | "revoked" | "expired"
       organization_role: "owner" | "editor" | "viewer"
       organization_status: "active" | "disabled" | "deleted"
       project_status: "active" | "archived" | "deleted"
+      provider_admission_status:
+        | "approved_demo"
+        | "approved_external"
+        | "disabled"
+        | "retired"
       run_state:
         | "queued"
         | "running"
@@ -669,7 +1581,13 @@ export type Database = {
         | "canceled"
         | "succeeded"
         | "failed"
+      share_permission: "view" | "download"
       stimulus_status: "active" | "retired" | "deleted"
+      validation_status:
+        | "experimental"
+        | "benchmarked"
+        | "calibrated"
+        | "retired"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -761,6 +1679,42 @@ export type Database = {
           scope?: string
           scope_organization_id?: string | null
           scope_resource_id?: string | null
+        }
+        Relationships: []
+      }
+      phase4_command_receipts: {
+        Row: {
+          actor_user_id: string
+          created_at: string
+          id: string
+          idempotency_key: string
+          organization_id: string
+          request_sha256: string
+          resource_id: string | null
+          response: Json | null
+          scope: string
+        }
+        Insert: {
+          actor_user_id: string
+          created_at?: string
+          id?: string
+          idempotency_key: string
+          organization_id: string
+          request_sha256: string
+          resource_id?: string | null
+          response?: Json | null
+          scope: string
+        }
+        Update: {
+          actor_user_id?: string
+          created_at?: string
+          id?: string
+          idempotency_key?: string
+          organization_id?: string
+          request_sha256?: string
+          resource_id?: string | null
+          response?: Json | null
+          scope?: string
         }
         Relationships: []
       }
@@ -1005,6 +1959,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_organization_invitation_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_sha256: string
+          requested_token_sha256: string
+        }
+        Returns: Json
+      }
+      access_shared_report_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_token_sha256: string
+        }
+        Returns: Json
+      }
       append_stimulus_version_atomic: {
         Args: {
           requested_content: string
@@ -1023,6 +1993,19 @@ export type Database = {
           stimulus_id: string
           stimulus_version: number
           version_id: string
+        }[]
+      }
+      begin_phase4_command: {
+        Args: {
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_scope: string
+          requested_sha256: string
+        }
+        Returns: {
+          existing_response: Json
+          receipt_id: string
+          replayed: boolean
         }[]
       }
       claim_due_run_outbox: {
@@ -1094,6 +2077,33 @@ export type Database = {
         Args: { requested_claim_token: string; requested_outbox_id: string }
         Returns: boolean
       }
+      create_audience_definition_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_limitations: string
+          requested_manifest: Json
+          requested_name: string
+          requested_organization_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_feedback_record_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_kind: Database["api"]["Enums"]["feedback_kind"]
+          requested_observed_at: string
+          requested_organization_id: string
+          requested_payload: Json
+          requested_provenance: Json
+          requested_rights_basis: string
+          requested_run_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       create_organization_atomic: {
         Args: {
           requested_correlation_id: string
@@ -1107,6 +2117,19 @@ export type Database = {
           organization_name: string
           replayed: boolean
         }[]
+      }
+      create_organization_invitation_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_email: string
+          requested_expires_at: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_role: Database["api"]["Enums"]["organization_role"]
+          requested_sha256: string
+          requested_token_sha256: string
+        }
+        Returns: Json
       }
       create_project_atomic: {
         Args: {
@@ -1134,6 +2157,58 @@ export type Database = {
           replayed: boolean
           updated_at: string
         }[]
+      }
+      create_report_artifact_atomic: {
+        Args: {
+          requested_artifact: Json
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_run_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_report_export_atomic: {
+        Args: {
+          requested_content: string
+          requested_correlation_id: string
+          requested_expires_at: string
+          requested_filename: string
+          requested_format: Database["api"]["Enums"]["export_format"]
+          requested_idempotency_key: string
+          requested_report_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_report_share_grant_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_expires_at: string
+          requested_idempotency_key: string
+          requested_permission: Database["api"]["Enums"]["share_permission"]
+          requested_recipient_user_id: string
+          requested_report_id: string
+          requested_sha256: string
+          requested_token_sha256: string
+        }
+        Returns: Json
+      }
+      create_simulation_configuration_atomic: {
+        Args: {
+          requested_audience_version_id: string
+          requested_correlation_id: string
+          requested_cost_ceiling_microusd: number
+          requested_idempotency_key: string
+          requested_methodology_version_id: string
+          requested_name: string
+          requested_population_frame_version_id: string
+          requested_project_id: string
+          requested_provider_configuration_version_id: string
+          requested_sampling_configuration: Json
+          requested_sha256: string
+        }
+        Returns: Json
       }
       create_simulation_run_atomic: {
         Args: {
@@ -1207,6 +2282,17 @@ export type Database = {
           version_created_at: string
         }[]
       }
+      create_variant_group_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_members: Json
+          requested_name: string
+          requested_project_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       evaluate_run_creation_control: {
         Args: {
           requested_poisoned_count: number
@@ -1243,6 +2329,14 @@ export type Database = {
       finalize_requested_cancellations: {
         Args: { requested_batch_size: number }
         Returns: number
+      }
+      finish_phase4_command: {
+        Args: {
+          requested_receipt_id: string
+          requested_resource_id: string
+          requested_response: Json
+        }
+        Returns: undefined
       }
       get_run_creation_control: {
         Args: never
@@ -1306,6 +2400,14 @@ export type Database = {
         Returns: boolean
       }
       latch_run_creation_for_poison: { Args: never; Returns: boolean }
+      organization_admin_summary: {
+        Args: { requested_organization_id: string }
+        Returns: Json
+      }
+      organization_audit_feed: {
+        Args: { requested_limit?: number; requested_organization_id: string }
+        Returns: Json
+      }
       phase2_provider_success_receipt_is_valid: {
         Args: {
           requested_artifact: Json
@@ -1380,6 +2482,15 @@ export type Database = {
           stimulus_version_id: string
         }[]
       }
+      revoke_report_share_grant_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_sha256: string
+          requested_share_id: string
+        }
+        Returns: Json
+      }
       runtime_observability_snapshot: {
         Args: never
         Returns: {
@@ -1395,6 +2506,18 @@ export type Database = {
           stuck_lease_count: number
           succeeded_count: number
         }[]
+      }
+      set_feature_flag_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_enabled: boolean
+          requested_flag_key: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_reason: string
+          requested_sha256: string
+        }
+        Returns: Json
       }
       set_run_creation_control: {
         Args: {
@@ -1568,11 +2691,32 @@ export type CompositeTypes<
 export const Constants = {
   api: {
     Enums: {
-      audience_admission_status: ["approved_demo", "revoked"],
-      audience_kind: ["authored_demo"],
+      audience_admission_status: [
+        "approved_demo",
+        "revoked",
+        "approved_experimental",
+      ],
+      audience_kind: ["authored_demo", "synthetic_cohort"],
+      evaluation_status: ["completed", "failed", "superseded"],
+      export_format: ["json", "csv"],
+      feedback_kind: [
+        "human_panel",
+        "survey",
+        "focus_group",
+        "campaign_outcome",
+        "user_correction",
+        "post_launch_sentiment",
+      ],
+      invitation_status: ["pending", "accepted", "revoked", "expired"],
       organization_role: ["owner", "editor", "viewer"],
       organization_status: ["active", "disabled", "deleted"],
       project_status: ["active", "archived", "deleted"],
+      provider_admission_status: [
+        "approved_demo",
+        "approved_external",
+        "disabled",
+        "retired",
+      ],
       run_state: [
         "queued",
         "running",
@@ -1582,7 +2726,14 @@ export const Constants = {
         "succeeded",
         "failed",
       ],
+      share_permission: ["view", "download"],
       stimulus_status: ["active", "retired", "deleted"],
+      validation_status: [
+        "experimental",
+        "benchmarked",
+        "calibrated",
+        "retired",
+      ],
     },
   },
   private: {

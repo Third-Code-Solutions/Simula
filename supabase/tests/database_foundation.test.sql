@@ -26,15 +26,31 @@ select extensions.is(
   array[
     'api.audience_versions',
     'api.audiences',
+    'api.evaluation_runs',
+    'api.feature_flags',
+    'api.feedback_records',
+    'api.methodology_versions',
+    'api.organization_invitations',
     'api.organization_memberships',
     'api.organizations',
+    'api.population_frame_versions',
+    'api.population_frames',
     'api.projects',
+    'api.provider_configuration_versions',
+    'api.report_artifacts',
+    'api.report_exports',
+    'api.report_share_grants',
+    'api.simulation_configuration_versions',
+    'api.simulation_configurations',
     'api.simulation_results',
     'api.simulation_runs',
     'api.stimuli',
     'api.stimulus_versions',
+    'api.variant_groups',
+    'api.variant_members',
     'private.audit_events',
     'private.idempotency_keys',
+    'private.phase4_command_receipts',
     'private.provider_success_receipts',
     'private.run_attempts',
     'private.run_events',
@@ -77,30 +93,70 @@ select extensions.is(
   ),
   array[
     'audience_versions_api_select',
+    'audience_versions_command_phase4_insert',
     'audience_versions_command_select',
     'audiences_api_select',
+    'audiences_command_phase4_insert',
     'audiences_command_select',
     'audit_events_command_cancel_insert',
     'audit_events_command_insert',
+    'audit_events_command_phase4_insert',
+    'audit_events_command_phase4_select',
+    'audit_events_command_sharing_insert',
     'audit_events_command_sign_in_insert',
     'audit_events_worker_control_insert',
     'audit_events_worker_owner_insert',
+    'evaluation_runs_api_select',
+    'evaluation_runs_command_phase4_select',
+    'feature_flags_api_select',
+    'feature_flags_command_insert',
+    'feature_flags_command_select',
+    'feature_flags_command_update',
+    'feedback_records_api_select',
+    'feedback_records_command_insert',
+    'feedback_records_command_select',
     'idempotency_keys_command_insert',
     'idempotency_keys_command_select',
     'idempotency_keys_command_update',
+    'methodology_versions_api_select',
+    'methodology_versions_command_phase4_select',
+    'organization_invitations_api_select',
+    'organization_invitations_command_accept_select',
+    'organization_invitations_command_accept_update',
+    'organization_invitations_command_insert',
+    'organization_invitations_command_select',
     'organization_memberships_api_or_command_select',
     'organization_memberships_command_insert',
+    'organization_memberships_command_invitation_insert',
     'organizations_api_select',
     'organizations_command_insert',
     'organizations_command_select',
     'organizations_worker_owner_select',
+    'phase4_command_receipts_command_insert',
+    'phase4_command_receipts_command_select',
+    'phase4_command_receipts_command_update',
+    'population_frame_versions_api_select',
+    'population_frame_versions_command_phase4_select',
+    'population_frames_api_select',
     'projects_api_select',
     'projects_command_insert',
     'projects_command_select',
     'projects_command_update',
+    'provider_configuration_versions_api_select',
+    'provider_configuration_versions_command_phase4_select',
     'provider_success_receipts_command_owner_select',
     'provider_success_receipts_worker_owner_insert',
     'provider_success_receipts_worker_owner_select',
+    'report_artifacts_api_select',
+    'report_artifacts_command_insert',
+    'report_artifacts_command_select',
+    'report_exports_api_select',
+    'report_exports_command_insert',
+    'report_exports_command_select',
+    'report_share_grants_api_select',
+    'report_share_grants_command_insert',
+    'report_share_grants_command_select',
+    'report_share_grants_command_update',
     'run_attempts_worker_owner_insert',
     'run_attempts_worker_owner_select',
     'run_attempts_worker_owner_update',
@@ -114,7 +170,14 @@ select extensions.is(
     'run_outbox_worker_owner_update',
     'runtime_controls_worker_owner_select',
     'runtime_controls_worker_owner_update',
+    'simulation_configuration_versions_api_select',
+    'simulation_configuration_versions_command_insert',
+    'simulation_configuration_versions_command_select',
+    'simulation_configurations_api_select',
+    'simulation_configurations_command_insert',
+    'simulation_configurations_command_select',
     'simulation_results_api_select',
+    'simulation_results_command_phase4_select',
     'simulation_results_worker_owner_insert',
     'simulation_results_worker_owner_select',
     'simulation_runs_api_select',
@@ -129,7 +192,13 @@ select extensions.is(
     'stimuli_command_select',
     'stimulus_versions_api_select',
     'stimulus_versions_command_insert',
-    'stimulus_versions_command_select'
+    'stimulus_versions_command_select',
+    'variant_groups_api_select',
+    'variant_groups_command_insert',
+    'variant_groups_command_select',
+    'variant_members_api_select',
+    'variant_members_command_insert',
+    'variant_members_command_select'
   ]::name[],
   'RLS policy inventory is exact'
 );
@@ -279,7 +348,7 @@ select extensions.ok(
 -- 16
 select extensions.ok(
   (
-    select pg_catalog.count(*) = 9
+    select pg_catalog.count(*) = 24
     from pg_catalog.pg_class as relations
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
     where namespaces.nspname = 'api'
@@ -294,7 +363,7 @@ select extensions.ok(
       and relations.relkind = 'r'
       and pg_catalog.has_table_privilege('simula_api', relations.oid, 'SELECT')
   ),
-  'API role reads exactly the nine named API tables'
+  'API role reads exactly the twenty-four named API tables'
 );
 
 -- 17
@@ -346,22 +415,63 @@ select extensions.is(
   array[
     'simula_api|api.audience_versions|SELECT',
     'simula_api|api.audiences|SELECT',
+    'simula_api|api.evaluation_runs|SELECT',
+    'simula_api|api.feature_flags|SELECT',
+    'simula_api|api.feedback_records|SELECT',
+    'simula_api|api.methodology_versions|SELECT',
+    'simula_api|api.organization_invitations|SELECT',
     'simula_api|api.organization_memberships|SELECT',
     'simula_api|api.organizations|SELECT',
+    'simula_api|api.population_frame_versions|SELECT',
+    'simula_api|api.population_frames|SELECT',
     'simula_api|api.projects|SELECT',
+    'simula_api|api.provider_configuration_versions|SELECT',
+    'simula_api|api.report_artifacts|SELECT',
+    'simula_api|api.report_exports|SELECT',
+    'simula_api|api.report_share_grants|SELECT',
+    'simula_api|api.simulation_configuration_versions|SELECT',
+    'simula_api|api.simulation_configurations|SELECT',
     'simula_api|api.simulation_results|SELECT',
     'simula_api|api.simulation_runs|SELECT',
     'simula_api|api.stimuli|SELECT',
     'simula_api|api.stimulus_versions|SELECT',
+    'simula_api|api.variant_groups|SELECT',
+    'simula_api|api.variant_members|SELECT',
+    'simula_command_owner|api.audience_versions|INSERT',
     'simula_command_owner|api.audience_versions|SELECT',
+    'simula_command_owner|api.audiences|INSERT',
     'simula_command_owner|api.audiences|SELECT',
+    'simula_command_owner|api.evaluation_runs|SELECT',
+    'simula_command_owner|api.feature_flags|INSERT',
+    'simula_command_owner|api.feature_flags|SELECT',
+    'simula_command_owner|api.feature_flags|UPDATE',
+    'simula_command_owner|api.feedback_records|INSERT',
+    'simula_command_owner|api.feedback_records|SELECT',
+    'simula_command_owner|api.methodology_versions|SELECT',
+    'simula_command_owner|api.organization_invitations|INSERT',
+    'simula_command_owner|api.organization_invitations|SELECT',
+    'simula_command_owner|api.organization_invitations|UPDATE',
     'simula_command_owner|api.organization_memberships|INSERT',
     'simula_command_owner|api.organization_memberships|SELECT',
     'simula_command_owner|api.organizations|INSERT',
     'simula_command_owner|api.organizations|SELECT',
+    'simula_command_owner|api.population_frame_versions|SELECT',
     'simula_command_owner|api.projects|INSERT',
     'simula_command_owner|api.projects|SELECT',
     'simula_command_owner|api.projects|UPDATE',
+    'simula_command_owner|api.provider_configuration_versions|SELECT',
+    'simula_command_owner|api.report_artifacts|INSERT',
+    'simula_command_owner|api.report_artifacts|SELECT',
+    'simula_command_owner|api.report_exports|INSERT',
+    'simula_command_owner|api.report_exports|SELECT',
+    'simula_command_owner|api.report_share_grants|INSERT',
+    'simula_command_owner|api.report_share_grants|SELECT',
+    'simula_command_owner|api.report_share_grants|UPDATE',
+    'simula_command_owner|api.simulation_configuration_versions|INSERT',
+    'simula_command_owner|api.simulation_configuration_versions|SELECT',
+    'simula_command_owner|api.simulation_configurations|INSERT',
+    'simula_command_owner|api.simulation_configurations|SELECT',
+    'simula_command_owner|api.simulation_results|SELECT',
     'simula_command_owner|api.simulation_runs|INSERT',
     'simula_command_owner|api.simulation_runs|SELECT',
     'simula_command_owner|api.simulation_runs|UPDATE',
@@ -369,10 +479,18 @@ select extensions.is(
     'simula_command_owner|api.stimuli|SELECT',
     'simula_command_owner|api.stimulus_versions|INSERT',
     'simula_command_owner|api.stimulus_versions|SELECT',
+    'simula_command_owner|api.variant_groups|INSERT',
+    'simula_command_owner|api.variant_groups|SELECT',
+    'simula_command_owner|api.variant_members|INSERT',
+    'simula_command_owner|api.variant_members|SELECT',
     'simula_command_owner|private.audit_events|INSERT',
+    'simula_command_owner|private.audit_events|SELECT',
     'simula_command_owner|private.idempotency_keys|INSERT',
     'simula_command_owner|private.idempotency_keys|SELECT',
     'simula_command_owner|private.idempotency_keys|UPDATE',
+    'simula_command_owner|private.phase4_command_receipts|INSERT',
+    'simula_command_owner|private.phase4_command_receipts|SELECT',
+    'simula_command_owner|private.phase4_command_receipts|UPDATE',
     'simula_command_owner|private.run_events|INSERT',
     'simula_command_owner|private.run_events|SELECT',
     'simula_command_owner|private.run_outbox|INSERT',
@@ -464,35 +582,63 @@ select extensions.is(
       and pg_catalog.has_function_privilege('simula_api', functions.oid, 'EXECUTE')
   ),
   array[
+    'api.accept_organization_invitation(text,text,text,uuid)',
+    'api.access_shared_report(text,uuid)',
     'api.append_stimulus_version(uuid,text,text,text,text,uuid)',
+    'api.create_audience_definition(uuid,text,jsonb,text,text,text,uuid)',
+    'api.create_feedback_record(uuid,uuid,api.feedback_kind,timestamp with time zone,jsonb,jsonb,text,text,text,uuid)',
+    'api.create_organization_invitation(uuid,text,api.organization_role,text,timestamp with time zone,text,text,uuid)',
     'api.create_organization(text,text,text,uuid)',
     'api.create_project(uuid,text,text,text,text,text,text,text,uuid)',
+    'api.create_report_artifact(uuid,jsonb,text,text,uuid)',
+    'api.create_report_export(uuid,api.export_format,text,bytea,timestamp with time zone,text,text,uuid)',
+    'api.create_report_share_grant(uuid,uuid,api.share_permission,text,timestamp with time zone,text,text,uuid)',
+    'api.create_simulation_configuration(uuid,text,uuid,uuid,uuid,uuid,jsonb,bigint,text,text,uuid)',
     'api.create_simulation_run(uuid,uuid,text,text,uuid,text)',
     'api.create_simulation_run(uuid,uuid,text,text,uuid)',
     'api.create_stimulus(uuid,text,text,text,text,text,uuid)',
+    'api.create_variant_group(uuid,text,jsonb,text,text,uuid)',
+    'api.get_organization_admin_summary(uuid)',
+    'api.get_organization_audit_feed(uuid,integer)',
     'api.get_run_failure_context(uuid)',
     'api.get_simulation_run_replay(uuid,text,text)',
     'api.list_organizations()',
     'api.record_privileged_denial(uuid,text,text,uuid,uuid)',
     'api.record_sign_in_success(uuid,uuid)',
     'api.request_run_cancel(uuid,uuid)',
+    'api.revoke_report_share_grant(uuid,text,text,uuid)',
+    'api.set_feature_flag(uuid,text,boolean,text,text,text,uuid)',
     'api.update_project(uuid,integer,text,text,text,text,text,uuid)',
+    'private.accept_organization_invitation_atomic(text,text,text,uuid)',
+    'private.access_shared_report_atomic(text,uuid)',
     'private.append_stimulus_version_atomic(uuid,text,text,text,text,uuid)',
+    'private.create_audience_definition_atomic(uuid,text,jsonb,text,text,text,uuid)',
+    'private.create_feedback_record_atomic(uuid,uuid,api.feedback_kind,timestamp with time zone,jsonb,jsonb,text,text,text,uuid)',
     'private.create_organization_atomic(text,text,text,uuid)',
+    'private.create_organization_invitation_atomic(uuid,text,api.organization_role,text,timestamp with time zone,text,text,uuid)',
     'private.create_project_atomic(uuid,text,text,text,text,text,text,text,uuid)',
+    'private.create_report_artifact_atomic(uuid,jsonb,text,text,uuid)',
+    'private.create_report_export_atomic(uuid,api.export_format,text,bytea,timestamp with time zone,text,text,uuid)',
+    'private.create_report_share_grant_atomic(uuid,uuid,api.share_permission,text,timestamp with time zone,text,text,uuid)',
+    'private.create_simulation_configuration_atomic(uuid,text,uuid,uuid,uuid,uuid,jsonb,bigint,text,text,uuid)',
     'private.create_simulation_run_atomic(uuid,uuid,text,text,uuid)',
     'private.create_simulation_run_traced(uuid,uuid,text,text,uuid,text)',
     'private.create_stimulus_atomic(uuid,text,text,text,text,text,uuid)',
+    'private.create_variant_group_atomic(uuid,text,jsonb,text,text,uuid)',
     'private.get_run_failure_context(uuid)',
     'private.get_simulation_run_replay(uuid,text,text)',
     'private.has_org_role(uuid,uuid,api.organization_role[])',
     'private.is_org_member(uuid,uuid)',
     'private.is_verified_api_subject(uuid)',
+    'private.organization_admin_summary(uuid)',
+    'private.organization_audit_feed(uuid,integer)',
     'private.provider_success_receipt_for_run(uuid)',
     'private.record_privileged_denial_atomic(uuid,text,text,uuid,uuid)',
     'private.record_sign_in_success(uuid,uuid)',
     'private.request_run_cancel_atomic(uuid,uuid)',
+    'private.revoke_report_share_grant_atomic(uuid,text,text,uuid)',
     'private.runtime_observability_snapshot()',
+    'private.set_feature_flag_atomic(uuid,text,boolean,text,text,text,uuid)',
     'private.update_project_atomic(uuid,integer,text,text,text,text,text,uuid)',
     'private.verified_subject()'
   ]::text[],
@@ -654,6 +800,7 @@ select extensions.is(
   array[
     'audience_versions_content_immutable',
     'audience_versions_organization_guard',
+    'population_frame_versions_scope_guard',
     'simulation_runs_audience_guard',
     'simulation_runs_global_backpressure_before_insert'
   ]::name[],
@@ -672,15 +819,26 @@ select extensions.is(
       and pg_catalog.array_length(constraints.conkey, 1) = 2
   ),
   array[
+    'evaluation_runs_configuration_foreign_key',
+    'feedback_records_run_foreign_key',
     'provider_success_receipts_run_foreign_key',
+    'report_artifacts_run_foreign_key',
+    'report_exports_report_foreign_key',
+    'report_share_grants_recipient_foreign_key',
+    'report_share_grants_report_foreign_key',
     'run_attempts_run_foreign_key',
     'run_events_run_foreign_key',
     'run_outbox_run_foreign_key',
+    'simulation_configuration_versions_config_foreign_key',
+    'simulation_configurations_project_foreign_key',
     'simulation_results_run_foreign_key',
     'simulation_runs_project_foreign_key',
     'simulation_runs_stimulus_version_foreign_key',
     'stimuli_project_foreign_key',
-    'stimulus_versions_stimulus_foreign_key'
+    'stimulus_versions_stimulus_foreign_key',
+    'variant_groups_project_foreign_key',
+    'variant_members_group_foreign_key',
+    'variant_members_stimulus_version_foreign_key'
   ]::name[],
   'composite tenant foreign-key inventory is exact'
 );
@@ -699,12 +857,19 @@ select extensions.is(
     'audience_admission_status',
     'audience_kind',
     'audit_actor_type',
+    'evaluation_status',
+    'export_format',
+    'feedback_kind',
+    'invitation_status',
     'organization_role',
     'organization_status',
     'outbox_status',
     'project_status',
+    'provider_admission_status',
     'run_state',
-    'stimulus_status'
+    'share_permission',
+    'stimulus_status',
+    'validation_status'
   ]::name[],
   'application enum inventory is exact'
 );
@@ -764,13 +929,83 @@ select extensions.ok(
     )
     + (select pg_catalog.count(*) from api.simulation_runs)
     + (select pg_catalog.count(*) from api.simulation_results)
+    + (
+      select pg_catalog.count(*)
+      from api.population_frames
+      where id <> '00000000-0000-4000-8000-0000000003f0'::uuid
+    )
+    + (
+      select pg_catalog.count(*)
+      from api.population_frame_versions
+      where id <> '00000000-0000-4000-8000-0000000003f1'::uuid
+    )
+    + (select pg_catalog.count(*) from api.simulation_configurations)
+    + (select pg_catalog.count(*) from api.simulation_configuration_versions)
+    + (select pg_catalog.count(*) from api.evaluation_runs)
+    + (select pg_catalog.count(*) from api.feature_flags)
+    + (select pg_catalog.count(*) from api.feedback_records)
+    + (select pg_catalog.count(*) from api.organization_invitations)
+    + (select pg_catalog.count(*) from api.report_artifacts)
+    + (select pg_catalog.count(*) from api.report_exports)
+    + (select pg_catalog.count(*) from api.report_share_grants)
+    + (select pg_catalog.count(*) from api.variant_groups)
+    + (select pg_catalog.count(*) from api.variant_members)
     + (select pg_catalog.count(*) from private.run_attempts)
     + (select pg_catalog.count(*) from private.run_events)
     + (select pg_catalog.count(*) from private.run_outbox)
     + (select pg_catalog.count(*) from private.provider_success_receipts)
     + (select pg_catalog.count(*) from private.idempotency_keys)
+    + (select pg_catalog.count(*) from private.phase4_command_receipts)
     + (select pg_catalog.count(*) from private.audit_events)
   ) = 0
+  and exists (
+    select 1
+    from api.population_frames as frames
+    join api.population_frame_versions as versions
+      on versions.population_frame_id = frames.id
+    where frames.id = '00000000-0000-4000-8000-0000000003f0'::uuid
+      and frames.organization_id is null
+      and frames.validation_status = 'experimental'
+      and versions.id = '00000000-0000-4000-8000-0000000003f1'::uuid
+      and versions.organization_id is null
+      and versions.validation_status = 'experimental'
+      and versions.manifest ->> 'kind' = 'authored_demo'
+      and versions.manifest ->> 'target_population'
+        = 'No real population; authored engineering fixture only.'
+      and pg_catalog.jsonb_array_length(versions.manifest -> 'cells') = 4
+      and versions.checksum_sha256 = pg_catalog.encode(
+        extensions.digest(
+          pg_catalog.convert_to(versions.manifest::text, 'UTF8'),
+          'sha256'
+        ),
+        'hex'
+      )
+  )
+  and exists (
+    select 1
+    from api.methodology_versions as methods
+    where methods.id = '00000000-0000-4000-8000-0000000003a1'::uuid
+      and methods.methodology_key = 'phase3_method_v1'
+      and methods.version = 1
+      and methods.validation_status = 'experimental'
+      and methods.manifest -> 'response_schema_version' = '2'::jsonb
+      and methods.checksum_sha256 = pg_catalog.encode(
+        extensions.digest(
+          pg_catalog.convert_to(methods.manifest::text, 'UTF8'),
+          'sha256'
+        ),
+        'hex'
+      )
+  )
+  and exists (
+    select 1
+    from api.provider_configuration_versions as providers
+    where providers.id = '00000000-0000-4000-8000-0000000003b1'::uuid
+      and providers.provider_id = 'deterministic_cohort'
+      and providers.admission_status = 'approved_demo'
+      and not providers.external_provider
+      and providers.limits -> 'maximum_cost_microusd' = '0'::jsonb
+  )
   and 2 = (
     select pg_catalog.count(*)
     from api.audience_versions as versions
@@ -845,7 +1080,7 @@ select extensions.ok(
       and versions.manifest -> 'external_dependencies' = '[]'::jsonb
       and versions.manifest ->> 'retirement_state' = 'active'
   ),
-  'only the versioned immutable global demo fixture is seeded; tenant and run data remain empty'
+  'only governed global demo fixtures are seeded; tenant, evaluation, and run data remain empty'
 );
 
 -- 33

@@ -1360,6 +1360,7 @@ label {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid var(--edge);
@@ -1374,11 +1375,13 @@ textarea {
 }
 
 input:hover,
+select:hover,
 textarea:hover {
   border-color: rgb(34 31 28 / 28%);
 }
 
 input:focus,
+select:focus,
 textarea:focus {
   border-color: var(--azure);
   box-shadow: 0 0 0 2px rgb(81 139 219 / 22%);
@@ -1388,10 +1391,25 @@ textarea {
   resize: vertical;
 }
 
+select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--stone) 50%),
+    linear-gradient(135deg, var(--stone) 50%, transparent 50%);
+  background-position:
+    calc(100% - 1rem) 50%,
+    calc(100% - 0.7rem) 50%;
+  background-repeat: no-repeat;
+  background-size: 0.3rem 0.3rem;
+  padding-right: 2rem;
+}
+
 .workspace-main {
   display: grid;
   width: 100%;
+  max-width: 100%;
   min-height: 100dvh;
+  overflow-x: clip;
   grid-template-columns: 13rem minmax(0, 1fr);
   grid-template-rows: 4rem auto;
   background: var(--paper);
@@ -1869,6 +1887,237 @@ code {
   font-weight: 700;
 }
 
+.methodology-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 18rem;
+  gap: 3rem;
+  align-items: end;
+  padding: 3.5rem 0 2.5rem;
+}
+
+.methodology-hero h1 {
+  max-width: 11ch;
+}
+
+.methodology-notice {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem;
+  border: 1px solid rgb(189 113 49 / 32%);
+  border-radius: 0.875rem;
+  background: var(--peach);
+  color: var(--amber-text);
+  font-size: 0.8125rem;
+}
+
+.methodology-notice strong {
+  color: var(--ink);
+}
+
+.methodology-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.methodology-steps .panel {
+  min-height: 100%;
+}
+
+.methodology-variant-action,
+.methodology-report-heading {
+  display: flex;
+  gap: 2rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.methodology-variant-action {
+  margin-top: 1rem;
+}
+
+.methodology-variant-action h2,
+.methodology-report h2,
+.methodology-admin h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.methodology-report {
+  margin-top: 2rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border-radius: 1.125rem;
+  background: var(--ink);
+  box-shadow: var(--shadow-float);
+  color: var(--white);
+}
+
+.methodology-report h2,
+.methodology-report .eyebrow {
+  color: var(--white);
+}
+
+.methodology-chip {
+  flex: 0 0 auto;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 9999px;
+  color: var(--mint);
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+}
+
+.methodology-warning {
+  padding: 0.75rem 1rem;
+  border-left: 0.2rem solid var(--amber);
+  background: rgb(255 255 255 / 7%);
+  color: #e7e5e4;
+  font-size: 0.8125rem;
+}
+
+.methodology-distribution {
+  display: grid;
+  gap: 1rem;
+  margin: 2rem 0;
+}
+
+.methodology-distribution > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) auto;
+  gap: 0.25rem 1rem;
+  align-items: center;
+}
+
+.methodology-distribution span {
+  text-transform: capitalize;
+}
+
+.methodology-distribution > div > div {
+  height: 0.35rem;
+  grid-column: 1 / -1;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(255 255 255 / 14%);
+}
+
+.methodology-distribution i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--sky);
+}
+
+.methodology-report-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+}
+
+.methodology-report-grid section {
+  padding: 1rem;
+  border: 1px solid rgb(255 255 255 / 14%);
+  border-radius: 0.75rem;
+  background: rgb(255 255 255 / 5%);
+}
+
+.methodology-report-grid h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+}
+
+.methodology-report-grid ul,
+.methodology-provenance ul {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+  color: #e7e5e4;
+  font-size: 0.8125rem;
+}
+
+.methodology-provenance {
+  border-top: 1px solid rgb(255 255 255 / 14%);
+  padding-top: 1rem;
+}
+
+.methodology-provenance summary {
+  cursor: pointer;
+  color: var(--mint);
+  font-weight: 600;
+}
+
+.methodology-provenance dl,
+.methodology-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.methodology-provenance dl div,
+.methodology-stats div {
+  min-width: 0;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: rgb(255 255 255 / 7%);
+}
+
+.methodology-provenance dt,
+.methodology-stats dt {
+  color: var(--pebble);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+}
+
+.methodology-provenance dd,
+.methodology-stats dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.methodology-provenance code {
+  color: var(--mint);
+}
+
+.methodology-admin {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 2rem 0 4rem;
+}
+
+.methodology-stats div {
+  background: var(--paper);
+}
+
+.methodology-stats dd {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.methodology-audit {
+  display: grid;
+  gap: 0.5rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.methodology-audit li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--edge);
+  font-size: 0.75rem;
+}
+
+.methodology-audit span {
+  color: var(--pebble);
+  font-family: var(--font-mono);
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -1901,6 +2150,14 @@ code {
   .workspace-main {
     grid-template-columns: 11rem minmax(0, 1fr);
   }
+
+  .methodology-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .methodology-report-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 52rem) {
@@ -1923,6 +2180,9 @@ code {
   .run-heading,
   .result-grid,
   .provenance-grid,
+  .methodology-hero,
+  .methodology-steps,
+  .methodology-admin,
   .cta-inner {
     grid-template-columns: 1fr;
   }

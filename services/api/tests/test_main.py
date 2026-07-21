@@ -13,6 +13,7 @@ from simula_api import __main__
 def test_uvicorn_access_log_is_disabled_and_root_logging_is_preserved(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.delenv("PORT", raising=False)
     configured = False
     invocation: dict[str, Any] = {}
 
@@ -35,6 +36,7 @@ def test_uvicorn_access_log_is_disabled_and_root_logging_is_preserved(
     assert configured is True
     if os.name == "nt":
         assert invocation["args"] == ()
+        assert invocation["port"] == 8000
     else:
         assert invocation["args"] == ("simula_api.app:app",)
         assert invocation["access_log"] is False
@@ -69,6 +71,21 @@ def test_windows_server_uses_a_selector_runner_for_psycopg(
 
     monkeypatch.setattr("simula_api.__main__.asyncio.Runner", FakeRunner)
 
-    __main__._serve_windows()
+    __main__._serve_windows(port=8000)
 
     assert loop_factories == [asyncio.SelectorEventLoop]
+
+
+@pytest.mark.parametrize("port", ["1", "8000", "65535"])
+def test_server_accepts_valid_platform_port(monkeypatch: pytest.MonkeyPatch, port: str) -> None:
+    monkeypatch.setenv("PORT", port)
+
+    assert __main__._server_port() == int(port)
+
+
+@pytest.mark.parametrize("port", ["0", "65536", " 8000", "eight-thousand"])
+def test_server_rejects_invalid_platform_port(monkeypatch: pytest.MonkeyPatch, port: str) -> None:
+    monkeypatch.setenv("PORT", port)
+
+    with pytest.raises(RuntimeError, match="PORT must be an integer"):
+        __main__._server_port()

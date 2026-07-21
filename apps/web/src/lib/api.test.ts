@@ -8,7 +8,11 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
-import { createOrganization, listOrganizations } from "./api";
+import {
+  createOrganization,
+  listOrganizations,
+  revokeReportShare,
+} from "./api";
 
 describe("SIMULA domain API client", () => {
   beforeEach(() => {
@@ -117,5 +121,25 @@ describe("SIMULA domain API client", () => {
       status: 401,
     });
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("revokes a report share through an authenticated idempotent command", async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      new Response(JSON.stringify({ data: { replayed: false } }), {
+        headers: { "content-type": "application/json" },
+        status: 200,
+      }),
+    );
+
+    await revokeReportShare("00000000-0000-4000-8000-000000000123");
+
+    const [url, request] = vi.mocked(fetch).mock.calls[0] ?? [];
+    expect(url).toBe(
+      "http://127.0.0.1:8000/api/v1/report-shares/00000000-0000-4000-8000-000000000123",
+    );
+    expect(request?.method).toBe("DELETE");
+    expect((request?.headers as Headers).get("idempotency-key")).toMatch(
+      /^.{16,128}$/,
+    );
   });
 });

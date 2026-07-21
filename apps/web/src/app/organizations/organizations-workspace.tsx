@@ -85,7 +85,7 @@ export function OrganizationsWorkspace() {
     setSubmitting(true);
     try {
       const organization = await createOrganization(name);
-      router.push(`/organizations/${organization.id}/projects`);
+      router.push(`/organizations/${organization.id}/dashboard`);
     } catch (createError) {
       setError(problemMessage(createError));
     } finally {
@@ -147,7 +147,7 @@ export function OrganizationsWorkspace() {
         <ul className="resource-list">
           {items.map((organization) => (
             <li key={organization.id}>
-              <Link href={`/organizations/${organization.id}/projects`}>
+              <Link href={`/organizations/${organization.id}/dashboard`}>
                 <span>{organization.name}</span>
                 <span className="resource-meta">{organization.role}</span>
               </Link>

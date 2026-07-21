@@ -13,17 +13,39 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
   assert.deepEqual(Object.keys(document.paths).sort(), [
     "/api/v1/audiences/demo",
     "/api/v1/auth-events",
+    "/api/v1/exports/{export_id}",
     "/api/v1/me",
+    "/api/v1/methodology/registry",
+    "/api/v1/organization-invitations/accept",
     "/api/v1/organizations",
+    "/api/v1/organizations/{organization_id}/admin-summary",
+    "/api/v1/organizations/{organization_id}/audiences",
+    "/api/v1/organizations/{organization_id}/audit",
+    "/api/v1/organizations/{organization_id}/dashboard",
+    "/api/v1/organizations/{organization_id}/feature-flags",
+    "/api/v1/organizations/{organization_id}/feature-flags/{flag_key}",
+    "/api/v1/organizations/{organization_id}/feedback",
+    "/api/v1/organizations/{organization_id}/invitations",
     "/api/v1/organizations/{organization_id}/projects",
     "/api/v1/projects/{project_id}",
+    "/api/v1/projects/{project_id}/methodology-previews",
     "/api/v1/projects/{project_id}/runs",
+    "/api/v1/projects/{project_id}/simulation-configurations",
     "/api/v1/projects/{project_id}/stimuli",
+    "/api/v1/projects/{project_id}/variant-groups",
+    "/api/v1/report-shares/{share_id}",
+    "/api/v1/reports/{report_id}/exports",
+    "/api/v1/reports/{report_id}/shares",
     "/api/v1/runs/{run_id}",
     "/api/v1/runs/{run_id}/cancel",
+    "/api/v1/runs/{run_id}/methodology-reports",
     "/api/v1/runs/{run_id}/provenance",
+    "/api/v1/runs/{run_id}/report",
+    "/api/v1/runs/{run_id}/reports",
     "/api/v1/runs/{run_id}/result",
+    "/api/v1/shared-reports/{token}",
     "/api/v1/stimuli/{stimulus_id}/versions",
+    "/api/v1/variant-groups/{variant_group_id}/comparison",
     "/health/live",
     "/health/ready",
   ]);
@@ -34,6 +56,11 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
   assert.ok(document.paths["/api/v1/runs/{run_id}/cancel"].post);
   assert.ok(document.paths["/api/v1/runs/{run_id}/provenance"].get);
   assert.ok(document.paths["/api/v1/runs/{run_id}/result"].get);
+  assert.ok(document.paths["/api/v1/reports/{report_id}/shares"].post);
+  assert.ok(document.paths["/api/v1/shared-reports/{token}"].get);
+  assert.ok(
+    document.paths["/api/v1/variant-groups/{variant_group_id}/comparison"].get,
+  );
   assert.ok(
     document.paths["/api/v1/organizations"].post.responses["422"].content[
       "application/problem+json"

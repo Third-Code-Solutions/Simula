@@ -2,10 +2,22 @@ import Link from "next/link";
 
 export function WorkspaceSidebar({
   current,
+  organizationId,
+  projectId,
 }: Readonly<{
-  current: "organizations" | "projects" | "project" | "run";
+  current:
+    | "organizations"
+    | "dashboard"
+    | "projects"
+    | "project"
+    | "methodology"
+    | "run";
+  organizationId?: string;
+  projectId?: string;
 }>) {
   const contextLabel = {
+    dashboard: "Dashboard",
+    methodology: "Methodology lab",
     organizations: "Organizations",
     project: "Project",
     projects: "Projects",
@@ -23,6 +35,38 @@ export function WorkspaceSidebar({
           >
             Organizations
           </Link>
+          {organizationId ? (
+            <Link
+              aria-current={current === "dashboard" ? "page" : undefined}
+              href={`/organizations/${organizationId}/dashboard`}
+            >
+              Dashboard
+            </Link>
+          ) : null}
+          {organizationId ? (
+            <Link
+              aria-current={current === "projects" ? "page" : undefined}
+              href={`/organizations/${organizationId}/projects`}
+            >
+              Projects
+            </Link>
+          ) : null}
+          {projectId ? (
+            <Link
+              aria-current={current === "project" ? "page" : undefined}
+              href={`/projects/${projectId}`}
+            >
+              Project workspace
+            </Link>
+          ) : null}
+          {projectId ? (
+            <Link
+              aria-current={current === "methodology" ? "page" : undefined}
+              href={`/projects/${projectId}/methodology`}
+            >
+              Methodology lab
+            </Link>
+          ) : null}
           <Link href="/#workflow">Context map</Link>
           <Link href="/#method">Method</Link>
           <Link href="/#principles">Boundaries</Link>

@@ -144,9 +144,39 @@ async function expectSignInRedirect(
 
 async function createTerminalRun(page: Page): Promise<void> {
   const marker = `${Date.now()}-${Math.floor(Math.random() * 10_000)}`;
+  const organizationName = `P2 browser ${marker}`;
+  const flagKey = `browser.proof_${marker.replaceAll("-", "_")}`;
   await signIn(page);
-  await page.getByLabel("Organization name").fill(`P2 browser ${marker}`);
+  await page.getByLabel("Organization name").fill(organizationName);
   await page.getByRole("button", { name: "Create organization" }).click();
+  await expect(page).toHaveURL(/\/organizations\/[^/]+\/dashboard$/);
+  await expect(
+    page.getByRole("heading", { level: 1, name: organizationName }),
+  ).toBeVisible();
+  await expect(page.getByText("RBAC active", { exact: true })).toBeVisible();
+  await expect(page.locator("main")).toContainText(
+    "Owner: workspace, team, and controls.",
+  );
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Team, flags, and audit" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Workspace metrics")).toContainText("Projects");
+  await page.getByLabel("Flag key").fill(flagKey);
+  await page.getByLabel("Change reason").fill("Local browser RBAC proof.");
+  await page.getByRole("button", { name: "Save flag" }).click();
+  await expect(page.getByText(flagKey, { exact: true })).toBeVisible();
+
+  const dashboardAccessibility = await new AxeBuilder({ page }).analyze();
+  expect(dashboardAccessibility.violations).toEqual([]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
+  const mobileDashboardAccessibility = await new AxeBuilder({ page }).analyze();
+  expect(mobileDashboardAccessibility.violations).toEqual([]);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  await page.getByRole("link", { name: "Projects", exact: true }).click();
   await expect(page).toHaveURL(/\/organizations\/[^/]+\/projects$/);
   await page.getByLabel("Project name").fill(`Result proof ${marker}`);
   await page
@@ -226,7 +256,7 @@ test("E2E-AUTH-002: lost browser session fails closed before tenant API access",
   expect(postLossTenantRequests).toEqual([]);
 });
 
-test("E2E-RESULT-001 and A11Y-AXE-001: a terminal run explains deterministic limits", async ({
+test("E2E-DASHBOARD-001, E2E-RESULT-001, and A11Y-AXE-001: secured workflow explains deterministic limits", async ({
   page,
 }) => {
   await createTerminalRun(page);

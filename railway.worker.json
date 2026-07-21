@@ -1,0 +1,19 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "services/worker/Dockerfile",
+    "watchPatterns": [
+      "services/worker/**",
+      "packages/simula-core/**",
+      "pyproject.toml",
+      "uv.lock"
+    ]
+  },
+  "deploy": {
+    "drainingSeconds": "30",
+    "overlapSeconds": "15",
+    "restartPolicyMaxRetries": 10,
+    "restartPolicyType": "ON_FAILURE"
+  }
+}

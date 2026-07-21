@@ -6,12 +6,22 @@ import uvicorn
 from simula_api.logging import configure_logging
 
 
-def _serve_windows() -> None:
+def _server_port() -> int:
+    raw_port = os.getenv("PORT", "8000")
+    if not raw_port.isascii() or not raw_port.isdecimal():
+        raise RuntimeError("PORT must be an integer from 1 through 65535")
+    port = int(raw_port)
+    if port not in range(1, 65_536):
+        raise RuntimeError("PORT must be an integer from 1 through 65535")
+    return port
+
+
+def _serve_windows(*, port: int) -> None:
     """Run Uvicorn on a selector loop required by psycopg async on Windows."""
     config = uvicorn.Config(
         "simula_api.app:app",
         host="0.0.0.0",  # noqa: S104 - container listener; publication is deployment-owned.
-        port=8000,
+        port=port,
         access_log=False,
         log_config=None,
         proxy_headers=False,
@@ -23,13 +33,14 @@ def _serve_windows() -> None:
 
 def main() -> None:
     configure_logging()
+    port = _server_port()
     if os.name == "nt":
-        _serve_windows()
+        _serve_windows(port=port)
         return
     uvicorn.run(
         "simula_api.app:app",
         host="0.0.0.0",  # noqa: S104 - container listener; publication is deployment-owned.
-        port=8000,
+        port=port,
         access_log=False,
         log_config=None,
         proxy_headers=False,

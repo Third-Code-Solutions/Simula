@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import AsyncIterator, Mapping
+from collections.abc import AsyncIterator, Mapping, Sequence
 from contextlib import asynccontextmanager
 from time import perf_counter
 from typing import Any, cast
@@ -113,6 +113,13 @@ def _database_problem(error: psycopg.Error) -> AppProblem:
             code="version_conflict",
             title="Project version conflict",
             detail="Reload the project and apply the change again.",
+        )
+    if message in {"report_export_mismatch", "run_result_unavailable"}:
+        return AppProblem(
+            status=409,
+            code="version_conflict",
+            title="Resource state conflict",
+            detail="The resource changed or is not ready for this operation.",
         )
     if message in {
         "quota_exceeded",
@@ -981,6 +988,66 @@ class DatabaseGateway:
             limits=ProvenanceExecutionLimits.model_validate(frozen_limits),
             provider_receipt=provider_receipt,
         )
+
+    async def execute_product_command(
+        self,
+        identity: VerifiedIdentity,
+        *,
+        operation: str,
+        query: str,
+        parameters: Sequence[object],
+    ) -> dict[str, Any]:
+        """Execute one fixed Phase 3/4 JSON command through its database capability."""
+
+        try:
+            async with self._transaction(identity, operation="product_command") as connection:
+                cursor = await connection.execute(query, tuple(parameters))
+                row = await cursor.fetchone()
+                if row is None or not isinstance(row.get("payload"), Mapping):
+                    raise RuntimeError(f"{operation} returned an invalid payload")
+                payload = dict(cast(Mapping[str, Any], row["payload"]))
+        except psycopg.Error as error:
+            raise _database_problem(error) from error
+        return payload
+
+    async def read_product_rows(
+        self,
+        identity: VerifiedIdentity,
+        *,
+        operation: str,
+        query: str,
+        parameters: Sequence[object],
+    ) -> list[DatabaseRow]:
+        """Read a bounded product projection; callers own fixed SQL and response models."""
+
+        try:
+            async with self._transaction(identity, operation="product_read") as connection:
+                cursor = await connection.execute(query, tuple(parameters))
+                rows = await cursor.fetchall()
+        except psycopg.Error as error:
+            raise _database_problem(error) from error
+        return [dict(row) for row in rows]
+
+    async def read_product_json(
+        self,
+        identity: VerifiedIdentity,
+        *,
+        operation: str,
+        query: str,
+        parameters: Sequence[object],
+    ) -> Any:
+        """Read one bounded JSON projection through a fixed database capability."""
+
+        try:
+            async with self._transaction(identity, operation="product_read") as connection:
+                cursor = await connection.execute(query, tuple(parameters))
+                row = await cursor.fetchone()
+                if row is None:
+                    raise _not_found()
+                payload = row.get("payload")
+        except psycopg.Error as error:
+            raise _database_problem(error) from error
+        return payload
 
     async def _project_detail(
         self, connection: AsyncConnection[DatabaseRow], project_id: UUID

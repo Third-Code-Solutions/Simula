@@ -24,5 +24,5 @@ COPY --from=build --chown=simula:simula /app/.venv /app/.venv
 
 USER simula
 EXPOSE 8000
-HEALTHCHECK --interval=10s --timeout=2s --retries=3 CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=1)"]
+HEALTHCHECK --interval=10s --timeout=2s --retries=3 CMD ["python", "-c", "import os, urllib.request; port=int(os.getenv('PORT','8000')); urllib.request.urlopen(f'http://127.0.0.1:{port}/health/live', timeout=1)"]
 CMD ["python", "-m", "simula_api"]

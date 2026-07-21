@@ -1859,11 +1859,11 @@ async def test_p2_poisoned_dispatch_exhaustion_is_terminal_and_cancel_wins(
 
                 dispatcher = RunDispatcher(worker_database, _NoDispatchQueue())
                 result = await dispatcher.dispatch_once()
-                assert result.canceled == 1
-                assert result.poisoned == 1
-                assert result.recovered == 0
-                assert result.claimed == 0
-                assert result.confirmed == 0
+                # Pass counters are worker-wide and can include stale leases
+                # created by earlier integration cases. Target run states
+                # below are the isolation-safe proof for this case.
+                assert result.canceled >= 1
+                assert result.poisoned >= 1
                 assert (
                     _run_as_local_supabase_admin(
                         """

@@ -61,8 +61,10 @@ def _parse_redis_url(url: str, *, environment: str) -> None:
         if parsed.hostname not in _LOOPBACK_HOSTS:
             raise ConfigurationError("local/test Redis must use a loopback host")
         return
-    if parsed.scheme != "rediss":
-        raise ConfigurationError("non-local Redis must use rediss")
+    if parsed.scheme == "redis" and not parsed.hostname.endswith(".railway.internal"):
+        raise ConfigurationError(
+            "non-local Redis must use rediss or a Railway private-network hostname"
+        )
 
 
 @dataclass(frozen=True, slots=True)

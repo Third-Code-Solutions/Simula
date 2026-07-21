@@ -14,6 +14,7 @@ type Schemas = components["schemas"];
 
 export type Organization = Schemas["OrganizationResponse"];
 export type OrganizationPage = Schemas["OrganizationPage"];
+export type OrganizationDashboard = Schemas["OrganizationDashboardResponse"];
 export type Project = Schemas["ProjectResponse"];
 export type ProjectDetail = Schemas["ProjectDetail"];
 export type ProjectPage = Schemas["ProjectPage"];
@@ -140,7 +141,7 @@ async function accessToken(): Promise<string> {
 type RequestOptions = Readonly<{
   body?: object;
   headers?: HeadersInit;
-  method?: "GET" | "PATCH" | "POST";
+  method?: "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
 }>;
 
 async function request<T>(
@@ -225,6 +226,14 @@ export function createOrganization(name: string): Promise<Organization> {
     headers: idempotencyHeaders(),
     method: "POST",
   });
+}
+
+export function getOrganizationDashboard(
+  organizationId: string,
+): Promise<OrganizationDashboard> {
+  return request<OrganizationDashboard>(
+    `/api/v1/organizations/${organizationId}/dashboard`,
+  );
 }
 
 export function recordSignIn(): Promise<AuthEvent> {
@@ -338,5 +347,241 @@ export function getSimulationProvenance(
 ): Promise<SimulationProvenance> {
   return request<unknown>(`/api/v1/runs/${runId}/provenance`).then((value) =>
     parsedResponse(parseSimulationProvenance, value),
+  );
+}
+
+export type ProductRecord = Record<string, unknown>;
+export type ProductCollection = Readonly<{ items: ProductRecord[] }>;
+export type ProductCommand = Readonly<{ data: ProductRecord }>;
+export type MethodologyRegistry = Readonly<{
+  methodologies: ProductRecord[];
+  population_frames: ProductRecord[];
+  providers: ProductRecord[];
+}>;
+
+export function getMethodologyRegistry(): Promise<MethodologyRegistry> {
+  return request<MethodologyRegistry>("/api/v1/methodology/registry");
+}
+
+export function listAudienceDefinitions(
+  organizationId: string,
+): Promise<ProductCollection> {
+  return request<ProductCollection>(
+    `/api/v1/organizations/${organizationId}/audiences`,
+  );
+}
+
+export function createAudienceDefinition(
+  organizationId: string,
+  input: object,
+): Promise<ProductRecord> {
+  return request<ProductRecord>(
+    `/api/v1/organizations/${organizationId}/audiences`,
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export function listSimulationConfigurations(
+  projectId: string,
+): Promise<ProductCollection> {
+  return request<ProductCollection>(
+    `/api/v1/projects/${projectId}/simulation-configurations`,
+  );
+}
+
+export function createSimulationConfiguration(
+  projectId: string,
+  input: object,
+): Promise<ProductRecord> {
+  return request<ProductRecord>(
+    `/api/v1/projects/${projectId}/simulation-configurations`,
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export function createMethodologyPreview(
+  projectId: string,
+  input: object,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(
+    `/api/v1/projects/${projectId}/methodology-previews`,
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export function createVariantGroup(
+  projectId: string,
+  input: object,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(
+    `/api/v1/projects/${projectId}/variant-groups`,
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export function listVariantGroups(
+  projectId: string,
+): Promise<ProductCollection> {
+  return request<ProductCollection>(
+    `/api/v1/projects/${projectId}/variant-groups`,
+  );
+}
+
+export function compareVariantReports(
+  variantGroupId: string,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(
+    `/api/v1/variant-groups/${variantGroupId}/comparison`,
+  );
+}
+
+export function createFeedbackRecord(
+  organizationId: string,
+  input: object,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(
+    `/api/v1/organizations/${organizationId}/feedback`,
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function listFeedbackRecords(
+  organizationId: string,
+): Promise<ProductCollection> {
+  return request<ProductCollection>(
+    `/api/v1/organizations/${organizationId}/feedback`,
+  );
+}
+
+export function createRunMethodologyReport(
+  runId: string,
+  input: object,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(`/api/v1/runs/${runId}/methodology-reports`, {
+    body: input,
+    headers: idempotencyHeaders(),
+    method: "POST",
+  });
+}
+
+export function getRunReport(runId: string): Promise<ProductCommand> {
+  return request<ProductCommand>(`/api/v1/runs/${runId}/report`);
+}
+
+export function createReportExport(
+  reportId: string,
+  input: object,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(`/api/v1/reports/${reportId}/exports`, {
+    body: input,
+    headers: idempotencyHeaders(),
+    method: "POST",
+  });
+}
+
+export function createReportShare(
+  reportId: string,
+  input: object,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(`/api/v1/reports/${reportId}/shares`, {
+    body: input,
+    headers: idempotencyHeaders(),
+    method: "POST",
+  });
+}
+
+export function listReportShares(reportId: string): Promise<ProductCollection> {
+  return request<ProductCollection>(`/api/v1/reports/${reportId}/shares`);
+}
+
+export function accessSharedReport(token: string): Promise<ProductCommand> {
+  return request<ProductCommand>(
+    `/api/v1/shared-reports/${encodeURIComponent(token)}`,
+  );
+}
+
+export function revokeReportShare(shareId: string): Promise<ProductCommand> {
+  return request<ProductCommand>(`/api/v1/report-shares/${shareId}`, {
+    headers: idempotencyHeaders(),
+    method: "DELETE",
+  });
+}
+
+export function createOrganizationInvitation(
+  organizationId: string,
+  input: object,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(
+    `/api/v1/organizations/${organizationId}/invitations`,
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function acceptOrganizationInvitation(
+  token: string,
+): Promise<ProductCommand> {
+  return request<ProductCommand>("/api/v1/organization-invitations/accept", {
+    body: { token },
+    headers: idempotencyHeaders(),
+    method: "POST",
+  });
+}
+
+export function listOrganizationInvitations(
+  organizationId: string,
+): Promise<ProductCollection> {
+  return request<ProductCollection>(
+    `/api/v1/organizations/${organizationId}/invitations`,
+  );
+}
+
+export function setOrganizationFeatureFlag(
+  organizationId: string,
+  flagKey: string,
+  input: object,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(
+    `/api/v1/organizations/${organizationId}/feature-flags/${encodeURIComponent(flagKey)}`,
+    { body: input, headers: idempotencyHeaders(), method: "PUT" },
+  );
+}
+
+export function listOrganizationFeatureFlags(
+  organizationId: string,
+): Promise<ProductCollection> {
+  return request<ProductCollection>(
+    `/api/v1/organizations/${organizationId}/feature-flags`,
+  );
+}
+
+export function getOrganizationAdminSummary(
+  organizationId: string,
+): Promise<ProductCommand> {
+  return request<ProductCommand>(
+    `/api/v1/organizations/${organizationId}/admin-summary`,
+  );
+}
+
+export function getOrganizationAudit(
+  organizationId: string,
+): Promise<ProductCollection> {
+  return request<ProductCollection>(
+    `/api/v1/organizations/${organizationId}/audit`,
   );
 }

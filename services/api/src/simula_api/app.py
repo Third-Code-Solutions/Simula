@@ -31,6 +31,7 @@ from simula_api.auth import SupabaseTokenVerifier
 from simula_api.config import ApiSettings, ConfigurationError
 from simula_api.cursor import CursorCodec
 from simula_api.database import DatabaseGateway
+from simula_api.phase34_routes import router as phase34_router
 from simula_api.problem_codes import StableProblemCode
 from simula_api.problems import (
     AppProblem,
@@ -53,7 +54,7 @@ ALLOWED_ENVIRONMENTS = frozenset({"local", "test", "preview", "staging", "produc
 ALLOWED_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 MAX_BODY_BYTES = 64 * 1024
 MAX_HEADER_BYTES = 16 * 1024
-JSON_COMMAND_METHODS = frozenset({"POST", "PATCH"})
+JSON_COMMAND_METHODS = frozenset({"POST", "PATCH", "PUT"})
 CORS_EXPOSE_HEADERS = (
     "ETag",
     "Idempotent-Replayed",
@@ -592,8 +593,8 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
 
     app = FastAPI(
         description=(
-            "SIMULA public API. Phase 2 exposes authenticated organization, project, "
-            "and immutable stimulus commands."
+            "SIMULA public API. Authenticated project, methodology, simulation, "
+            "reporting, feedback, and administration capabilities."
         ),
         docs_url=None,
         lifespan=lifespan,
@@ -617,7 +618,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
             CORSMiddleware,
             allow_origins=list(settings.cors_origins),
             allow_credentials=False,
-            allow_methods=["GET", "POST", "PATCH", "OPTIONS"],
+            allow_methods=["DELETE", "GET", "POST", "PATCH", "PUT", "OPTIONS"],
             allow_headers=[
                 "Authorization",
                 "Content-Type",
@@ -637,6 +638,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
     app.add_exception_handler(RequestValidationError, validation_problem_handler)
     app.add_exception_handler(StarletteHTTPException, http_problem_handler)
     app.include_router(router)
+    app.include_router(phase34_router)
 
     @app.get("/health/live", operation_id="get_liveness", response_model=HealthResponse)
     async def liveness() -> HealthResponse:
