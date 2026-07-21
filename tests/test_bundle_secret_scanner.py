@@ -44,4 +44,5 @@ def test_ci_scans_static_standalone_public_and_final_web_image() -> None:
     ):
         assert target in workflow
     assert workflow.count("--canary-env SIMULA_BUNDLE_SECRET_CANARY") >= 2
-    assert "--mount=type=secret,id=simula_bundle_canary" in dockerfile
+    assert "--mount=type=cache,target=/root/.cache/pnpm" in dockerfile
+    assert "--mount=type=secret" not in dockerfile
