@@ -56,11 +56,18 @@ _API_LOG_FIELDS = {
 def _enforce_log_allowlist(
     _logger: object, _method_name: str, event_dict: MutableMapping[str, Any]
 ) -> Mapping[str, Any]:
-    return sanitize_log_event(
-        event_dict,
-        allowed_fields=_API_LOG_FIELDS,
-        unknown_event="foreign_log",
+    processor_meta = {
+        key: event_dict[key] for key in ("_record", "_from_structlog") if key in event_dict
+    }
+    sanitized = dict(
+        sanitize_log_event(
+            event_dict,
+            allowed_fields=_API_LOG_FIELDS,
+            unknown_event="foreign_log",
+        )
     )
+    sanitized.update(processor_meta)
+    return sanitized
 
 
 def configure_logging() -> None:
