@@ -11,6 +11,7 @@ savePrefix: ""
 strictPeerDependencies: true
 
 overrides:
+  js-yaml: 4.3.0
   next>postcss: 8.5.19
 
 allowBuilds:
