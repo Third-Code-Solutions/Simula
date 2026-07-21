@@ -30,6 +30,7 @@
 }
 
 .wordmark {
+  grid-column: 1;
   width: max-content;
   min-height: 2.5rem;
   gap: 0.65rem;
@@ -117,6 +118,7 @@
 }
 
 .headerActions {
+  grid-column: 3;
   justify-content: flex-end;
   gap: 0.35rem;
 }
@@ -885,6 +887,10 @@
     grid-template-columns: 1fr auto;
   }
 
+  .headerActions {
+    grid-column: 2;
+  }
+
   .sectionNav {
     position: fixed;
     z-index: 5;
@@ -1183,6 +1189,10 @@
     min-height: 4rem;
     padding-inline: 1.5rem;
     grid-template-columns: 1fr auto;
+  }
+
+  .headerActions {
+    grid-column: 2;
   }
 
   .sectionNav {
