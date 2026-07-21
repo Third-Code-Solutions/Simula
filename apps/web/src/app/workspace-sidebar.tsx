@@ -67,9 +67,6 @@ export function WorkspaceSidebar({
               Methodology lab
             </Link>
           ) : null}
-          <Link href="/#workflow">Context map</Link>
-          <Link href="/#method">Method</Link>
-          <Link href="/#principles">Boundaries</Link>
         </nav>
       </div>
       <p className="sidebar-boundary">

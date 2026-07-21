@@ -1,0 +1,312 @@
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(17rem, 0.6fr);
+  gap: clamp(2rem, 6vw, 5rem);
+  align-items: end;
+  padding-top: clamp(3rem, 8vw, 6rem);
+  padding-bottom: 2.5rem;
+  border-bottom: 1px solid var(--edge);
+}
+
+.hero h1 {
+  max-width: 11ch;
+  font-size: clamp(3.25rem, 7vw, 6.75rem);
+}
+
+.securityNote {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1.25rem 0 0.2rem 1.25rem;
+  border-left: 2px solid var(--teal);
+}
+
+.securityNote p,
+.createPanel > p,
+.formNote {
+  margin: 0;
+  color: var(--stone);
+}
+
+.statusMark,
+.count,
+.role,
+.organizationIndex,
+.emptyIndex {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.statusMark {
+  width: fit-content;
+  color: var(--teal-text);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.workspaceLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(19rem, 0.65fr);
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: start;
+  padding-top: 2.5rem;
+  padding-bottom: 5rem;
+}
+
+.directory,
+.createPanel {
+  min-width: 0;
+}
+
+.sectionHeading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.sectionHeading h2,
+.createPanel h2,
+.emptyState h3 {
+  margin: 0.2rem 0 0;
+}
+
+.count {
+  color: var(--stone);
+  font-size: 0.72rem;
+}
+
+.organizationList {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--edge);
+  list-style: none;
+}
+
+.organizationList a {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr) auto auto;
+  gap: 1rem;
+  align-items: center;
+  min-height: 5.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--edge);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    color 180ms ease,
+    padding 180ms ease;
+}
+
+.organizationList a:hover,
+.organizationList a:focus-visible {
+  padding-inline: 0.75rem;
+  background: var(--white);
+}
+
+.organizationList a:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
+
+.organizationIndex,
+.emptyIndex {
+  color: var(--pebble);
+  font-size: 0.72rem;
+}
+
+.organizationIdentity {
+  display: grid;
+  min-width: 0;
+}
+
+.organizationIdentity strong {
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.organizationIdentity small {
+  color: var(--stone);
+}
+
+.role {
+  padding: 0.25rem 0.55rem;
+  border: 1px solid var(--edge);
+  color: var(--stone);
+  font-size: 0.67rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.arrow {
+  font-size: 1rem;
+  transition: transform 180ms ease;
+}
+
+.organizationList a:hover .arrow {
+  transform: translate(0.15rem, -0.15rem);
+}
+
+.createPanel {
+  position: sticky;
+  top: 1.5rem;
+  display: grid;
+  gap: 1rem;
+  padding: 1.5rem;
+  border-top: 3px solid var(--ink);
+  background: var(--white);
+  box-shadow: var(--shadow-card);
+}
+
+.formNote {
+  padding-top: 1rem;
+  border-top: 1px solid var(--edge);
+  font-size: 0.75rem;
+}
+
+.emptyState {
+  padding: clamp(1.5rem, 5vw, 3.5rem);
+  border: 1px solid var(--edge);
+  background:
+    linear-gradient(
+      90deg,
+      transparent 49.8%,
+      var(--edge) 50%,
+      transparent 50.2%
+    ),
+    var(--white);
+  background-size: 4rem 100%;
+}
+
+.emptyState > p {
+  max-width: 39rem;
+  color: var(--stone);
+}
+
+.emptyState ol {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.emptyState li {
+  display: grid;
+  gap: 0.45rem;
+  padding-top: 0.75rem;
+  border-top: 2px solid var(--ink);
+  background: var(--white);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.emptyState li span {
+  color: var(--teal-text);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.skeletonList {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.skeletonList span {
+  height: 5.5rem;
+  background: linear-gradient(
+    100deg,
+    rgb(34 31 28 / 5%) 20%,
+    rgb(255 255 255 / 90%) 45%,
+    rgb(34 31 28 / 5%) 70%
+  );
+  background-size: 240% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.errorRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid rgb(159 18 57 / 28%);
+  background: var(--danger-wash);
+  color: var(--danger);
+}
+
+.errorRow p {
+  margin: 0;
+}
+
+.errorRow button,
+.loadMore {
+  width: auto;
+}
+
+.errorRow button {
+  min-height: 2.25rem;
+  background: var(--danger);
+}
+
+.loadMore {
+  margin-top: 1rem;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -240% 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .hero,
+  .workspaceLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .securityNote {
+    max-width: 36rem;
+  }
+
+  .createPanel {
+    position: static;
+    grid-row: 1;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero h1 {
+    font-size: clamp(2.75rem, 15vw, 4.5rem);
+  }
+
+  .organizationList a {
+    grid-template-columns: 1.5rem minmax(0, 1fr) auto;
+  }
+
+  .role {
+    display: none;
+  }
+
+  .emptyState ol {
+    grid-template-columns: 1fr;
+  }
+
+  .errorRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonList span {
+    animation: none;
+  }
+}

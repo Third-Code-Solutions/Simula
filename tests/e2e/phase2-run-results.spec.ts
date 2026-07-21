@@ -147,23 +147,23 @@ async function createTerminalRun(page: Page): Promise<void> {
   const organizationName = `P2 browser ${marker}`;
   const flagKey = `browser.proof_${marker.replaceAll("-", "_")}`;
   await signIn(page);
+  await expect(page.getByRole("link", { name: "Context map" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Method" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Boundaries" })).toHaveCount(0);
   await page.getByLabel("Organization name").fill(organizationName);
-  await page.getByRole("button", { name: "Create organization" }).click();
+  await page.getByRole("button", { name: "Create workspace" }).click();
   await expect(page).toHaveURL(/\/organizations\/[^/]+\/dashboard$/);
   await expect(
     page.getByRole("heading", { level: 1, name: organizationName }),
   ).toBeVisible();
-  await expect(page.getByText("RBAC active", { exact: true })).toBeVisible();
-  await expect(page.locator("main")).toContainText(
-    "Owner: workspace, team, and controls.",
-  );
+  await expect(page.getByText("owner access", { exact: true })).toBeVisible();
   await expect(
-    page.getByRole("heading", { level: 2, name: "Team, flags, and audit" }),
+    page.getByRole("heading", { level: 2, name: "Workspace controls" }),
   ).toBeVisible();
   await expect(page.getByLabel("Workspace metrics")).toContainText("Projects");
   await page.getByLabel("Flag key").fill(flagKey);
   await page.getByLabel("Change reason").fill("Local browser RBAC proof.");
-  await page.getByRole("button", { name: "Save flag" }).click();
+  await page.getByRole("button", { name: "Save feature gate" }).click();
   await expect(page.getByText(flagKey, { exact: true })).toBeVisible();
 
   const dashboardAccessibility = await new AxeBuilder({ page }).analyze();

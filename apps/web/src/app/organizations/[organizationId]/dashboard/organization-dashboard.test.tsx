@@ -1,7 +1,14 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  createOrganizationInvitation,
   getOrganizationAudit,
   getOrganizationDashboard,
   listOrganizationFeatureFlags,
@@ -42,7 +49,7 @@ const baseDashboard: Omit<OrganizationDashboard, "permissions" | "role"> = {
     succeeded_runs: 3,
   },
   organization_id: "00000000-0000-4000-8000-000000000001",
-  organization_name: "Acme Research",
+  organization_name: "Meridian Research Cooperative",
   organization_status: "active",
   recent_projects: [
     {
@@ -59,7 +66,10 @@ const baseDashboard: Omit<OrganizationDashboard, "permissions" | "role"> = {
 };
 
 describe("OrganizationDashboardWorkspace", () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
+    vi.clearAllMocks();
     vi.mocked(getOrganizationAudit).mockResolvedValue({ items: [] });
     vi.mocked(listOrganizationFeatureFlags).mockResolvedValue({ items: [] });
     vi.mocked(listOrganizationInvitations).mockResolvedValue({ items: [] });
@@ -85,13 +95,13 @@ describe("OrganizationDashboardWorkspace", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Acme Research" }),
+      await screen.findByRole("heading", {
+        name: "Meridian Research Cooperative",
+      }),
     ).toBeInTheDocument();
+    expect(screen.getByText("viewer access")).toBeInTheDocument();
     expect(
-      screen.getByText("Viewer: read-only workspace access."),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "Team, flags, and audit" }),
+      screen.queryByRole("heading", { name: "Workspace controls" }),
     ).not.toBeInTheDocument();
     expect(listOrganizationInvitations).not.toHaveBeenCalled();
   });
@@ -116,12 +126,56 @@ describe("OrganizationDashboardWorkspace", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: "Team, flags, and audit" }),
+      await screen.findByRole("heading", { name: "Workspace controls" }),
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(listOrganizationInvitations).toHaveBeenCalledTimes(1),
     );
     expect(listOrganizationFeatureFlags).toHaveBeenCalledTimes(1);
     expect(getOrganizationAudit).toHaveBeenCalledTimes(1);
+  });
+
+  it("creates an owner invitation and reveals its one-time token", async () => {
+    vi.mocked(getOrganizationDashboard).mockResolvedValue({
+      ...baseDashboard,
+      permissions: {
+        can_create_projects: true,
+        can_create_runs: true,
+        can_manage_settings: true,
+        can_manage_team: true,
+        can_view_audit: true,
+      },
+      role: "owner",
+    });
+    vi.mocked(createOrganizationInvitation).mockResolvedValue({
+      data: { invitation_token: "invite-once-123" },
+    });
+
+    render(
+      <OrganizationDashboardWorkspace
+        organizationId={baseDashboard.organization_id}
+      />,
+    );
+    await screen.findByRole("heading", { name: "Team invitations" });
+
+    fireEvent.change(screen.getByLabelText("Email address"), {
+      target: { value: "  analyst@meridian.test  " },
+    });
+    fireEvent.change(screen.getByLabelText("Workspace role"), {
+      target: { value: "editor" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Create invitation" }));
+
+    await waitFor(() =>
+      expect(createOrganizationInvitation).toHaveBeenCalledWith(
+        baseDashboard.organization_id,
+        expect.objectContaining({
+          email: "analyst@meridian.test",
+          role: "editor",
+        }),
+      ),
+    );
+    expect(await screen.findByText("invite-once-123")).toBeInTheDocument();
+    expect(listOrganizationInvitations).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { recordSignIn } from "@/lib/api";
@@ -10,6 +12,14 @@ export function SignInForm({ nextPath }: Readonly<{ nextPath: string }>) {
   const router = useRouter();
   const [error, setError] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    try {
+      getBrowserSupabaseClient();
+    } catch {
+      // The submit path reports configuration failures to the user.
+    }
+  }, []);
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,6 +86,10 @@ export function SignInForm({ nextPath }: Readonly<{ nextPath: string }>) {
       <button disabled={submitting} type="submit">
         {submitting ? "Signing in…" : "Sign in"}
       </button>
+      <nav aria-label="Account actions" className="auth-links">
+        <Link href="/forgot-password">Forgot password?</Link>
+        <Link href="/sign-up">Create account</Link>
+      </nav>
     </form>
   );
 }

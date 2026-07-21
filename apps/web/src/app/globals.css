@@ -1343,6 +1343,24 @@ summary:focus-visible {
   margin-top: 2rem;
 }
 
+.auth-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 0.25rem;
+  font-size: 0.8125rem;
+}
+
+.auth-links a {
+  color: var(--azure-text);
+  font-weight: 600;
+  text-underline-offset: 0.2em;
+}
+
+.auth-links a:hover {
+  color: var(--ink);
+}
+
 .form-stack h2,
 .form-stack h3,
 .list-section h2,
@@ -1468,23 +1486,10 @@ select {
 }
 
 .sidebar-nav a::before {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 9999px;
+  width: 0.25rem;
+  height: 1rem;
   background: var(--teal);
   content: "";
-}
-
-.sidebar-nav a:nth-child(2)::before {
-  background: var(--coral);
-}
-
-.sidebar-nav a:nth-child(3)::before {
-  background: var(--amber);
-}
-
-.sidebar-nav a:nth-child(4)::before {
-  background: var(--orchid);
 }
 
 .sidebar-nav a:hover,
@@ -1515,6 +1520,11 @@ select {
   grid-column: 2;
   margin-right: auto;
   margin-left: auto;
+}
+
+.workspace-main.workspace-main-wide
+  > :not(.workspace-header):not(.workspace-sidebar) {
+  width: min(calc(100% - 3rem), 76rem);
 }
 
 .workspace-main > .breadcrumb {
@@ -1652,6 +1662,16 @@ select {
   border-radius: 0.5rem;
   background: var(--danger-wash);
   color: var(--danger);
+}
+
+.success {
+  margin-top: 1.25rem;
+  margin-bottom: 0;
+  padding: 0.875rem 1rem;
+  border: 1px solid rgb(58 107 42 / 28%);
+  border-radius: 0.5rem;
+  background: #eff9eb;
+  color: var(--signal);
 }
 
 .stimulus-grid {
@@ -2243,6 +2263,11 @@ code {
   .workspace-main > :not(.workspace-header):not(.workspace-sidebar) {
     width: min(calc(100% - 2rem), 66rem);
     grid-column: 1;
+  }
+
+  .workspace-main.workspace-main-wide
+    > :not(.workspace-header):not(.workspace-sidebar) {
+    width: min(calc(100% - 2rem), 76rem);
   }
 
   .workspace-main > .breadcrumb {
