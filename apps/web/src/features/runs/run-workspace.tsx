@@ -142,7 +142,12 @@ export function RunWorkspace({
         </Link>
         <SignOutButton />
       </header>
-      <WorkspaceSidebar current="run" />
+      <WorkspaceSidebar
+        current="run"
+        organizationId={run?.organization_id}
+        projectId={run?.project_id}
+        runId={runId}
+      />
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href="/organizations">Organizations</Link>
         <span aria-hidden="true"> / </span>

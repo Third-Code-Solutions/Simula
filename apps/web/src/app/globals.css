@@ -1434,6 +1434,8 @@ select {
 }
 
 .workspace-header {
+  position: sticky;
+  top: 0;
   z-index: 10;
   width: 100%;
   max-width: none;
@@ -1446,14 +1448,15 @@ select {
 
 .workspace-sidebar {
   position: sticky;
-  top: 0;
+  top: 4rem;
   display: flex;
-  min-height: calc(100dvh - 4rem);
+  height: calc(100dvh - 4rem);
   grid-column: 1;
   grid-row: 2 / span 50;
   align-self: start;
   flex-direction: column;
   justify-content: space-between;
+  overflow-y: auto;
   padding: 1.25rem 1rem;
   border-right: 1px solid var(--edge);
   background: #fafaf9;
@@ -1471,7 +1474,21 @@ select {
 
 .sidebar-nav {
   display: grid;
+  gap: 1rem;
+}
+
+.sidebar-nav-section {
+  display: grid;
   gap: 0.25rem;
+}
+
+.sidebar-nav-section > span {
+  padding: 0 0.625rem 0.2rem;
+  color: var(--pebble);
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .sidebar-nav a {
@@ -2230,6 +2247,7 @@ code {
     position: static;
     width: 100%;
     min-width: 0;
+    height: auto;
     min-height: auto;
     grid-column: 1;
     grid-row: 2;
@@ -2239,9 +2257,7 @@ code {
   }
 
   .workspace-sidebar > div:first-child {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
+    min-width: 0;
   }
 
   .workspace-sidebar-label,
@@ -2254,6 +2270,14 @@ code {
     width: 100%;
     min-width: 0;
     overflow-x: auto;
+  }
+
+  .sidebar-nav-section {
+    display: flex;
+  }
+
+  .sidebar-nav-section > span {
+    display: none;
   }
 
   .sidebar-nav a {

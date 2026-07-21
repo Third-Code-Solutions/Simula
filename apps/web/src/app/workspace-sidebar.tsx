@@ -4,6 +4,7 @@ export function WorkspaceSidebar({
   current,
   organizationId,
   projectId,
+  runId,
 }: Readonly<{
   current:
     | "organizations"
@@ -14,6 +15,7 @@ export function WorkspaceSidebar({
     | "run";
   organizationId?: string;
   projectId?: string;
+  runId?: string;
 }>) {
   const contextLabel = {
     dashboard: "Dashboard",
@@ -29,43 +31,60 @@ export function WorkspaceSidebar({
       <div>
         <p className="workspace-sidebar-label">{contextLabel}</p>
         <nav className="sidebar-nav">
-          <Link
-            aria-current={current === "organizations" ? "page" : undefined}
-            href="/organizations"
-          >
-            Organizations
-          </Link>
-          {organizationId ? (
+          <div className="sidebar-nav-section">
+            <span>Workspace</span>
             <Link
-              aria-current={current === "dashboard" ? "page" : undefined}
-              href={`/organizations/${organizationId}/dashboard`}
+              aria-current={current === "organizations" ? "page" : undefined}
+              href="/organizations"
             >
-              Dashboard
+              Organizations
             </Link>
-          ) : null}
+            <Link href="/organizations#guided-rehearsal">Guided setup</Link>
+          </div>
           {organizationId ? (
-            <Link
-              aria-current={current === "projects" ? "page" : undefined}
-              href={`/organizations/${organizationId}/projects`}
-            >
-              Projects
-            </Link>
+            <div className="sidebar-nav-section">
+              <span>Organization</span>
+              <Link
+                aria-current={current === "dashboard" ? "page" : undefined}
+                href={`/organizations/${organizationId}/dashboard`}
+              >
+                Dashboard
+              </Link>
+              <Link
+                aria-current={current === "projects" ? "page" : undefined}
+                href={`/organizations/${organizationId}/projects`}
+              >
+                Projects
+              </Link>
+            </div>
           ) : null}
           {projectId ? (
-            <Link
-              aria-current={current === "project" ? "page" : undefined}
-              href={`/projects/${projectId}`}
-            >
-              Project workspace
-            </Link>
+            <div className="sidebar-nav-section">
+              <span>Project</span>
+              <Link
+                aria-current={current === "project" ? "page" : undefined}
+                href={`/projects/${projectId}`}
+              >
+                Project workspace
+              </Link>
+              <Link
+                aria-current={current === "methodology" ? "page" : undefined}
+                href={`/projects/${projectId}/methodology`}
+              >
+                Methodology lab
+              </Link>
+            </div>
           ) : null}
-          {projectId ? (
-            <Link
-              aria-current={current === "methodology" ? "page" : undefined}
-              href={`/projects/${projectId}/methodology`}
-            >
-              Methodology lab
-            </Link>
+          {runId ? (
+            <div className="sidebar-nav-section">
+              <span>Rehearsal</span>
+              <Link
+                aria-current={current === "run" ? "page" : undefined}
+                href={`/runs/${runId}`}
+              >
+                Run result
+              </Link>
+            </div>
           ) : null}
         </nav>
       </div>

@@ -154,13 +154,36 @@
 
 .createPanel {
   position: sticky;
-  top: 1.5rem;
+  top: 5.5rem;
   display: grid;
   gap: 1rem;
   padding: 1.5rem;
   border-top: 3px solid var(--ink);
   background: var(--white);
   box-shadow: var(--shadow-card);
+  scroll-margin-top: 5.5rem;
+}
+
+.formActions {
+  display: grid;
+  gap: 0.625rem;
+}
+
+.secondaryAction {
+  border: 1px solid var(--edge);
+  background: transparent;
+  color: var(--ink);
+}
+
+.secondaryAction:hover:not(:disabled) {
+  background: var(--paper);
+}
+
+.setupStatus {
+  margin: 0;
+  color: var(--teal-text);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
 }
 
 .formNote {
@@ -198,13 +221,28 @@
 }
 
 .emptyState li {
+  border-top: 2px solid var(--ink);
+  background: var(--white);
+}
+
+.emptyState li a {
   display: grid;
   gap: 0.45rem;
   padding-top: 0.75rem;
-  border-top: 2px solid var(--ink);
-  background: var(--white);
+  color: var(--ink);
   font-size: 0.82rem;
   font-weight: 600;
+  text-decoration: none;
+}
+
+.emptyState li a:hover,
+.emptyState li a:focus-visible {
+  color: var(--teal-text);
+}
+
+.emptyState li a:focus-visible {
+  outline: 3px solid var(--teal);
+  outline-offset: 3px;
 }
 
 .emptyState li span {

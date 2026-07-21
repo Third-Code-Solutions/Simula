@@ -30,5 +30,36 @@ describe("workspace navigation", () => {
     expect(screen.queryByRole("link", { name: "Context map" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Method" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Boundaries" })).toBeNull();
+    expect(screen.getByRole("link", { name: "Guided setup" })).toHaveAttribute(
+      "href",
+      "/organizations#guided-rehearsal",
+    );
+  });
+
+  it("keeps organization, project, and run context visible", () => {
+    render(
+      <WorkspaceSidebar
+        current="run"
+        organizationId="organization-1"
+        projectId="project-1"
+        runId="run-1"
+      />,
+    );
+
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
+      "href",
+      "/organizations/organization-1/dashboard",
+    );
+    expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute(
+      "href",
+      "/organizations/organization-1/projects",
+    );
+    expect(
+      screen.getByRole("link", { name: "Project workspace" }),
+    ).toHaveAttribute("href", "/projects/project-1");
+    expect(screen.getByRole("link", { name: "Run result" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 });
