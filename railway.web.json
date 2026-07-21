@@ -9,15 +9,16 @@
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml",
+      "railway.web.json",
       "tsconfig.base.json",
       "turbo.json"
     ]
   },
   "deploy": {
-    "drainingSeconds": "15",
+    "drainingSeconds": 15,
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 120,
-    "overlapSeconds": "30",
+    "overlapSeconds": 30,
     "restartPolicyMaxRetries": 10,
     "restartPolicyType": "ON_FAILURE"
   },

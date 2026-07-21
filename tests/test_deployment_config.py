@@ -11,7 +11,10 @@ def test_railway_web_uses_the_pinned_monorepo_dockerfile() -> None:
 
     assert config["build"]["builder"] == "DOCKERFILE"
     assert config["build"]["dockerfilePath"] == "apps/web/Dockerfile"
+    assert "railway.web.json" in config["build"]["watchPatterns"]
+    assert config["deploy"]["drainingSeconds"] == 15
     assert config["deploy"]["healthcheckPath"] == "/api/health"
+    assert config["deploy"]["overlapSeconds"] == 30
     assert config["environments"]["production"]["build"]["buildEnvironment"] == "V2"
 
 
