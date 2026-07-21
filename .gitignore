@@ -27,3 +27,5 @@ supabase/.branches/
 supabase/.temp/
 .obsidian/
 .serena/
+
+.vercel
