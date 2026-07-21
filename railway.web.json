@@ -19,6 +19,7 @@
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 120,
     "overlapSeconds": 30,
+    "startCommand": null,
     "restartPolicyMaxRetries": 10,
     "restartPolicyType": "ON_FAILURE"
   },
