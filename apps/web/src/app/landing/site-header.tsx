@@ -48,6 +48,14 @@ export function SiteHeader() {
           >
             Sign in
           </Link>
+          <Link
+            className={styles.mobileWorkspaceLink}
+            href="/organizations"
+            onClick={closeMenu}
+          >
+            Open workspace
+            <span aria-hidden="true">↗</span>
+          </Link>
         </nav>
 
         <div className={styles.headerActions}>
