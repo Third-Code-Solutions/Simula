@@ -17,7 +17,7 @@ RUN pnpm install --frozen-lockfile
 
 COPY apps/web apps/web
 COPY packages/contracts packages/contracts
-RUN --mount=type=cache,id=simula_pnpm_cache,target=/root/.cache/pnpm \
+RUN --mount=type=cache,id=s/df03b168-00ff-4dd7-be3c-1fd8afb54efc-/root/.cache/pnpm,target=/root/.cache/pnpm \
     pnpm --filter @simula/contracts build \
     && pnpm --filter @simula/web build
 
