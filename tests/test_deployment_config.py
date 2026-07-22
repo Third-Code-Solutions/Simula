@@ -55,3 +55,14 @@ def test_api_image_installs_the_pinned_supabase_ca() -> None:
     assert "supabase-prod-ca-2021.crt /etc/ssl/certs/supabase-prod-ca-2021.crt" in dockerfile
     assert certificate.startswith("-----BEGIN CERTIFICATE-----")
     assert "PRIVATE KEY" not in certificate
+
+
+def test_worker_image_installs_the_pinned_supabase_ca() -> None:
+    dockerfile = (ROOT / "services" / "worker" / "Dockerfile").read_text(encoding="utf-8")
+    certificate = (ROOT / "services" / "api" / "certs" / "supabase-prod-ca-2021.crt").read_text(
+        encoding="utf-8"
+    )
+
+    assert "supabase-prod-ca-2021.crt /etc/ssl/certs/supabase-prod-ca-2021.crt" in dockerfile
+    assert certificate.startswith("-----BEGIN CERTIFICATE-----")
+    assert "PRIVATE KEY" not in certificate
