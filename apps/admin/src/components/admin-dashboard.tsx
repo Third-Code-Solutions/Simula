@@ -32,12 +32,11 @@ export function AdminDashboard({
     <div className="admin-shell">
       <header className="admin-header">
         <a
-          className="admin-brand"
+          className="wordmark"
           href="#main-content"
           aria-label="SIMULA Control home"
         >
-          <span aria-hidden="true">S</span>
-          <span>SIMULA CONTROL</span>
+          SIMULA
         </a>
         <div className="admin-account">
           <span className="role-badge">Superadmin</span>
@@ -45,6 +44,32 @@ export function AdminDashboard({
           <SignOutButton />
         </div>
       </header>
+
+      <aside className="admin-sidebar" aria-label="Control navigation">
+        <div>
+          <p className="workspace-sidebar-label">Platform control</p>
+          <nav className="sidebar-nav">
+            <div className="sidebar-nav-section">
+              <span>Administration</span>
+              <a aria-current="page" href="#main-content">
+                Control plane
+              </a>
+              <a href="#organization-inventory">Organizations</a>
+            </div>
+            {workspaceOrigin ? (
+              <div className="sidebar-nav-section">
+                <span>SIMULA</span>
+                <a href={`${workspaceOrigin}/organizations`}>Main workspace</a>
+              </div>
+            ) : null}
+          </nav>
+        </div>
+        <p className="sidebar-boundary">
+          <strong>Restricted workspace</strong>
+          Every operation is authorized again by the API and database role
+          registry.
+        </p>
+      </aside>
 
       <main id="main-content" className="admin-main" tabIndex={-1}>
         <section className="page-heading" aria-labelledby="page-title">
@@ -85,6 +110,7 @@ export function AdminDashboard({
         <section
           className="inventory-section"
           aria-labelledby="inventory-heading"
+          id="organization-inventory"
         >
           <div className="section-heading">
             <div>

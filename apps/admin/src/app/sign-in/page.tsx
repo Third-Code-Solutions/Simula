@@ -2,29 +2,52 @@ import { SignInForm } from "./sign-in-form";
 
 export default function SignInPage() {
   return (
-    <main className="access-page" id="main-content" tabIndex={-1}>
-      <section className="access-context" aria-labelledby="context-title">
-        <div className="admin-brand access-brand">
-          <span aria-hidden="true">S</span>
-          <span>SIMULA CONTROL</span>
-        </div>
+    <main className="centered-main" id="main-content" tabIndex={-1}>
+      <section className="auth-context" aria-label="About SIMULA">
+        <a
+          aria-label="SIMULA main site"
+          className="wordmark"
+          href="https://simula-iota.vercel.app"
+        >
+          SIMULA
+        </a>
         <div>
-          <p className="section-label">Restricted control plane</p>
-          <h1 id="context-title">One account. Full platform scope.</h1>
+          <p className="eyebrow">Decision rehearsal, with receipts</p>
+          <h2>Bring a draft. Find the weak spots.</h2>
           <p>
-            Access is evaluated by the API against the private platform role
-            registry on every request.
+            Private project workspaces, immutable text versions, bounded demo
+            runs, and inspectable provenance.
           </p>
+          <div className="proof-rail">
+            <p className="proof-support">
+              Built for rehearsal, not prediction.
+            </p>
+            <ul aria-label="SIMULA product assurances" className="proof-list">
+              <li>
+                <span>01</span>
+                <strong>Versioned</strong>
+              </li>
+              <li>
+                <span>02</span>
+                <strong>Bounded</strong>
+              </li>
+              <li>
+                <span>03</span>
+                <strong>Traceable</strong>
+              </li>
+            </ul>
+          </div>
         </div>
-        <p className="access-footnote">No service key enters this browser.</p>
       </section>
-      <section className="access-form" aria-labelledby="sign-in-title">
-        <div>
-          <p className="section-label">Administrator authentication</p>
-          <h2 id="sign-in-title">Sign in</h2>
-          <p>Use the authorized SIMULA superadmin account.</p>
-        </div>
+      <section className="auth-card" aria-labelledby="sign-in-title">
+        <p className="eyebrow">Restricted platform access</p>
+        <h1 id="sign-in-title">Sign in</h1>
+        <p className="lede">
+          Use the authorized SIMULA superadmin account. Platform access is
+          verified against the private role registry on every request.
+        </p>
         <SignInForm />
+        <p className="auth-boundary">No service key enters this browser.</p>
       </section>
     </main>
   );
