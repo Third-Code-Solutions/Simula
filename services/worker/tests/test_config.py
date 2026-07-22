@@ -95,6 +95,41 @@ def test_deployed_worker_accepts_railway_private_redis(
     assert settings.redis_url == "redis://default:secret@redis.railway.internal:6379/0"
 
 
+def test_deployed_worker_accepts_project_scoped_supavisor_role(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _environment(
+        monkeypatch,
+        SIMULA_ENVIRONMENT="production",
+        SIMULA_WORKER_DATABASE_URL=(
+            "postgresql://simula_worker.ywiwmczccktwzqyhzhiz:worker-password@"
+            "aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full"
+        ),
+        SIMULA_REDIS_URL="redis://default:secret@redis.railway.internal:6379/0",
+    )
+
+    settings = WorkerSettings.from_environment()
+
+    assert settings.database_url.startswith("postgresql://simula_worker.ywiwmczccktwzqyhzhiz:")
+
+
+def test_deployed_worker_rejects_a_different_project_scoped_role(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _environment(
+        monkeypatch,
+        SIMULA_ENVIRONMENT="production",
+        SIMULA_WORKER_DATABASE_URL=(
+            "postgresql://simula_api.ywiwmczccktwzqyhzhiz:api-password@"
+            "aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=verify-full"
+        ),
+        SIMULA_REDIS_URL="redis://default:secret@redis.railway.internal:6379/0",
+    )
+
+    with pytest.raises(ConfigurationError, match="simula_worker"):
+        WorkerSettings.from_environment()
+
+
 def test_deployed_worker_rejects_plaintext_public_redis(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

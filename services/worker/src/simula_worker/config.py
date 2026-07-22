@@ -33,7 +33,9 @@ def _parse_postgres_url(url: str, *, environment: str) -> None:
     parsed = urlparse(url)
     if parsed.scheme not in {"postgres", "postgresql"}:
         raise ConfigurationError("SIMULA_WORKER_DATABASE_URL must use postgres or postgresql")
-    if parsed.username != "simula_worker":
+    if parsed.username != "simula_worker" and not re.fullmatch(
+        r"simula_worker\.[a-z0-9]{20}", parsed.username or ""
+    ):
         raise ConfigurationError("SIMULA_WORKER_DATABASE_URL must authenticate as simula_worker")
     if not parsed.password or not parsed.hostname:
         raise ConfigurationError("SIMULA_WORKER_DATABASE_URL must include credentials and a host")
