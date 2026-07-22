@@ -51,6 +51,7 @@ select extensions.is(
     'private.audit_events',
     'private.idempotency_keys',
     'private.phase4_command_receipts',
+    'private.platform_administrators',
     'private.provider_success_receipts',
     'private.run_attempts',
     'private.run_events',
@@ -135,6 +136,7 @@ select extensions.is(
     'phase4_command_receipts_command_insert',
     'phase4_command_receipts_command_select',
     'phase4_command_receipts_command_update',
+    'platform_administrators_command_self_select',
     'population_frame_versions_api_select',
     'population_frame_versions_command_phase4_select',
     'population_frames_api_select',
@@ -491,6 +493,7 @@ select extensions.is(
     'simula_command_owner|private.phase4_command_receipts|INSERT',
     'simula_command_owner|private.phase4_command_receipts|SELECT',
     'simula_command_owner|private.phase4_command_receipts|UPDATE',
+    'simula_command_owner|private.platform_administrators|SELECT',
     'simula_command_owner|private.run_events|INSERT',
     'simula_command_owner|private.run_events|SELECT',
     'simula_command_owner|private.run_outbox|INSERT',
@@ -629,9 +632,11 @@ select extensions.is(
     'private.get_simulation_run_replay(uuid,text,text)',
     'private.has_org_role(uuid,uuid,api.organization_role[])',
     'private.is_org_member(uuid,uuid)',
+    'private.is_platform_superadmin(uuid)',
     'private.is_verified_api_subject(uuid)',
     'private.organization_admin_summary(uuid)',
     'private.organization_audit_feed(uuid,integer)',
+    'private.platform_user_count(uuid)',
     'private.provider_success_receipt_for_run(uuid)',
     'private.record_privileged_denial_atomic(uuid,text,text,uuid,uuid)',
     'private.record_sign_in_success(uuid,uuid)',
@@ -670,6 +675,13 @@ select extensions.ok(
         and functions.prosecdef
       )
       or (
+        functions.proname in (
+          'platform_user_count'
+        )
+        and owner_roles.rolname = 'postgres'
+        and functions.prosecdef
+      )
+      or (
         functions.proname not in (
           'claim_due_run_outbox',
           'claim_run_execution',
@@ -683,6 +695,7 @@ select extensions.ok(
           'finalize_poisoned_dispatches',
           'finalize_requested_cancellations',
           'heartbeat_run_execution',
+          'platform_user_count',
           'reconcile_run_dispatch',
           'runtime_observability_snapshot'
         )
@@ -699,6 +712,7 @@ select extensions.ok(
             'get_simulation_run_replay',
             'has_org_role',
             'is_org_member',
+            'is_platform_superadmin',
             'provider_success_receipt_for_run',
             'record_privileged_denial_atomic',
             'record_sign_in_success',
@@ -738,7 +752,9 @@ select extensions.ok(
         'runtime_observability_snapshot',
         'has_org_role',
         'is_org_member',
+        'is_platform_superadmin',
         'is_verified_api_subject',
+        'platform_user_count',
         'record_privileged_denial_atomic',
         'record_sign_in_success',
         'request_run_cancel_atomic',

@@ -1718,6 +1718,39 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_administrators: {
+        Row: {
+          active: boolean
+          grant_reason: string
+          granted_at: string
+          granted_by: string
+          revoked_at: string | null
+          role: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          grant_reason: string
+          granted_at?: string
+          granted_by: string
+          revoked_at?: string | null
+          role?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          grant_reason?: string
+          granted_at?: string
+          granted_by?: string
+          revoked_at?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       provider_success_receipts: {
         Row: {
           artifact_sha256: string
@@ -2395,6 +2428,10 @@ export type Database = {
         Args: { requested_organization_id: string; requested_user_id: string }
         Returns: boolean
       }
+      is_platform_superadmin: {
+        Args: { requested_user_id: string }
+        Returns: boolean
+      }
       is_verified_api_subject: {
         Args: { expected_user_id: string }
         Returns: boolean
@@ -2425,6 +2462,10 @@ export type Database = {
           requested_run_id: string
         }
         Returns: boolean
+      }
+      platform_user_count: {
+        Args: { requested_user_id: string }
+        Returns: number
       }
       provider_success_receipt_for_run: {
         Args: { requested_run_id: string }

@@ -3,7 +3,8 @@ with fixture_users (id, email) as (
   values
     ('00000000-0000-4000-8000-000000000001'::uuid, 'owner-a@simula.local'),
     ('00000000-0000-4000-8000-000000000002'::uuid, 'viewer-a@simula.local'),
-    ('00000000-0000-4000-8000-000000000003'::uuid, 'owner-b@simula.local')
+    ('00000000-0000-4000-8000-000000000003'::uuid, 'owner-b@simula.local'),
+    ('00000000-0000-4000-8000-000000000004'::uuid, 'platform-admin@simula.local')
 )
 insert into auth.users (
   instance_id,
@@ -43,7 +44,11 @@ select
   '',
   '',
   '',
-  '{"provider":"email","providers":["email"]}'::jsonb,
+  case
+    when fixture_users.id = '00000000-0000-4000-8000-000000000004'::uuid
+      then '{"provider":"email","providers":["email"],"platform_role":"superadmin"}'::jsonb
+    else '{"provider":"email","providers":["email"]}'::jsonb
+  end,
   '{}'::jsonb,
   false,
   pg_catalog.statement_timestamp(),
@@ -62,7 +67,8 @@ with fixture_users (id, email) as (
   values
     ('00000000-0000-4000-8000-000000000001'::uuid, 'owner-a@simula.local'),
     ('00000000-0000-4000-8000-000000000002'::uuid, 'viewer-a@simula.local'),
-    ('00000000-0000-4000-8000-000000000003'::uuid, 'owner-b@simula.local')
+    ('00000000-0000-4000-8000-000000000003'::uuid, 'owner-b@simula.local'),
+    ('00000000-0000-4000-8000-000000000004'::uuid, 'platform-admin@simula.local')
 )
 insert into auth.identities (
   id,
@@ -88,5 +94,19 @@ select
   pg_catalog.statement_timestamp(),
   pg_catalog.statement_timestamp()
 from fixture_users;
+
+insert into private.platform_administrators (
+  user_id,
+  role,
+  active,
+  granted_by,
+  grant_reason
+) values (
+  '00000000-0000-4000-8000-000000000004'::uuid,
+  'superadmin',
+  true,
+  '00000000-0000-4000-8000-000000000004'::uuid,
+  'Authored local-only platform administrator fixture'
+);
 
 -- P2-02 intentionally seeds no organization or customer/domain content.

@@ -341,13 +341,21 @@ class DatabaseGateway:
                 select
                   organizations.id,
                   organizations.name,
-                  memberships.role,
+                  case
+                    when private.is_platform_superadmin(private.verified_subject())
+                      then 'owner'::api.organization_role
+                    else memberships.role
+                  end as role,
                   organizations.status,
                   organizations.created_at
                 from api.organizations as organizations
-                join api.organization_memberships as memberships
+                left join api.organization_memberships as memberships
                   on memberships.organization_id = organizations.id
-                where memberships.user_id = private.verified_subject()
+                 and memberships.user_id = private.verified_subject()
+                where (
+                  memberships.user_id is not null
+                  or private.is_platform_superadmin(private.verified_subject())
+                )
                   {predicate}
                 order by organizations.created_at, organizations.id
                 limit %s
@@ -356,6 +364,14 @@ class DatabaseGateway:
             )
             rows = await cursor.fetchall()
         return [OrganizationResponse.model_validate(row) for row in rows]
+
+    async def is_platform_superadmin(self, identity: VerifiedIdentity) -> bool:
+        async with self._transaction(identity, operation="platform_admin_access") as connection:
+            cursor = await connection.execute(
+                "select private.is_platform_superadmin(private.verified_subject()) as allowed"
+            )
+            row = await cursor.fetchone()
+        return row is not None and bool(row["allowed"])
 
     async def visible_organization(
         self, identity: VerifiedIdentity, *, organization_id: UUID

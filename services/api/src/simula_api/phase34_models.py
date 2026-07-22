@@ -257,11 +257,42 @@ class OrganizationDashboardResponse(ProductModel):
     organization_name: str
     organization_status: Literal["active", "disabled", "deleted"]
     role: Literal["owner", "editor", "viewer"]
+    platform_role: Literal["superadmin"] | None = None
     permissions: OrganizationDashboardPermissions
     metrics: OrganizationDashboardMetrics
     recent_projects: list[OrganizationDashboardProject]
     recent_runs: list[OrganizationDashboardRun]
     recent_reports: list[OrganizationDashboardReport]
+    generated_at: datetime
+
+
+class PlatformAdminMetrics(ProductModel):
+    users: int = Field(ge=0)
+    organizations: int = Field(ge=0)
+    projects: int = Field(ge=0)
+    runs: int = Field(ge=0)
+    active_runs: int = Field(ge=0)
+    reports: int = Field(ge=0)
+    feedback_records: int = Field(ge=0)
+
+
+class PlatformAdminOrganization(ProductModel):
+    id: UUID
+    name: str
+    status: Literal["active", "disabled", "deleted"]
+    members: int = Field(ge=0)
+    projects: int = Field(ge=0)
+    runs: int = Field(ge=0)
+    reports: int = Field(ge=0)
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlatformAdminDashboardResponse(ProductModel):
+    user_id: UUID
+    role: Literal["superadmin"]
+    metrics: PlatformAdminMetrics
+    organizations: list[PlatformAdminOrganization]
     generated_at: datetime
 
 

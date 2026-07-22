@@ -32,6 +32,7 @@ from simula_api.config import ApiSettings, ConfigurationError
 from simula_api.cursor import CursorCodec
 from simula_api.database import DatabaseGateway
 from simula_api.phase34_routes import router as phase34_router
+from simula_api.platform_admin_routes import router as platform_admin_router
 from simula_api.problem_codes import StableProblemCode
 from simula_api.problems import (
     AppProblem,
@@ -642,6 +643,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
     app.add_exception_handler(StarletteHTTPException, http_problem_handler)
     app.include_router(router)
     app.include_router(phase34_router)
+    app.include_router(platform_admin_router)
 
     @app.get("/health/live", operation_id="get_liveness", response_model=HealthResponse)
     async def liveness() -> HealthResponse:

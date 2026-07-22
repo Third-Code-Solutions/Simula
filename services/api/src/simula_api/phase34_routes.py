@@ -110,13 +110,25 @@ async def organization_dashboard(
             'organization_id', organizations.id,
             'organization_name', organizations.name,
             'organization_status', organizations.status,
-            'role', memberships.role,
+            'role', case
+              when private.is_platform_superadmin(private.verified_subject()) then 'owner'
+              else memberships.role::text
+            end,
+            'platform_role', case
+              when private.is_platform_superadmin(private.verified_subject()) then 'superadmin'
+              else null
+            end,
             'permissions', pg_catalog.jsonb_build_object(
-              'can_create_projects', memberships.role in ('owner', 'editor'),
-              'can_create_runs', memberships.role in ('owner', 'editor'),
-              'can_manage_team', memberships.role = 'owner',
-              'can_manage_settings', memberships.role = 'owner',
-              'can_view_audit', memberships.role = 'owner'
+              'can_create_projects', private.is_platform_superadmin(private.verified_subject())
+                or memberships.role in ('owner', 'editor'),
+              'can_create_runs', private.is_platform_superadmin(private.verified_subject())
+                or memberships.role in ('owner', 'editor'),
+              'can_manage_team', private.is_platform_superadmin(private.verified_subject())
+                or memberships.role = 'owner',
+              'can_manage_settings', private.is_platform_superadmin(private.verified_subject())
+                or memberships.role = 'owner',
+              'can_view_audit', private.is_platform_superadmin(private.verified_subject())
+                or memberships.role = 'owner'
             ),
             'metrics', pg_catalog.jsonb_build_object(
               'projects', (
@@ -219,10 +231,15 @@ async def organization_dashboard(
             'generated_at', pg_catalog.statement_timestamp()
           ) as payload
           from api.organizations as organizations
-          join api.organization_memberships as memberships
+          left join api.organization_memberships as memberships
             on memberships.organization_id = organizations.id
            and memberships.user_id = private.verified_subject()
-          where organizations.id = %s and organizations.status <> 'deleted'
+          where organizations.id = %s
+            and organizations.status <> 'deleted'
+            and (
+              memberships.user_id is not null
+              or private.is_platform_superadmin(private.verified_subject())
+            )
         """,
         parameters=(organization_id,),
     )

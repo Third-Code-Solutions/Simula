@@ -16,6 +16,7 @@ import pytest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_SQL = REPOSITORY_ROOT / "tests" / "database" / "runtime_adversarial.sql"
 M2_RUNTIME_SQL = REPOSITORY_ROOT / "tests" / "database" / "m2_commands_adversarial.sql"
+PLATFORM_ADMIN_SQL = REPOSITORY_ROOT / "tests" / "database" / "platform_admin_adversarial.sql"
 SUPABASE_DB_CONTAINER = "supabase_db_simula-local"
 EXPECTED_API_URL = "http://127.0.0.1:54321"
 LOCAL_FIXTURE_PASSWORD = "SimulaLocalOnly!2026"  # noqa: S105 - disposable local fixture.
@@ -23,6 +24,7 @@ LOCAL_USERS = {
     "owner-a@simula.local": "00000000-0000-4000-8000-000000000001",
     "viewer-a@simula.local": "00000000-0000-4000-8000-000000000002",
     "owner-b@simula.local": "00000000-0000-4000-8000-000000000003",
+    "platform-admin@simula.local": "00000000-0000-4000-8000-000000000004",
 }
 
 
@@ -244,3 +246,11 @@ def test_runtime_role_claims_rls_and_atomic_command_graph() -> None:
 @pytest.mark.integration
 def test_m2_project_and_stimulus_command_graph() -> None:
     _run_runtime_sql(M2_RUNTIME_SQL, "m2 command adversarial database tests: PASS")
+
+
+@pytest.mark.integration
+def test_platform_superadmin_rls_and_owner_capabilities() -> None:
+    _run_runtime_sql(
+        PLATFORM_ADMIN_SQL,
+        "platform superadmin adversarial database tests: PASS",
+    )

@@ -25,6 +25,7 @@ _DATABASE_OPERATIONS = frozenset(
         "get_stimulus_organization",
         "list_organizations",
         "list_projects",
+        "platform_admin_access",
         "privileged_denial_audit",
         "product_command",
         "product_read",
