@@ -3,6 +3,12 @@
 
 set role postgres;
 
+set role simula_worker_owner;
+grant references (organization_id, run_id)
+on table api.behavioral_run_results
+to postgres;
+set role postgres;
+
 do $migration$
 begin
   if not exists (
@@ -559,4 +565,8 @@ from public, anon, authenticated, simula_api, simula_worker,
 reset role;
 
 -- Supabase records migration history in the same session after this script.
+set role simula_worker_owner;
+revoke references (organization_id, run_id)
+on table api.behavioral_run_results
+from postgres;
 set role postgres;

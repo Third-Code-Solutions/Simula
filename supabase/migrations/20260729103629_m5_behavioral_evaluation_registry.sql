@@ -3,6 +3,12 @@
 
 set role postgres;
 
+set role simula_worker_owner;
+grant references (organization_id, run_id)
+on table api.behavioral_run_results
+to postgres;
+set role postgres;
+
 create table api.behavioral_evaluation_protocols (
   id uuid primary key default pg_catalog.gen_random_uuid(),
   organization_id uuid references api.organizations (id) on delete cascade,
@@ -473,4 +479,8 @@ from public, anon, authenticated, simula_api, simula_worker,
 reset role;
 
 -- Supabase records migration history in the same session after this script.
+set role simula_worker_owner;
+revoke references (organization_id, run_id)
+on table api.behavioral_run_results
+from postgres;
 set role postgres;

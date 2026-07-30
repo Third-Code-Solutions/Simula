@@ -144,6 +144,31 @@ def test_pending_migrations_leave_the_hosted_history_writer_as_postgres() -> Non
         assert role_statements[-1] == "set role postgres;", migration.name
 
 
+def test_cross_owner_behavioral_foreign_keys_scope_references_to_migration() -> None:
+    migrations = ROOT / "supabase" / "migrations"
+    filenames = (
+        "20260729102512_m5_governed_behavioral_data.sql",
+        "20260729103629_m5_behavioral_evaluation_registry.sql",
+        "20260729110611_m6_behavioral_public_summaries.sql",
+    )
+    grant = """grant references (organization_id, run_id)
+on table api.behavioral_run_results
+to postgres;"""
+    revoke = """revoke references (organization_id, run_id)
+on table api.behavioral_run_results
+from postgres;"""
+    reference = "references api.behavioral_run_results (organization_id, run_id)"
+
+    for filename in filenames:
+        migration = (migrations / filename).read_text(encoding="utf-8").lower()
+
+        assert migration.count(grant) == 1, filename
+        assert migration.count(revoke) == 1, filename
+        assert migration.index(grant) < migration.index(reference), filename
+        assert migration.rindex(revoke) > migration.rindex(reference), filename
+        assert migration.rstrip().endswith("set role postgres;"), filename
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"

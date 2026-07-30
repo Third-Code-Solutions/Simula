@@ -3,6 +3,12 @@
 
 set role postgres;
 
+set role simula_worker_owner;
+grant references (organization_id, run_id)
+on table api.behavioral_run_results
+to postgres;
+set role postgres;
+
 create table api.behavioral_fleet_summaries (
   organization_id uuid not null,
   run_id uuid primary key,
@@ -418,3 +424,9 @@ revoke create on schema private from simula_worker_owner;
 revoke all on all sequences in schema api, private
 from public, anon, authenticated, simula_api, simula_worker,
   simula_command_owner, simula_worker_owner, postgres;
+
+set role simula_worker_owner;
+revoke references (organization_id, run_id)
+on table api.behavioral_run_results
+from postgres;
+set role postgres;
