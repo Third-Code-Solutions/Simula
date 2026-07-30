@@ -332,6 +332,36 @@ def test_production_tail_acl_changes_run_as_object_owners() -> None:
         ), filename
 
 
+def test_behavioral_demo_patch_runs_as_hosted_object_owners() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260730160000_fix_behavioral_demo_active_audience.sql"
+    ).read_text(encoding="utf-8")
+
+    command_role = migration.index("set role simula_command_owner;")
+    demo_patch = migration.index("do $patch_behavioral_audience$")
+    worker_role = migration.index("set role simula_worker_owner;", demo_patch)
+    artifact_patch = migration.index("do $patch_behavioral_artifact_validator$", worker_role)
+    worker_grant = migration.index(
+        "grant execute on function private.normalize_behavioral_public_summaries(",
+        artifact_patch,
+    )
+    postgres_role = migration.index("set role postgres;", worker_grant)
+    postgres_owned_grant = migration.index(
+        "grant update (event_id) on table private.behavioral_action_events",
+        postgres_role,
+    )
+
+    assert (
+        command_role
+        < demo_patch
+        < worker_role
+        < artifact_patch
+        < worker_grant
+        < postgres_role
+        < postgres_owned_grant
+    )
+
+
 def test_queue_transport_seed_precedes_forced_row_level_security() -> None:
     migration = (
         ROOT / "supabase" / "migrations" / "20260730190000_m3_queue_transport_fence.sql"

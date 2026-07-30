@@ -5,6 +5,8 @@
 
 set role postgres;
 
+set role simula_command_owner;
+
 do $patch_behavioral_audience$
 declare
   original_definition text;
@@ -48,6 +50,8 @@ begin
 end
 $patch_behavioral_audience$;
 
+set role simula_worker_owner;
+
 do $patch_behavioral_artifact_validator$
 declare
   original_definition text;
@@ -89,10 +93,11 @@ grant execute on function private.normalize_behavioral_public_summaries(
   uuid, uuid, bytea
 )
 to simula_worker_owner;
-grant update (event_id) on table private.behavioral_action_events
-to simula_worker_owner;
 
 set role postgres;
+
+grant update (event_id) on table private.behavioral_action_events
+to simula_worker_owner;
 
 -- Supabase records migration history in the same session after this script.
 set role postgres;
