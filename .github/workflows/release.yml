@@ -15,8 +15,11 @@ concurrency:
 jobs:
   sign:
     name: Build, sign, and verify release
-    runs-on: ubuntu-24.04
+    runs-on: [self-hosted, Windows, X64, simula-release]
     timeout-minutes: 40
+    defaults:
+      run:
+        shell: "D:\\Git\\bin\\bash.exe --noprofile --norc -e -o pipefail {0}"
     permissions:
       contents: read
       id-token: write
