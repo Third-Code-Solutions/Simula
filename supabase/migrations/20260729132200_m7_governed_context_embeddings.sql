@@ -545,10 +545,13 @@ comment on table private.embedding_model_versions is
   'Rights- and benchmark-gated embedding model version registry';
 comment on table private.context_node_embeddings is
   'Immutable content-bound vectors for exact graph-scoped retrieval';
+
+set role simula_command_owner;
 comment on function api.search_context_nodes(
   uuid, text, text, extensions.vector, integer, double precision
 ) is
   'Exact member-scoped cosine search over at most 500 immutable graph nodes';
+set role postgres;
 
 revoke create on schema api, private from simula_command_owner;
 revoke all on all sequences in schema api, private

@@ -237,6 +237,17 @@ from postgres;""",
         assert migration.rstrip().endswith("set role postgres;"), filename
 
 
+def test_context_search_comment_runs_as_function_owner() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260729132200_m7_governed_context_embeddings.sql"
+    ).read_text(encoding="utf-8")
+    owner_role = migration.rindex("set role simula_command_owner;")
+    function_comment = migration.index("comment on function api.search_context_nodes(")
+    postgres_role = migration.index("set role postgres;", function_comment)
+
+    assert owner_role < function_comment < postgres_role
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"
