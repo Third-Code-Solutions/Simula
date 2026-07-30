@@ -5,6 +5,8 @@
 
 set role postgres;
 
+grant create on schema private to simula_command_owner;
+
 set role simula_command_owner;
 
 do $patch_behavioral_audience$
@@ -49,6 +51,11 @@ begin
   execute replacement_definition;
 end
 $patch_behavioral_audience$;
+
+set role postgres;
+
+revoke create on schema private from simula_command_owner;
+grant create on schema private to simula_worker_owner;
 
 set role simula_worker_owner;
 
@@ -95,6 +102,8 @@ grant execute on function private.normalize_behavioral_public_summaries(
 to simula_worker_owner;
 
 set role postgres;
+
+revoke create on schema private from simula_worker_owner;
 
 grant update (event_id) on table private.behavioral_action_events
 to simula_worker_owner;

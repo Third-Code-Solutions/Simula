@@ -337,27 +337,48 @@ def test_behavioral_demo_patch_runs_as_hosted_object_owners() -> None:
         ROOT / "supabase" / "migrations" / "20260730160000_fix_behavioral_demo_active_audience.sql"
     ).read_text(encoding="utf-8")
 
-    command_role = migration.index("set role simula_command_owner;")
+    command_schema_grant = migration.index(
+        "grant create on schema private to simula_command_owner;"
+    )
+    command_role = migration.index("set role simula_command_owner;", command_schema_grant)
     demo_patch = migration.index("do $patch_behavioral_audience$")
-    worker_role = migration.index("set role simula_worker_owner;", demo_patch)
+    postgres_after_demo = migration.index("set role postgres;", demo_patch)
+    command_schema_revoke = migration.index(
+        "revoke create on schema private from simula_command_owner;",
+        postgres_after_demo,
+    )
+    worker_schema_grant = migration.index(
+        "grant create on schema private to simula_worker_owner;",
+        command_schema_revoke,
+    )
+    worker_role = migration.index("set role simula_worker_owner;", worker_schema_grant)
     artifact_patch = migration.index("do $patch_behavioral_artifact_validator$", worker_role)
     worker_grant = migration.index(
         "grant execute on function private.normalize_behavioral_public_summaries(",
         artifact_patch,
     )
     postgres_role = migration.index("set role postgres;", worker_grant)
+    worker_schema_revoke = migration.index(
+        "revoke create on schema private from simula_worker_owner;",
+        postgres_role,
+    )
     postgres_owned_grant = migration.index(
         "grant update (event_id) on table private.behavioral_action_events",
-        postgres_role,
+        worker_schema_revoke,
     )
 
     assert (
-        command_role
+        command_schema_grant
+        < command_role
         < demo_patch
+        < postgres_after_demo
+        < command_schema_revoke
+        < worker_schema_grant
         < worker_role
         < artifact_patch
         < worker_grant
         < postgres_role
+        < worker_schema_revoke
         < postgres_owned_grant
     )
 
