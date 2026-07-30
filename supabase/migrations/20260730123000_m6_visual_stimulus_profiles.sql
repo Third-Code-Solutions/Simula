@@ -1,3 +1,9 @@
+set role postgres;
+
+grant references (id)
+on table api.stimulus_assets
+to postgres;
+
 alter table private.phase4_command_receipts
   drop constraint phase4_command_receipts_scope_valid,
   add constraint phase4_command_receipts_scope_valid check (
@@ -386,4 +392,8 @@ grant execute on function api.create_stimulus_visual_profile(
 ) to simula_api;
 
 -- Supabase records migration history in the same session after this script.
+set role postgres;
+revoke references (id)
+on table api.stimulus_assets
+from postgres;
 set role postgres;

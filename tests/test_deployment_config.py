@@ -186,6 +186,57 @@ from postgres;"""
     assert migration.index("insert into storage.buckets (") < migration.index(postgres_revoke)
 
 
+def test_cross_migration_foreign_keys_scope_locked_table_references() -> None:
+    migrations = ROOT / "supabase" / "migrations"
+    cases = {
+        "20260729103629_m5_behavioral_evaluation_registry.sql": (
+            """grant references (organization_id, id)
+on table api.observed_outcome_sets, api.observed_outcome_values
+to postgres;""",
+            """revoke references (organization_id, id)
+on table api.observed_outcome_sets, api.observed_outcome_values
+from postgres;""",
+            "references api.observed_outcome_sets (organization_id, id)",
+        ),
+        "20260729132200_m7_governed_context_embeddings.sql": (
+            """grant references (organization_id, id)
+on table api.context_graph_versions
+to postgres;""",
+            """revoke references (organization_id, id)
+on table api.context_graph_versions
+from postgres;""",
+            "references api.context_graph_versions (organization_id, id)",
+        ),
+        "20260730123000_m6_visual_stimulus_profiles.sql": (
+            """grant references (id)
+on table api.stimulus_assets
+to postgres;""",
+            """revoke references (id)
+on table api.stimulus_assets
+from postgres;""",
+            "references api.stimulus_assets(id)",
+        ),
+        "20260730220000_m2_organization_deletion_recovery.sql": (
+            """grant references (id)
+on table private.organization_deletion_requests
+to postgres;""",
+            """revoke references (id)
+on table private.organization_deletion_requests
+from postgres;""",
+            "references private.organization_deletion_requests(id)",
+        ),
+    }
+
+    for filename, (grant, revoke, reference) in cases.items():
+        migration = (migrations / filename).read_text(encoding="utf-8").lower()
+
+        assert migration.count(grant) == 1, filename
+        assert migration.count(revoke) == 1, filename
+        assert migration.index(grant) < migration.index(reference), filename
+        assert migration.rindex(revoke) > migration.rindex(reference), filename
+        assert migration.rstrip().endswith("set role postgres;"), filename
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"

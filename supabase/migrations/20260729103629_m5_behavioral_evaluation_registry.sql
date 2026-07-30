@@ -3,6 +3,10 @@
 
 set role postgres;
 
+grant references (organization_id, id)
+on table api.observed_outcome_sets, api.observed_outcome_values
+to postgres;
+
 set role simula_worker_owner;
 grant references (organization_id, run_id)
 on table api.behavioral_run_results
@@ -482,5 +486,9 @@ reset role;
 set role simula_worker_owner;
 revoke references (organization_id, run_id)
 on table api.behavioral_run_results
+from postgres;
+set role postgres;
+revoke references (organization_id, id)
+on table api.observed_outcome_sets, api.observed_outcome_values
 from postgres;
 set role postgres;

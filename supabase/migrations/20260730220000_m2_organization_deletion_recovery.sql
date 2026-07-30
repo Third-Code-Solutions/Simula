@@ -5,6 +5,12 @@
 -- claims. PostgreSQL remains the final authority and cascades only after every
 -- resource row is completed.
 
+set role postgres;
+
+grant references (id)
+on table private.organization_deletion_requests
+to postgres;
+
 alter table private.organization_deletion_requests
   drop constraint organization_deletion_requests_manifest_valid;
 
@@ -659,4 +665,8 @@ from public, anon, authenticated, simula_api, simula_worker,
   simula_command_owner, simula_worker_owner;
 
 -- Supabase records migration history in the same session after this script.
+set role postgres;
+revoke references (id)
+on table private.organization_deletion_requests
+from postgres;
 set role postgres;

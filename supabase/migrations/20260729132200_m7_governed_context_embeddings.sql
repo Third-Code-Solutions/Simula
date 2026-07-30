@@ -8,6 +8,10 @@ set role postgres;
 
 create extension if not exists vector with schema extensions;
 
+grant references (organization_id, id)
+on table api.context_graph_versions
+to postgres;
+
 create table private.embedding_model_versions (
   id uuid primary key default pg_catalog.gen_random_uuid(),
   model_key text not null,
@@ -554,4 +558,8 @@ from public, anon, authenticated, simula_api, simula_worker,
 reset role;
 
 -- Supabase records migration history in the same session after this script.
+set role postgres;
+revoke references (organization_id, id)
+on table api.context_graph_versions
+from postgres;
 set role postgres;
