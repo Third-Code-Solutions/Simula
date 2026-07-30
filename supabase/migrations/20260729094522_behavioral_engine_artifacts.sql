@@ -1039,3 +1039,6 @@ to simula_api;
 set role postgres;
 revoke create on schema api, private from simula_command_owner;
 reset role;
+
+-- Supabase records migration history in the same session after this script.
+set role postgres;

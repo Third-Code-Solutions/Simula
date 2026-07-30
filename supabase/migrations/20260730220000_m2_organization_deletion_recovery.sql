@@ -657,3 +657,6 @@ to simula_worker;
 revoke all on all sequences in schema api, private
 from public, anon, authenticated, simula_api, simula_worker,
   simula_command_owner, simula_worker_owner;
+
+-- Supabase records migration history in the same session after this script.
+set role postgres;

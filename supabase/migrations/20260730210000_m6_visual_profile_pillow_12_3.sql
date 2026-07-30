@@ -226,3 +226,6 @@ $function$;
 
 reset role;
 revoke create on schema private from simula_command_owner;
+
+-- Supabase records migration history in the same session after this script.
+set role postgres;

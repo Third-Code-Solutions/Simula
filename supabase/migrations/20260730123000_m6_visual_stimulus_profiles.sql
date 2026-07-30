@@ -384,3 +384,6 @@ grant execute on function private.create_stimulus_visual_profile_atomic(
 grant execute on function api.create_stimulus_visual_profile(
   uuid, uuid, jsonb, text, text, uuid
 ) to simula_api;
+
+-- Supabase records migration history in the same session after this script.
+set role postgres;

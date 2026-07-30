@@ -555,3 +555,6 @@ end
 $least_privilege$;
 
 reset role;
+
+-- Supabase records migration history in the same session after this script.
+set role postgres;

@@ -126,6 +126,24 @@ def test_behavioral_artifact_migration_scopes_owner_handoff_to_both_schemas() ->
     assert migration.index(revoke) > migration.index("set role simula_worker_owner;")
 
 
+def test_pending_migrations_leave_the_hosted_history_writer_as_postgres() -> None:
+    migrations = ROOT / "supabase" / "migrations"
+    pending = sorted(
+        path
+        for path in migrations.glob("*.sql")
+        if int(path.name.split("_", 1)[0]) >= 20260729094522
+    )
+
+    assert pending
+    for migration in pending:
+        role_statements = [
+            line.strip().lower()
+            for line in migration.read_text(encoding="utf-8").splitlines()
+            if line.strip().lower().startswith(("set role ", "reset role;"))
+        ]
+        assert role_statements[-1] == "set role postgres;", migration.name
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"

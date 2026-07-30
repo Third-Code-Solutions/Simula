@@ -20,3 +20,6 @@ end
 $verify_behavioral_result_delete$;
 
 reset role;
+
+-- Supabase records migration history in the same session after this script.
+set role postgres;
