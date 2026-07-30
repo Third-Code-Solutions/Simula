@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { SignOutButton } from "@/app/sign-out-button";
@@ -10,6 +11,7 @@ import {
   type OrganizationDashboard,
   type ProductRecord,
   createOrganizationInvitation,
+  deleteOrganization,
   getOrganizationAudit,
   getOrganizationDashboard,
   listOrganizationFeatureFlags,
@@ -41,6 +43,7 @@ function bool(value: unknown): boolean {
 export function OrganizationDashboardWorkspace({
   organizationId,
 }: Readonly<{ organizationId: string }>) {
+  const router = useRouter();
   const [dashboard, setDashboard] = useState<OrganizationDashboard>();
   const [invitations, setInvitations] = useState<ProductRecord[]>([]);
   const [flags, setFlags] = useState<ProductRecord[]>([]);
@@ -68,7 +71,11 @@ export function OrganizationDashboardWorkspace({
     try {
       const loadedDashboard = await getOrganizationDashboard(organizationId);
       setDashboard(loadedDashboard);
-      if (loadedDashboard.permissions.can_manage_settings) {
+      setError(undefined);
+      if (
+        loadedDashboard.organization_status === "active" &&
+        loadedDashboard.permissions.can_manage_settings
+      ) {
         try {
           await loadOwnerData();
         } catch (ownerLoadError) {
@@ -95,7 +102,11 @@ export function OrganizationDashboardWorkspace({
         const loadedDashboard = await getOrganizationDashboard(organizationId);
         if (stale) return;
         setDashboard(loadedDashboard);
-        if (loadedDashboard.permissions.can_manage_settings) {
+        setError(undefined);
+        if (
+          loadedDashboard.organization_status === "active" &&
+          loadedDashboard.permissions.can_manage_settings
+        ) {
           try {
             const [loadedInvitations, loadedFlags, loadedAudit] =
               await Promise.all([
@@ -209,6 +220,32 @@ export function OrganizationDashboardWorkspace({
     }
   }
 
+  async function deleteWorkspace(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!dashboard) return;
+    const confirmation = new FormData(event.currentTarget).get("confirmation");
+    if (
+      typeof confirmation !== "string" ||
+      confirmation.trim() !== dashboard.organization_name
+    ) {
+      setOwnerError(
+        "Enter the exact workspace name before permanent deletion.",
+      );
+      return;
+    }
+    setBusy("deletion");
+    setOwnerError(undefined);
+    try {
+      await deleteOrganization(organizationId, confirmation.trim());
+      router.replace("/organizations");
+    } catch (deletionError) {
+      setOwnerError(problemMessage(deletionError));
+      await loadDashboard();
+    } finally {
+      setBusy(undefined);
+    }
+  }
+
   return (
     <main
       className="workspace-main workspace-main-wide"
@@ -245,6 +282,18 @@ export function OrganizationDashboardWorkspace({
         </section>
       ) : null}
 
+      {!loading && error && !dashboard ? (
+        <section className="panel" aria-labelledby="dashboard-unavailable">
+          <p className="eyebrow">Organization dashboard</p>
+          <h1 id="dashboard-unavailable">Dashboard unavailable</h1>
+          <p className="field-note">
+            This workspace could not be opened. No organization details are
+            shown.
+          </p>
+          <Link href="/organizations">Return to organizations</Link>
+        </section>
+      ) : null}
+
       {error ? (
         <div className={styles.errorRow} role="alert">
           <p>{error}</p>
@@ -262,13 +311,16 @@ export function OrganizationDashboardWorkspace({
             organizationId={organizationId}
             refreshing={refreshing}
           />
-          {dashboard.permissions.can_manage_team ? (
+          {!loading && dashboard.permissions.can_manage_team ? (
             <OwnerControls
               audit={audit}
               busy={busy}
               flags={flags}
               invitationToken={invitationToken}
               invitations={invitations}
+              organizationName={dashboard.organization_name}
+              organizationStatus={dashboard.organization_status}
+              onDelete={(event) => void deleteWorkspace(event)}
               onInvite={(event) => void inviteMember(event)}
               onSaveFlag={(event) => void saveFlag(event)}
               onToggleFlag={(flag) => void toggleFlag(flag)}

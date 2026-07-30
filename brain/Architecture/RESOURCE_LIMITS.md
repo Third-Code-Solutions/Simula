@@ -2,7 +2,7 @@
 title: SIMULA Phase 2 Resource and Rate Limits
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-30
 owner: API and SRE leads
 classification: PROPOSED
 source_of_truth: true
@@ -62,13 +62,17 @@ Limits are not pricing entitlements. Phase 5 may revise them using measured evid
 - Non-streaming API handler deadline: 10 seconds; run creation target/deadline: 1/5 seconds.
 - Postgres pool acquisition/connect timeout: 2 seconds; SQL `statement_timeout=8s`, `lock_timeout=2s`, `idle_in_transaction_session_timeout=10s`. API async pool maximum 10 connections; worker/dispatcher maximum 4. At most one new-transaction retry for a proven idempotent read after a pre-statement connection failure; no hidden command retry.
 - Redis socket-connect timeout: 1 second. Redis in-flight command timeout: 1 second via a custom binary ConnectionPool/ArqRedis client plus an outer 1-second `asyncio.timeout` around publisher/inspection operations; implicit timeout retry is disabled. Connect refusal, connect stall, and post-send/response command stall are classified separately; every ambiguous enqueue/inspection timeout leaves the accepted outbox pending.
-- ARQ mock job timeout 30 seconds, transport max 16 tries: at most three one-second pre-confirmation deferrals, then bounded five-second organization-capacity deferrals through try 13, preserving tries 14–16 for up to three database execution attempts. Worker concurrency is 4 per replica, Phase 2 maximum two replicas. Database execution attempts remain capped at three globally across generations.
+- ARQ rollback job timeout is 30 seconds with transport maximum 16 tries: at most three one-second pre-confirmation deferrals, then bounded five-second organization-capacity deferrals through try 13, preserving tries 14–16 for up to three database execution attempts. BullMQ v2 worker concurrency is 4 per replica with a Phase 2 maximum of two replicas, `lockDuration=30000`, `stalledInterval=30000`, and `maxStalledCount=1`. API and worker/dispatcher database pools remain capped at 10 and 4 connections respectively. Database execution attempts remain capped at three globally across dispatch generations.
 - Outbox dispatcher interval 1 second, batch 20, claim lease 15 seconds, maximum 10 attempts per generation. Unresolved-run reconciliation interval 30 seconds; require no unexpired lease and either 120 seconds without progress or declared Redis loss; recover queued/stale-running/retrying, finalize inactive cancellation, maximum three database attempts and three dispatch generations. Incident flag cannot bypass caps.
+- Organization-deletion manifest maximum 10,000 combined run/object resources.
+  Recovery cadence 30 seconds; claim batch maximum 50; lease 15 minutes;
+  maximum 10 attempts per resource; retry backoff 5–300 seconds. Cache cleanup
+  scans only five exact key shapes and verifies absence before completion.
 
 ## Backpressure
 
 - Organization pending limit 20: reject run create with `429 quota_exceeded`.
-- Global pending outbox or ARQ queued jobs ≥100, oldest undispatched outbox >60 seconds, or Redis memory ≥80%: reject new runs with `503 queue_backpressure`, `Retry-After: 30`.
+- Global pending outbox ≥100, BullMQ ready depth ≥100, oldest undispatched outbox ≥60 seconds, oldest BullMQ ready job ≥60 seconds, or Redis memory ≥80%: reject new runs with `503 queue_backpressure`, `Retry-After: 30`.
 - Redis memory ≥90%, oldest undispatched >5 minutes, or poison outbox: disable run creation flag and alert owner.
 - Existing outbox/runs continue recovery; reads/cancel remain available.
 - No live-job eviction. Redis configured `maxmemory-policy noeviction`; failed writes trigger outbox/backpressure, not silent loss.
@@ -82,5 +86,5 @@ Run status polling delays: 1s, 1.5s, 2.25s, 3.5s, 5s, then 10s maximum with ±20
 - `SEC-LIMIT-001`: every input/rate/quota boundary at limit−1, limit, limit+1; Unicode byte/character cases; missing/forged content length; valid browser JWT/publishable key still has no application Data API bypass.
 - `LOAD-RATE-001`: token-bucket concurrency and `Retry-After` behavior; no cross-user/org counter collision.
 - `INT-BACKPRESSURE-001`: Redis unavailable/full, outbox ≥100, org pending 20, oldest thresholds, recovery replay.
-- `INT-WORKER-LIMIT-001`: concurrency never exceeds 4/replica; 4+ simultaneous same-org claims across replicas produce at most 3 active slots with no attempt/manifest read for capacity losers; three active leases moved to `cancel_requested` still occupy all slots until close/expiry; different-org claim is not blocked; transport/job timeout/retry budgets hold; no duplicate result.
+- `INT-WORKER-LIMIT-001`: concurrency never exceeds 4/replica; 4+ simultaneous same-org claims across replicas produce at most 3 active slots with no attempt/manifest read for capacity losers; three active leases moved to `cancel_requested` still occupy all slots until close/expiry; different-org claim is not blocked; transport/job timeout/retry budgets hold; no duplicate result. E-5062 proves the production BullMQ stall/redelivery timing and queue/organization saturation boundaries. E-5063 proves two independent dispatcher replicas and two synchronized four-concurrency worker replicas claim non-empty, disjoint portions of an exact 30-job batch and settle every job once. E-5064 proves a PostgreSQL-authoritative transport fence rejects inactive consumers before mutation and rejects transport switching until admission is disabled and durable work is drained.
 - `E2E-POLL-001`: backoff, terminal stop, slow state, one-poller behavior.

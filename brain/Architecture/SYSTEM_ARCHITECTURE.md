@@ -2,7 +2,7 @@
 title: SIMULA System Architecture
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-30
 owner: Architecture lead
 classification: PROPOSED
 source_of_truth: true
@@ -68,6 +68,32 @@ Local, test, preview, staging, and production with separate secrets and data. En
 5. Private Railway worker/dispatcher uses separate least-privilege `simula_worker`, repairs pending outbox dispatch, alone confirms proven Redis enqueue/deduplication, and consumes strictly decoded ARQ jobs. Before any manifest access it atomically binds ARQ context job ID/payload run/generation to a confirmed current outbox row through the named execution-claim helper; named heartbeat/complete/fail helpers own lease/retry/state transitions, deterministic mock execution, and one immutable result.
 6. Web polls the authorized run endpoint with bounded backoff; realtime/subscription is deferred.
 
+## Current target-control-plane overlay
+
+ADR-0011 supersedes the Phase 2 public-runtime composition without weakening
+its database authority: Next.js calls authenticated NestJS `/api/v2`; the
+Python/FastAPI service is private behavioral computation; BullMQ is the target
+identifier-only transport; PostgreSQL remains authoritative and ARQ remains
+the rollback path until hosted cutover proof.
+
+Owner-triggered organization deletion is a durable cross-service saga:
+
+1. NestJS validates exact-name confirmation and a canonical idempotent request.
+2. PostgreSQL records the pending request plus bounded run/object manifest,
+   disables the organization, and freezes membership/role-based commands.
+3. PostgreSQL seeds a durable cache/run/storage cleanup ledger. NestJS may
+   process it immediately; the private dispatcher leases and resumes any due
+   rows abandoned by the request path.
+4. Each worker pass verifies private-object absence, removes every BullMQ
+   generation for a run, or deletes only exact organization-bound Redis keys.
+   Completion requires the current unexpired lease; failure records a fixed safe
+   code and bounded retry time.
+5. Only after every cleanup row is complete may either the request path or the
+   worker finalizer cascade the organization graph, purge the resource ledger,
+   and minimize the surviving tombstone.
+6. Any external failure leaves the durable request pending; it never reports
+   completed or deletes relational authority early.
+
 Architecture decisions:
 
 - [[../Decisions/ADR-0002-TOOLCHAIN-AND-GENERATED-CONTRACTS|ADR-0002 — Toolchain]]
@@ -79,6 +105,9 @@ Architecture decisions:
 - [[../Decisions/ADR-0008-ENVIRONMENTS-DEPLOYMENT-AND-MIGRATIONS|ADR-0008 — Deployment]]
 - [[../Decisions/ADR-0009-OBSERVABILITY-AUDIT-AND-SERVICE-OBJECTIVES|ADR-0009 — Observability]]
 - [[../Decisions/ADR-0010-EXPORT-SHARE-AND-STORAGE-SEAM|ADR-0010 — Export deferral]]
+- [[../Decisions/ADR-0013-GOVERNED-PGVECTOR-RETRIEVAL|ADR-0013 — Governed pgvector retrieval]]
+- [[../Decisions/ADR-0014-PRIVATE-STIMULUS-ASSET-PIPELINE|ADR-0014 - Private stimulus assets]]
+- [[../Decisions/ADR-0015-ASSET-BOUND-TECHNICAL-IMAGE-PROFILE|ADR-0015 - Technical image profile]]
 
 ## Public technology constraints and sources
 

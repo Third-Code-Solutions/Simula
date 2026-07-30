@@ -6,6 +6,7 @@ import asyncio
 from time import perf_counter
 
 from prometheus_client import CollectorRegistry, Counter, Gauge, Histogram, generate_latest
+from simula_core.observability import get_observability_runtime
 
 _DEPENDENCIES = frozenset({"database", "queue"})
 _DISPATCH_OUTCOMES = frozenset(
@@ -53,6 +54,7 @@ _DATABASE_OPERATIONS = frozenset(
     {
         "claim_dispatch",
         "claim_execution",
+        "complete_behavioral_execution",
         "complete_execution",
         "confirm_dispatch",
         "evaluate_run_control",
@@ -63,6 +65,7 @@ _DATABASE_OPERATIONS = frozenset(
         "heartbeat_execution",
         "readiness",
         "reconcile_dispatch",
+        "require_queue_transport",
         "runtime_snapshot",
     }
 )
@@ -432,11 +435,15 @@ class JobObservation:
     def __init__(self, telemetry: WorkerTelemetry | None) -> None:
         self._telemetry = telemetry
         self._started_at = perf_counter()
+        self._span_context = get_observability_runtime("worker").span("worker.job")
+        self._span = self._span_context.__enter__()
         self.outcome = "binding_rejected"
 
     def finish(self) -> None:
+        duration_seconds = perf_counter() - self._started_at
+        self._span.set_attribute("simula.job.outcome", self.outcome)
+        self._span_context.__exit__(None, None, None)
         if self._telemetry is not None:
-            duration_seconds = perf_counter() - self._started_at
             self._telemetry.observe_job(
                 self.outcome,
                 duration_seconds=duration_seconds,

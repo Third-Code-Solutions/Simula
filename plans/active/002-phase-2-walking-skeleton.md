@@ -13,7 +13,7 @@ source_of_truth: true
 - Plan: Phase 2 — Walking Skeleton
 - Owner: Principal program and engineering lead
 - Created: 2026-07-17
-- Last updated: 2026-07-20
+- Last updated: 2026-07-30
 - Status: P2-07 implementation/remediation and independent code re-review are green through E-5033; manual accessibility evidence and required-check governance remain open. Phase 3 remains blocked.
 
 # 2. Purpose and User Outcome
@@ -126,7 +126,7 @@ tests/                     cross-service, security, load, E2E
 
 - Historical self-audit: structured telemetry/audit/correlation, security/secret/SCA/container checks, load/backpressure/resource tests, clean migration/contract generation, browser E2E, local database gates, and evidence update are recorded in E-5022.
 - Automated gate evidence: clean local reset/lint/41 pgTAP assertions; ten real API/Redis/worker integrations; five browser flows; `pnpm check`; explicit Linux mypy; hosted migration equality; and GitHub Actions run `29640798631` passed the disposable Supabase/browser/Linux quality-security and non-root image gates.
-- Formal exit status: OPEN. E-5033 records a green root/hosted-schema remediation gate and completes the independent cross-domain code re-review with no unresolved code Critical or High finding. A human screen-reader smoke and GitHub-plan-blocked required-check governance remain blocking; two Medium operational findings remain recorded in [[../../brain/QA/PHASE_2_AUDIT_2026-07-18|the final audit]], not hidden.
+- Formal exit status: OPEN. E-5033 records a green root/hosted-schema remediation gate and completes the independent cross-domain code re-review with no unresolved code Critical or High finding. E-5070 locally closes the audit's user-facing organization-deletion implementation finding with durable object/queue/cache cleanup orchestration and browser proof. A human screen-reader smoke and GitHub-plan-blocked required-check governance remain blocking; the full application-compatible staging restore remains the unresolved Medium audit finding. Hosted populated-manifest deletion remains a Plan 003 release gate.
 - Release evidence: commits through `72f1a66` are pushed to `main`; GitHub Actions run `29728979248` passes Foundation, Windows quality, complete-history secret, and hardened non-root/no-egress/SBOM/vulnerability container jobs on exact head `72f1a66cf1a0be8e589f9ef5f88a84eb5cfcb10d`.
 - Rollback: telemetry export may be disabled independently; core audit remains; revert only to a schema-compatible artifact.
 
@@ -181,6 +181,8 @@ tests/                     cross-service, security, load, E2E
 - 2026-07-18 — OBSERVED: the final implementation increment orders general rate admission before sign-in audit DB work and adds bounded database/run/queue/provider observability plus an executable run-disable runbook. Root `pnpm verify` passes 58 pgTAP, 60 API, 9 browser, 198 non-integration Python, 43 web, and 22 integration cases; migration `20260719040000` is applied seed-free to hosted Supabase with exact history parity and clean linked lint (E-5031). The final audit keeps Phase 2 open.
 - 2026-07-19 — OBSERVED: E-5032 closes the audience-version, rejected-attempt rate-marker, and OpenAPI/error-inventory findings. Immutable semantic audience v2 is active with a canonical checksum; exact owned Redis markers and atomic run buckets pass focused independent review; and base-aware contract compatibility runs in Linux and Windows CI. Root verification is green and seed-free migration `20260719050000` is applied to hosted Supabase with exact history parity, clean linked lint, and zero security-advisor lints. Two Medium operational findings and all three formal exit blockers remain.
 - 2026-07-20 — OBSERVED: E-5033 closes the remaining code-review tree with enforced database/provider-receipt invariants, verified receipt UI, state-preserving dynamic restore proof, exact historical-canary secret suppression, trusted service log identity, live worker health/readiness, and a least-privilege audited operator run-control path. Root `pnpm verify` passes the 68-pgTAP/64-API/11-browser/231-Python/57-web/23-integration gate; migration `20260720083000` is applied seed-free to hosted Supabase; exact-head GitHub Actions `29728979248` is green. Human assistive-technology evidence and enforceable required-check governance remain blocking; the two Medium operational findings remain.
+- 2026-07-30 — OBSERVED: E-5070 locally closes the user-facing deletion implementation finding. Owner exact-name confirmation persists a durable request/manifest and disables the organization; verified private-object, BullMQ, and organization-scoped Redis cleanup precedes the relational cascade. Least-privilege PostgreSQL, live Redis/BullMQ, component/API/contract, and production-build browser evidence pass. Exact Supabase reset/type generation, hosted populated-manifest deletion/recovery, backup expiry, human assistive technology, required checks, and full staging restore remain open.
+- 2026-07-30 — OBSERVED: E-5071 corrects the post-upgrade technical-image runtime identity and restores the visual-profile audit action omitted by E-5070's policy rewrite. Historical Pillow 12.1.0 profiles remain readable; new profiles require 12.3.0. Complete migration replay, the real least-privilege visual gateway, and the root gate pass.
 
 # 9. Progress
 
@@ -235,6 +237,8 @@ tests/                     cross-service, security, load, E2E
   - [x] Remaining automated High proof themes and hosted schema parity (E-5031).
   - [x] Audience-version, rate-marker, and contract-governance remediation (E-5032).
   - [x] Complete cross-domain remediation tree independently re-reviewed (E-5033).
+  - [x] User-facing durable organization deletion with verified local object/queue/cache cleanup and browser proof (E-5070).
+  - [x] Post-deletion audit-policy regression and truthful current visual-runtime provenance correction (E-5071).
 - [ ] Independent Phase 2 review passes and state transitions to Phase 3.
 
 ## Phase 2 exit criteria
@@ -292,4 +296,4 @@ M4 evidence on 2026-07-18:
 
 # 11. Final Outcome
 
-Phase 2 remains open. M0 through M5 retain recorded evidence; M6/P2-07 implementation/remediation and independent code re-review are green through E-5033, including hosted schema parity at `20260720083000`. Human screen-reader evidence and required-check governance still block Phase 3. Two non-blocking-but-real Medium findings remain: user-triggered deletion/cache/storage orchestration and a full application-compatible staging restore. Production deployment remains unauthorized.
+Phase 2 remains open. M0 through M5 retain recorded evidence; M6/P2-07 implementation/remediation and independent code re-review are green through E-5033, including hosted schema parity at `20260720083000`. E-5070 locally closes the user-triggered deletion/cache/storage implementation finding with durable orchestration and browser proof; hosted populated-manifest deletion/recovery remains a Plan 003 release gate. Human screen-reader evidence and required-check governance still block Phase 3. The full application-compatible staging restore remains the unresolved Medium Phase 2 finding. Production deployment remains unauthorized.

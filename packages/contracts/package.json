@@ -7,11 +7,16 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
-    }
+    },
+    "./behavioral-comparison.schema.json": "./behavioral-comparison.schema.json",
+    "./behavioral-evaluation-report.schema.json": "./behavioral-evaluation-report.schema.json",
+    "./behavioral-report.schema.json": "./behavioral-report.schema.json",
+    "./context-graph.schema.json": "./context-graph.schema.json",
+    "./result.schema.json": "./result.schema.json"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "generate": "openapi-typescript openapi.json -o src/openapi.ts --alphabetize",
+    "generate": "openapi-typescript openapi.json -o src/openapi.ts --alphabetize && openapi-typescript ../../apps/api/openapi.json -o src/control-plane.ts --alphabetize",
     "lint": "tsc --noEmit",
     "test": "node --test tests/contracts.test.mjs",
     "typecheck": "tsc --noEmit"

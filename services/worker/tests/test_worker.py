@@ -4,6 +4,15 @@ from uuid import UUID
 
 import pytest
 from arq.worker import Retry
+from simula_core.behavioral_demo import authored_demo_behavioral_command
+from simula_core.behavioral_engine import (
+    BehavioralRunCommand,
+    BehavioralRunResult,
+    DeterministicNarrativeSynthesizer,
+    DeterministicTieredProvider,
+    execute_behavioral_run,
+)
+from simula_core.bullmq_codec import BULLMQ_JOB_NAME, BULLMQ_QUEUE_NAME
 from simula_core.runtime import RuntimeMetadata
 from simula_core.simulation import (
     DeterministicMockProvider,
@@ -12,8 +21,9 @@ from simula_core.simulation import (
     ProviderRequest,
     ProviderResponse,
 )
+from simula_worker.behavioral_engine_client import BehavioralEngineUnavailableError
 from simula_worker.database import ExecutionClaim, FailureResolution
-from simula_worker.main import process_run_v1
+from simula_worker.main import BullMqDeliveryRetry, process_run_v1, process_run_v2
 from simula_worker.telemetry import WorkerTelemetry
 from structlog.contextvars import merge_contextvars
 from structlog.testing import capture_logs
@@ -37,14 +47,22 @@ class RecordingDatabase:
         self.failure_resolution = failure_resolution or FailureResolution(state="failed")
         self.heartbeat_result = heartbeat_result
         self.claim_calls: list[tuple[UUID, int, str]] = []
+        self.claim_v2_calls: list[tuple[UUID, int, str]] = []
         self.heartbeats: list[tuple[UUID, UUID, UUID]] = []
         self.completions: list[
             tuple[UUID, UUID, UUID, Mapping[str, object], Mapping[str, object]]
         ] = []
+        self.behavioral_completions: list[tuple[UUID, UUID, UUID, bytes, Mapping[str, object]]] = []
         self.failures: list[tuple[UUID, UUID, UUID, str, bool]] = []
 
     async def claim_execution(self, run_id: UUID, generation: int, job_id: str) -> ExecutionClaim:
         self.claim_calls.append((run_id, generation, job_id))
+        return self.claim
+
+    async def claim_execution_v2(
+        self, run_id: UUID, generation: int, job_id: str
+    ) -> ExecutionClaim:
+        self.claim_v2_calls.append((run_id, generation, job_id))
         return self.claim
 
     async def complete_execution(
@@ -56,6 +74,19 @@ class RecordingDatabase:
         receipt: Mapping[str, object],
     ) -> bool:
         self.completions.append((run_id, attempt_id, lease_token, artifact, receipt))
+        return True
+
+    async def complete_behavioral_execution(
+        self,
+        run_id: UUID,
+        attempt_id: UUID,
+        lease_token: UUID,
+        canonical_artifact: bytes,
+        receipt: Mapping[str, object],
+    ) -> bool:
+        self.behavioral_completions.append(
+            (run_id, attempt_id, lease_token, canonical_artifact, receipt)
+        )
         return True
 
     async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:
@@ -110,6 +141,28 @@ class RateLimitedProvider:
         raise ProviderRateLimitedError
 
 
+class RecordingBehavioralEngine:
+    def __init__(self) -> None:
+        self.commands: list[BehavioralRunCommand] = []
+
+    def execute(self, command: BehavioralRunCommand) -> BehavioralRunResult:
+        self.commands.append(command)
+        return execute_behavioral_run(
+            command,
+            provider=DeterministicTieredProvider(),
+            synthesizer=DeterministicNarrativeSynthesizer(),
+        )
+
+    def close(self) -> None:
+        return None
+
+
+class UnavailableBehavioralEngine(RecordingBehavioralEngine):
+    def execute(self, command: BehavioralRunCommand) -> BehavioralRunResult:
+        self.commands.append(command)
+        raise BehavioralEngineUnavailableError("test fixture unavailable")
+
+
 def _claim(*, status: str) -> ExecutionClaim:
     return ExecutionClaim(
         status=status,
@@ -142,6 +195,40 @@ def _claimed_run() -> tuple[UUID, ExecutionClaim]:
             deterministic_seed=42,
             correlation_id=UUID("00000000-0000-4000-8000-0000000000b6"),
             traceparent="00-0123456789abcdef0123456789abcdef-0123456789abcdef-01",
+        ),
+    )
+
+
+def _claimed_behavioral_run() -> tuple[UUID, ExecutionClaim]:
+    run_id = UUID("00000000-0000-4000-8000-0000000000c3")
+    command = authored_demo_behavioral_command(
+        organization_id=UUID("00000000-0000-4000-8000-0000000000c1"),
+        run_id=run_id,
+        study_id=UUID("00000000-0000-4000-8000-0000000000c2"),
+        variant_key="baseline",
+        stimulus="A fictional behavioral worker message.",
+    )
+    return (
+        run_id,
+        ExecutionClaim(
+            status="claimed",
+            attempt_id=UUID("00000000-0000-4000-8000-0000000000c4"),
+            lease_token=UUID("00000000-0000-4000-8000-0000000000c5"),
+            frozen_manifest={
+                "behavioral_demo_input": {
+                    "organization_id": str(command.organization_id),
+                    "run_id": str(command.run_id),
+                    "study_id": str(command.study_id),
+                    "stimulus": command.stimulus,
+                    "variant_key": command.variant_key,
+                },
+                "code": {"release_sha": "a" * 40},
+                "contract": "behavioral_demo_run_v1",
+            },
+            frozen_manifest_sha256="b" * 64,
+            deterministic_seed=command.engine_configuration.seed,
+            correlation_id=UUID("00000000-0000-4000-8000-0000000000c6"),
+            traceparent="00-1123456789abcdef0123456789abcdef-1123456789abcdef-01",
         ),
     )
 
@@ -223,6 +310,174 @@ async def test_worker_unconfirmed_dispatch_defers_without_manifest_or_provider_w
     assert database.claim_calls == [(run_id, 1, f"run:{run_id}:dispatch:1")]
     assert database.completions == []
     assert provider.requests == []
+
+
+async def test_bullmq_worker_rejects_binding_before_database_or_provider_work() -> None:
+    run_id = UUID("00000000-0000-4000-8000-0000000000b2")
+    database = RecordingDatabase(_claim(status="no_work"))
+    provider = RecordingProvider()
+
+    await process_run_v2(
+        {
+            "attempts_started": 1,
+            "job_id": f"run-{run_id}-generation-1",
+            "job_name": "forged-job",
+            "queue_name": BULLMQ_QUEUE_NAME,
+        },
+        {"schema_version": 2, "run_id": str(run_id), "dispatch_generation": 1},
+        database=database,
+        provider=provider,
+    )
+
+    assert database.claim_v2_calls == []
+    assert provider.requests == []
+
+
+async def test_bullmq_worker_defers_unconfirmed_dispatch_without_transport_failure() -> None:
+    run_id = UUID("00000000-0000-4000-8000-0000000000b2")
+    job_id = f"run-{run_id}-generation-1"
+    database = RecordingDatabase(_claim(status="awaiting_confirmation"))
+    provider = RecordingProvider()
+
+    with pytest.raises(BullMqDeliveryRetry) as raised:
+        await process_run_v2(
+            {
+                "attempts_started": 1,
+                "job_id": job_id,
+                "job_name": BULLMQ_JOB_NAME,
+                "queue_name": BULLMQ_QUEUE_NAME,
+            },
+            {"schema_version": 2, "run_id": str(run_id), "dispatch_generation": 1},
+            database=database,
+            provider=provider,
+        )
+
+    assert raised.value.delay_seconds == 1
+    assert database.claim_v2_calls == [(run_id, 1, job_id)]
+    assert database.completions == []
+    assert provider.requests == []
+
+
+async def test_bullmq_worker_completes_a_claimed_deterministic_run() -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim)
+    job_id = f"run-{run_id}-generation-1"
+
+    await process_run_v2(
+        {
+            "attempts_started": 1,
+            "job_id": job_id,
+            "job_name": BULLMQ_JOB_NAME,
+            "queue_name": BULLMQ_QUEUE_NAME,
+        },
+        {"schema_version": 2, "run_id": str(run_id), "dispatch_generation": 1},
+        database=database,
+        provider=DeterministicMockProvider(),
+    )
+
+    assert database.claim_v2_calls == [(run_id, 1, job_id)]
+    assert len(database.completions) == 1
+    assert database.completions[0][3]["run_id"] == str(run_id)
+
+
+async def test_bullmq_worker_completes_a_claimed_behavioral_run() -> None:
+    run_id, claim = _claimed_behavioral_run()
+    database = RecordingDatabase(claim)
+    engine = RecordingBehavioralEngine()
+    legacy_provider = RecordingProvider()
+    job_id = f"run-{run_id}-generation-1"
+
+    await process_run_v2(
+        {
+            "attempts_started": 1,
+            "job_id": job_id,
+            "job_name": BULLMQ_JOB_NAME,
+            "queue_name": BULLMQ_QUEUE_NAME,
+            "release_sha": "a" * 40,
+        },
+        {"schema_version": 2, "run_id": str(run_id), "dispatch_generation": 1},
+        database=database,
+        provider=legacy_provider,
+        behavioral_engine=engine,
+    )
+
+    assert database.claim_v2_calls == [(run_id, 1, job_id)]
+    assert len(engine.commands) == 1
+    assert engine.commands[0].run_id == run_id
+    assert legacy_provider.requests == []
+    assert database.completions == []
+    assert len(database.behavioral_completions) == 1
+    _, attempt_id, lease_token, artifact, receipt = database.behavioral_completions[0]
+    assert attempt_id == claim.attempt_id
+    assert lease_token == claim.lease_token
+    assert artifact.startswith(b'{"configuration":')
+    assert receipt["receipt_kind"] == "behavioral_success"
+
+
+async def test_bullmq_worker_translates_behavioral_unavailability_to_database_retry() -> None:
+    run_id, claim = _claimed_behavioral_run()
+    database = RecordingDatabase(
+        claim,
+        FailureResolution(state="retrying", retry_after_seconds=5),
+    )
+    job_id = f"run-{run_id}-generation-1"
+
+    with pytest.raises(BullMqDeliveryRetry) as raised:
+        await process_run_v2(
+            {
+                "attempts_started": 1,
+                "job_id": job_id,
+                "job_name": BULLMQ_JOB_NAME,
+                "queue_name": BULLMQ_QUEUE_NAME,
+                "release_sha": "a" * 40,
+            },
+            {"schema_version": 2, "run_id": str(run_id), "dispatch_generation": 1},
+            database=database,
+            provider=RecordingProvider(),
+            behavioral_engine=UnavailableBehavioralEngine(),
+        )
+
+    assert raised.value.delay_seconds == 5
+    assert database.behavioral_completions == []
+    assert database.failures == [
+        (
+            run_id,
+            claim.attempt_id,
+            claim.lease_token,
+            "behavioral_engine_unavailable",
+            True,
+        )
+    ]
+
+
+async def test_bullmq_worker_translates_only_database_authorized_provider_retry() -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim, FailureResolution(state="retrying", retry_after_seconds=5))
+    job_id = f"run-{run_id}-generation-1"
+
+    with pytest.raises(BullMqDeliveryRetry) as raised:
+        await process_run_v2(
+            {
+                "attempts_started": 1,
+                "job_id": job_id,
+                "job_name": BULLMQ_JOB_NAME,
+                "queue_name": BULLMQ_QUEUE_NAME,
+            },
+            {"schema_version": 2, "run_id": str(run_id), "dispatch_generation": 1},
+            database=database,
+            provider=TimeoutProvider(),
+        )
+
+    assert raised.value.delay_seconds == 5
+    assert database.failures == [
+        (
+            run_id,
+            claim.attempt_id,
+            claim.lease_token,
+            "execution_timed_out",
+            True,
+        )
+    ]
 
 
 @pytest.mark.parametrize(

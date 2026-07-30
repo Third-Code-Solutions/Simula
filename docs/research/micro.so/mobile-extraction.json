@@ -1,0 +1,227 @@
+{
+  "viewport": {
+    "width": 390,
+    "height": 844,
+    "documentHeight": 22331
+  },
+  "navStyle": {
+    "display": "block",
+    "position": "static",
+    "height": "0px",
+    "backgroundColor": "rgba(0, 0, 0, 0)"
+  },
+  "links": [
+    {
+      "text": "",
+      "display": "block",
+      "rect": {
+        "x": 24,
+        "y": 24,
+        "width": 86,
+        "height": 20
+      }
+    },
+    {
+      "text": "",
+      "display": "block",
+      "rect": {
+        "x": 323,
+        "y": 14,
+        "width": 40,
+        "height": 40
+      }
+    },
+    {
+      "text": "Log in",
+      "display": "flex",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "text": "Sign up",
+      "display": "flex",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    }
+  ],
+  "roots": [
+    {
+      "tag": "main",
+      "id": "",
+      "classes": "overflow-x-hidden",
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 375,
+        "height": 1313
+      },
+      "heading": "An agent to do your work &An everything app to manage it",
+      "text": "Watch the latest announcementAn agent to do your work &An everything app to manage itMicro connects your email, messages, calendar, CRM, docs, and tasks so AI can understand the context and take action.Sign upRequest a Demo MAcme IncSearchHomeInboxLinkedIniMes"
+    },
+    {
+      "tag": "section",
+      "id": "",
+      "classes": "relative z-0 pb-16",
+      "rect": {
+        "x": 0,
+        "y": 1313,
+        "width": 375,
+        "height": 284
+      },
+      "heading": "",
+      "text": "Built, supported and used by people at top startups, enterprises, and investment funds.GoogleMetaOpenAIAnthropicDropbox"
+    },
+    {
+      "tag": "section",
+      "id": "ai",
+      "classes": "bg-background relative z-20 scroll-mt-24",
+      "rect": {
+        "x": 0,
+        "y": 1597,
+        "width": 375,
+        "height": 1308
+      },
+      "heading": "Meet yourmost capable & intelligent  assistant",
+      "text": "Meet yourmost capable & intelligent assistant"
+    },
+    {
+      "tag": "section",
+      "id": "automations",
+      "classes": "bg-background flex min-h-dvh overflow-x-hidden py-24 items-start",
+      "rect": {
+        "x": 0,
+        "y": 2905,
+        "width": 375,
+        "height": 1628
+      },
+      "heading": "Micro automates your repetitive work",
+      "text": "Micro automates your repetitive workChoose from real automations that keep follow-ups, records, meetings, and projects moving in the background.FeaturedStartupsInvestorsContentEmail & MessagingCRMProjectsFeaturedStartupsInvestorsContentEmail & MessagingCRMProj"
+    },
+    {
+      "tag": "section",
+      "id": "ai",
+      "classes": "bg-background @container py-20 first:pt-28 last:pb-8 max-lg:px-1",
+      "rect": {
+        "x": 0,
+        "y": 4533,
+        "width": 375,
+        "height": 1194
+      },
+      "heading": "Micro takes action when you ask",
+      "text": "@keyframes expandProgress { from { transform: scaleX(0); } to { transform: scaleX(1); } } Micro takes action when you askPlaceholder copy for skills, search, and direct commands across your workspace.Does any taskCreate tasks, delegate work, and ask Micro what"
+    },
+    {
+      "tag": "section",
+      "id": "skills",
+      "classes": "bg-background flex min-h-dvh overflow-x-hidden py-24 items-center !min-h-0 !items-start !pb-24 !pt-8 md:!pb-28 md:!pt-8",
+      "rect": {
+        "x": 0,
+        "y": 5727,
+        "width": 375,
+        "height": 1638
+      },
+      "heading": "Skills",
+      "text": "SkillsSkills let Micro instantly take actions foranythingemailsalescontentView Daily Fundraise Standup/daily-fundraise-standupYour daily fundraising co-pilot. Reviews your pipeline, surfaces what needs attention today, and helps you decide what to do next.View"
+    },
+    {
+      "tag": "section",
+      "id": "",
+      "classes": "bg-background overflow-visible py-24",
+      "rect": {
+        "x": 0,
+        "y": 7364,
+        "width": 375,
+        "height": 908
+      },
+      "heading": "Micro knows you better than anyone else",
+      "text": "Micro knows you better than anyone elseMicro remembers everything from your work and conversations. It dreams and takes notes to keep everything fresh.{doc:'priorities', id:'p_10X9', vec:[0.71,0.04,0.88]} => {refs:['K2','7M','A0']} {doc:'priorities', id:'p_10X"
+    },
+    {
+      "tag": "section",
+      "id": "",
+      "classes": "bg-background pb-20 pt-0 md:pb-24",
+      "rect": {
+        "x": 0,
+        "y": 8272,
+        "width": 375,
+        "height": 368
+      },
+      "heading": "Integrations",
+      "text": "IntegrationsMicro can connect with 1000+ of the most important tools you use for work so it can take action on and find anythingGmailGoogle CalendarSlackLinearNotionLinkedInGitHubZoomGmailGoogle CalendarSlackLinearNotionLinkedInGitHubZoomSalesforceHubSpotStrip"
+    },
+    {
+      "tag": "section",
+      "id": "",
+      "classes": "bg-background relative z-20",
+      "rect": {
+        "x": 0,
+        "y": 8640,
+        "width": 375,
+        "height": 1308
+      },
+      "heading": "The Everything Appfor all your work",
+      "text": "The Everything Appfor all your workCRMEmailMeetingsProjectsCustom apps"
+    },
+    {
+      "tag": "section",
+      "id": "product",
+      "classes": "bg-background lg:hidden",
+      "rect": {
+        "x": 0,
+        "y": 9948,
+        "width": 375,
+        "height": 3696
+      },
+      "heading": "CRM",
+      "text": "CRMContacts, companies, and deals that update themselves after every email and meeting.Auto-updated recordsEnriched contactsRelationship warmthNetwork historyLearn moreACAlex Chen🔥 Hotalex@northwindventures.comNNorthwind VenturesActivityAboutMessagesMeetingsD"
+    },
+    {
+      "tag": "section",
+      "id": "",
+      "classes": "sticky top-0 z-0 flex min-h-dvh items-center py-16 md:py-32",
+      "rect": {
+        "x": 0,
+        "y": 13644,
+        "width": 375,
+        "height": 844
+      },
+      "heading": "",
+      "text": "I used to spend half my day switching between Gmail, Notion, HubSpot, and Google Calendar. Now everything lives in one place and the AI keeps it all organized. I actually have time to do my job.Jacob PetersFounder, Superpower"
+    },
+    {
+      "tag": "div",
+      "id": "",
+      "classes": "relative z-10 shadow-[0_-12px_40px_rgba(0,0,0,0.15)] rounded-t-3xl overflow-hidden",
+      "rect": {
+        "x": 0,
+        "y": 14488,
+        "width": 375,
+        "height": 7843
+      },
+      "heading": "Powered by you and your team's personal context graph",
+      "text": "Powered by you and your team's personal context graph1000+ integrations bring your data together into one connected workspace.Re: Q2 Partnershipalex@acme.com · 3h agoFromAlex RiveraToSarah ChenReceivedToday, 2:14 PMInvestor Update CallTomorrow · 10:00 AMDateTo"
+    },
+    {
+      "tag": "div",
+      "id": "",
+      "classes": "fixed z-50 flex overflow-hidden border border-input bg-layer-3 shadow-lg print:hidden sm:bottom-4 sm:right-16 max-sm:inset-x-3 max-sm:bottom-3 [--player-expanded-height:84px] [--player-expanded-width:300px] max-sm:[--player-expanded-height:8.75rem] max-sm:[--player-expanded-width:calc(100dvw-1.5rem)]",
+      "rect": {
+        "x": 12,
+        "y": 692,
+        "width": 366,
+        "height": 140
+      },
+      "heading": "",
+      "text": "New ComputerMika & The Romans0:00 / 2:57"
+    }
+  ],
+  "records": 43
+}

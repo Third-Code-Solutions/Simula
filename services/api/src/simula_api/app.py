@@ -18,6 +18,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict
+from simula_core.observability import get_observability_runtime
 from simula_core.queue_runtime import ArqEnqueuer, create_queue_client
 from simula_core.runtime import RuntimeMetadata
 from simula_core.trace_context import TRACEPARENT_HEADER, TraceContext
@@ -681,6 +682,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
             content=telemetry.render(), headers={"Content-Type": PROMETHEUS_CONTENT_TYPE}
         )
 
+    get_observability_runtime("api").instrument_fastapi(app)
     return app
 
 

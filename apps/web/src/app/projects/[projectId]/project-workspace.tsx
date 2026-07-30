@@ -11,6 +11,7 @@ import {
   type ProjectDetail,
   type Stimulus,
   appendStimulusVersion,
+  createBehavioralDemoRun,
   createSimulationRun,
   createStimulus,
   getDemoAudience,
@@ -20,6 +21,9 @@ import {
 } from "@/lib/api";
 import { SignOutButton } from "@/app/sign-out-button";
 import { WorkspaceSidebar } from "@/app/workspace-sidebar";
+
+import { BehavioralRunLauncher } from "./behavioral-run-launcher";
+import { StimulusAssetsPanel } from "./stimulus-assets-panel";
 
 function problemMessage(error: unknown): string {
   if (error instanceof ApiProblem) {
@@ -43,8 +47,16 @@ function updateStimulusVersion(
 }
 
 export function ProjectWorkspace({
+  behavioralDemoEnabled = false,
+  privateAssetWorkflowEnabled = false,
   projectId,
-}: Readonly<{ projectId: string }>) {
+  technicalVisualProfileEnabled = false,
+}: Readonly<{
+  behavioralDemoEnabled?: boolean;
+  privateAssetWorkflowEnabled?: boolean;
+  projectId: string;
+  technicalVisualProfileEnabled?: boolean;
+}>) {
   const router = useRouter();
   const runKeys = useRef(new Map<string, string>());
   const [project, setProject] = useState<ProjectDetail>();
@@ -56,6 +68,7 @@ export function ProjectWorkspace({
   const [savingStimulus, setSavingStimulus] = useState(false);
   const [versioningStimulus, setVersioningStimulus] = useState<string>();
   const [startingRunVersion, setStartingRunVersion] = useState<string>();
+  const [startingBehavioralRun, setStartingBehavioralRun] = useState<string>();
 
   async function refreshProject() {
     setLoading(true);
@@ -223,6 +236,39 @@ export function ProjectWorkspace({
     }
   }
 
+  async function startBehavioralRun(
+    stimulusVersionId: string,
+    variantKey: string,
+  ) {
+    if (
+      !behavioralDemoEnabled ||
+      !project ||
+      !audience ||
+      !dashboard?.permissions.can_create_runs
+    ) {
+      return;
+    }
+    const runKey = `${stimulusVersionId}:${variantKey}`;
+    const idempotencyKey = runKeys.current.get(runKey) ?? crypto.randomUUID();
+    runKeys.current.set(runKey, idempotencyKey);
+    setError(undefined);
+    setStartingBehavioralRun(runKey);
+    try {
+      const run = await createBehavioralDemoRun(
+        project.id,
+        stimulusVersionId,
+        variantKey,
+        idempotencyKey,
+      );
+      runKeys.current.delete(runKey);
+      router.push(`/runs/${run.id}`);
+    } catch (runError) {
+      setError(problemMessage(runError));
+    } finally {
+      setStartingBehavioralRun(undefined);
+    }
+  }
+
   return (
     <main className="workspace-main" id="main-content" tabIndex={-1}>
       <header className="workspace-header">
@@ -252,6 +298,19 @@ export function ProjectWorkspace({
         <p className="problem" role="alert">
           {error}
         </p>
+      ) : null}
+      {!loading && error && !project ? (
+        <section className="panel" aria-labelledby="project-unavailable-title">
+          <p className="eyebrow">Access boundary</p>
+          <h1 id="project-unavailable-title">Project unavailable</h1>
+          <p>
+            This project is unavailable to the current account. Return to your
+            secured workspace directory.
+          </p>
+          <Link className="primary-link" href="/organizations">
+            Back to organizations
+          </Link>
+        </section>
       ) : null}
       {project && audience && dashboard ? (
         <>
@@ -400,31 +459,58 @@ export function ProjectWorkspace({
                         </div>
                         <p>{version.content}</p>
                         {dashboard.permissions.can_create_runs ? (
-                          <div className="run-launch">
-                            <div>
-                              <strong>Authored demo audience</strong>
-                              <p className="field-note">
-                                Experimental and non-representative. It
-                                estimates nobody.
-                              </p>
+                          <>
+                            <div className="run-launch">
+                              <div>
+                                <strong>Pipeline integrity demo</strong>
+                                <p className="field-note">
+                                  Fixed authored output. Tests the durable
+                                  pipeline; it estimates nobody.
+                                </p>
+                              </div>
+                              <button
+                                disabled={
+                                  !audience || startingRunVersion === version.id
+                                }
+                                onClick={() => void startRun(version.id)}
+                                type="button"
+                              >
+                                {startingRunVersion === version.id
+                                  ? "Starting run…"
+                                  : `Run pipeline demo ${version.version}`}
+                              </button>
                             </div>
-                            <button
-                              disabled={
-                                !audience || startingRunVersion === version.id
-                              }
-                              onClick={() => void startRun(version.id)}
-                              type="button"
-                            >
-                              {startingRunVersion === version.id
-                                ? "Starting run…"
-                                : `Run version ${version.version}`}
-                            </button>
-                          </div>
+                            {behavioralDemoEnabled ? (
+                              <BehavioralRunLauncher
+                                disabled={!audience}
+                                isStarting={
+                                  startingBehavioralRun?.startsWith(
+                                    `${version.id}:`,
+                                  ) ?? false
+                                }
+                                onStart={(variantKey) =>
+                                  void startBehavioralRun(
+                                    version.id,
+                                    variantKey,
+                                  )
+                                }
+                                version={version.version}
+                              />
+                            ) : null}
+                          </>
                         ) : null}
                       </li>
                     ),
                   )}
                 </ol>
+                {privateAssetWorkflowEnabled ? (
+                  <StimulusAssetsPanel
+                    canMutate={dashboard.permissions.can_create_projects}
+                    stimulusId={stimulus.id}
+                    stimulusName={stimulus.name}
+                    visualProfileEnabled={technicalVisualProfileEnabled}
+                  />
+                ) : null}
                 {dashboard.permissions.can_create_projects ? (
                   <form
                     className="form-stack"

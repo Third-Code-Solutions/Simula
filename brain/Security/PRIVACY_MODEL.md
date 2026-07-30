@@ -2,7 +2,7 @@
 title: SIMULA Privacy Model
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-30
 owner: Privacy and security leads
 classification: PROPOSED
 source_of_truth: true
@@ -58,6 +58,24 @@ For each field: source, purpose, lawful/contractual basis, notice/consent where 
 - Configurable retention where contractually required, with enforceable minima/maxima.
 - Verified deletion across primary store, storage, queue artifacts, cache, logs, providers where possible, exports, and backup lifecycle.
 - Privacy impact review before new sensitive dimensions or providers.
+
+## Implemented local deletion boundary
+
+E-5070 implements owner-triggered organization deletion for local disposable
+evidence. Exact-name confirmation creates a durable pending manifest and
+immediately disables tenant authorization. The control plane then
+absence-verifies private-object, BullMQ, and organization-scoped Redis cleanup
+before the relational cascade; completion minimizes the surviving tombstone.
+Same-request retry is supported and a changed request is rejected.
+
+E-5072 adds local crash-safe recovery through a forced-RLS external-resource
+ledger, current-token worker leases, bounded safe-code retries, and guarded
+finalization only after every recorded object, job, and cache key is absent.
+
+This is not hosted privacy-compliance evidence. Populated Supabase Storage/
+Railway deletion and killed-process recovery, provider/log/export propagation,
+backup expiry, legal hold, account/Auth deletion, and production retention
+remain unresolved and block broader deletion claims.
 
 ## Legal and regulatory evidence
 

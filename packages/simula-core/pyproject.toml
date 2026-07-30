@@ -5,8 +5,14 @@ description = "Shared SIMULA runtime and transport primitives"
 requires-python = "==3.14.6"
 dependencies = [
     "arq==0.28.0",
+    "opentelemetry-exporter-otlp-proto-http==1.44.0",
+    "opentelemetry-instrumentation-fastapi==0.65b0",
+    "opentelemetry-instrumentation-httpx==0.65b0",
+    "opentelemetry-sdk==1.44.0",
+    "pillow==12.3.0",
     "pydantic==2.13.4",
     "redis==5.3.1",
+    "sentry-sdk[fastapi]==2.66.1",
 ]
 
 [build-system]

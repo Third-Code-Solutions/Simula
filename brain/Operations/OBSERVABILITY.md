@@ -2,7 +2,7 @@
 title: SIMULA Observability
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-20
+updated: 2026-07-29
 owner: SRE lead
 classification: PROPOSED
 source_of_truth: true
@@ -48,7 +48,40 @@ Allowlist fields. Redact secrets and sensitive content. Do not log raw credentia
 - API and worker processors stamp trusted `service`, `environment`, and `release_sha` on every log and overwrite forged caller values. Allowlisted event fields and payload redaction remain mandatory.
 - API liveness reports only process life; API readiness checks configured dependencies. Worker liveness probes the running worker process; worker readiness measures its live database and Redis dependencies.
 - Fixed-cardinality metrics cover database query count/duration, pool use, migration/RLS state, durable run states, cancellation age, stuck leases, visibility extension, duplicate delivery, invalid transitions, retries, terminal failures, provider failure classes, and cancellation finalization. Tenant, user, content, row, and credential labels remain forbidden.
+- Dispatcher logs one fixed `organization_deletion_reconciliation_pass` event
+  only when a pass claims, releases, or finalizes work. It reports bounded
+  counts only; request, organization, resource, object, job, and error text are
+  never logged.
 - Durable run-control alerts point to [[RUNBOOK_RUN_CREATION_DISABLED|the audited operator runbook]]. Hosted pager delivery and a named 24x7 contact tree remain staging requirements.
+
+## M7 exporter implementation
+
+- NestJS API/dispatcher and Python API/worker/AI-engine services initialize
+  OpenTelemetry before runtime work. Next.js initializes Sentry through its
+  server, edge, and browser instrumentation boundaries.
+- Sentry is error-only. Performance transaction export is disabled so
+  OpenTelemetry remains the trace authority.
+- Export is disabled by default. Enabling requires an exact environment and
+  40-character release SHA, Sentry DSN, OTLP HTTP/protobuf trace endpoint, and
+  bounded sampling rate. Non-local exporters require HTTPS; local HTTP is
+  loopback-only.
+- Sentry events drop request, user, URL, body, breadcrumb, context, arbitrary
+  extra, transaction, and exception-message data. OpenTelemetry exports generic
+  span names and a fixed operational attribute allowlist.
+- Provider HTTP spans, worker jobs, and behavioral executions never attach
+  prompt, stimulus, result, rationale, tenant, user, project, run, or synthetic
+  agent identifiers.
+- Local Prometheus metrics remain the metric authority. The immutable Grafana
+  dashboard is `ops/observability/grafana-dashboard.json`; alert rules are
+  `ops/observability/prometheus-alerts.yml`; response steps are in
+  [[OBSERVABILITY_RUNBOOK]].
+- `pnpm observability:check` enforces the required dashboard/alert inventory and
+  rejects high-cardinality identity labels.
+
+Hosted Sentry/collector connectivity, dashboard import, alert delivery,
+acknowledgement, recovery notification, and redaction inspection remain staging
+gates. No vendor connection or production readiness is claimed from static
+configuration.
 
 ## SLO and alert design
 

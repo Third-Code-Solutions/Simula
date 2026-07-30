@@ -8,6 +8,7 @@ WORKDIR /app
 COPY --from=uv /uv /usr/local/bin/uv
 COPY pyproject.toml uv.lock .python-version ./
 COPY packages/simula-core packages/simula-core
+COPY services/ai-engine/pyproject.toml services/ai-engine/pyproject.toml
 COPY services/api/pyproject.toml services/api/pyproject.toml
 COPY services/worker services/worker
 RUN uv sync --frozen --no-dev --no-editable --package simula-worker

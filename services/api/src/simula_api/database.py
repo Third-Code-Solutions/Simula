@@ -166,6 +166,7 @@ def _database_problem(error: psycopg.Error) -> AppProblem:
 class DatabaseGateway:
     def __init__(self, settings: ApiSettings, *, telemetry: ApiTelemetry | None = None) -> None:
         self._release_sha = settings.release_sha
+        self._migration_head = settings.migration_head
         self._telemetry = telemetry
         self._pool = AsyncConnectionPool(
             conninfo=settings.database_url,
@@ -197,12 +198,22 @@ class DatabaseGateway:
                         "select * from private.runtime_observability_snapshot()"
                     )
                     snapshot = await snapshot_cursor.fetchone()
-            ready = row is not None and cast(DatabaseRow, row)["ready"] == 1
+                    schema_cursor = await connection.execute(
+                        "select * from private.runtime_schema_readiness()"
+                    )
+                    schema = await schema_cursor.fetchone()
+            ready = (
+                row is not None
+                and cast(DatabaseRow, row)["ready"] == 1
+                and schema is not None
+                and str(cast(DatabaseRow, schema)["migration_version"]) == self._migration_head
+                and cast(DatabaseRow, schema)["rls_force_enabled"] is True
+            )
             if ready and snapshot is not None and self._telemetry is not None:
                 self._record_runtime_snapshot(cast(DatabaseRow, snapshot))
             outcome = "success" if ready else "error"
             return ready
-        except PoolTimeout, psycopg.Error:
+        except KeyError, TypeError, ValueError, PoolTimeout, psycopg.Error:
             return False
         finally:
             self._observe_database("readiness", outcome, started_at)

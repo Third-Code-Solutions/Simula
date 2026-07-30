@@ -1,0 +1,186 @@
+{
+  "$defs": {
+    "AgreementMetrics": {
+      "additionalProperties": false,
+      "properties": {
+        "baseline_mean_absolute_error": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Baseline Mean Absolute Error"
+        },
+        "correlation_unavailable_reason": {
+          "anyOf": [
+            {
+              "const": "constant_scores",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Correlation Unavailable Reason"
+        },
+        "mean_absolute_error": {
+          "minimum": 0.0,
+          "title": "Mean Absolute Error",
+          "type": "number"
+        },
+        "pearson_correlation": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": -1.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pearson Correlation"
+        },
+        "sample_size": {
+          "minimum": 2,
+          "title": "Sample Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sample_size",
+        "mean_absolute_error"
+      ],
+      "title": "AgreementMetrics",
+      "type": "object"
+    },
+    "SubgroupAgreement": {
+      "additionalProperties": false,
+      "properties": {
+        "metrics": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AgreementMetrics"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sample_size": {
+          "minimum": 1,
+          "title": "Sample Size",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "reported",
+            "suppressed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "subgroup_key": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Subgroup Key",
+          "type": "string"
+        },
+        "suppression_reason": {
+          "anyOf": [
+            {
+              "const": "below_prespecified_minimum",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Suppression Reason"
+        }
+      },
+      "required": [
+        "subgroup_key",
+        "sample_size",
+        "status",
+        "metrics",
+        "suppression_reason"
+      ],
+      "title": "SubgroupAgreement",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "limitations": {
+      "default": [
+        "This report measures agreement on one frozen held-out corpus. It does not establish population representation, causal effect, future performance, or product validity."
+      ],
+      "items": {
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "methodology_version": {
+      "pattern": "^[a-z][a-z0-9_]{0,63}$",
+      "title": "Methodology Version",
+      "type": "string"
+    },
+    "metrics": {
+      "$ref": "#/$defs/AgreementMetrics"
+    },
+    "observation_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Observation Sha256",
+      "type": "string"
+    },
+    "protocol_id": {
+      "format": "uuid",
+      "title": "Protocol Id",
+      "type": "string"
+    },
+    "protocol_version": {
+      "minimum": 1,
+      "title": "Protocol Version",
+      "type": "integer"
+    },
+    "schema_version": {
+      "const": 1,
+      "default": 1,
+      "title": "Schema Version",
+      "type": "integer"
+    },
+    "subgroups": {
+      "items": {
+        "$ref": "#/$defs/SubgroupAgreement"
+      },
+      "title": "Subgroups",
+      "type": "array"
+    },
+    "validation_label": {
+      "const": "benchmark_only",
+      "default": "benchmark_only",
+      "title": "Validation Label",
+      "type": "string"
+    }
+  },
+  "required": [
+    "protocol_id",
+    "protocol_version",
+    "methodology_version",
+    "metrics",
+    "subgroups",
+    "observation_sha256"
+  ],
+  "title": "BehavioralEvaluationReport",
+  "type": "object",
+  "x-generated-by": "scripts/generate_contracts.py"
+}

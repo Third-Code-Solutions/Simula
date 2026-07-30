@@ -38,6 +38,16 @@ const stateCopy: Record<
   },
 };
 
+const behavioralStateDetail: Partial<Record<SimulationRun["state"], string>> = {
+  queued: "The durable queue accepted this deterministic synthetic-agent run.",
+  running:
+    "The governed behavioral engine is executing seeded synthetic-agent rounds.",
+  retrying:
+    "A bounded retry is in progress. The frozen context, fleet, seed, and method do not change.",
+  succeeded:
+    "The immutable experimental behavioral report and governed evidence are ready.",
+};
+
 export function RunStatusPanel({
   isSlow,
   run,
@@ -56,11 +66,15 @@ export function RunStatusPanel({
   }
 
   const copy = stateCopy[run.state];
+  const detail =
+    run.schema_version === 2
+      ? (behavioralStateDetail[run.state] ?? copy.detail)
+      : copy.detail;
   return (
     <section aria-live="polite" className="panel status-panel" role="status">
       <p className="eyebrow">Run status</p>
       <h2>{copy.label}</h2>
-      <p>{copy.detail}</p>
+      <p>{detail}</p>
       {run.failure ? (
         <p className="field-note">
           Failure code: <code>{run.failure.code}</code>. Correlation:{" "}

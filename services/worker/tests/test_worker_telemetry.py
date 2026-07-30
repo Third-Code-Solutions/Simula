@@ -30,6 +30,20 @@ def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -
         pool_size=4,
         pool_available=3,
     )
+    telemetry.observe_database(
+        "complete_behavioral_execution",
+        "success",
+        duration_seconds=0.02,
+        pool_size=4,
+        pool_available=2,
+    )
+    telemetry.observe_database(
+        "require_queue_transport",
+        "success",
+        duration_seconds=0.005,
+        pool_size=4,
+        pool_available=4,
+    )
     telemetry.set_runtime_snapshot(
         migration_version=20260720063411,
         rls_force_enabled=True,
@@ -70,6 +84,14 @@ def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -
     assert (
         'simula_worker_database_queries_total{operation="complete_execution",outcome="success"}'
         " 1.0" in rendered
+    )
+    assert (
+        'simula_worker_database_queries_total{operation="complete_behavioral_execution",'
+        'outcome="success"} 1.0' in rendered
+    )
+    assert (
+        'simula_worker_database_queries_total{operation="require_queue_transport",'
+        'outcome="success"} 1.0' in rendered
     )
     assert 'simula_worker_run_state_count{state="cancel_requested"} 1.0' in rendered
     assert "run_id" not in rendered

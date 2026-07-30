@@ -1,0 +1,169 @@
+{
+  "$defs": {
+    "ActionShareDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_minus_baseline": {
+          "maximum": 1.0,
+          "minimum": -1.0,
+          "title": "Candidate Minus Baseline",
+          "type": "number"
+        },
+        "key": {
+          "enum": [
+            "attend",
+            "resonate",
+            "question",
+            "reject",
+            "share",
+            "discuss",
+            "reconsider",
+            "ignore"
+          ],
+          "title": "Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "candidate_minus_baseline"
+      ],
+      "title": "ActionShareDelta",
+      "type": "object"
+    },
+    "MetricDelta": {
+      "additionalProperties": false,
+      "properties": {
+        "candidate_minus_baseline": {
+          "maximum": 100.0,
+          "minimum": -100.0,
+          "title": "Candidate Minus Baseline",
+          "type": "number"
+        },
+        "key": {
+          "enum": [
+            "attention",
+            "resonance",
+            "trust"
+          ],
+          "title": "Key",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "candidate_minus_baseline"
+      ],
+      "title": "MetricDelta",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action_share_deltas": {
+      "maxItems": 8,
+      "minItems": 8,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/ActionShareDelta"
+        },
+        {
+          "$ref": "#/$defs/ActionShareDelta"
+        },
+        {
+          "$ref": "#/$defs/ActionShareDelta"
+        },
+        {
+          "$ref": "#/$defs/ActionShareDelta"
+        },
+        {
+          "$ref": "#/$defs/ActionShareDelta"
+        },
+        {
+          "$ref": "#/$defs/ActionShareDelta"
+        },
+        {
+          "$ref": "#/$defs/ActionShareDelta"
+        },
+        {
+          "$ref": "#/$defs/ActionShareDelta"
+        }
+      ],
+      "title": "Action Share Deltas",
+      "type": "array"
+    },
+    "baseline_run_id": {
+      "format": "uuid",
+      "title": "Baseline Run Id",
+      "type": "string"
+    },
+    "candidate_run_id": {
+      "format": "uuid",
+      "title": "Candidate Run Id",
+      "type": "string"
+    },
+    "interpretation": {
+      "const": "experimental_matched_synthetic_difference",
+      "default": "experimental_matched_synthetic_difference",
+      "title": "Interpretation",
+      "type": "string"
+    },
+    "limitations": {
+      "default": [
+        "No variant winner, lift, causal effect, or human preference is established.",
+        "Synthetic-agent diagnostic only. It is not observed human evidence or a population estimate."
+      ],
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "metric_deltas": {
+      "maxItems": 3,
+      "minItems": 3,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/MetricDelta"
+        },
+        {
+          "$ref": "#/$defs/MetricDelta"
+        },
+        {
+          "$ref": "#/$defs/MetricDelta"
+        }
+      ],
+      "title": "Metric Deltas",
+      "type": "array"
+    },
+    "paired_agents": {
+      "minimum": 1,
+      "title": "Paired Agents",
+      "type": "integer"
+    },
+    "study_id": {
+      "format": "uuid",
+      "title": "Study Id",
+      "type": "string"
+    },
+    "winner": {
+      "default": null,
+      "title": "Winner",
+      "type": "null"
+    }
+  },
+  "required": [
+    "study_id",
+    "baseline_run_id",
+    "candidate_run_id",
+    "paired_agents",
+    "metric_deltas",
+    "action_share_deltas"
+  ],
+  "title": "MatchedVariantComparison",
+  "type": "object",
+  "x-generated-by": "scripts/generate_contracts.py"
+}

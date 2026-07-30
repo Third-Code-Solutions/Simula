@@ -1,5 +1,31 @@
-import type { components } from "@simula/contracts";
+import type { components, ControlPlaneComponents } from "@simula/contracts";
 
+import {
+  STIMULUS_ASSET_MAX_BYTES,
+  STIMULUS_ASSET_MEDIA_TYPES,
+  type StimulusAsset,
+  type StimulusAssetMediaType,
+  type StimulusAssetReserveInput,
+  parseStimulusAsset,
+  parseStimulusAssetCollection,
+  parseStimulusAssetCommand,
+} from "@/features/assets/stimulus-asset-contract";
+import {
+  type VisualStimulusProfileRecord,
+  parseVisualStimulusProfileResponse,
+} from "@/features/assets/visual-profile-contract";
+import {
+  type BehavioralComparison,
+  parseBehavioralComparison,
+} from "@/features/runs/behavioral-comparison-contract";
+import {
+  type BehavioralEvidence,
+  parseBehavioralEvidence,
+} from "@/features/runs/behavioral-evidence-contract";
+import {
+  type BehavioralResult,
+  parseBehavioralResult,
+} from "@/features/runs/behavioral-result-contract";
 import {
   type SimulationProvenance,
   type SimulationResult,
@@ -8,13 +34,20 @@ import {
   parseSimulationResult,
   parseSimulationRun,
 } from "@/features/runs/result-contract";
+import {
+  type RunAuditHistory,
+  parseRunAuditHistory,
+} from "@/features/runs/run-audit-history-contract";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 
 type Schemas = components["schemas"];
+type ControlPlaneSchemas = ControlPlaneComponents["schemas"];
 
 export type Organization = Schemas["OrganizationResponse"];
 export type OrganizationPage = Schemas["OrganizationPage"];
 export type OrganizationDashboard = Schemas["OrganizationDashboardResponse"];
+export type OrganizationDeletion =
+  ControlPlaneSchemas["OrganizationDeletionResponseDto"];
 export type Project = Schemas["ProjectResponse"];
 export type ProjectDetail = Schemas["ProjectDetail"];
 export type ProjectPage = Schemas["ProjectPage"];
@@ -22,7 +55,16 @@ export type Stimulus = Schemas["StimulusResponse"];
 export type StimulusVersion = Schemas["StimulusVersionResponse"];
 export type AudienceDisclosure = Schemas["AudienceDisclosureResponse"];
 export type AuthEvent = Schemas["AuthEventResponse"];
-export type { SimulationProvenance, SimulationResult, SimulationRun };
+export type {
+  BehavioralComparison,
+  BehavioralEvidence,
+  BehavioralResult,
+  SimulationProvenance,
+  SimulationResult,
+  SimulationRun,
+  RunAuditHistory,
+  VisualStimulusProfileRecord,
+};
 
 export type ApiProblemDocument = Readonly<{
   code: string;
@@ -34,6 +76,23 @@ export type ApiProblemDocument = Readonly<{
   title: string;
   type: string;
 }>;
+
+export type ReportExportDownload = Readonly<{
+  blob: Blob;
+  filename: string;
+}>;
+
+export type StimulusAssetDownload = Readonly<{
+  blob: Blob;
+  filename: string;
+}>;
+
+export type {
+  StimulusAsset,
+  StimulusAssetMediaType,
+  StimulusAssetReserveInput,
+};
+export { STIMULUS_ASSET_MAX_BYTES, STIMULUS_ASSET_MEDIA_TYPES };
 
 export class ApiProblem extends Error {
   public readonly correlationId: string | undefined;
@@ -89,6 +148,21 @@ function apiOrigin(): string {
       "SIMULA API is not configured.",
     );
   }
+}
+
+function domainPath(path: string): string {
+  const version = process.env.NEXT_PUBLIC_SIMULA_DOMAIN_API_VERSION ?? "v1";
+  if (version !== "v1" && version !== "v2") {
+    throw new ApiProblem(
+      503,
+      "api_unconfigured",
+      "SIMULA domain API migration is not configured safely.",
+    );
+  }
+  if (!path.startsWith("/")) {
+    throw new Error("domain API paths must be absolute");
+  }
+  return `/api/${version}${path}`;
 }
 
 function asProblem(value: unknown): ApiProblemDocument | undefined {
@@ -199,8 +273,8 @@ async function request<T>(
   return payload as T;
 }
 
-function idempotencyHeaders(): HeadersInit {
-  return { "Idempotency-Key": crypto.randomUUID() };
+function idempotencyHeaders(idempotencyKey = crypto.randomUUID()): HeadersInit {
+  return { "Idempotency-Key": idempotencyKey };
 }
 
 function parsedResponse<T>(parser: (value: unknown) => T, value: unknown): T {
@@ -215,13 +289,82 @@ function parsedResponse<T>(parser: (value: unknown) => T, value: unknown): T {
   }
 }
 
+async function responsePayload(response: Response): Promise<unknown> {
+  const contentType = response.headers.get("content-type") ?? "";
+  return contentType.includes("application/json") ||
+    contentType.includes("application/problem+json")
+    ? response.json().catch(() => undefined)
+    : undefined;
+}
+
+function responseProblem(response: Response, payload: unknown): ApiProblem {
+  const problem = asProblem(payload);
+  return new ApiProblem(
+    response.status,
+    problem?.code ?? "request_failed",
+    problem?.detail ?? "SIMULA could not complete that request.",
+    problem?.correlation_id ||
+      response.headers.get("x-correlation-id") ||
+      undefined,
+    retryAfterSeconds(response.headers.get("retry-after")),
+  );
+}
+
+async function assetFetch(
+  path: string,
+  init: Readonly<{
+    accept: string;
+    body?: BodyInit;
+    contentType?: StimulusAssetMediaType;
+    idempotencyKey?: string;
+    method: "GET" | "PUT";
+  }>,
+): Promise<Response> {
+  const headers = new Headers();
+  headers.set("Accept", init.accept);
+  headers.set("Authorization", `Bearer ${await accessToken()}`);
+  if (init.contentType) {
+    headers.set("Content-Type", init.contentType);
+  }
+  if (init.idempotencyKey) {
+    headers.set("Idempotency-Key", init.idempotencyKey);
+  }
+  try {
+    return await fetch(`${apiOrigin()}${path}`, {
+      body: init.body,
+      cache: "no-store",
+      headers,
+      method: init.method,
+    });
+  } catch {
+    throw new ApiProblem(
+      503,
+      "api_unavailable",
+      "SIMULA API is temporarily unavailable. Retry shortly.",
+    );
+  }
+}
+
+function assetIdentity(
+  asset: StimulusAsset,
+  expected: Readonly<{ assetId?: string; stimulusId?: string }>,
+): StimulusAsset {
+  if (
+    (expected.assetId && asset.asset_id !== expected.assetId) ||
+    (expected.stimulusId && asset.stimulus_id !== expected.stimulusId)
+  ) {
+    throw new Error("stimulus asset identity mismatch");
+  }
+  return asset;
+}
+
 export function listOrganizations(cursor?: string): Promise<OrganizationPage> {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-  return request<OrganizationPage>(`/api/v1/organizations${query}`);
+  return request<OrganizationPage>(domainPath(`/organizations${query}`));
 }
 
 export function createOrganization(name: string): Promise<Organization> {
-  return request<Organization>("/api/v1/organizations", {
+  return request<Organization>(domainPath("/organizations"), {
     body: { name },
     headers: idempotencyHeaders(),
     method: "POST",
@@ -232,12 +375,26 @@ export function getOrganizationDashboard(
   organizationId: string,
 ): Promise<OrganizationDashboard> {
   return request<OrganizationDashboard>(
-    `/api/v1/organizations/${organizationId}/dashboard`,
+    domainPath(`/organizations/${organizationId}/dashboard`),
+  );
+}
+
+export function deleteOrganization(
+  organizationId: string,
+  confirmation: string,
+): Promise<OrganizationDeletion> {
+  return request<OrganizationDeletion>(
+    `/api/v2/organizations/${organizationId}/deletion`,
+    {
+      body: { confirmation },
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
   );
 }
 
 export function recordSignIn(): Promise<AuthEvent> {
-  return request<AuthEvent>("/api/v1/auth-events", {
+  return request<AuthEvent>(domainPath("/auth-events"), {
     body: { kind: "sign_in" },
     method: "POST",
   });
@@ -249,7 +406,7 @@ export function listProjects(
 ): Promise<ProjectPage> {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   return request<ProjectPage>(
-    `/api/v1/organizations/${organizationId}/projects${query}`,
+    domainPath(`/organizations/${organizationId}/projects${query}`),
   );
 }
 
@@ -260,19 +417,22 @@ export function createProject(
     "category" | "language" | "market" | "name" | "objective"
   >,
 ): Promise<Project> {
-  return request<Project>(`/api/v1/organizations/${organizationId}/projects`, {
-    body: input,
-    headers: idempotencyHeaders(),
-    method: "POST",
-  });
+  return request<Project>(
+    domainPath(`/organizations/${organizationId}/projects`),
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
 }
 
 export function getProject(projectId: string): Promise<ProjectDetail> {
-  return request<ProjectDetail>(`/api/v1/projects/${projectId}`);
+  return request<ProjectDetail>(domainPath(`/projects/${projectId}`));
 }
 
 export function getDemoAudience(): Promise<AudienceDisclosure> {
-  return request<AudienceDisclosure>("/api/v1/audiences/demo");
+  return request<AudienceDisclosure>(domainPath("/audiences/demo"));
 }
 
 export function updateProject(
@@ -282,7 +442,7 @@ export function updateProject(
     Pick<Project, "category" | "language" | "market" | "name" | "objective">
   >,
 ): Promise<Project> {
-  return request<Project>(`/api/v1/projects/${projectId}`, {
+  return request<Project>(domainPath(`/projects/${projectId}`), {
     body: input,
     headers: { "If-Match": `"${version}"` },
     method: "PATCH",
@@ -293,7 +453,7 @@ export function createStimulus(
   projectId: string,
   input: Pick<Stimulus, "name"> & { content: string },
 ): Promise<Stimulus> {
-  return request<Stimulus>(`/api/v1/projects/${projectId}/stimuli`, {
+  return request<Stimulus>(domainPath(`/projects/${projectId}/stimuli`), {
     body: input,
     headers: idempotencyHeaders(),
     method: "POST",
@@ -303,12 +463,262 @@ export function createStimulus(
 export function appendStimulusVersion(
   stimulusId: string,
   content: string,
+  idempotencyKey = crypto.randomUUID(),
 ): Promise<StimulusVersion> {
-  return request<StimulusVersion>(`/api/v1/stimuli/${stimulusId}/versions`, {
-    body: { content },
-    headers: idempotencyHeaders(),
+  return request<StimulusVersion>(
+    domainPath(`/stimuli/${stimulusId}/versions`),
+    {
+      body: { content },
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
+  );
+}
+
+export function listStimulusAssets(
+  stimulusId: string,
+): Promise<readonly StimulusAsset[]> {
+  return request<unknown>(`/api/v2/stimuli/${stimulusId}/assets`).then(
+    (value) =>
+      parsedResponse((response) => {
+        const assets = parseStimulusAssetCollection(response);
+        for (const asset of assets) {
+          assetIdentity(asset, { stimulusId });
+        }
+        return assets;
+      }, value),
+  );
+}
+
+export function reserveStimulusAsset(
+  stimulusId: string,
+  input: StimulusAssetReserveInput,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<StimulusAsset> {
+  return request<unknown>(`/api/v2/stimuli/${stimulusId}/assets`, {
+    body: input,
+    headers: idempotencyHeaders(idempotencyKey),
     method: "POST",
-  });
+  }).then((value) =>
+    parsedResponse(
+      (response) =>
+        assetIdentity(parseStimulusAssetCommand(response), { stimulusId }),
+      value,
+    ),
+  );
+}
+
+export async function uploadStimulusAsset(
+  asset: StimulusAsset,
+  bytes: ArrayBuffer,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<StimulusAsset> {
+  const expected = parseStimulusAsset(asset);
+  const actualSha256 = Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+    (value) => value.toString(16).padStart(2, "0"),
+  ).join("");
+  if (
+    expected.status !== "pending_upload" ||
+    bytes.byteLength !== expected.expected_byte_size ||
+    actualSha256 !== expected.expected_content_sha256 ||
+    Date.parse(expected.retention_until) <= Date.now()
+  ) {
+    throw new ApiProblem(
+      409,
+      "asset_mismatch",
+      "The selected file does not match its active upload reservation.",
+    );
+  }
+  const response = await assetFetch(
+    `/api/v2/stimulus-assets/${expected.asset_id}/content`,
+    {
+      accept: "application/json, application/problem+json",
+      body: bytes,
+      contentType: expected.media_type,
+      idempotencyKey,
+      method: "PUT",
+    },
+  );
+  const payload = await responsePayload(response);
+  if (!response.ok) {
+    throw responseProblem(response, payload);
+  }
+  return parsedResponse(
+    (value) =>
+      assetIdentity(parseStimulusAssetCommand(value), {
+        assetId: expected.asset_id,
+        stimulusId: expected.stimulus_id,
+      }),
+    payload,
+  );
+}
+
+export async function downloadStimulusAsset(
+  asset: StimulusAsset,
+): Promise<StimulusAssetDownload> {
+  const expected = parseStimulusAsset(asset);
+  if (
+    expected.status !== "available" ||
+    expected.byte_size !== expected.expected_byte_size ||
+    expected.content_sha256 !== expected.expected_content_sha256 ||
+    Date.parse(expected.retention_until) <= Date.now()
+  ) {
+    throw new ApiProblem(
+      409,
+      "asset_unavailable",
+      "The private campaign asset is not available for verified access.",
+    );
+  }
+  const response = await assetFetch(
+    `/api/v2/stimulus-assets/${expected.asset_id}/content`,
+    {
+      accept: STIMULUS_ASSET_MEDIA_TYPES.join(", "),
+      method: "GET",
+    },
+  );
+  if (!response.ok) {
+    throw responseProblem(response, await responsePayload(response));
+  }
+  const contentType = response.headers.get("content-type")?.toLowerCase();
+  const rawLength = response.headers.get("content-length");
+  const expectedSha256 = /^"([0-9a-f]{64})"$/.exec(
+    response.headers.get("etag") ?? "",
+  )?.[1];
+  const disposition = /^inline; filename="([^"]{1,120})"$/.exec(
+    response.headers.get("content-disposition") ?? "",
+  )?.[1];
+  if (
+    contentType !== expected.media_type ||
+    rawLength === null ||
+    !/^[0-9]+$/.test(rawLength) ||
+    Number(rawLength) !== expected.expected_byte_size ||
+    Number(rawLength) > STIMULUS_ASSET_MAX_BYTES ||
+    expectedSha256 !== expected.expected_content_sha256 ||
+    disposition !== expected.filename ||
+    response.headers.get("cache-control") !== "private, no-store" ||
+    response.headers.get("content-security-policy") !== "sandbox" ||
+    response.headers.get("x-content-type-options") !== "nosniff"
+  ) {
+    throw new ApiProblem(
+      502,
+      "invalid_api_response",
+      "SIMULA API returned an unsafe private campaign asset.",
+    );
+  }
+  const blob = await response.blob();
+  const bytes = await blob.arrayBuffer();
+  const actualSha256 = Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+    (value) => value.toString(16).padStart(2, "0"),
+  ).join("");
+  if (
+    blob.size !== expected.expected_byte_size ||
+    blob.type !== expected.media_type ||
+    actualSha256 !== expected.expected_content_sha256
+  ) {
+    throw new ApiProblem(
+      502,
+      "invalid_api_response",
+      "SIMULA API returned an unsafe private campaign asset.",
+    );
+  }
+  return Object.freeze({ blob, filename: expected.filename });
+}
+
+export function deleteStimulusAsset(
+  asset: StimulusAsset,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<StimulusAsset> {
+  const expected = parseStimulusAsset(asset);
+  return request<unknown>(
+    `/api/v2/stimulus-assets/${expected.asset_id}/deletion`,
+    {
+      body: {},
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
+  ).then((value) =>
+    parsedResponse(
+      (response) =>
+        assetIdentity(parseStimulusAssetCommand(response), {
+          assetId: expected.asset_id,
+          stimulusId: expected.stimulus_id,
+        }),
+      value,
+    ),
+  );
+}
+
+function visualProfileIdentity(
+  value: VisualStimulusProfileRecord,
+  asset: StimulusAsset,
+): VisualStimulusProfileRecord {
+  if (
+    value.asset_id !== asset.asset_id ||
+    value.organization_id !== asset.organization_id ||
+    value.stimulus_id !== asset.stimulus_id ||
+    value.asset_content_sha256 !== asset.content_sha256
+  ) {
+    throw new Error("visual profile identity mismatch");
+  }
+  return value;
+}
+
+export function createStimulusVisualProfile(
+  asset: StimulusAsset,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<VisualStimulusProfileRecord> {
+  const expected = parseStimulusAsset(asset);
+  if (
+    expected.status !== "available" ||
+    expected.content_sha256 === null ||
+    !["image/jpeg", "image/png", "image/webp"].includes(expected.media_type) ||
+    Date.parse(expected.retention_until) <= Date.now()
+  ) {
+    return Promise.reject(
+      new ApiProblem(
+        409,
+        "asset_unavailable",
+        "Only an available JPEG, PNG, or WebP can be technically profiled.",
+      ),
+    );
+  }
+  return request<unknown>(
+    `/api/v2/stimulus-assets/${expected.asset_id}/visual-profile`,
+    {
+      body: { methodology_version: "technical_image_signals_v1" },
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
+  ).then((value) =>
+    parsedResponse(
+      (response) =>
+        visualProfileIdentity(
+          parseVisualStimulusProfileResponse(response),
+          expected,
+        ),
+      value,
+    ),
+  );
+}
+
+export function getStimulusVisualProfile(
+  asset: StimulusAsset,
+): Promise<VisualStimulusProfileRecord> {
+  const expected = parseStimulusAsset(asset);
+  return request<unknown>(
+    `/api/v2/stimulus-assets/${expected.asset_id}/visual-profile`,
+  ).then((value) =>
+    parsedResponse(
+      (response) =>
+        visualProfileIdentity(
+          parseVisualStimulusProfileResponse(response),
+          expected,
+        ),
+      value,
+    ),
+  );
 }
 
 export function createSimulationRun(
@@ -316,67 +726,135 @@ export function createSimulationRun(
   stimulusVersionId: string,
   idempotencyKey = crypto.randomUUID(),
 ): Promise<SimulationRun> {
-  return request<unknown>(`/api/v1/projects/${projectId}/runs`, {
+  return request<unknown>(domainPath(`/projects/${projectId}/runs`), {
     body: { stimulus_version_id: stimulusVersionId },
     headers: { "Idempotency-Key": idempotencyKey },
     method: "POST",
   }).then((value) => parsedResponse(parseSimulationRun, value));
 }
 
+export function createBehavioralDemoRun(
+  projectId: string,
+  stimulusVersionId: string,
+  variantKey: string,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<SimulationRun> {
+  return request<unknown>(
+    `/api/v2/projects/${projectId}/behavioral-demo-runs`,
+    {
+      body: {
+        stimulus_version_id: stimulusVersionId,
+        variant_key: variantKey,
+      },
+      headers: { "Idempotency-Key": idempotencyKey },
+      method: "POST",
+    },
+  ).then((value) => parsedResponse(parseSimulationRun, value));
+}
+
 export function getSimulationRun(runId: string): Promise<SimulationRun> {
-  return request<unknown>(`/api/v1/runs/${runId}`).then((value) =>
+  return request<unknown>(domainPath(`/runs/${runId}`)).then((value) =>
     parsedResponse(parseSimulationRun, value),
   );
 }
 
 export function cancelSimulationRun(runId: string): Promise<SimulationRun> {
-  return request<unknown>(`/api/v1/runs/${runId}/cancel`, {
+  return request<unknown>(domainPath(`/runs/${runId}/cancel`), {
     body: {},
     method: "POST",
   }).then((value) => parsedResponse(parseSimulationRun, value));
 }
 
 export function getSimulationResult(runId: string): Promise<SimulationResult> {
-  return request<unknown>(`/api/v1/runs/${runId}/result`).then((value) =>
+  return request<unknown>(domainPath(`/runs/${runId}/result`)).then((value) =>
     parsedResponse(parseSimulationResult, value),
+  );
+}
+
+export function getBehavioralResult(runId: string): Promise<BehavioralResult> {
+  return request<unknown>(`/api/v2/runs/${runId}/behavioral-result`).then(
+    (value) =>
+      parsedResponse(
+        (response) => parseBehavioralResult(response, runId),
+        value,
+      ),
+  );
+}
+
+export function getBehavioralEvidence(
+  runId: string,
+): Promise<BehavioralEvidence> {
+  return request<unknown>(`/api/v2/runs/${runId}/behavioral-evidence`).then(
+    (value) =>
+      parsedResponse(
+        (response) => parseBehavioralEvidence(response, runId),
+        value,
+      ),
+  );
+}
+
+export function getRunAuditHistory(runId: string): Promise<RunAuditHistory> {
+  return request<unknown>(`/api/v2/runs/${runId}/audit-history`).then((value) =>
+    parsedResponse(
+      (candidate) => parseRunAuditHistory(candidate, runId),
+      value,
+    ),
+  );
+}
+
+export function getBehavioralComparison(
+  candidateRunId: string,
+  baselineRunId: string,
+  studyId?: string,
+): Promise<BehavioralComparison> {
+  const query = new URLSearchParams({ baseline_run_id: baselineRunId });
+  return request<unknown>(
+    `/api/v2/runs/${candidateRunId}/behavioral-comparison?${query.toString()}`,
+  ).then((value) =>
+    parsedResponse(
+      (response) =>
+        parseBehavioralComparison(response, {
+          baselineRunId,
+          candidateRunId,
+          studyId,
+        }),
+      value,
+    ),
   );
 }
 
 export function getSimulationProvenance(
   runId: string,
 ): Promise<SimulationProvenance> {
-  return request<unknown>(`/api/v1/runs/${runId}/provenance`).then((value) =>
-    parsedResponse(parseSimulationProvenance, value),
+  return request<unknown>(domainPath(`/runs/${runId}/provenance`)).then(
+    (value) => parsedResponse(parseSimulationProvenance, value),
   );
 }
 
 export type ProductRecord = Record<string, unknown>;
 export type ProductCollection = Readonly<{ items: ProductRecord[] }>;
 export type ProductCommand = Readonly<{ data: ProductRecord }>;
-export type MethodologyRegistry = Readonly<{
-  methodologies: ProductRecord[];
-  population_frames: ProductRecord[];
-  providers: ProductRecord[];
-}>;
+export type MethodologyRegistry =
+  ControlPlaneSchemas["MethodologyRegistryResponseDto"];
 
 export function getMethodologyRegistry(): Promise<MethodologyRegistry> {
-  return request<MethodologyRegistry>("/api/v1/methodology/registry");
+  return request<MethodologyRegistry>(domainPath("/methodology/registry"));
 }
 
 export function listAudienceDefinitions(
   organizationId: string,
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
-    `/api/v1/organizations/${organizationId}/audiences`,
+    domainPath(`/organizations/${organizationId}/audiences`),
   );
 }
 
 export function createAudienceDefinition(
   organizationId: string,
-  input: object,
-): Promise<ProductRecord> {
-  return request<ProductRecord>(
-    `/api/v1/organizations/${organizationId}/audiences`,
+  input: ControlPlaneSchemas["AudienceCreateDto"],
+): Promise<ControlPlaneSchemas["AudienceCommandResponseDto"]> {
+  return request<ControlPlaneSchemas["AudienceCommandResponseDto"]>(
+    domainPath(`/organizations/${organizationId}/audiences`),
     {
       body: input,
       headers: idempotencyHeaders(),
@@ -389,16 +867,16 @@ export function listSimulationConfigurations(
   projectId: string,
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
-    `/api/v1/projects/${projectId}/simulation-configurations`,
+    domainPath(`/projects/${projectId}/simulation-configurations`),
   );
 }
 
 export function createSimulationConfiguration(
   projectId: string,
-  input: object,
-): Promise<ProductRecord> {
-  return request<ProductRecord>(
-    `/api/v1/projects/${projectId}/simulation-configurations`,
+  input: ControlPlaneSchemas["SimulationConfigurationCreateDto"],
+): Promise<ControlPlaneSchemas["SimulationConfigurationResponseDto"]> {
+  return request<ControlPlaneSchemas["SimulationConfigurationResponseDto"]>(
+    domainPath(`/projects/${projectId}/simulation-configurations`),
     {
       body: input,
       headers: idempotencyHeaders(),
@@ -409,10 +887,10 @@ export function createSimulationConfiguration(
 
 export function createMethodologyPreview(
   projectId: string,
-  input: object,
-): Promise<ProductCommand> {
-  return request<ProductCommand>(
-    `/api/v1/projects/${projectId}/methodology-previews`,
+  input: ControlPlaneSchemas["MethodologyPreviewCreateDto"],
+): Promise<ControlPlaneSchemas["ProductCommandResponseDto"]> {
+  return request<ControlPlaneSchemas["ProductCommandResponseDto"]>(
+    domainPath(`/projects/${projectId}/methodology-previews`),
     {
       body: input,
       headers: idempotencyHeaders(),
@@ -423,10 +901,10 @@ export function createMethodologyPreview(
 
 export function createVariantGroup(
   projectId: string,
-  input: object,
-): Promise<ProductCommand> {
-  return request<ProductCommand>(
-    `/api/v1/projects/${projectId}/variant-groups`,
+  input: ControlPlaneSchemas["VariantGroupCreateDto"],
+): Promise<ControlPlaneSchemas["ProductCommandResponseDto"]> {
+  return request<ControlPlaneSchemas["ProductCommandResponseDto"]>(
+    domainPath(`/projects/${projectId}/variant-groups`),
     {
       body: input,
       headers: idempotencyHeaders(),
@@ -437,17 +915,17 @@ export function createVariantGroup(
 
 export function listVariantGroups(
   projectId: string,
-): Promise<ProductCollection> {
-  return request<ProductCollection>(
-    `/api/v1/projects/${projectId}/variant-groups`,
+): Promise<ControlPlaneSchemas["ProductCollectionResponseDto"]> {
+  return request<ControlPlaneSchemas["ProductCollectionResponseDto"]>(
+    domainPath(`/projects/${projectId}/variant-groups`),
   );
 }
 
 export function compareVariantReports(
   variantGroupId: string,
-): Promise<ProductCommand> {
-  return request<ProductCommand>(
-    `/api/v1/variant-groups/${variantGroupId}/comparison`,
+): Promise<ControlPlaneSchemas["ProductCollectionResponseDto"]> {
+  return request<ControlPlaneSchemas["ProductCollectionResponseDto"]>(
+    domainPath(`/variant-groups/${variantGroupId}/comparison`),
   );
 }
 
@@ -471,28 +949,128 @@ export function listFeedbackRecords(
 
 export function createRunMethodologyReport(
   runId: string,
-  input: object,
-): Promise<ProductCommand> {
-  return request<ProductCommand>(`/api/v1/runs/${runId}/methodology-reports`, {
-    body: input,
-    headers: idempotencyHeaders(),
-    method: "POST",
-  });
+  input: ControlPlaneSchemas["RunMethodologyReportCreateDto"],
+): Promise<ControlPlaneSchemas["ProductCommandResponseDto"]> {
+  return request<ControlPlaneSchemas["ProductCommandResponseDto"]>(
+    domainPath(`/runs/${runId}/methodology-reports`),
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
 }
 
-export function getRunReport(runId: string): Promise<ProductCommand> {
-  return request<ProductCommand>(`/api/v1/runs/${runId}/report`);
+export function getRunReport(
+  runId: string,
+): Promise<ControlPlaneSchemas["ProductCommandResponseDto"]> {
+  return request<ControlPlaneSchemas["ProductCommandResponseDto"]>(
+    domainPath(`/runs/${runId}/report`),
+  );
 }
 
 export function createReportExport(
   reportId: string,
-  input: object,
-): Promise<ProductCommand> {
-  return request<ProductCommand>(`/api/v1/reports/${reportId}/exports`, {
-    body: input,
-    headers: idempotencyHeaders(),
-    method: "POST",
-  });
+  input: ControlPlaneSchemas["ReportExportCreateDto"],
+): Promise<ControlPlaneSchemas["ProductCommandResponseDto"]> {
+  return request<ControlPlaneSchemas["ProductCommandResponseDto"]>(
+    domainPath(`/reports/${reportId}/exports`),
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export async function downloadReportExport(
+  exportId: string,
+): Promise<ReportExportDownload> {
+  const headers = new Headers();
+  headers.set("Accept", "application/json, text/csv, application/problem+json");
+  headers.set("Authorization", `Bearer ${await accessToken()}`);
+
+  let response: Response;
+  try {
+    response = await fetch(
+      `${apiOrigin()}${domainPath(`/exports/${exportId}`)}`,
+      {
+        cache: "no-store",
+        headers,
+        method: "GET",
+      },
+    );
+  } catch {
+    throw new ApiProblem(
+      503,
+      "api_unavailable",
+      "SIMULA API is temporarily unavailable. Retry shortly.",
+    );
+  }
+  if (!response.ok) {
+    const contentType = response.headers.get("content-type") ?? "";
+    const payload: unknown =
+      contentType.includes("application/json") ||
+      contentType.includes("application/problem+json")
+        ? await response.json().catch(() => undefined)
+        : undefined;
+    const problem = asProblem(payload);
+    throw new ApiProblem(
+      response.status,
+      problem?.code ?? "request_failed",
+      problem?.detail ?? "SIMULA could not complete that request.",
+      problem?.correlation_id ||
+        response.headers.get("x-correlation-id") ||
+        undefined,
+      retryAfterSeconds(response.headers.get("retry-after")),
+    );
+  }
+
+  const contentType = response.headers
+    .get("content-type")
+    ?.toLowerCase()
+    .replaceAll(" ", "");
+  const disposition = response.headers.get("content-disposition");
+  const filename = /^attachment; filename="([a-z0-9][a-z0-9_.-]{0,119})"$/.exec(
+    disposition ?? "",
+  )?.[1];
+  const rawLength = response.headers.get("content-length");
+  const expectedSha256 = /^"([0-9a-f]{64})"$/.exec(
+    response.headers.get("etag") ?? "",
+  )?.[1];
+  if (
+    (contentType !== "application/json" &&
+      contentType !== "text/csv;charset=utf-8") ||
+    filename === undefined ||
+    expectedSha256 === undefined ||
+    (rawLength !== null &&
+      (!/^[0-9]+$/.test(rawLength) || Number(rawLength) > 2_097_152))
+  ) {
+    throw new ApiProblem(
+      502,
+      "invalid_api_response",
+      "SIMULA API returned an unsafe report export.",
+    );
+  }
+  const blob = await response.blob();
+  const bytes = await blob.arrayBuffer();
+  const actualSha256 = Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+    (value) => value.toString(16).padStart(2, "0"),
+  ).join("");
+  if (
+    blob.size < 1 ||
+    blob.size > 2_097_152 ||
+    (rawLength !== null && Number(rawLength) !== blob.size) ||
+    actualSha256 !== expectedSha256
+  ) {
+    throw new ApiProblem(
+      502,
+      "invalid_api_response",
+      "SIMULA API returned an unsafe report export.",
+    );
+  }
+  return Object.freeze({ blob, filename });
 }
 
 export function createReportShare(

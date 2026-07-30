@@ -7,6 +7,13 @@ import re
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlsplit
 
+from simula_core.runtime_admission import (
+    REQUIRED_DATABASE_MIGRATION_HEAD,
+    ProductionAdmission,
+    RuntimeAdmissionError,
+    parse_deployment_admission,
+)
+
 
 class ConfigurationError(ValueError):
     """Required runtime configuration is absent or unsafe."""
@@ -51,6 +58,8 @@ class ApiSettings:
     rate_limit_key_prefix: str
     cursor_secret: bytes
     cors_origins: tuple[str, ...]
+    migration_head: str = REQUIRED_DATABASE_MIGRATION_HEAD
+    production_admission: ProductionAdmission | None = None
 
     @classmethod
     def from_environment(cls) -> ApiSettings:
@@ -60,6 +69,10 @@ class ApiSettings:
         release_sha = _required("SIMULA_RELEASE_SHA")
         if not re.fullmatch(r"[0-9a-f]{40}", release_sha):
             raise ConfigurationError("SIMULA_RELEASE_SHA must be an exact 40-character git SHA")
+        try:
+            deployment_admission = parse_deployment_admission(environment)
+        except RuntimeAdmissionError as error:
+            raise ConfigurationError(str(error)) from error
 
         database_url = _required("SIMULA_DATABASE_URL")
         database = urlsplit(database_url)
@@ -138,4 +151,6 @@ class ApiSettings:
             rate_limit_key_prefix=rate_limit_key_prefix,
             cursor_secret=cursor_secret.encode("utf-8"),
             cors_origins=origins,
+            migration_head=deployment_admission.migration_head,
+            production_admission=deployment_admission.production_admission,
         )

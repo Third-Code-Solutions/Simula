@@ -46,6 +46,25 @@ describe("run/result browser contract decoder", () => {
     expect(parseSimulationRun(runFixture(state)).state).toBe(state);
   });
 
+  it("accepts the exact BullMQ behavioral run identity", () => {
+    expect(
+      parseSimulationRun({
+        ...runFixture(),
+        schema_version: 2,
+        job_id: `run-${RUN_ID}-generation-1`,
+      }),
+    ).toMatchObject({
+      schema_version: 2,
+      job_id: `run-${RUN_ID}-generation-1`,
+    });
+  });
+
+  it("rejects a schema-v2 run with a legacy queue identity", () => {
+    expect(() =>
+      parseSimulationRun({ ...runFixture(), schema_version: 2 }),
+    ).toThrow("invalid API contract");
+  });
+
   it("fails closed on an unknown run state", () => {
     expect(() => parseSimulationRun(runFixture("invented"))).toThrow(
       "invalid API contract",

@@ -1,0 +1,224 @@
+{
+  "$defs": {
+    "ContextEdge": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_strength": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Evidence Strength",
+          "type": "number"
+        },
+        "relationship": {
+          "enum": [
+            "supports",
+            "qualifies",
+            "contradicts",
+            "constrains",
+            "applies_to"
+          ],
+          "title": "Relationship",
+          "type": "string"
+        },
+        "source_node_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Source Node Id",
+          "type": "string"
+        },
+        "target_node_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Target Node Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_node_id",
+        "target_node_id",
+        "relationship",
+        "evidence_strength"
+      ],
+      "title": "ContextEdge",
+      "type": "object"
+    },
+    "ContextNode": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "content_sha256": {
+          "default": "0000000000000000000000000000000000000000000000000000000000000000",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Sha256",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "stimulus_fact",
+            "market_context",
+            "cultural_context",
+            "brand_constraint",
+            "audience_evidence"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "node_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Node Id",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/EvidenceProvenance"
+        },
+        "title": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_id",
+        "kind",
+        "title",
+        "content",
+        "provenance"
+      ],
+      "title": "ContextNode",
+      "type": "object"
+    },
+    "EvidenceProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_use": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Allowed Use",
+          "type": "string"
+        },
+        "collected_at": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Collected At",
+          "type": "string"
+        },
+        "license": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "License",
+          "type": "string"
+        },
+        "owner": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Owner",
+          "type": "string"
+        },
+        "source_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Source Id",
+          "type": "string"
+        },
+        "source_version": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Source Version",
+          "type": "string"
+        },
+        "transformation": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Transformation",
+          "type": "string"
+        },
+        "validation_status": {
+          "enum": [
+            "experimental",
+            "benchmarked"
+          ],
+          "title": "Validation Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_id",
+        "source_version",
+        "owner",
+        "license",
+        "allowed_use",
+        "collected_at",
+        "transformation",
+        "validation_status"
+      ],
+      "title": "EvidenceProvenance",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "checksum_sha256": {
+      "default": "0000000000000000000000000000000000000000000000000000000000000000",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Checksum Sha256",
+      "type": "string"
+    },
+    "edges": {
+      "default": [],
+      "items": {
+        "$ref": "#/$defs/ContextEdge"
+      },
+      "maxItems": 2000,
+      "title": "Edges",
+      "type": "array"
+    },
+    "graph_id": {
+      "format": "uuid",
+      "title": "Graph Id",
+      "type": "string"
+    },
+    "limitations": {
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Limitations",
+      "type": "array"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/ContextNode"
+      },
+      "maxItems": 500,
+      "minItems": 1,
+      "title": "Nodes",
+      "type": "array"
+    },
+    "organization_id": {
+      "format": "uuid",
+      "title": "Organization Id",
+      "type": "string"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "graph_id",
+    "organization_id",
+    "version",
+    "nodes",
+    "limitations"
+  ],
+  "title": "ContextGraph",
+  "type": "object",
+  "x-generated-by": "scripts/generate_contracts.py"
+}

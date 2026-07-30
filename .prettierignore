@@ -2,6 +2,7 @@
 .turbo
 .venv
 node_modules
+apps/api/openapi.json
 .agent
 .serena
 AGENT.md
@@ -9,8 +10,13 @@ BOOTSTRAP_PROMPT.md
 pnpm-lock.yaml
 uv.lock
 packages/contracts/openapi.json
+packages/contracts/behavioral-comparison.schema.json
+packages/contracts/behavioral-evaluation-report.schema.json
+packages/contracts/behavioral-report.schema.json
+packages/contracts/context-graph.schema.json
 packages/contracts/result.schema.json
 packages/contracts/src/openapi.ts
+packages/contracts/src/control-plane.ts
 packages/contracts/src/database.ts
 brain
 plans

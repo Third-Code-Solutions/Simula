@@ -306,9 +306,17 @@ export function OrganizationsWorkspace() {
                   </span>
                   <span className={styles.organizationIdentity}>
                     <strong>{organization.name}</strong>
-                    <small>Open dashboard and recent activity</small>
+                    <small>
+                      {organization.status === "disabled"
+                        ? "Deletion pending · open to retry cleanup"
+                        : "Open dashboard and recent activity"}
+                    </small>
                   </span>
-                  <span className={styles.role}>{organization.role}</span>
+                  <span className={styles.role}>
+                    {organization.status === "disabled"
+                      ? "deletion pending"
+                      : organization.role}
+                  </span>
                   <span aria-hidden="true" className={styles.arrow}>
                     ↗
                   </span>

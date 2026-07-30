@@ -2,7 +2,7 @@
 title: SIMULA Project Home
 status: active
 created: 2026-07-17
-updated: 2026-07-20
+updated: 2026-07-29
 owner: Principal program and engineering lead
 classification: PROPOSED
 source_of_truth: true
@@ -16,6 +16,7 @@ source_of_truth: true
 - [[PROJECT_STATE|Current project state]]
 - [[../plans/MASTER_ROADMAP|Master roadmap]]
 - [[../plans/active/002-phase-2-walking-skeleton|Active Phase 2 ExecPlan]]
+- [[../plans/active/003-predikta-class-production-platform|Active production-platform ExecPlan]]
 - [[../plans/completed/001-phase-1-product-and-architecture-definition|Completed Phase 1 ExecPlan]]
 - [[../plans/completed/000-phase-0-evidence-and-discovery|Completed Phase 0 ExecPlan]]
 
@@ -29,6 +30,7 @@ source_of_truth: true
 ## Research
 
 - [[Research/PREDIKTA_TEARDOWN|Predikta public-evidence teardown]]
+- [[Research/PHANTOMCROWD_IMPLEMENTATION_REFERENCE|PhantomCrowd implementation reference]]
 - [[Research/NETOPIA_TEARDOWN|Netopia AI public-evidence teardown]]
 - [[Research/COMPETITIVE_LANDSCAPE|Competitive landscape]]
 - [[Research/PUBLIC_EVIDENCE_MATRIX|Public evidence matrix]]
@@ -74,6 +76,12 @@ source_of_truth: true
 - [[Decisions/ADR-0008-ENVIRONMENTS-DEPLOYMENT-AND-MIGRATIONS|ADR-0008 — Environments and migrations]]
 - [[Decisions/ADR-0009-OBSERVABILITY-AUDIT-AND-SERVICE-OBJECTIVES|ADR-0009 — Observability and objectives]]
 - [[Decisions/ADR-0010-EXPORT-SHARE-AND-STORAGE-SEAM|ADR-0010 — Export/share deferral]]
+
+- [[Decisions/ADR-0011-NESTJS-BULLMQ-CONTROL-PLANE|ADR-0011 - NestJS and BullMQ control plane]]
+- [[Decisions/ADR-0012-PHANTOMCROWD-DERIVED-BEHAVIORAL-ENGINE|ADR-0012 - PhantomCrowd-derived behavioral engine]]
+- [[Decisions/ADR-0013-GOVERNED-PGVECTOR-RETRIEVAL|ADR-0013 - Governed pgvector retrieval]]
+- [[Decisions/ADR-0014-PRIVATE-STIMULUS-ASSET-PIPELINE|ADR-0014 - Private stimulus asset pipeline]]
+- [[Decisions/ADR-0015-ASSET-BOUND-TECHNICAL-IMAGE-PROFILE|ADR-0015 - Asset-bound technical image profile]]
 
 ## Quality and operations
 

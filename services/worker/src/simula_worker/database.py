@@ -96,6 +96,15 @@ class WorkerExecutionGateway(Protocol):
         receipt: Mapping[str, object],
     ) -> bool: ...
 
+    async def complete_behavioral_execution(
+        self,
+        run_id: UUID,
+        attempt_id: UUID,
+        lease_token: UUID,
+        canonical_artifact: bytes,
+        receipt: Mapping[str, object],
+    ) -> bool: ...
+
     async def fail_execution(
         self,
         run_id: UUID,
@@ -113,6 +122,8 @@ class WorkerDatabase(WorkerExecutionGateway):
         self, settings: WorkerSettings, *, telemetry: WorkerTelemetry | None = None
     ) -> None:
         self._telemetry = telemetry
+        self._queue_transport = settings.queue_transport
+        self._migration_head = settings.migration_head
         self._pool = AsyncConnectionPool(
             conninfo=settings.database_url,
             min_size=1,
@@ -134,15 +145,36 @@ class WorkerDatabase(WorkerExecutionGateway):
         try:
             async with self._pool.connection(timeout=2.0) as connection:
                 async with connection.transaction():
-                    cursor = await connection.execute("select 1 as ready")
+                    cursor = await connection.execute(
+                        "select private.require_queue_transport(%s) as ready",
+                        (self._queue_transport,),
+                    )
                     row = await cursor.fetchone()
-            ready = row is not None and cast(DatabaseRow, row)["ready"] == 1
+                    schema_cursor = await connection.execute(
+                        "select * from private.runtime_schema_readiness()"
+                    )
+                    schema = await schema_cursor.fetchone()
+            ready = (
+                row is not None
+                and cast(DatabaseRow, row)["ready"] is True
+                and schema is not None
+                and str(cast(DatabaseRow, schema)["migration_version"]) == self._migration_head
+                and cast(DatabaseRow, schema)["rls_force_enabled"] is True
+            )
             outcome = "success" if ready else "error"
             return ready
-        except PoolTimeout, psycopg.Error:
+        except KeyError, TypeError, ValueError, PoolTimeout, psycopg.Error:
             return False
         finally:
             self._observe_database("readiness", outcome, started_at)
+
+    async def require_queue_transport(self, requested_transport: Literal["arq", "bullmq"]) -> None:
+        row = await self._fetchone(
+            "select private.require_queue_transport(%s) as active",
+            (requested_transport,),
+        )
+        if row["active"] is not True:
+            raise RuntimeError("worker queue transport is not active")
 
     async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
         row = await self._fetchone(
@@ -234,6 +266,25 @@ class WorkerDatabase(WorkerExecutionGateway):
             "select * from private.claim_run_execution_traced(%s, %s, %s)",
             (run_id, generation, job_id),
         )
+        return self._execution_claim(row)
+
+    async def claim_execution_v2(
+        self, run_id: UUID, generation: int, job_id: str
+    ) -> ExecutionClaim:
+        row = await self._fetchone(
+            "select * from private.claim_run_execution_v2_traced(%s, %s, %s)",
+            (run_id, generation, job_id),
+        )
+        return self._execution_claim(row)
+
+    async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:
+        return await self._boolean_function(
+            "select private.heartbeat_run_execution(%s, %s, %s) as changed",
+            (run_id, attempt_id, lease_token),
+        )
+
+    @staticmethod
+    def _execution_claim(row: DatabaseRow) -> ExecutionClaim:
         manifest = row["frozen_manifest"]
         return ExecutionClaim(
             status=cast(str, row["claim_status"]),
@@ -248,12 +299,6 @@ class WorkerDatabase(WorkerExecutionGateway):
             else None,
             correlation_id=cast(UUID | None, row["correlation_id"]),
             traceparent=cast(str | None, row["traceparent"]),
-        )
-
-    async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:
-        return await self._boolean_function(
-            "select private.heartbeat_run_execution(%s, %s, %s) as changed",
-            (run_id, attempt_id, lease_token),
         )
 
     async def complete_execution(
@@ -271,6 +316,25 @@ class WorkerDatabase(WorkerExecutionGateway):
                 attempt_id,
                 lease_token,
                 Jsonb(dict(artifact)),
+                Jsonb(dict(receipt)),
+            ),
+        )
+
+    async def complete_behavioral_execution(
+        self,
+        run_id: UUID,
+        attempt_id: UUID,
+        lease_token: UUID,
+        canonical_artifact: bytes,
+        receipt: Mapping[str, object],
+    ) -> bool:
+        return await self._boolean_function(
+            ("select private.complete_behavioral_run_execution(%s, %s, %s, %s, %s) as changed"),
+            (
+                run_id,
+                attempt_id,
+                lease_token,
+                canonical_artifact,
                 Jsonb(dict(receipt)),
             ),
         )
@@ -334,6 +398,8 @@ class WorkerDatabase(WorkerExecutionGateway):
         operations = {
             "claim_due_run_outbox": "claim_dispatch",
             "claim_run_execution_traced": "claim_execution",
+            "claim_run_execution_v2_traced": "claim_execution",
+            "complete_behavioral_run_execution": "complete_behavioral_execution",
             "complete_run_execution": "complete_execution",
             "confirm_run_dispatch": "confirm_dispatch",
             "evaluate_run_creation_control": "evaluate_run_control",
@@ -343,6 +409,7 @@ class WorkerDatabase(WorkerExecutionGateway):
             "finalize_poisoned_dispatches": "finalize_poison",
             "heartbeat_run_execution": "heartbeat_execution",
             "reconcile_run_dispatch": "reconcile_dispatch",
+            "require_queue_transport": "require_queue_transport",
             "runtime_observability_snapshot": "runtime_snapshot",
         }
         matches = [operation for marker, operation in operations.items() if marker in query]
