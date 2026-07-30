@@ -4,6 +4,8 @@
 
 set role postgres;
 
+set role simula_worker_owner;
+
 grant delete on table api.behavioral_run_results to simula_worker_owner;
 
 do $verify_behavioral_result_delete$

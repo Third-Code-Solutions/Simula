@@ -383,6 +383,21 @@ def test_behavioral_demo_patch_runs_as_hosted_object_owners() -> None:
     )
 
 
+def test_behavioral_result_delete_grant_runs_as_table_owner() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260730170000_fix_behavioral_run_delete_cascade.sql"
+    ).read_text(encoding="utf-8")
+
+    owner_role = migration.index("set role simula_worker_owner;")
+    delete_grant = migration.index(
+        "grant delete on table api.behavioral_run_results to simula_worker_owner;"
+    )
+    verification = migration.index("do $verify_behavioral_result_delete$", delete_grant)
+    postgres_role = migration.index("set role postgres;", verification)
+
+    assert owner_role < delete_grant < verification < postgres_role
+
+
 def test_queue_transport_seed_precedes_forced_row_level_security() -> None:
     migration = (
         ROOT / "supabase" / "migrations" / "20260730190000_m3_queue_transport_fence.sql"
