@@ -2,6 +2,12 @@
 -- Object bytes remain in the private bucket and are reachable only through
 -- the authenticated API storage port.
 
+set role postgres;
+
+grant select, update
+on table api.stimulus_assets
+to postgres;
+
 alter table api.stimulus_assets
   add column expected_byte_size integer,
   add column expected_content_sha256 text;
@@ -732,3 +738,8 @@ to simula_api;
 revoke all on all sequences in schema api, private
 from public, anon, authenticated, simula_api, simula_worker,
   simula_command_owner, simula_worker_owner;
+
+revoke select, update
+on table api.stimulus_assets
+from postgres;
+set role postgres;

@@ -248,6 +248,25 @@ def test_context_search_comment_runs_as_function_owner() -> None:
     assert owner_role < function_comment < postgres_role
 
 
+def test_stimulus_asset_backfill_scopes_migration_table_access() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260729151639_m6_private_stimulus_asset_pipeline.sql"
+    ).read_text(encoding="utf-8")
+    grant = """grant select, update
+on table api.stimulus_assets
+to postgres;"""
+    revoke = """revoke select, update
+on table api.stimulus_assets
+from postgres;"""
+    backfill = "update api.stimulus_assets"
+
+    assert migration.count(grant) == 1
+    assert migration.count(revoke) == 1
+    assert migration.index(grant) < migration.index(backfill)
+    assert migration.rindex(revoke) > migration.rindex(backfill)
+    assert migration.rstrip().endswith("set role postgres;")
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"
