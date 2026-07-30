@@ -110,6 +110,22 @@ def test_release_workflow_fails_closed_and_verifies_sigstore_provenance() -> Non
     assert "workflow_dispatch" not in workflow
 
 
+def test_behavioral_artifact_migration_scopes_owner_handoff_to_both_schemas() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260729094522_behavioral_engine_artifacts.sql"
+    ).read_text(encoding="utf-8")
+
+    grant = "grant create on schema api, private to simula_worker_owner;"
+    revoke = "revoke create on schema api, private from simula_worker_owner;"
+
+    assert grant in migration
+    assert revoke in migration
+    assert migration.index(grant) < migration.index(
+        "alter table api.behavioral_run_results owner to simula_worker_owner;"
+    )
+    assert migration.index(revoke) > migration.index("set role simula_worker_owner;")
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"

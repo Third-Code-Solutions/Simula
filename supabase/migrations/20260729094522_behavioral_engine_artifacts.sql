@@ -3,7 +3,7 @@
 
 set role postgres;
 
-grant create on schema private to simula_worker_owner;
+grant create on schema api, private to simula_worker_owner;
 
 create table api.behavioral_run_results (
   id uuid primary key default pg_catalog.gen_random_uuid(),
@@ -686,7 +686,7 @@ grant execute on function private.complete_behavioral_run_execution(
 to simula_worker;
 
 set role postgres;
-revoke create on schema private from simula_worker_owner;
+revoke create on schema api, private from simula_worker_owner;
 reset role;
 
 -- Public admission for the visibly synthetic, zero-cost behavioral demo only.
