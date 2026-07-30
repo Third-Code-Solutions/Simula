@@ -110,15 +110,24 @@ jobs:
           sha256sum "release/simula-${GITHUB_SHA}.tar.gz" \
             | sed 's#release/##' > release/SHA256SUMS
 
-      - name: Sign and verify release provenance
-        uses: sigstore/gh-action-sigstore-python@f832326173235dcb00dd5d92cd3f353de3188e6c # v3.1.0
+      - name: Install exact Cosign
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
-          inputs: release/simula-${{ github.sha }}.tar.gz
-          release-signing-artifacts: false
-          upload-signing-artifacts: false
-          verify: true
-          verify-cert-identity: https://github.com/${{ github.workflow_ref }}
-          verify-oidc-issuer: https://token.actions.githubusercontent.com
+          cosign-release: v3.0.6
+
+      - name: Sign and verify release provenance
+        run: |
+          set -euo pipefail
+          artifact="release/simula-${GITHUB_SHA}.tar.gz"
+          bundle="${artifact}.sigstore.json"
+          identity="https://github.com/${GITHUB_WORKFLOW_REF}"
+          cosign sign-blob --yes --bundle "$bundle" "$artifact"
+          cosign verify-blob \
+            --bundle "$bundle" \
+            --certificate-identity "$identity" \
+            --certificate-oidc-issuer \
+              https://token.actions.githubusercontent.com \
+            "$artifact"
 
       - name: Bind the Sigstore verification bundle
         run: |
