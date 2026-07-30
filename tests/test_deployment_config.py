@@ -90,17 +90,21 @@ def test_release_workflow_fails_closed_and_verifies_sigstore_provenance() -> Non
     workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
     assert "id-token: write" in workflow
-    assert "sigstore/gh-action-sigstore-python@f832326173235dcb00dd5d92cd3f353de3188e6c" in workflow
-    assert "verify-cert-identity: https://github.com/${{ github.workflow_ref }}" in workflow
-    assert "verify-oidc-issuer: https://token.actions.githubusercontent.com" in workflow
+    assert "sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6" in workflow
+    assert "cosign-release: v3.0.6" in workflow
+    assert 'identity="https://github.com/${GITHUB_WORKFLOW_REF}"' in workflow
+    assert "cosign sign-blob --yes --bundle" in workflow
+    assert "cosign verify-blob" in workflow
+    assert '--certificate-identity "$identity"' in workflow
+    assert "--certificate-oidc-issuer" in workflow
+    assert "https://token.actions.githubusercontent.com" in workflow
     assert "release/simula-${GITHUB_SHA}.tar.gz.sigstore.json" in workflow
     assert "release/SIGSTORE_BUNDLE_SHA256" in workflow
-    assert "release-signing-artifacts: false" in workflow
-    assert "upload-signing-artifacts: false" in workflow
+    assert "sigstore/gh-action-sigstore-python@" not in workflow
     assert "attestations: write" not in workflow
     assert "contents: write" not in workflow
     assert "--pax-option=delete=atime,delete=ctime" in workflow
-    assert workflow.index("verify: true") < workflow.index("actions/upload-artifact@")
+    assert workflow.index("cosign verify-blob") < workflow.index("actions/upload-artifact@")
     assert "persist-credentials: false" in workflow
     assert "pull_request_target" not in workflow
     assert "workflow_dispatch" not in workflow
