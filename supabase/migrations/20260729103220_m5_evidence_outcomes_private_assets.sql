@@ -573,7 +573,7 @@ revoke all on table
   api.observed_outcome_values,
   api.stimulus_assets
 from public, anon, authenticated, simula_api, simula_worker,
-  simula_command_owner, simula_worker_owner, postgres;
+  simula_command_owner, simula_worker_owner;
 
 grant select on table
   api.evidence_sources,
@@ -685,6 +685,14 @@ on conflict (id) do update
 set public = false,
     file_size_limit = excluded.file_size_limit,
     allowed_mime_types = excluded.allowed_mime_types;
+
+revoke all on table
+  api.evidence_sources,
+  api.evidence_source_versions,
+  api.observed_outcome_sets,
+  api.observed_outcome_values,
+  api.stimulus_assets
+from postgres;
 
 revoke all on function private.enforce_evidence_source_version_scope()
 from public, anon, authenticated, simula_api, simula_worker,

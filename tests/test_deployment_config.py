@@ -169,6 +169,23 @@ from postgres;"""
         assert migration.rstrip().endswith("set role postgres;"), filename
 
 
+def test_evidence_fixture_precedes_postgres_privilege_revoke() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260729103220_m5_evidence_outcomes_private_assets.sql"
+    ).read_text(encoding="utf-8")
+    postgres_revoke = """revoke all on table
+  api.evidence_sources,
+  api.evidence_source_versions,
+  api.observed_outcome_sets,
+  api.observed_outcome_values,
+  api.stimulus_assets
+from postgres;"""
+
+    assert migration.count(postgres_revoke) == 1
+    assert migration.index("with fixture as (") < migration.index(postgres_revoke)
+    assert migration.index("insert into storage.buckets (") < migration.index(postgres_revoke)
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"
