@@ -677,6 +677,7 @@ $function$;
 set role postgres;
 revoke create on schema api, private from simula_command_owner;
 
+set role simula_command_owner;
 revoke all on function private.create_stimulus_asset_atomic(
   uuid, text, text, integer, text, timestamptz, text, text, uuid
 ) from public, anon, authenticated, simula_api, simula_worker,
@@ -735,6 +736,7 @@ grant execute on function private.confirm_stimulus_asset_deletion_atomic(
 grant execute on function api.confirm_stimulus_asset_deletion(uuid, uuid)
 to simula_api;
 
+set role postgres;
 revoke all on all sequences in schema api, private
 from public, anon, authenticated, simula_api, simula_worker,
   simula_command_owner, simula_worker_owner;

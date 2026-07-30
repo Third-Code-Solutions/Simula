@@ -267,6 +267,25 @@ from postgres;"""
     assert migration.rstrip().endswith("set role postgres;")
 
 
+def test_stimulus_asset_function_acl_changes_run_as_function_owner() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260729151639_m6_private_stimulus_asset_pipeline.sql"
+    ).read_text(encoding="utf-8")
+    owner_role = migration.index(
+        "set role simula_command_owner;",
+        migration.index("revoke create on schema api, private from simula_command_owner;"),
+    )
+    first_function_revoke = migration.index(
+        "revoke all on function private.create_stimulus_asset_atomic("
+    )
+    final_function_grant = migration.index(
+        "grant execute on function api.confirm_stimulus_asset_deletion(uuid, uuid)"
+    )
+    postgres_role = migration.index("set role postgres;", final_function_grant)
+
+    assert owner_role < first_function_revoke < final_function_grant < postgres_role
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"
