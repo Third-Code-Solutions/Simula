@@ -3,6 +3,8 @@
 -- The request row survives organization deletion. It is the durable resume
 -- point between PostgreSQL, private object storage, BullMQ, and Redis cleanup.
 
+set role postgres;
+
 create table private.organization_deletion_requests (
   id uuid primary key default pg_catalog.gen_random_uuid(),
   organization_id uuid not null unique,
@@ -482,9 +484,10 @@ as $function$
   )
 $function$;
 
-reset role;
+set role postgres;
 revoke create on schema api, private from simula_command_owner;
 
+set role simula_command_owner;
 revoke all on function private.request_organization_deletion_atomic(
   uuid, text, text, text, uuid
 ) from public, anon, authenticated, simula_api, simula_worker,
@@ -511,6 +514,7 @@ to simula_api;
 grant execute on function api.confirm_organization_deletion(uuid, uuid)
 to simula_api;
 
+set role postgres;
 revoke all on table private.organization_deletion_requests
 from public, anon, authenticated, simula_api, simula_worker,
   simula_worker_owner;

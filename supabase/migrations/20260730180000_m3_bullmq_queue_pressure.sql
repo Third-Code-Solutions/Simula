@@ -142,7 +142,7 @@ from public, anon, authenticated, simula_api, simula_worker,
 
 set role postgres;
 revoke create on schema private from simula_worker_owner;
-reset role;
+set role postgres;
 
 -- Supabase records migration history in the same session after this script.
 set role postgres;

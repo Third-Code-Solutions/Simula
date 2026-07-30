@@ -92,7 +92,7 @@ to simula_worker_owner;
 grant update (event_id) on table private.behavioral_action_events
 to simula_worker_owner;
 
-reset role;
+set role postgres;
 
 -- Supabase records migration history in the same session after this script.
 set role postgres;

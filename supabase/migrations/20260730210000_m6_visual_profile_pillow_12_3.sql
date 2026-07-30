@@ -1,6 +1,8 @@
 -- Preserve historical Pillow 12.1.0 profiles while making all new technical
 -- image profiles truthfully identify the installed Pillow 12.3.0 runtime.
 
+set role postgres;
+
 alter table api.stimulus_visual_profiles
   drop constraint stimulus_visual_profiles_model_id_check;
 
@@ -224,7 +226,7 @@ begin
 end
 $function$;
 
-reset role;
+set role postgres;
 revoke create on schema private from simula_command_owner;
 
 -- Supabase records migration history in the same session after this script.

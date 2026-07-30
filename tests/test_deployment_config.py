@@ -286,6 +286,74 @@ def test_stimulus_asset_function_acl_changes_run_as_function_owner() -> None:
     assert owner_role < first_function_revoke < final_function_grant < postgres_role
 
 
+def test_production_tail_migrations_do_not_reset_to_the_cli_login_role() -> None:
+    for migration_path in sorted(
+        (ROOT / "supabase" / "migrations").glob("20260730*.sql")
+    ):
+        migration = migration_path.read_text(encoding="utf-8")
+
+        assert "reset role;" not in migration, migration_path.name
+        assert migration.lstrip().startswith(
+            ("--", "set role postgres;")
+        ), migration_path.name
+        assert "set role postgres;" in migration[:500], migration_path.name
+        assert migration.rstrip().endswith("set role postgres;"), migration_path.name
+
+
+def test_production_tail_acl_changes_run_as_object_owners() -> None:
+    expectations = {
+        "20260730123000_m6_visual_stimulus_profiles.sql": (
+            "revoke create on schema api, private from simula_command_owner;",
+            "revoke all on function private.create_stimulus_visual_profile_atomic(",
+            "revoke references (id)",
+        ),
+        "20260730200000_m2_organization_deletion_orchestration.sql": (
+            "revoke create on schema api, private from simula_command_owner;",
+            "revoke all on function private.request_organization_deletion_atomic(",
+            "revoke all on table private.organization_deletion_requests",
+        ),
+        "20260730220000_m2_organization_deletion_recovery.sql": (
+            "revoke create on schema private from simula_command_owner;",
+            "revoke all on function private.seed_organization_deletion_resources()",
+            "revoke all on all sequences in schema api, private",
+        ),
+    }
+
+    for filename, (schema_acl, function_acl, postgres_cleanup) in expectations.items():
+        migration = (
+            ROOT / "supabase" / "migrations" / filename
+        ).read_text(encoding="utf-8")
+        schema_acl_position = migration.index(schema_acl)
+        owner_role_position = migration.index(
+            "set role simula_command_owner;", schema_acl_position
+        )
+        function_acl_position = migration.index(function_acl, owner_role_position)
+        postgres_role_position = migration.index(
+            "set role postgres;", function_acl_position
+        )
+        cleanup_position = migration.index(postgres_cleanup, postgres_role_position)
+
+        assert (
+            schema_acl_position
+            < owner_role_position
+            < function_acl_position
+            < postgres_role_position
+            < cleanup_position
+        ), filename
+
+
+def test_queue_transport_seed_precedes_forced_row_level_security() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260730190000_m3_queue_transport_fence.sql"
+    ).read_text(encoding="utf-8")
+
+    assert migration.index(
+        "insert into private.queue_transport_control"
+    ) < migration.index(
+        "alter table private.queue_transport_control force row level security"
+    )
+
+
 def test_rollback_runbook_prevents_dual_execution_and_down_migrations() -> None:
     runbook = (ROOT / "brain" / "Operations" / "STAGED_ROLLOUT_AND_ROLLBACK.md").read_text(
         encoding="utf-8"

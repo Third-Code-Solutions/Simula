@@ -371,10 +371,11 @@ for each row
 when (old.status is distinct from new.status)
 execute function private.purge_stimulus_visual_profile_on_asset_retirement();
 
-reset role;
+set role postgres;
 revoke create on schema api, private from simula_command_owner;
 revoke trigger on table api.stimulus_assets from simula_command_owner;
 
+set role simula_command_owner;
 revoke all on function private.create_stimulus_visual_profile_atomic(
   uuid, uuid, jsonb, text, text, uuid
 ) from public, anon, authenticated;
@@ -391,6 +392,7 @@ grant execute on function api.create_stimulus_visual_profile(
   uuid, uuid, jsonb, text, text, uuid
 ) to simula_api;
 
+set role postgres;
 -- Supabase records migration history in the same session after this script.
 set role postgres;
 revoke references (id)

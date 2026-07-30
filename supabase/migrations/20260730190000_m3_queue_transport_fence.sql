@@ -20,9 +20,6 @@ create table private.queue_transport_control (
   )
 );
 
-alter table private.queue_transport_control enable row level security;
-alter table private.queue_transport_control force row level security;
-
 insert into private.queue_transport_control (
   singleton,
   active_transport,
@@ -32,6 +29,9 @@ insert into private.queue_transport_control (
   'arq',
   '00000000-0000-4000-8000-000000000001'::uuid
 );
+
+alter table private.queue_transport_control enable row level security;
+alter table private.queue_transport_control force row level security;
 
 create policy queue_transport_control_worker_owner_select
 on private.queue_transport_control
@@ -554,7 +554,7 @@ begin
 end
 $least_privilege$;
 
-reset role;
+set role postgres;
 
 -- Supabase records migration history in the same session after this script.
 set role postgres;

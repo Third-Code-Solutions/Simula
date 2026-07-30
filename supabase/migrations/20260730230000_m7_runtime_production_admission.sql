@@ -64,3 +64,4 @@ grant execute on function private.runtime_schema_readiness()
 
 set role postgres;
 revoke create on schema private from simula_worker_owner;
+set role postgres;

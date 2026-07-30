@@ -568,7 +568,7 @@ begin
 end
 $function$;
 
-reset role;
+set role postgres;
 revoke create on schema private from simula_command_owner;
 revoke trigger on table private.organization_deletion_requests
 from simula_command_owner;
@@ -628,6 +628,7 @@ revoke all on table private.organization_deletion_resources
 from public, anon, authenticated, simula_api, simula_worker,
   simula_worker_owner;
 
+set role simula_command_owner;
 revoke all on function private.seed_organization_deletion_resources()
 from public, anon, authenticated, simula_api, simula_worker,
   simula_worker_owner, postgres;
@@ -660,6 +661,7 @@ grant execute on function private.release_organization_deletion_resource(
 grant execute on function private.finalize_ready_organization_deletions(integer)
 to simula_worker;
 
+set role postgres;
 revoke all on all sequences in schema api, private
 from public, anon, authenticated, simula_api, simula_worker,
   simula_command_owner, simula_worker_owner;
