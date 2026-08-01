@@ -7,4 +7,7 @@ set role postgres;
 grant update
 on table api.stimulus_assets
 to simula_command_owner;
+grant references
+on table api.stimulus_assets
+to simula_command_owner;
 set role postgres;
