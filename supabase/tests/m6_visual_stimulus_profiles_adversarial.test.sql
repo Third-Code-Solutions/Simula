@@ -7,7 +7,6 @@ select extensions.plan(14);
 grant usage on schema extensions to simula_api;
 grant execute on all functions in schema extensions to simula_api;
 
-set role postgres;
 grant insert on table api.stimulus_assets to postgres;
 
 create function pg_temp.visual_profile_payload(
