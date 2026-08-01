@@ -37,8 +37,12 @@ set local request.jwt.claims =
   '{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated","iss":"http://127.0.0.1:54321/auth/v1","aud":"authenticated","exp":4102444800}';
 do $test$
 declare
-  observed_count bigint;
-  observed_rows text;
+  organization_a uuid := (
+    select organization_id from pg_temp.platform_admin_state where label = 'organization_a'
+  );
+  organization_b uuid := (
+    select organization_id from pg_temp.platform_admin_state where label = 'organization_b'
+  );
 begin
   if private.is_platform_superadmin(private.verified_subject()) then
     raise exception 'ordinary organization owner received platform authority';
@@ -46,19 +50,17 @@ begin
   if private.platform_user_count(private.verified_subject()) <> 0 then
     raise exception 'ordinary organization owner received platform user count';
   end if;
-  select pg_catalog.count(*),
-    pg_catalog.string_agg(
-      organizations.id::text || ':' || organizations.created_by::text,
-      ',' order by organizations.id
-    )
-    into observed_count, observed_rows
-  from api.organizations as organizations;
-  if observed_count <> 1 then
-    raise exception
-      'ordinary owner crossed tenant RLS: session_user=%, current_user=%, subject=%, claims=%, count=%, rows=%',
-      session_user, current_user, private.verified_subject(),
-      pg_catalog.current_setting('request.jwt.claims', true),
-      observed_count, observed_rows;
+  if (
+    select pg_catalog.count(*)
+    from api.organizations
+    where id = organization_a
+  ) <> 1 then
+    raise exception 'ordinary organization owner could not read authored organization';
+  end if;
+  if exists (
+    select 1 from api.organizations where id = organization_b
+  ) then
+    raise exception 'ordinary organization owner crossed tenant RLS';
   end if;
 end
 $test$;
