@@ -59,6 +59,18 @@ def main() -> None:
                 "--config.engine-strict=false",
                 "--filter",
                 "@simula/api",
+                "build",
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        subprocess.run(  # noqa: S603 - resolved toolchain binary; fixed workspace command.
+            [
+                corepack,
+                "pnpm@11.13.1",
+                "--config.engine-strict=false",
+                "--filter",
+                "@simula/api",
                 "openapi:check",
             ],
             cwd=ROOT,
