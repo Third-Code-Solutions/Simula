@@ -13,7 +13,7 @@ to simula_command_owner;
 grant references
 on table api.stimulus_assets
 to simula_api;
-grant update (id)
+grant update
 on table api.stimulus_assets
 to simula_api;
 set role postgres;

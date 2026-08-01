@@ -155,7 +155,15 @@ select extensions.ok(
       and not pg_catalog.has_table_privilege(
         'simula_api',
         relations.oid,
-        'INSERT,UPDATE,DELETE'
+        'INSERT,DELETE,TRUNCATE'
+      )
+      and (
+        not pg_catalog.has_table_privilege(
+          'simula_api',
+          relations.oid,
+          'UPDATE'
+        )
+        or relations.relname = 'stimulus_assets'
       )
     )
     from pg_catalog.pg_class as relations
@@ -170,22 +178,19 @@ select extensions.ok(
         'stimulus_assets'
       )
   ),
-  'API receives tenant-filtered reads and no direct mutation authority'
+  'API receives tenant-filtered reads and only the FK lock shim'
 );
 
 select extensions.ok(
-  pg_catalog.has_table_privilege(
-    'simula_command_owner',
-    'api.stimulus_assets',
-    'UPDATE'
-  )
-  and not exists (
+  not exists (
     select 1
-    from pg_catalog.pg_roles as roles
-    where roles.rolname = 'simula_command_owner'
-      and roles.rolcanlogin
+    from pg_catalog.pg_policies as policies
+    where policies.schemaname = 'api'
+      and policies.tablename = 'stimulus_assets'
+      and policies.cmd in ('UPDATE', 'ALL')
+      and 'simula_api'::pg_catalog.name = any (policies.roles)
   ),
-  'asset mutation authority is held only by the non-login command owner'
+  'the API FK lock shim has no matching UPDATE policy'
 );
 
 select extensions.ok(

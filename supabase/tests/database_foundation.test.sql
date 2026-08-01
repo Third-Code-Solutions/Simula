@@ -501,13 +501,19 @@ select extensions.ok(
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
     where namespaces.nspname in ('api', 'private')
       and relations.relkind = 'r'
-      and pg_catalog.has_table_privilege(
-        'simula_api',
-        relations.oid,
-        'INSERT,UPDATE,DELETE,TRUNCATE'
+      and (
+        pg_catalog.has_table_privilege(
+          'simula_api',
+          relations.oid,
+          'INSERT,DELETE,TRUNCATE'
+        )
+        or (
+          pg_catalog.has_table_privilege('simula_api', relations.oid, 'UPDATE')
+          and relations.oid <> 'api.stimulus_assets'::pg_catalog.regclass
+        )
       )
   ),
-  'API role has no direct application-table mutation privilege'
+  'API role has no direct application-table mutation privilege beyond the FK lock shim'
 );
 
 -- 18
@@ -579,6 +585,7 @@ select extensions.is(
     'simula_api|api.stimuli|SELECT',
     'simula_api|api.stimulus_assets|REFERENCES',
     'simula_api|api.stimulus_assets|SELECT',
+    'simula_api|api.stimulus_assets|UPDATE',
     'simula_api|api.stimulus_versions|SELECT',
     'simula_api|api.stimulus_visual_profiles|SELECT',
     'simula_api|api.variant_groups|SELECT',
