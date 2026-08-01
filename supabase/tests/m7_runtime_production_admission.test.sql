@@ -73,7 +73,7 @@ select extensions.ok(
 select extensions.ok(
   pg_catalog.pg_get_functiondef(
     'private.runtime_schema_readiness()'::pg_catalog.regprocedure
-  ) like '%20260730230000::bigint%',
+  ) like '%20260801135222::bigint%',
   'schema readiness reports the exact repository migration head'
 );
 
@@ -87,10 +87,10 @@ select extensions.ok(
 select extensions.ok(
   pg_catalog.pg_get_functiondef(
     'private.runtime_observability_snapshot()'::pg_catalog.regprocedure
-  ) like '%20260730230000::bigint%'
+  ) like '%20260801135222::bigint%'
   and pg_catalog.pg_get_functiondef(
     'private.runtime_observability_snapshot()'::pg_catalog.regprocedure
-  ) not like '%20260720072350::bigint%',
+  ) not like '%20260730230000::bigint%',
   'runtime metrics report the same exact migration head'
 );
 

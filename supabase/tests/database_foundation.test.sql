@@ -35,6 +35,8 @@ select extensions.is(
     'api.behavioral_report_evidence',
     'api.behavioral_round_summaries',
     'api.behavioral_run_results',
+    'api.campaign_evidence_events',
+    'api.campaign_evidence_runs',
     'api.context_graph_versions',
     'api.evaluation_runs',
     'api.evidence_source_versions',
@@ -70,6 +72,7 @@ select extensions.is(
     'private.behavioral_agent_memories',
     'private.behavioral_provider_receipts',
     'private.behavioral_result_payloads',
+    'private.campaign_evidence_secrets',
     'private.context_node_embeddings',
     'private.embedding_model_versions',
     'private.idempotency_keys',
@@ -125,6 +128,8 @@ select extensions.is(
     'audiences_api_select',
     'audiences_command_phase4_insert',
     'audiences_command_select',
+    'audit_events_campaign_evidence_insert',
+    'audit_events_campaign_evidence_worker_insert',
     'audit_events_command_cancel_insert',
     'audit_events_command_insert',
     'audit_events_command_phase4_insert',
@@ -171,6 +176,18 @@ select extensions.is(
     'behavioral_run_results_command_select',
     'behavioral_run_results_worker_owner_insert',
     'behavioral_run_results_worker_owner_select',
+    'campaign_evidence_events_api_select',
+    'campaign_evidence_events_worker_insert',
+    'campaign_evidence_runs_api_select',
+    'campaign_evidence_runs_command_insert',
+    'campaign_evidence_runs_command_select',
+    'campaign_evidence_runs_command_update',
+    'campaign_evidence_runs_worker_delete',
+    'campaign_evidence_runs_worker_select',
+    'campaign_evidence_runs_worker_update',
+    'campaign_evidence_secrets_command_insert',
+    'campaign_evidence_secrets_worker_delete',
+    'campaign_evidence_secrets_worker_select',
     'context_graph_versions_api_select',
     'context_graph_versions_command_owner_select',
     'context_graph_versions_worker_owner_insert',
@@ -458,7 +475,7 @@ select extensions.ok(
 -- 16
 select extensions.ok(
   (
-    select pg_catalog.count(*) = 40
+    select pg_catalog.count(*) = 42
     from pg_catalog.pg_class as relations
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
     where namespaces.nspname = 'api'
@@ -473,7 +490,7 @@ select extensions.ok(
       and relations.relkind = 'r'
       and pg_catalog.has_table_privilege('simula_api', relations.oid, 'SELECT')
   ),
-  'API role reads exactly the forty named API tables'
+  'API role reads exactly the forty-two named API tables'
 );
 
 -- 17
@@ -534,6 +551,8 @@ select extensions.is(
     'simula_api|api.behavioral_report_evidence|SELECT',
     'simula_api|api.behavioral_round_summaries|SELECT',
     'simula_api|api.behavioral_run_results|SELECT',
+    'simula_api|api.campaign_evidence_events|SELECT',
+    'simula_api|api.campaign_evidence_runs|SELECT',
     'simula_api|api.context_graph_versions|SELECT',
     'simula_api|api.evaluation_runs|SELECT',
     'simula_api|api.evidence_source_versions|SELECT',
@@ -576,6 +595,11 @@ select extensions.is(
     'simula_command_owner|api.behavioral_evaluation_runs|INSERT',
     'simula_command_owner|api.behavioral_evaluation_runs|SELECT',
     'simula_command_owner|api.behavioral_run_results|SELECT',
+    'simula_command_owner|api.campaign_evidence_events|INSERT',
+    'simula_command_owner|api.campaign_evidence_events|SELECT',
+    'simula_command_owner|api.campaign_evidence_runs|INSERT',
+    'simula_command_owner|api.campaign_evidence_runs|SELECT',
+    'simula_command_owner|api.campaign_evidence_runs|UPDATE',
     'simula_command_owner|api.context_graph_versions|SELECT',
     'simula_command_owner|api.evaluation_runs|SELECT',
     'simula_command_owner|api.evidence_source_versions|INSERT',
@@ -636,6 +660,7 @@ select extensions.is(
     'simula_command_owner|api.variant_members|SELECT',
     'simula_command_owner|private.audit_events|INSERT',
     'simula_command_owner|private.audit_events|SELECT',
+    'simula_command_owner|private.campaign_evidence_secrets|INSERT',
     'simula_command_owner|private.context_node_embeddings|SELECT',
     'simula_command_owner|private.embedding_model_versions|SELECT',
     'simula_command_owner|private.idempotency_keys|INSERT',
@@ -667,6 +692,10 @@ select extensions.is(
     'simula_worker_owner|api.behavioral_run_results|DELETE',
     'simula_worker_owner|api.behavioral_run_results|INSERT',
     'simula_worker_owner|api.behavioral_run_results|SELECT',
+    'simula_worker_owner|api.campaign_evidence_events|INSERT',
+    'simula_worker_owner|api.campaign_evidence_runs|DELETE',
+    'simula_worker_owner|api.campaign_evidence_runs|SELECT',
+    'simula_worker_owner|api.campaign_evidence_runs|UPDATE',
     'simula_worker_owner|api.context_graph_versions|INSERT',
     'simula_worker_owner|api.context_graph_versions|SELECT',
     'simula_worker_owner|api.organizations|SELECT',
@@ -695,6 +724,8 @@ select extensions.is(
     'simula_worker_owner|private.behavioral_result_payloads|TRIGGER',
     'simula_worker_owner|private.behavioral_result_payloads|TRUNCATE',
     'simula_worker_owner|private.behavioral_result_payloads|UPDATE',
+    'simula_worker_owner|private.campaign_evidence_secrets|DELETE',
+    'simula_worker_owner|private.campaign_evidence_secrets|SELECT',
     'simula_worker_owner|private.context_node_embeddings|INSERT',
     'simula_worker_owner|private.context_node_embeddings|SELECT',
     'simula_worker_owner|private.embedding_model_versions|SELECT',
@@ -758,6 +789,7 @@ select extensions.ok(
     where namespaces.nspname in ('api', 'private')
       and pg_catalog.has_function_privilege('simula_worker', functions.oid, 'EXECUTE')
   ) = array[
+    'private.claim_campaign_evidence_runs(integer)',
     'private.claim_due_run_outbox(integer)',
     'private.claim_due_run_outbox_v2(integer)',
     'private.claim_organization_deletion_resources(integer)',
@@ -765,12 +797,16 @@ select extensions.ok(
     'private.claim_run_execution_traced(uuid,smallint,text)',
     'private.claim_run_execution_v2_traced(uuid,smallint,text)',
     'private.complete_behavioral_run_execution(uuid,uuid,uuid,bytea,jsonb)',
+    'private.complete_campaign_evidence_run(uuid,uuid,jsonb)',
     'private.complete_organization_deletion_resource(uuid,uuid)',
     'private.complete_run_execution(uuid,uuid,uuid,jsonb,jsonb)',
     'private.confirm_run_dispatch(uuid,uuid)',
     'private.evaluate_run_creation_control(numeric,integer)',
+    'private.expire_campaign_evidence_runs(integer)',
+    'private.fail_campaign_evidence_run(uuid,uuid,text,text,boolean)',
     'private.fail_run_dispatch(uuid,uuid,text)',
     'private.fail_run_execution(uuid,uuid,uuid,text,boolean)',
+    'private.finalize_canceled_campaign_evidence_run(uuid,uuid)',
     'private.finalize_poisoned_dispatches(integer)',
     'private.finalize_ready_organization_deletions(integer)',
     'private.finalize_requested_cancellations(integer)',
@@ -781,7 +817,8 @@ select extensions.ok(
     'private.runtime_observability_snapshot()',
     'private.runtime_schema_readiness()',
     'private.update_bullmq_run_pressure(integer,numeric,numeric)',
-    'private.upsert_context_node_embedding(uuid,text,text,text,extensions.vector)'
+    'private.update_campaign_evidence_progress(uuid,uuid,text,smallint,text)',
+    'private.upsert_context_node_embedding(uuid,text,text,text,vector)'
   ]::text[],
   'browser roles execute no application functions; worker has the exact helper allowlist'
 );
@@ -802,11 +839,13 @@ select extensions.is(
     'api.accept_organization_invitation(text,text,text,uuid)',
     'api.access_shared_report(text,uuid)',
     'api.append_stimulus_version(uuid,text,text,text,text,uuid)',
+    'api.cancel_campaign_evidence_run(uuid,uuid)',
     'api.confirm_organization_deletion(uuid,uuid)',
     'api.confirm_stimulus_asset_deletion(uuid,uuid)',
     'api.confirm_stimulus_asset_upload(uuid,integer,text,uuid)',
     'api.create_audience_definition(uuid,text,jsonb,text,text,text,uuid)',
     'api.create_behavioral_demo_run(uuid,uuid,text,text,text,uuid,text)',
+    'api.create_campaign_evidence_run(uuid,uuid,text,jsonb,jsonb,uuid,uuid,text,text,uuid)',
     'api.create_feedback_record(uuid,uuid,api.feedback_kind,timestamp with time zone,jsonb,jsonb,text,text,text,uuid)',
     'api.create_organization(text,text,text,uuid)',
     'api.create_organization_invitation(uuid,text,api.organization_role,text,timestamp with time zone,text,text,uuid)',
@@ -833,17 +872,19 @@ select extensions.is(
     'api.request_run_cancel(uuid,uuid)',
     'api.request_stimulus_asset_deletion(uuid,text,text,uuid)',
     'api.revoke_report_share_grant(uuid,text,text,uuid)',
-    'api.search_context_nodes(uuid,text,text,extensions.vector,integer,double precision)',
+    'api.search_context_nodes(uuid,text,text,vector,integer,double precision)',
     'api.set_feature_flag(uuid,text,boolean,text,text,text,uuid)',
     'api.update_project(uuid,integer,text,text,text,text,text,uuid)',
     'private.accept_organization_invitation_atomic(text,text,text,uuid)',
     'private.access_shared_report_atomic(text,uuid)',
     'private.append_stimulus_version_atomic(uuid,text,text,text,text,uuid)',
+    'private.cancel_campaign_evidence_run_atomic(uuid,uuid)',
     'private.confirm_organization_deletion_atomic(uuid,uuid)',
     'private.confirm_stimulus_asset_deletion_atomic(uuid,uuid)',
     'private.confirm_stimulus_asset_upload_atomic(uuid,integer,text,uuid)',
     'private.create_audience_definition_atomic(uuid,text,jsonb,text,text,text,uuid)',
     'private.create_behavioral_demo_run_atomic(uuid,uuid,text,text,text,uuid,text)',
+    'private.create_campaign_evidence_run_atomic(uuid,uuid,text,jsonb,jsonb,uuid,uuid,text,text,uuid)',
     'private.create_feedback_record_atomic(uuid,uuid,api.feedback_kind,timestamp with time zone,jsonb,jsonb,text,text,text,uuid)',
     'private.create_organization_atomic(text,text,text,uuid)',
     'private.create_organization_invitation_atomic(uuid,text,api.organization_role,text,timestamp with time zone,text,text,uuid)',
@@ -877,7 +918,7 @@ select extensions.is(
     'private.revoke_report_share_grant_atomic(uuid,text,text,uuid)',
     'private.runtime_observability_snapshot()',
     'private.runtime_schema_readiness()',
-    'private.search_context_nodes(uuid,text,text,extensions.vector,integer,double precision)',
+    'private.search_context_nodes(uuid,text,text,vector,integer,double precision)',
     'private.set_feature_flag_atomic(uuid,text,boolean,text,text,text,uuid)',
     'private.update_project_atomic(uuid,integer,text,text,text,text,text,uuid)',
     'private.verified_subject()'
@@ -1117,10 +1158,15 @@ select extensions.is(
     'behavioral_evaluation_runs_scope_guard',
     'behavioral_result_payload_normalize',
     'behavioral_result_payload_public_summary',
+    'campaign_evidence_outcome_project_scope_guard',
+    'campaign_evidence_runs_scope_guard',
     'evidence_source_versions_scope_guard',
     'observed_outcome_sets_rights_guard',
     'population_frame_versions_scope_guard',
+    'purge_completed_organization_deletion_resources',
     'purge_stimulus_visual_profile_on_asset_retirement',
+    'report_artifacts_campaign_evidence_guard',
+    'seed_organization_deletion_resources',
     'simulation_runs_audience_guard',
     'simulation_runs_global_backpressure_before_insert'
   ]::name[],
@@ -1153,6 +1199,11 @@ select extensions.is(
     'behavioral_result_payloads_result_foreign_key',
     'behavioral_round_summaries_run_foreign_key',
     'behavioral_run_results_run_foreign_key',
+    'campaign_evidence_events_run_foreign_key',
+    'campaign_evidence_runs_outcome_foreign_key',
+    'campaign_evidence_runs_project_foreign_key',
+    'campaign_evidence_runs_source_foreign_key',
+    'campaign_evidence_secrets_run_foreign_key',
     'context_graph_versions_run_foreign_key',
     'context_node_embeddings_graph_foreign_key',
     'evaluation_runs_configuration_foreign_key',

@@ -10,10 +10,13 @@ select extensions.has_table(
   'queue transport ownership is durable'
 );
 
-select extensions.row_security_is(
-  'private',
-  'queue_transport_control',
-  true,
+select extensions.ok(
+  (
+    select relations.relrowsecurity
+    from pg_catalog.pg_class as relations
+    where relations.oid =
+      'private.queue_transport_control'::pg_catalog.regclass
+  ),
   'queue transport control has RLS enabled'
 );
 

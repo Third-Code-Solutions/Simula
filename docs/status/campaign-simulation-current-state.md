@@ -31,7 +31,7 @@ classification: OBSERVED
   events, tenant-scoped RLS, lease/retry/cancel state, and worker audit hooks
   were added in migrations `20260801121240_campaign_lab_evidence_jobs`,
   `20260801124952_campaign_lab_evidence_cancel_finalize`, and
-  `20260801125632_campaign_lab_evidence_project_retention`, applied to Supabase
+  `20260801135222_campaign_lab_runtime_head`, applied to Supabase
   project `ywiwmczccktwzqyhzhiz`.
 - Authenticated NestJS v2 survey-calibration and historical-backtest commands,
   idempotency, status/events/cancel reads, OpenAPI, and a native Evidence Lab
@@ -39,7 +39,7 @@ classification: OBSERVED
   the deterministic core; held-out outcomes are never returned by the read API.
 - Project-scoped outcome references, per-run `retention_until` metadata, bounded
   retention deletion, and retention audit events were added in migration
-  `20260801125632_campaign_lab_evidence_project_retention`.
+  `20260801135222_campaign_lab_runtime_head`.
 - Aggregate-only CSV, Formbricks, ODK, and generic JSON adapters now normalize
   external response exports in memory with duplicate, bot, low-quality,
   malformed, consent, rights, and prohibited-field controls. Respondent rows

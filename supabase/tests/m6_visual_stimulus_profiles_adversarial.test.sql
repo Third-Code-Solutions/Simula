@@ -7,6 +7,8 @@ select extensions.plan(14);
 grant usage on schema extensions to simula_api;
 grant execute on all functions in schema extensions to simula_api;
 
+set role simula_command_owner;
+
 create function pg_temp.visual_profile_payload(
   requested_analysis_id uuid,
   requested_asset_id uuid,
@@ -201,6 +203,8 @@ values
     128,
     'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
   );
+
+set role postgres;
 
 select pg_catalog.set_config(
   'request.jwt.claims',

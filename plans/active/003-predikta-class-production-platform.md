@@ -554,7 +554,7 @@ supabase/                  Postgres, Auth, RLS, Storage, pgvector
     certificate-identity/issuer verification, and verified-artifact upload
     (E-5043, superseded and hardened by E-5073).
   - [x] Added production runtime admission bound to migration head
-    `20260801125632`, rollout UUID, archive digest, Sigstore-bundle digest, and
+    `20260801135222`, rollout UUID, archive digest, Sigstore-bundle digest, and
     exact Actions run; remote Supabase dry-run/lint and complete local release
     gates pass without mutating production (E-5073).
   - [x] Completed the repository technical privacy/security data-flow and threat

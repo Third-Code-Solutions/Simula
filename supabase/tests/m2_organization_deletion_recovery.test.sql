@@ -74,8 +74,8 @@ select extensions.ok(
         'organizations_command_select_for_worker_deletion'
       and policies.roles = array['simula_command_owner']::name[]
       and policies.cmd = 'SELECT'
-      and policies.qual like '%session_user%'
-      and policies.qual like '%simula_worker%'
+      and pg_catalog.lower(policies.qual) like '%session_user%'
+      and pg_catalog.lower(policies.qual) like '%simula_worker%'
   )
   and exists (
     select 1
@@ -96,8 +96,8 @@ select extensions.ok(
         'simulation_runs_command_select_for_worker_deletion'
       and policies.roles = array['simula_command_owner']::name[]
       and policies.cmd = 'SELECT'
-      and policies.qual like '%session_user%'
-      and policies.qual like '%simula_worker%'
+      and pg_catalog.lower(policies.qual) like '%session_user%'
+      and pg_catalog.lower(policies.qual) like '%simula_worker%'
   ),
   'worker command owner can inspect deletion-bound organizations and active runs'
 );

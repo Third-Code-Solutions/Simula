@@ -155,7 +155,22 @@ select extensions.ok(
   and not pg_catalog.has_table_privilege(
     'simula_worker_owner',
     'api.behavioral_run_results'::pg_catalog.regclass,
-    'UPDATE,DELETE'
+    'DELETE'
+  )
+  and not exists (
+    select 1
+    from pg_catalog.pg_attribute as attributes
+    where attributes.attrelid =
+        'api.behavioral_run_results'::pg_catalog.regclass
+      and attributes.attnum > 0
+      and not attributes.attisdropped
+      and attributes.attname <> 'run_id'
+      and pg_catalog.has_column_privilege(
+        'simula_worker_owner',
+        attributes.attrelid,
+        attributes.attname,
+        'UPDATE'
+      )
   ),
   'behavioral completion owner has only insert and FK row-lock capabilities'
 );
