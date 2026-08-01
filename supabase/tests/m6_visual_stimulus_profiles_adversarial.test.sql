@@ -207,6 +207,15 @@ values
 
 set role postgres;
 
+do $diagnostic$
+begin
+  raise notice 'm6 test session_user=%, current_user=%, current_role_superuser=%',
+    session_user,
+    current_user,
+    (select rolsuper from pg_catalog.pg_roles where rolname = current_user);
+end
+$diagnostic$;
+
 select pg_catalog.set_config(
   'request.jwt.claims',
   pg_catalog.jsonb_build_object(
