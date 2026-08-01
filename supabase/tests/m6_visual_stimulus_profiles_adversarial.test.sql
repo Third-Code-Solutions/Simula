@@ -205,7 +205,7 @@ values
     'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
   );
 
-set role postgres;
+reset role;
 
 select pg_catalog.set_config(
   'request.jwt.claims',
