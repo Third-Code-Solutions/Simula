@@ -213,7 +213,7 @@ class DatabaseGateway:
                 self._record_runtime_snapshot(cast(DatabaseRow, snapshot))
             outcome = "success" if ready else "error"
             return ready
-        except (KeyError, TypeError, ValueError, PoolTimeout, psycopg.Error):
+        except KeyError, TypeError, ValueError, PoolTimeout, psycopg.Error:
             return False
         finally:
             self._observe_database("readiness", outcome, started_at)
