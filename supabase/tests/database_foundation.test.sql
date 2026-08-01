@@ -577,6 +577,7 @@ select extensions.is(
     'simula_api|api.simulation_results|SELECT',
     'simula_api|api.simulation_runs|SELECT',
     'simula_api|api.stimuli|SELECT',
+    'simula_api|api.stimulus_assets|REFERENCES',
     'simula_api|api.stimulus_assets|SELECT',
     'simula_api|api.stimulus_versions|SELECT',
     'simula_api|api.stimulus_visual_profiles|SELECT',
