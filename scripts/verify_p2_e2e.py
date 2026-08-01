@@ -24,7 +24,7 @@ LOCAL_FIXTURE_OWNER_EMAIL = "owner-a@simula.local"
 LOCAL_FIXTURE_OWNER_PASSWORD = "SimulaLocalOnly!2026"  # noqa: S105 - local seed only.
 API_URL = "http://127.0.0.1:8000/health/ready"
 WEB_URL = "http://127.0.0.1:3100/"
-START_TIMEOUT_SECONDS = 45
+START_TIMEOUT_SECONDS = 120
 
 
 class BrowserGateError(RuntimeError):
