@@ -10,6 +10,28 @@ grant execute on all functions in schema extensions to simula_api;
 set role postgres;
 grant insert on table api.stimulus_assets to postgres;
 
+set role simula_command_owner;
+create function pg_temp.visual_fk_privilege_debug()
+returns text
+language sql
+security definer
+set search_path = ''
+as $function$
+  select pg_catalog.format(
+    'effective=%s session=%s command_update=%s command_references=%s api_update=%s api_references=%s postgres_update=%s postgres_references=%s',
+    current_user,
+    session_user,
+    pg_catalog.has_table_privilege(current_user, 'api.stimulus_assets', 'UPDATE'),
+    pg_catalog.has_table_privilege(current_user, 'api.stimulus_assets', 'REFERENCES'),
+    pg_catalog.has_table_privilege('simula_api', 'api.stimulus_assets', 'UPDATE'),
+    pg_catalog.has_table_privilege('simula_api', 'api.stimulus_assets', 'REFERENCES'),
+    pg_catalog.has_table_privilege('postgres', 'api.stimulus_assets', 'UPDATE'),
+    pg_catalog.has_table_privilege('postgres', 'api.stimulus_assets', 'REFERENCES')
+  )
+$function$;
+
+set role postgres;
+
 create function pg_temp.visual_profile_payload(
   requested_analysis_id uuid,
   requested_asset_id uuid,
@@ -219,6 +241,12 @@ select pg_catalog.set_config(
   true
 );
 set session authorization simula_api;
+
+do $function$
+begin
+  raise notice 'visual_fk_privilege_debug=%', pg_temp.visual_fk_privilege_debug();
+end
+$function$;
 
 select extensions.is(
   (
