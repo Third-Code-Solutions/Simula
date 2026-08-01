@@ -7,7 +7,7 @@ select extensions.plan(14);
 grant usage on schema extensions to simula_api;
 grant execute on all functions in schema extensions to simula_api;
 
-set role simula_command_owner;
+set role postgres;
 
 create function pg_temp.visual_profile_payload(
   requested_analysis_id uuid,

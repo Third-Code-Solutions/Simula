@@ -152,7 +152,7 @@ select extensions.ok(
     'run_id',
     'UPDATE'
   )
-  and not pg_catalog.has_table_privilege(
+  and pg_catalog.has_table_privilege(
     'simula_worker_owner',
     'api.behavioral_run_results'::pg_catalog.regclass,
     'DELETE'
@@ -172,7 +172,7 @@ select extensions.ok(
         'UPDATE'
       )
   ),
-  'behavioral completion owner has only insert and FK row-lock capabilities'
+  'behavioral completion owner has insert, FK row-lock, and cascade-delete capabilities'
 );
 
 select extensions.is(
