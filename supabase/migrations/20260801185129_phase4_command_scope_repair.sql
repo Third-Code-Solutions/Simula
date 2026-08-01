@@ -21,3 +21,5 @@ alter table private.phase4_command_receipts
       'stimulus_visual_profile.create'
     )
   );
+
+set role postgres;
