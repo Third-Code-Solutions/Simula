@@ -15,6 +15,24 @@ import {
 
 const ID_KEY_PATTERN = /^[a-z][a-z0-9_.]{0,63}$/;
 
+export class RepeatedSimulationConfigurationDto {
+  @ApiProperty({ minimum: 3, maximum: 10 })
+  @IsInt()
+  @Min(3)
+  @Max(10)
+  repetition_count!: number;
+
+  @ApiProperty({ minimum: -9_223_372_036_854_775_808, maximum: 9_223_372_036_854_775_807 })
+  @IsInt()
+  base_seed!: number;
+
+  @ApiProperty({ minimum: 1, maximum: 100 })
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  stability_tolerance!: number;
+}
+
 export class SamplingConfigurationDto {
   @ApiProperty({ minimum: 10, maximum: 5000 })
   @IsInt()
@@ -198,6 +216,12 @@ export class MethodologyPreviewCreateDto {
   @IsOptional()
   @IsUUID()
   run_id?: string;
+
+  @ApiPropertyOptional({ type: () => RepeatedSimulationConfigurationDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RepeatedSimulationConfigurationDto)
+  repetition_configuration?: RepeatedSimulationConfigurationDto;
 }
 
 export class ProductCommandResponseDto {

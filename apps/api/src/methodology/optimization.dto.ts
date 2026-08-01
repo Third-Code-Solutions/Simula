@@ -1,4 +1,4 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -6,12 +6,15 @@ import {
   IsArray,
   IsIn,
   IsISO8601,
+  IsOptional,
   IsString,
   IsUUID,
   Length,
   Matches,
   ValidateNested,
 } from "class-validator";
+
+import { RepeatedSimulationConfigurationDto } from "./methodology.dto";
 
 const ID_KEY_PATTERN = /^[a-z][a-z0-9_.]{0,63}$/;
 const VARIANT_KEY_PATTERN = /^[a-z][a-z0-9_]{0,31}$/;
@@ -34,6 +37,12 @@ export class RunMethodologyReportCreateDto {
   @IsString()
   @Length(2, 120)
   variant_label!: string;
+
+  @ApiPropertyOptional({ type: () => RepeatedSimulationConfigurationDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RepeatedSimulationConfigurationDto)
+  repetition_configuration?: RepeatedSimulationConfigurationDto;
 }
 
 export class VariantMemberInputDto {

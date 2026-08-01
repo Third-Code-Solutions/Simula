@@ -963,6 +963,7 @@ export interface components {
              * Format: uuid
              */
             configuration_version_id: string;
+            repetition_configuration?: components["schemas"]["RepeatedSimulationConfigurationInput"] | null;
             /** Run Id */
             run_id?: string | null;
             /**
@@ -1640,6 +1641,15 @@ export interface components {
              */
             text: "A deterministic mock observation used only to test rendering.";
         };
+        /** RepeatedSimulationConfigurationInput */
+        RepeatedSimulationConfigurationInput: {
+            /** Base Seed */
+            base_seed: number;
+            /** Repetition Count */
+            repetition_count: number;
+            /** Stability Tolerance */
+            stability_tolerance: number;
+        };
         /** ReportCreate */
         ReportCreate: {
             /** Artifact */
@@ -1703,6 +1713,7 @@ export interface components {
              * Format: uuid
              */
             configuration_version_id: string;
+            repetition_configuration?: components["schemas"]["RepeatedSimulationConfigurationInput"] | null;
             /** Variant Key */
             variant_key: string;
             /** Variant Label */

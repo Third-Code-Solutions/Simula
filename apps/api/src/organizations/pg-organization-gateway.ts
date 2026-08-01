@@ -3090,6 +3090,7 @@ export class PgOrganizationGateway
             0,
             100_000_000,
           ),
+          repetition_configuration: input.repetition_configuration ?? null,
           report: Object.freeze({
             report_id: reportId,
             project_id: projectId,

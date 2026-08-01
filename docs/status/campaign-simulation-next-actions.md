@@ -7,10 +7,10 @@ classification: PROPOSED
 
 # Next actions
 
-1. Add durable tenant-scoped migrations for repeated, calibration, and
-   backtest artifacts.
-2. Add authenticated idempotent API/worker commands over the new core seams;
-   keep full runs off the request path.
+1. Add durable tenant-scoped calibration and backtest artifacts, including
+   aggregate subgroup slices and retention/deletion behavior.
+2. Move repeated execution and the future calibration/backtest commands to
+   durable worker jobs with bounded retries and progress state.
 3. Add survey-tool/CSV/ODK/Formbricks adapters only after rights/consent
    admission is defined.
 4. Add focused integration tests for tenant isolation, retries, cancellation,

@@ -21,6 +21,12 @@ classification: OBSERVED
 - Held-out blind historical backtesting core added with leakage checks,
   ranking/error metrics, and baseline regression deltas.
 - Methodology formulas and evidence boundaries documented.
+- Repeated seeded execution wired through the authenticated methodology command
+  and private AI-engine path; the existing tenant-scoped report artifact now
+  persists the repeated result and exposes database-indexed stability metadata.
+- Supabase migration `20260801111007_campaign_simulation_report_evidence` was
+  applied to the linked project and verified with migration, column, trigger,
+  and schema-lint queries.
 
 ## Implemented before this turn
 
@@ -35,14 +41,19 @@ classification: OBSERVED
 
 ## Not yet implemented
 
-- Durable API/worker/UI integration for those three core seams.
+- Durable API/worker integration for survey calibration and historical
+  backtesting; repeated execution is currently a bounded report-path command,
+  not a separate worker job.
 - Survey-tool/CSV/ODK/Formbricks adapters and lawful Philippine datasets.
-- Durable persistence for calibration/backtest artifacts and retention/deletion.
+- Durable persistence for calibration/backtest artifacts and their
+  retention/deletion lifecycle.
+- End-to-end hosted browser/API evidence for the new repeated report path.
 
 ## Truth boundary
 
 SIMULA is not authorized to claim population prediction, survey replacement,
 vote-share prediction, universal accuracy, or Predikta-equivalent capability.
 The current deterministic fixture and newly added core tests remain experimental
-and estimate nobody. No production API, worker, UI, or migration consumes the
-new evidence-layer contracts yet.
+and estimate nobody. The repeated synthetic contract is consumed by the report
+path; survey calibration and historical backtesting remain core-only until
+their data adapters, durable jobs, and hosted evidence are complete.

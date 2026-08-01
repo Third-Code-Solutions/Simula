@@ -6690,6 +6690,32 @@
         ],
         "additionalProperties": false
       },
+      "RepeatedSimulationConfigurationDto": {
+        "type": "object",
+        "properties": {
+          "repetition_count": {
+            "type": "number",
+            "minimum": 3,
+            "maximum": 10
+          },
+          "base_seed": {
+            "type": "number",
+            "minimum": -9223372036854776000,
+            "maximum": 9223372036854776000
+          },
+          "stability_tolerance": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "repetition_count",
+          "base_seed",
+          "stability_tolerance"
+        ],
+        "additionalProperties": false
+      },
       "MethodologyPreviewCreateDto": {
         "type": "object",
         "properties": {
@@ -6713,6 +6739,9 @@
           "run_id": {
             "type": "string",
             "format": "uuid"
+          },
+          "repetition_configuration": {
+            "$ref": "#/components/schemas/RepeatedSimulationConfigurationDto"
           }
         },
         "required": [
@@ -6814,6 +6843,9 @@
             "type": "string",
             "minLength": 2,
             "maxLength": 120
+          },
+          "repetition_configuration": {
+            "$ref": "#/components/schemas/RepeatedSimulationConfigurationDto"
           }
         },
         "required": [

@@ -138,6 +138,11 @@ describe("MethodologyReportPanel", () => {
       configuration_version_id: CONFIGURATION_ID,
       variant_key: "baseline",
       variant_label: "Completed run variant",
+      repetition_configuration: {
+        repetition_count: 5,
+        base_seed: 20260801,
+        stability_tolerance: 5,
+      },
     });
     expect(
       await screen.findByText(/No outcome claim is made/i),

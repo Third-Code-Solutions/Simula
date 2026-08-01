@@ -103,6 +103,7 @@ export class PrivateMethodologyEngine implements MethodologyEngine {
       const report = object(data.report, "methodology report");
       const identity = object(report.identity, "report identity");
       const transparency = object(report.transparency, "report transparency");
+      const repeated = data.repeated_methodology_result;
       if (
         result.schema_version !== 2 ||
         result.run_id !== command.run_id ||
@@ -114,7 +115,11 @@ export class PrivateMethodologyEngine implements MethodologyEngine {
         identity.stimulus_version_id !== command.report.stimulus_version_id ||
         transparency.validation_label !== "experimental" ||
         transparency.numerical_output_kind !== "heuristic_score" ||
-        data.replayed !== false
+        data.replayed !== false ||
+        (command.repetition_configuration !== null &&
+          command.repetition_configuration !== undefined &&
+          (object(repeated, "repeated methodology result").schema_version !== 1 ||
+            object(report.repeated_simulation, "repeated report evidence").schema_version !== 1))
       ) {
         throw new Error("methodology response binding mismatch");
       }

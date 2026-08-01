@@ -24,6 +24,7 @@ from simula_core.methodology import (
     SampledCell,
     aggregate_cohort_responses,
 )
+from simula_core.repeated_simulation import RepeatedMethodologyResult
 
 ReportLabel = Annotated[str, StringConstraints(min_length=1, max_length=160)]
 ReportText = Annotated[str, StringConstraints(min_length=1, max_length=2000)]
@@ -105,6 +106,7 @@ class CompleteReport(FrozenModel):
     rationales: tuple[SyntheticRationale, ...]
     recommendations: tuple[ReportText, ...]
     transparency: MethodologyTransparency
+    repeated_simulation: RepeatedMethodologyResult | None = None
     limitations: tuple[ReportText, ...]
     content_sha256: Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
 
@@ -180,6 +182,7 @@ def build_complete_report(
     variant_key: Key,
     variant_label: ReportLabel,
     created_at: datetime,
+    repeated_simulation: RepeatedMethodologyResult | None = None,
 ) -> CompleteReport:
     top_reaction = _top_reaction(result.report)
     identity = ReportIdentity(
@@ -251,6 +254,11 @@ def build_complete_report(
             "Collect eligible held-out human evidence before promoting any numerical output.",
         ],
         "transparency": transparency.model_dump(mode="json"),
+        "repeated_simulation": (
+            None
+            if repeated_simulation is None
+            else repeated_simulation.model_dump(mode="json")
+        ),
         "limitations": list(
             dict.fromkeys(
                 (

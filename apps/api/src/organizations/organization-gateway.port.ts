@@ -17,6 +17,7 @@ import type {
 import type {
   MethodologyPreviewCreateDto,
   MethodologyRegistryResponseDto,
+  RepeatedSimulationConfigurationDto,
   SimulationConfigurationCreateDto,
   SimulationConfigurationRecordDto,
   SimulationConfigurationResponseDto,
@@ -184,6 +185,7 @@ export interface MethodologyPreviewCommand {
   readonly configuration: Readonly<Record<string, unknown>>;
   readonly methodology_version: string;
   readonly cost_ceiling_microusd: number;
+  readonly repetition_configuration?: RepeatedSimulationConfigurationDto | null;
   readonly report: {
     readonly report_id: string;
     readonly project_id: string;

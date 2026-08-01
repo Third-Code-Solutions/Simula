@@ -106,6 +106,13 @@ export function MethodologyReportPanel({
         configuration_version_id: text(form.get("configuration")),
         variant_key: safeVariantKey(text(form.get("variantKey"))),
         variant_label: text(form.get("variantLabel")),
+        repetition_configuration: {
+          repetition_count: Number(text(form.get("repetitionCount")) || "5"),
+          base_seed: Number(text(form.get("baseSeed")) || "20260801"),
+          stability_tolerance: Number(
+            text(form.get("stabilityTolerance")) || "5",
+          ),
+        },
       });
       const identity = record(record(response.data.artifact).identity);
       if (
@@ -159,6 +166,7 @@ export function MethodologyReportPanel({
 
   const artifact = record(report?.artifact);
   const transparency = record(artifact.transparency);
+  const repeated = record(artifact.repeated_simulation);
 
   return (
     <section className="panel form-stack" aria-labelledby="methodology-report">
@@ -226,6 +234,39 @@ export function MethodologyReportPanel({
             name="variantLabel"
             required
           />
+          <label htmlFor="methodology-report-repetition-count">
+            Repeated seeded runs
+          </label>
+          <input
+            defaultValue="5"
+            id="methodology-report-repetition-count"
+            max="10"
+            min="3"
+            name="repetitionCount"
+            required
+            type="number"
+          />
+          <label htmlFor="methodology-report-base-seed">Base seed</label>
+          <input
+            defaultValue="20260801"
+            id="methodology-report-base-seed"
+            name="baseSeed"
+            required
+            type="number"
+          />
+          <label htmlFor="methodology-report-stability-tolerance">
+            Stability tolerance (component points)
+          </label>
+          <input
+            defaultValue="5"
+            id="methodology-report-stability-tolerance"
+            max="100"
+            min="1"
+            name="stabilityTolerance"
+            required
+            step="1"
+            type="number"
+          />
           <button disabled={busy === "report"} type="submit">
             {busy === "report" ? "Creating report…" : "Create durable report"}
           </button>
@@ -244,6 +285,14 @@ export function MethodologyReportPanel({
             <div>
               <dt>Output kind</dt>
               <dd>{text(transparency.numerical_output_kind)}</dd>
+            </div>
+            <div>
+              <dt>Repeat stability</dt>
+              <dd>
+                {repeated.repetition_count
+                  ? `${String(repeated.repetition_count)} seeded runs · ${text(repeated.stability_label)}`
+                  : "Not run"}
+              </dd>
             </div>
             <div>
               <dt>Report checksum</dt>

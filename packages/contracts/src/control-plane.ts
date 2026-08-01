@@ -923,6 +923,7 @@ export interface components {
         MethodologyPreviewCreateDto: {
             /** Format: uuid */
             configuration_version_id: string;
+            repetition_configuration?: components["schemas"]["RepeatedSimulationConfigurationDto"];
             /** Format: uuid */
             run_id?: string;
             /** Format: uuid */
@@ -1240,6 +1241,11 @@ export interface components {
             /** Format: uuid */
             version_id: string;
         };
+        RepeatedSimulationConfigurationDto: {
+            base_seed: number;
+            repetition_count: number;
+            stability_tolerance: number;
+        };
         ReportExportCreateDto: {
             /** Format: date-time */
             expires_at: string;
@@ -1272,6 +1278,7 @@ export interface components {
         RunMethodologyReportCreateDto: {
             /** Format: uuid */
             configuration_version_id: string;
+            repetition_configuration?: components["schemas"]["RepeatedSimulationConfigurationDto"];
             variant_key: string;
             variant_label: string;
         };

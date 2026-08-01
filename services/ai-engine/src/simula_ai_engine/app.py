@@ -34,6 +34,11 @@ from simula_core.methodology import (
     SamplingConfiguration,
 )
 from simula_core.observability import get_observability_runtime
+from simula_core.repeated_simulation import (
+    RepeatedMethodologyResult,
+    RepeatedSimulationConfiguration,
+    run_repeated_methodology,
+)
 from simula_core.reporting import (
     CompleteReport,
     ReportFormat,
@@ -119,11 +124,13 @@ class MethodologyPreviewCommand(FrozenModel):
     methodology_version: str
     cost_ceiling_microusd: int
     report: MethodologyReportCommand
+    repetition_configuration: RepeatedSimulationConfiguration | None = None
 
 
 class MethodologyPreviewResult(FrozenModel):
     methodology_result: MethodologyRunResult
     report: CompleteReport
+    repeated_methodology_result: RepeatedMethodologyResult | None = None
     replayed: Literal[False] = False
 
 
@@ -637,16 +644,35 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
     ) -> MethodologyPreviewResult:
         try:
             with get_observability_runtime("ai-engine").span("methodology.preview"):
-                result = await asyncio.to_thread(
-                    MethodologyEngine(DeterministicCohortProvider()).run,
-                    run_id=command.run_id,
-                    stimulus=command.stimulus,
-                    population=command.population,
-                    audience=command.audience,
-                    configuration=command.configuration,
-                    methodology_version=command.methodology_version,
-                    cost_ceiling_microusd=command.cost_ceiling_microusd,
-                )
+                engine = MethodologyEngine(DeterministicCohortProvider())
+                repeated = None
+                if command.repetition_configuration is None:
+                    result = await asyncio.to_thread(
+                        engine.run,
+                        run_id=command.run_id,
+                        stimulus=command.stimulus,
+                        population=command.population,
+                        audience=command.audience,
+                        configuration=command.configuration,
+                        methodology_version=command.methodology_version,
+                        cost_ceiling_microusd=command.cost_ceiling_microusd,
+                    )
+                else:
+                    repeated = await asyncio.to_thread(
+                        run_repeated_methodology,
+                        engine,
+                        run_group_id=command.run_id,
+                        stimulus=command.stimulus,
+                        population=command.population,
+                        audience=command.audience,
+                        configuration=command.configuration,
+                        methodology_version=command.methodology_version,
+                        cost_ceiling_microusd=command.cost_ceiling_microusd,
+                        repetition_configuration=command.repetition_configuration,
+                    )
+                    # The report is bound to the durable command/group id. The
+                    # internal repetition ids remain in the reproducibility receipt.
+                    result = repeated.runs[0].model_copy(update={"run_id": command.run_id})
                 report = build_complete_report(
                     result,
                     report_id=command.report.report_id,
@@ -655,10 +681,12 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
                     variant_key=command.report.variant_key,
                     variant_label=command.report.variant_label,
                     created_at=command.report.created_at,
+                    repeated_simulation=repeated,
                 )
                 return MethodologyPreviewResult(
                     methodology_result=result,
                     report=report,
+                    repeated_methodology_result=repeated,
                 )
         except ValueError as error:
             raise EngineProblem(

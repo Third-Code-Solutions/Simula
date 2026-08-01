@@ -225,6 +225,11 @@ export function MethodologyWorkspace({
         stimulus_version_id: text(form.get("stimulus")),
         variant_key: "selected_variant",
         variant_label: "Selected variant",
+        repetition_configuration: {
+          repetition_count: 5,
+          base_seed: 20260801,
+          stability_tolerance: 5,
+        },
       });
       setPreview(response.data);
       setError(undefined);
@@ -292,6 +297,7 @@ export function MethodologyWorkspace({
       )
     : [];
   const transparency = record(report.transparency);
+  const repeated = record(report.repeated_simulation);
   const initialLoadFailed =
     busy !== "load" && dashboard === undefined && Boolean(error);
 
@@ -607,10 +613,15 @@ export function MethodologyWorkspace({
               <p className="eyebrow">Generated report · experimental</p>
               <h2 id="report-title">{text(report.executive_summary)}</h2>
             </div>
-            <span className="methodology-chip">heuristic score</span>
+          <span className="methodology-chip">component diagnostics</span>
           </div>
           <p className="methodology-warning">
             {text(report.experimental_notice)}
+          </p>
+          <p className="field-note">
+            {repeated.repetition_count
+              ? `${String(repeated.repetition_count)} seeded runs · stability ${text(repeated.stability_label)} · synthetic-only evidence`
+              : "Synthetic-only evidence; repeated stability was not attached."}
           </p>
           <div
             className="methodology-distribution"

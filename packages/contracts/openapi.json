@@ -657,6 +657,16 @@
             "title": "Configuration Version Id",
             "type": "string"
           },
+          "repetition_configuration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatedSimulationConfigurationInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "run_id": {
             "anyOf": [
               {
@@ -2034,6 +2044,36 @@
         "title": "QualitativeObservation",
         "type": "object"
       },
+      "RepeatedSimulationConfigurationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "base_seed": {
+            "maximum": 9.223372036854776e+18,
+            "minimum": -9.223372036854776e+18,
+            "title": "Base Seed",
+            "type": "integer"
+          },
+          "repetition_count": {
+            "maximum": 10.0,
+            "minimum": 3.0,
+            "title": "Repetition Count",
+            "type": "integer"
+          },
+          "stability_tolerance": {
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "Stability Tolerance",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "repetition_count",
+          "base_seed",
+          "stability_tolerance"
+        ],
+        "title": "RepeatedSimulationConfigurationInput",
+        "type": "object"
+      },
       "ReportCreate": {
         "additionalProperties": false,
         "properties": {
@@ -2145,6 +2185,16 @@
             "format": "uuid",
             "title": "Configuration Version Id",
             "type": "string"
+          },
+          "repetition_configuration": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatedSimulationConfigurationInput"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "variant_key": {
             "pattern": "^[a-z][a-z0-9_.]{0,63}$",

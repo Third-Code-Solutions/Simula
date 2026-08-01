@@ -216,6 +216,11 @@ async def test_private_engine_executes_bound_experimental_methodology_preview() 
         "configuration": behavioral.sampling_configuration.model_dump(mode="json"),
         "methodology_version": "phase3_cohort_v1",
         "cost_ceiling_microusd": 0,
+        "repetition_configuration": {
+            "repetition_count": 3,
+            "base_seed": 20260801,
+            "stability_tolerance": 5,
+        },
         "report": {
             "report_id": str(report_id),
             "project_id": str(behavioral.study_id),
@@ -240,6 +245,13 @@ async def test_private_engine_executes_bound_experimental_methodology_preview() 
     assert body["report"]["schema_version"] == "2.0.0"
     assert body["report"]["identity"]["report_id"] == str(report_id)
     assert body["report"]["transparency"]["numerical_output_kind"] == "heuristic_score"
+    assert body["repeated_methodology_result"]["repetition_count"] == 3
+    assert body["report"]["repeated_simulation"]["evidence_status"] == "Synthetic-only"
+    assert body["report"]["repeated_simulation"]["stability_label"] in {
+        "stable",
+        "unstable",
+        "insufficient_repetitions",
+    }
     assert body["replayed"] is False
 
 
