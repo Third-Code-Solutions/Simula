@@ -89,7 +89,7 @@ or deployment.
 ## Production admission contract
 
 Every deployed server runtime requires
-`SIMULA_DATABASE_MIGRATION_HEAD=20260730230000`. Production also requires:
+`SIMULA_DATABASE_MIGRATION_HEAD=20260801125632`. Production also requires:
 
 - `SIMULA_PRODUCTION_ADMISSION_ENABLED=true`;
 - one lowercase UUIDv4 `SIMULA_PRODUCTION_ROLLOUT_ID`;

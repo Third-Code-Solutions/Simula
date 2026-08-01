@@ -2370,6 +2370,89 @@ code {
   padding: 3.5rem 0 2.5rem;
 }
 
+.evidence-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+  padding: 0.5rem;
+  border: 1px solid var(--edge);
+  border-radius: 0.875rem;
+  background: var(--white);
+}
+
+.evidence-nav a {
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.45rem;
+  color: var(--ink);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.evidence-nav a:hover,
+.evidence-nav a:focus-visible {
+  background: var(--lavender);
+}
+
+.evidence-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.evidence-status {
+  margin-top: 1rem;
+}
+
+.evidence-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+}
+
+.evidence-metrics div {
+  padding: 0.75rem;
+  border-radius: 0.625rem;
+  background: var(--lavender);
+}
+
+.evidence-metrics dt {
+  color: var(--stone);
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.evidence-metrics dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.evidence-report {
+  max-height: 28rem;
+  overflow: auto;
+  padding: 1rem;
+  border-radius: 0.625rem;
+  background: var(--ink);
+  color: var(--white);
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.evidence-events {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--stone);
+  font-size: 0.8125rem;
+}
+
 .methodology-hero h1 {
   max-width: 11ch;
 }
@@ -2661,6 +2744,8 @@ code {
   .behavioral-context-list,
   .behavioral-fleet-grid,
   .synthetic-interview-grid,
+  .evidence-grid,
+  .evidence-metrics,
   .run-audit-history li,
   .comparison-form > div,
   .methodology-hero,

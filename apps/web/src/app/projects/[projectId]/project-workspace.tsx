@@ -330,6 +330,12 @@ export function ProjectWorkspace({
               >
                 Open methodology lab
               </Link>
+              <Link
+                className="button-ghost"
+                href={`/projects/${project.id}/evidence`}
+              >
+                Open evidence lab
+              </Link>
             </div>
             {dashboard.permissions.can_create_projects ? (
               <form className="panel form-stack" onSubmit={saveProject}>

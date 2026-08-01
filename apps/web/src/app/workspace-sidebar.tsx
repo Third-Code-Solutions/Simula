@@ -12,6 +12,7 @@ export function WorkspaceSidebar({
     | "projects"
     | "project"
     | "methodology"
+    | "evidence"
     | "run";
   organizationId?: string;
   projectId?: string;
@@ -20,6 +21,7 @@ export function WorkspaceSidebar({
   const contextLabel = {
     dashboard: "Dashboard",
     methodology: "Methodology lab",
+    evidence: "Evidence lab",
     organizations: "Organizations",
     project: "Project",
     projects: "Projects",
@@ -72,6 +74,12 @@ export function WorkspaceSidebar({
                 href={`/projects/${projectId}/methodology`}
               >
                 Methodology lab
+              </Link>
+              <Link
+                aria-current={current === "evidence" ? "page" : undefined}
+                href={`/projects/${projectId}/evidence`}
+              >
+                Evidence lab
               </Link>
             </div>
           ) : null}

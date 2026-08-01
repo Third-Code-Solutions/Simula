@@ -260,6 +260,9 @@ test("NestJS migration contract remains separate and fail-closed", async () => {
   assert.deepEqual(Object.keys(document.paths).sort(), [
     "/api/v2/audiences/demo",
     "/api/v2/auth-events",
+    "/api/v2/campaign-evidence/{evidence_id}",
+    "/api/v2/campaign-evidence/{evidence_id}/cancel",
+    "/api/v2/campaign-evidence/{evidence_id}/events",
     "/api/v2/exports/{export_id}",
     "/api/v2/me",
     "/api/v2/methodology/registry",
@@ -270,6 +273,8 @@ test("NestJS migration contract remains separate and fail-closed", async () => {
     "/api/v2/organizations/{organization_id}/projects",
     "/api/v2/projects/{project_id}",
     "/api/v2/projects/{project_id}/behavioral-demo-runs",
+    "/api/v2/projects/{project_id}/campaign-evidence/backtests",
+    "/api/v2/projects/{project_id}/campaign-evidence/survey-calibrations",
     "/api/v2/projects/{project_id}/methodology-previews",
     "/api/v2/projects/{project_id}/runs",
     "/api/v2/projects/{project_id}/simulation-configurations",

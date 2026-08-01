@@ -165,6 +165,13 @@ function domainPath(path: string): string {
   return `/api/${version}${path}`;
 }
 
+function domainV2Path(path: string): string {
+  if (!path.startsWith("/")) {
+    throw new Error("domain API paths must be absolute");
+  }
+  return `/api/v2${path}`;
+}
+
 function asProblem(value: unknown): ApiProblemDocument | undefined {
   if (!value || typeof value !== "object") {
     return undefined;
@@ -837,8 +844,106 @@ export type ProductCommand = Readonly<{ data: ProductRecord }>;
 export type MethodologyRegistry =
   ControlPlaneSchemas["MethodologyRegistryResponseDto"];
 
+export type CampaignEvidenceRun = Readonly<{
+  evidence_id: string;
+  organization_id: string;
+  project_id: string;
+  kind: "survey_calibration" | "historical_backtest";
+  status:
+    | "queued"
+    | "running"
+    | "retrying"
+    | "completed"
+    | "failed"
+    | "cancel_requested"
+    | "canceled";
+  stage: string;
+  progress: number;
+  source_version_id: string | null;
+  outcome_set_id: string | null;
+  created_at: string;
+  retention_until: string;
+  started_at: string | null;
+  completed_at: string | null;
+  attempt_count: number;
+  last_error_code: string | null;
+  last_error_detail: string | null;
+  result: Readonly<Record<string, unknown>> | null;
+  replayed: boolean;
+}>;
+
+export type CampaignEvidenceEvent = Readonly<{
+  event_id: string;
+  evidence_id: string;
+  stage: string;
+  progress: number;
+  event_kind: string;
+  message: string | null;
+  created_at: string;
+}>;
+
+export type CampaignEvidenceEventCollection = Readonly<{
+  items: readonly CampaignEvidenceEvent[];
+}>;
+
 export function getMethodologyRegistry(): Promise<MethodologyRegistry> {
   return request<MethodologyRegistry>(domainPath("/methodology/registry"));
+}
+
+export function createSurveyCalibration(
+  projectId: string,
+  input: Readonly<{
+    source_version_id: string;
+    synthetic_observations: readonly Readonly<Record<string, unknown>>[];
+    survey?: Readonly<Record<string, unknown>>;
+    survey_import?: Readonly<Record<string, unknown>>;
+  }>,
+): Promise<CampaignEvidenceRun> {
+  return request<CampaignEvidenceRun>(
+    domainV2Path(`/projects/${projectId}/campaign-evidence/survey-calibrations`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function createHistoricalBacktest(
+  projectId: string,
+  input: Readonly<{
+    outcome_set_id: string;
+    protocol: Readonly<Record<string, unknown>>;
+    prediction_set: Readonly<Record<string, unknown>>;
+    baseline_prediction_set?: Readonly<Record<string, unknown>>;
+    outcomes: Readonly<Record<string, unknown>>;
+  }>,
+): Promise<CampaignEvidenceRun> {
+  return request<CampaignEvidenceRun>(
+    domainV2Path(`/projects/${projectId}/campaign-evidence/backtests`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignEvidenceRun(
+  evidenceId: string,
+): Promise<CampaignEvidenceRun> {
+  return request<CampaignEvidenceRun>(
+    domainV2Path(`/campaign-evidence/${evidenceId}`),
+  );
+}
+
+export function getCampaignEvidenceEvents(
+  evidenceId: string,
+): Promise<CampaignEvidenceEventCollection> {
+  return request<CampaignEvidenceEventCollection>(
+    domainV2Path(`/campaign-evidence/${evidenceId}/events`),
+  );
+}
+
+export function cancelCampaignEvidenceRun(
+  evidenceId: string,
+): Promise<CampaignEvidenceRun> {
+  return request<CampaignEvidenceRun>(
+    domainV2Path(`/campaign-evidence/${evidenceId}/cancel`),
+    { body: {}, method: "POST" },
+  );
 }
 
 export function listAudienceDefinitions(

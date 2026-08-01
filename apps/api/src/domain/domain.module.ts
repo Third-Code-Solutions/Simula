@@ -17,6 +17,11 @@ import type { RuntimeEnvironment } from "../config/redis-connection";
 import { IdentityController } from "../identity/identity.controller";
 import { AuthEventsController } from "../identity/auth-events.controller";
 import { AudiencesController } from "../audiences/audiences.controller";
+import { CampaignEvidenceController } from "../campaign-evidence/campaign-evidence.controller";
+import {
+  CampaignEvidenceService,
+  UnavailableCampaignEvidenceService,
+} from "../campaign-evidence/campaign-evidence.service";
 import { CursorCodec } from "../organizations/cursor-codec";
 import { OrganizationsController } from "../organizations/organizations.controller";
 import { ProjectsController } from "../projects/projects.controller";
@@ -40,6 +45,7 @@ import { MethodologyController } from "../methodology/methodology.controller";
 import { OptimizationController } from "../methodology/optimization.controller";
 import {
   ASSET_OBJECT_STORE,
+  CAMPAIGN_EVIDENCE_SERVICE,
   DOMAIN_DATABASE_POOL,
   DOMAIN_HTTP_FETCHER,
   DOMAIN_IDENTITY_VERIFIER,
@@ -114,6 +120,12 @@ export class DomainModule {
         useClass: visualProfileEngineProvider,
       },
       {
+        provide: CAMPAIGN_EVIDENCE_SERVICE,
+        useClass: runtime.enabled
+          ? CampaignEvidenceService
+          : UnavailableCampaignEvidenceService,
+      },
+      {
         provide: DOMAIN_READINESS,
         useClass: CompositeDomainReadiness,
       },
@@ -140,6 +152,7 @@ export class DomainModule {
       module: DomainModule,
       controllers: [
         AudiencesController,
+        CampaignEvidenceController,
         AuthEventsController,
         IdentityController,
         MethodologyController,

@@ -36,6 +36,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/campaign-evidence/{evidence_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCampaignEvidenceRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/campaign-evidence/{evidence_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["cancelCampaignEvidenceRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/campaign-evidence/{evidence_id}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["getCampaignEvidenceEvents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/exports/{export_id}": {
         parameters: {
             query?: never;
@@ -194,6 +242,40 @@ export interface paths {
          * @description Runs the fixed, visibly synthetic authored-demo audience. The output is experimental and is not a population estimate.
          */
         post: operations["createBehavioralDemoRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/projects/{project_id}/campaign-evidence/backtests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Queue a blind historical replay. Held-out outcomes are stored in a worker-only secret row and are never returned by reads. */
+        post: operations["createHistoricalBacktest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/projects/{project_id}/campaign-evidence/survey-calibrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Queue a deterministic comparison between weighted synthetic aggregate observations and an admitted consented survey dataset. */
+        post: operations["createSurveyCalibration"];
         delete?: never;
         options?: never;
         head?: never;
@@ -905,6 +987,57 @@ export interface components {
             /** @enum {string} */
             uncertainty_type: "synthetic_agent_dispersion_not_population_uncertainty";
         };
+        CampaignEvidenceEventCollectionDto: {
+            items: components["schemas"]["CampaignEvidenceEventDto"][];
+        };
+        CampaignEvidenceEventDto: {
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            event_id: string;
+            /** @enum {string} */
+            event_kind: "queued" | "started" | "progress" | "completed" | "retrying" | "failed" | "canceled";
+            /** Format: uuid */
+            evidence_id: string;
+            message?: Record<string, never>;
+            progress: number;
+            /** @enum {string} */
+            stage: "admitted" | "executing" | "validating" | "evaluating" | "persisting" | "retrying" | "completed" | "failed" | "cancel_requested" | "canceled";
+        };
+        CampaignEvidenceRunResponseDto: {
+            attempt_count: number;
+            /** Format: date-time */
+            completed_at?: Record<string, never>;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: uuid */
+            evidence_id: string;
+            /** @enum {string} */
+            kind: "survey_calibration" | "historical_backtest";
+            last_error_code?: Record<string, never>;
+            last_error_detail?: Record<string, never>;
+            /** Format: uuid */
+            organization_id: string;
+            /** Format: uuid */
+            outcome_set_id?: Record<string, never>;
+            progress: number;
+            /** Format: uuid */
+            project_id: string;
+            replayed: boolean;
+            result?: {
+                [key: string]: unknown;
+            };
+            /** Format: date-time */
+            retention_until: string;
+            /** Format: uuid */
+            source_version_id?: Record<string, never>;
+            /** @enum {string} */
+            stage: "admitted" | "executing" | "validating" | "evaluating" | "persisting" | "retrying" | "completed" | "failed" | "cancel_requested" | "canceled";
+            /** Format: date-time */
+            started_at?: Record<string, never>;
+            /** @enum {string} */
+            status: "queued" | "running" | "retrying" | "completed" | "failed" | "cancel_requested" | "canceled";
+        };
         EvidenceProvenanceDto: {
             allowed_use: string;
             collected_at: string;
@@ -915,6 +1048,23 @@ export interface components {
             transformation: string;
             /** @enum {string} */
             validation_status: "experimental" | "benchmarked";
+        };
+        HistoricalBacktestCreateDto: {
+            baseline_prediction_set?: {
+                [key: string]: unknown;
+            };
+            /** Format: uuid */
+            outcome_set_id: string;
+            /** @description Held-out outcomes are accepted for the blind evaluator and are never returned by the API. */
+            outcomes: {
+                [key: string]: unknown;
+            };
+            prediction_set: {
+                [key: string]: unknown;
+            };
+            protocol: {
+                [key: string]: unknown;
+            };
         };
         MeResponseDto: {
             /** Format: uuid */
@@ -1526,6 +1676,18 @@ export interface components {
             stimulus_id: string;
             version: number;
         };
+        SurveyCalibrationCreateDto: {
+            /** Format: uuid */
+            source_version_id: string;
+            survey?: {
+                [key: string]: unknown;
+            };
+            /** @description Optional CSV, Formbricks, ODK, or generic JSON aggregate-only import request. */
+            survey_import?: {
+                [key: string]: unknown;
+            };
+            synthetic_observations: unknown[];
+        };
         VariantGroupCreateDto: {
             members: components["schemas"]["VariantMemberInputDto"][];
             name: string;
@@ -1850,6 +2012,324 @@ export interface operations {
                 };
             };
             /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A durable rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+        };
+    };
+    getCampaignEvidenceRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignEvidenceRunResponseDto"];
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The authenticated actor is not authorized. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The requested resource is not visible. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The command conflicts with durable resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The request exceeds the bounded body envelope. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A command did not use application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /**
+             * @description The request is invalid or outside the supported scope.
+             *
+             *     The request is invalid or outside the supported scope.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A durable rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+        };
+    };
+    cancelCampaignEvidenceRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignEvidenceRunResponseDto"];
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The authenticated actor is not authorized. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The requested resource is not visible. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The command conflicts with durable resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The request exceeds the bounded body envelope. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A command did not use application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /**
+             * @description The request is invalid or outside the supported scope.
+             *
+             *     The request is invalid or outside the supported scope.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A durable rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+        };
+    };
+    getCampaignEvidenceEvents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                evidence_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignEvidenceEventCollectionDto"];
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The authenticated actor is not authorized. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The requested resource is not visible. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The command conflicts with durable resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The request exceeds the bounded body envelope. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A command did not use application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /**
+             * @description The request is invalid or outside the supported scope.
+             *
+             *     The request is invalid or outside the supported scope.
+             */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -3301,6 +3781,230 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimulationRunResponseDto"];
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The authenticated actor is not authorized. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The requested resource is not visible. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The command conflicts with durable resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The request exceeds the bounded body envelope. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A command did not use application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /**
+             * @description The request is invalid or outside the supported scope.
+             *
+             *     The request is invalid or outside the supported scope.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A durable rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+        };
+    };
+    createHistoricalBacktest: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HistoricalBacktestCreateDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignEvidenceRunResponseDto"];
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The authenticated actor is not authorized. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The requested resource is not visible. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The command conflicts with durable resource state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description The request exceeds the bounded body envelope. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A command did not use application/json. */
+            415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /**
+             * @description The request is invalid or outside the supported scope.
+             *
+             *     The request is invalid or outside the supported scope.
+             */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A durable rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+        };
+    };
+    createSurveyCalibration: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SurveyCalibrationCreateDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CampaignEvidenceRunResponseDto"];
                 };
             };
             /** @description Authentication is missing, expired, or invalid. */

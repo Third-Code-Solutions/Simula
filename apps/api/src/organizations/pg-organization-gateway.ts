@@ -95,7 +95,7 @@ function notFound(): AppProblem {
   );
 }
 
-function databaseProblem(error: unknown): AppProblem {
+export function databaseProblem(error: unknown): AppProblem {
   const failure = error as PgFailure;
   if (
     typeof failure.code === "string" &&
@@ -126,6 +126,29 @@ function databaseProblem(error: unknown): AppProblem {
       "forbidden",
       "Action forbidden",
       "Your current organization role cannot perform this action.",
+    );
+  }
+  if (
+    failure.message === "evidence_source_not_admitted" ||
+    failure.message === "historical_outcome_not_admitted"
+  ) {
+    return new AppProblem(
+      403,
+      "evidence_not_admitted",
+      "Evidence is not admitted",
+      "The referenced evidence source is not approved for this evaluation.",
+    );
+  }
+  if (
+    failure.message === "survey_source_required" ||
+    failure.message === "historical_outcome_required"
+  ) {
+    return new AppProblem(
+      422,
+      "validation_error",
+      "Evidence reference required",
+      "The evaluation requires an admitted evidence reference.",
+      [{ field: "evidence", code: failure.message }],
     );
   }
   if (failure.message === "not_found") {
@@ -264,7 +287,7 @@ export function createDomainPool(config: EnabledDomainRuntime): Pool {
   return new Pool(poolConfig);
 }
 
-function databaseClaims(identity: VerifiedIdentity): string {
+export function databaseClaims(identity: VerifiedIdentity): string {
   return JSON.stringify({
     sub: identity.userId,
     role: "authenticated",
