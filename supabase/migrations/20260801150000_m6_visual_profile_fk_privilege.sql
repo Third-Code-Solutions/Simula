@@ -19,4 +19,12 @@ to simula_api;
 grant select, update, references
 on table api.stimulus_assets
 to postgres;
+grant delete
+on table
+  api.evidence_sources,
+  api.evidence_source_versions,
+  api.observed_outcome_sets,
+  api.observed_outcome_values,
+  api.stimulus_assets
+to postgres;
 set role postgres;
