@@ -29,9 +29,9 @@ as $function$
     pg_catalog.has_table_privilege('postgres', 'api.stimulus_assets', 'REFERENCES')
   )
 $function$;
+grant execute on function pg_temp.visual_fk_privilege_debug() to simula_api;
 
 set role postgres;
-grant execute on function pg_temp.visual_fk_privilege_debug() to simula_api;
 
 create function pg_temp.visual_profile_payload(
   requested_analysis_id uuid,
