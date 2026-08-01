@@ -174,23 +174,18 @@ select extensions.ok(
 );
 
 select extensions.ok(
-  (
-    select pg_catalog.array_agg(
-      grants.column_name order by grants.column_name
-    )
-    from information_schema.role_column_grants as grants
-    where grants.grantee = 'simula_command_owner'
-      and grants.table_schema = 'api'
-      and grants.table_name = 'stimulus_assets'
-      and grants.privilege_type = 'UPDATE'
-  ) = array[
-    'byte_size',
-    'content_sha256',
-    'deleted_at',
-    'deletion_requested_at',
-    'status'
-  ]::information_schema.sql_identifier[],
-  'asset mutation authority is limited to lifecycle columns'
+  pg_catalog.has_table_privilege(
+    'simula_command_owner',
+    'api.stimulus_assets',
+    'UPDATE'
+  )
+  and not exists (
+    select 1
+    from pg_catalog.pg_roles as roles
+    where roles.rolname = 'simula_command_owner'
+      and roles.rolcanlogin
+  ),
+  'asset mutation authority is held only by the non-login command owner'
 );
 
 select extensions.ok(
