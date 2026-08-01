@@ -16,4 +16,7 @@ to simula_api;
 grant update
 on table api.stimulus_assets
 to simula_api;
+grant select, update, references
+on table api.stimulus_assets
+to postgres;
 set role postgres;
