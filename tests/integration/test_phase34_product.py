@@ -5,6 +5,7 @@ from typing import cast
 from uuid import UUID
 
 import pytest
+import simula_api.database as database_module
 from simula_core.arq_codec import job_id_for
 from simula_core.queue_runtime import create_queue_client
 from simula_core.simulation import DeterministicMockProvider
@@ -33,6 +34,21 @@ from tests.integration.test_m3_run_pipeline import _remove_exact_queue_keys, _wo
 async def test_phase34_methodology_and_product_commands(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    original_database_problem = database_module._database_problem
+
+    def report_database_problem(error: object) -> object:
+        diagnostic = getattr(error, "diag", None)
+        print(
+            "database failure:",
+            getattr(error, "sqlstate", None),
+            getattr(diagnostic, "message_primary", None),
+            getattr(diagnostic, "message_detail", None),
+            getattr(diagnostic, "hint", None),
+            getattr(diagnostic, "constraint_name", None),
+        )
+        return original_database_problem(error)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(database_module, "_database_problem", report_database_problem)
     local_supabase = _local_supabase()
     token = _sign_in(local_supabase, OWNER_A)
     async with _api_client(monkeypatch, local_supabase) as client:
