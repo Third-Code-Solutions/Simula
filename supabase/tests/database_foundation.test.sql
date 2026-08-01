@@ -646,7 +646,6 @@ select extensions.is(
     'simula_command_owner|api.stimuli|INSERT',
     'simula_command_owner|api.stimuli|SELECT',
     'simula_command_owner|api.stimulus_assets|INSERT',
-    'simula_command_owner|api.stimulus_assets|REFERENCES',
     'simula_command_owner|api.stimulus_assets|SELECT',
     'simula_command_owner|api.stimulus_versions|INSERT',
     'simula_command_owner|api.stimulus_versions|SELECT',
