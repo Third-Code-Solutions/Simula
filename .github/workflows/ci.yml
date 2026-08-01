@@ -174,24 +174,6 @@ jobs:
       - name: Run root verification gate
         run: pnpm verify
 
-      - name: Capture disposable database contract
-        if: always()
-        run: |
-          mkdir -p "$RUNNER_TEMP/simula-db-contract"
-          pnpm exec supabase gen types typescript --local \
-            --schema api \
-            --schema private \
-            > "$RUNNER_TEMP/simula-db-contract/database.ts"
-
-      - name: Upload disposable database contract
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: database-contract-${{ github.sha }}
-          path: ${{ runner.temp }}/simula-db-contract/database.ts
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Prove server-only values are absent from browser artifacts
         run: |
           uv run --frozen python -m scripts.check_web_bundle_secrets \
