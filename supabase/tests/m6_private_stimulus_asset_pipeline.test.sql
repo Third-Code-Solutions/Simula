@@ -199,12 +199,25 @@ select extensions.ok(
     'api.stimulus_assets',
     'SELECT'
   )
+  and pg_catalog.has_table_privilege(
+    'simula_api',
+    'api.stimulus_assets',
+    'UPDATE'
+  )
   and not pg_catalog.has_table_privilege(
     'simula_api',
     'api.stimulus_assets',
-    'INSERT,UPDATE,DELETE'
+    'INSERT,DELETE,TRUNCATE'
+  )
+  and not exists (
+    select 1
+    from pg_catalog.pg_policies
+    where schemaname = 'api'
+      and tablename = 'stimulus_assets'
+      and cmd in ('UPDATE', 'ALL')
+      and 'simula_api'::pg_catalog.name = any (roles)
   ),
-  'the API cannot bypass asset command functions'
+  'the API has the FK lock shim but cannot bypass asset command functions'
 );
 
 select extensions.is(

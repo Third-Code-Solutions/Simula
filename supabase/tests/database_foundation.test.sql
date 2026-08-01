@@ -501,13 +501,19 @@ select extensions.ok(
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
     where namespaces.nspname in ('api', 'private')
       and relations.relkind = 'r'
-      and pg_catalog.has_table_privilege(
-        'simula_api',
-        relations.oid,
-        'INSERT,UPDATE,DELETE,TRUNCATE'
+      and (
+        pg_catalog.has_table_privilege(
+          'simula_api',
+          relations.oid,
+          'INSERT,DELETE,TRUNCATE'
+        )
+        or (
+          pg_catalog.has_table_privilege('simula_api', relations.oid, 'UPDATE')
+          and relations.oid <> 'api.stimulus_assets'::pg_catalog.regclass
+        )
       )
   ),
-  'API role has no direct application-table mutation privilege'
+  'API role has no direct application-table mutation privilege beyond the FK lock shim'
 );
 
 -- 18
@@ -550,6 +556,7 @@ select extensions.is(
     'simula_api|api.behavioral_fleet_summaries|SELECT',
     'simula_api|api.behavioral_report_evidence|SELECT',
     'simula_api|api.behavioral_round_summaries|SELECT',
+    'simula_api|api.behavioral_run_results|SELECT',
     'simula_api|api.campaign_evidence_events|SELECT',
     'simula_api|api.campaign_evidence_runs|SELECT',
     'simula_api|api.context_graph_versions|SELECT',
@@ -577,6 +584,7 @@ select extensions.is(
     'simula_api|api.simulation_runs|SELECT',
     'simula_api|api.stimuli|SELECT',
     'simula_api|api.stimulus_assets|SELECT',
+    'simula_api|api.stimulus_assets|UPDATE',
     'simula_api|api.stimulus_versions|SELECT',
     'simula_api|api.stimulus_visual_profiles|SELECT',
     'simula_api|api.variant_groups|SELECT',
@@ -593,6 +601,7 @@ select extensions.is(
     'simula_command_owner|api.behavioral_evaluation_protocols|SELECT',
     'simula_command_owner|api.behavioral_evaluation_runs|INSERT',
     'simula_command_owner|api.behavioral_evaluation_runs|SELECT',
+    'simula_command_owner|api.behavioral_run_results|SELECT',
     'simula_command_owner|api.campaign_evidence_events|INSERT',
     'simula_command_owner|api.campaign_evidence_events|SELECT',
     'simula_command_owner|api.campaign_evidence_runs|INSERT',
@@ -675,6 +684,7 @@ select extensions.is(
     'simula_command_owner|private.phase4_command_receipts|SELECT',
     'simula_command_owner|private.phase4_command_receipts|UPDATE',
     'simula_command_owner|private.platform_administrators|SELECT',
+    'simula_command_owner|private.provider_success_receipts|SELECT',
     'simula_command_owner|private.run_events|INSERT',
     'simula_command_owner|private.run_events|SELECT',
     'simula_command_owner|private.run_outbox|INSERT',
@@ -686,6 +696,9 @@ select extensions.is(
     'simula_worker_owner|api.behavioral_report_evidence|SELECT',
     'simula_worker_owner|api.behavioral_round_summaries|INSERT',
     'simula_worker_owner|api.behavioral_round_summaries|SELECT',
+    'simula_worker_owner|api.behavioral_run_results|DELETE',
+    'simula_worker_owner|api.behavioral_run_results|INSERT',
+    'simula_worker_owner|api.behavioral_run_results|SELECT',
     'simula_worker_owner|api.campaign_evidence_events|INSERT',
     'simula_worker_owner|api.campaign_evidence_runs|DELETE',
     'simula_worker_owner|api.campaign_evidence_runs|SELECT',
@@ -704,11 +717,32 @@ select extensions.is(
     'simula_worker_owner|private.behavioral_agent_fleets|SELECT',
     'simula_worker_owner|private.behavioral_agent_memories|INSERT',
     'simula_worker_owner|private.behavioral_agent_memories|SELECT',
+    'simula_worker_owner|private.behavioral_provider_receipts|DELETE',
+    'simula_worker_owner|private.behavioral_provider_receipts|INSERT',
+    'simula_worker_owner|private.behavioral_provider_receipts|REFERENCES',
+    'simula_worker_owner|private.behavioral_provider_receipts|SELECT',
+    'simula_worker_owner|private.behavioral_provider_receipts|TRIGGER',
+    'simula_worker_owner|private.behavioral_provider_receipts|TRUNCATE',
+    'simula_worker_owner|private.behavioral_provider_receipts|UPDATE',
+    'simula_worker_owner|private.behavioral_result_payloads|DELETE',
+    'simula_worker_owner|private.behavioral_result_payloads|INSERT',
+    'simula_worker_owner|private.behavioral_result_payloads|REFERENCES',
+    'simula_worker_owner|private.behavioral_result_payloads|SELECT',
+    'simula_worker_owner|private.behavioral_result_payloads|TRIGGER',
+    'simula_worker_owner|private.behavioral_result_payloads|TRUNCATE',
+    'simula_worker_owner|private.behavioral_result_payloads|UPDATE',
     'simula_worker_owner|private.campaign_evidence_secrets|DELETE',
     'simula_worker_owner|private.campaign_evidence_secrets|SELECT',
     'simula_worker_owner|private.context_node_embeddings|INSERT',
     'simula_worker_owner|private.context_node_embeddings|SELECT',
     'simula_worker_owner|private.embedding_model_versions|SELECT',
+    'simula_worker_owner|private.provider_success_receipts|DELETE',
+    'simula_worker_owner|private.provider_success_receipts|INSERT',
+    'simula_worker_owner|private.provider_success_receipts|REFERENCES',
+    'simula_worker_owner|private.provider_success_receipts|SELECT',
+    'simula_worker_owner|private.provider_success_receipts|TRIGGER',
+    'simula_worker_owner|private.provider_success_receipts|TRUNCATE',
+    'simula_worker_owner|private.provider_success_receipts|UPDATE',
     'simula_worker_owner|private.queue_transport_control|SELECT',
     'simula_worker_owner|private.run_attempts|INSERT',
     'simula_worker_owner|private.run_attempts|SELECT',
