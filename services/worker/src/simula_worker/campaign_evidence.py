@@ -43,9 +43,7 @@ def _evaluate_survey(
     synthetic_raw = request.get("synthetic_observations")
     if not isinstance(synthetic_raw, list):
         raise ValueError("synthetic_observations must be an array")
-    synthetic = tuple(
-        SyntheticVariantObservation.model_validate(item) for item in synthetic_raw
-    )
+    synthetic = tuple(SyntheticVariantObservation.model_validate(item) for item in synthetic_raw)
     survey_import = request.get("survey_import")
     if isinstance(survey_import, Mapping) and "payload" in survey_import:
         raise ValueError("survey import payload must remain worker-only")
@@ -87,9 +85,7 @@ def _evaluate_backtest(
     if secret_payload is None:
         raise ValueError("historical outcomes are missing")
     protocol = HistoricalBacktestProtocol.model_validate(request.get("protocol"))
-    prediction_set = BlindBacktestPredictionSet.model_validate(
-        request.get("prediction_set")
-    )
+    prediction_set = BlindBacktestPredictionSet.model_validate(request.get("prediction_set"))
     baseline_raw = request.get("baseline_prediction_set")
     baseline = (
         BlindBacktestPredictionSet.model_validate(baseline_raw)
@@ -171,7 +167,7 @@ async def process_campaign_evidence_claim(
             claim.evidence_id, claim.lease_token, result
         )
         return "completed" if changed else "stale"
-    except (ValidationError, TypeError, ValueError):
+    except ValidationError, TypeError, ValueError:
         # Do not serialize Pydantic input values into logs or error details.
         try:
             return await database.fail_campaign_evidence_run(

@@ -153,9 +153,7 @@ def _rank_correlation(left: Mapping[str, float], right: Mapping[str, float]) -> 
     right_rank = {key: float(index + 1) for index, key in enumerate(right_order)}
     left_mean = fsum(left_rank.values()) / len(left_rank)
     right_mean = fsum(right_rank.values()) / len(right_rank)
-    numerator = fsum(
-        (left_rank[key] - left_mean) * (right_rank[key] - right_mean) for key in keys
-    )
+    numerator = fsum((left_rank[key] - left_mean) * (right_rank[key] - right_mean) for key in keys)
     denominator = sqrt(
         fsum((left_rank[key] - left_mean) ** 2 for key in keys)
         * fsum((right_rank[key] - right_mean) ** 2 for key in keys)
@@ -264,9 +262,7 @@ def _campaign_results(
                 variant_count=len(values.predicted),
                 mae=fsum(abs(error) for error in errors) / len(errors),
                 rmse=sqrt(fsum(error * error for error in errors) / len(errors)),
-                pairwise_rank_accuracy=_pairwise_rank_accuracy(
-                    values.predicted, values.observed
-                ),
+                pairwise_rank_accuracy=_pairwise_rank_accuracy(values.predicted, values.observed),
                 predicted_top_variant=_top_variant(values.predicted),
                 observed_top_variant=_top_variant(values.observed),
                 top_variant_correct=float(
@@ -295,8 +291,7 @@ def evaluate_historical_backtest(
     outcome_values = _validate_outcomes(protocol=protocol, outcomes=outcomes)
     campaign_results = _campaign_results(predictions, outcome_values)
     prediction_errors = [
-        predictions[key].predicted_value - outcome_values[key].observed_value
-        for key in predictions
+        predictions[key].predicted_value - outcome_values[key].observed_value for key in predictions
     ]
     mae = fsum(abs(error) for error in prediction_errors) / len(prediction_errors)
     rmse = sqrt(fsum(error * error for error in prediction_errors) / len(prediction_errors))
@@ -308,9 +303,9 @@ def evaluate_historical_backtest(
     pairwise_rank_accuracy = fsum(
         result.pairwise_rank_accuracy for result in campaign_results
     ) / len(campaign_results)
-    top_variant_accuracy = fsum(
-        result.top_variant_correct for result in campaign_results
-    ) / len(campaign_results)
+    top_variant_accuracy = fsum(result.top_variant_correct for result in campaign_results) / len(
+        campaign_results
+    )
 
     baseline_mae: float | None = None
     if baseline_prediction_set is not None:
@@ -348,9 +343,7 @@ def evaluate_historical_backtest(
         pairwise_rank_accuracy=pairwise_rank_accuracy,
         top_variant_accuracy=top_variant_accuracy,
         rank_correlation=(
-            fsum(rank_correlations) / len(rank_correlations)
-            if rank_correlations
-            else None
+            fsum(rank_correlations) / len(rank_correlations) if rank_correlations else None
         ),
         baseline_mae=baseline_mae,
         mae_improvement_vs_baseline=(baseline_mae - mae if baseline_mae is not None else None),

@@ -192,9 +192,7 @@ def _distribution(values: tuple[float, float, float, float]) -> ReactionDistribu
     return ReactionDistribution(
         categories=tuple(  # type: ignore[arg-type]
             ReactionShare(key=key, value=value)
-            for key, value in zip(
-                reaction_keys, values, strict=True
-            )
+            for key, value in zip(reaction_keys, values, strict=True)
         )
     )
 
@@ -264,17 +262,13 @@ def synthetic_observation_from_repeated_result(
         fsum(run.report.distribution.categories[index].value for run in runs) / len(runs)
         for index in range(4)
     )
-    metric_values = tuple(
-        summary.mean for summary in repeated_result.metric_summaries
-    )
+    metric_values = tuple(summary.mean for summary in repeated_result.metric_summaries)
     return SyntheticVariantObservation(
         variant_key=variant_key,
         cohort_key=cohort_key,
         population_weight=population_weight,
         effective_sample_size=fsum(run.report.effective_sample_size for run in runs) / len(runs),
-        distribution=_distribution(
-            cast(tuple[float, float, float, float], category_values)
-        ),
+        distribution=_distribution(cast(tuple[float, float, float, float], category_values)),
         metrics=tuple(  # type: ignore[arg-type]
             MetricScore(key=key, value=value)
             for key, value in zip(METRIC_KEYS, metric_values, strict=True)
@@ -308,12 +302,9 @@ def _comparison(
         abs(synthetic.distribution[index] - survey.distribution[index]) for index in range(4)
     )
     distribution_brier = 0.5 * fsum(
-        (synthetic.distribution[index] - survey.distribution[index]) ** 2
-        for index in range(4)
+        (synthetic.distribution[index] - survey.distribution[index]) ** 2 for index in range(4)
     )
-    metric_errors = [
-        synthetic.metrics[index] - survey.metrics[index] for index in range(5)
-    ]
+    metric_errors = [synthetic.metrics[index] - survey.metrics[index] for index in range(5)]
     return SurveyCalibrationComparison(
         variant_key=variant_key,
         matched_cohort_count=len(set(row.cohort_key for row in synthetic_rows)),
@@ -390,14 +381,10 @@ def calibrate_synthetic_panel(
         else None
     )
     aggregate_mae = (
-        fsum(item.metric_mae for item in comparisons) / len(comparisons)
-        if comparisons
-        else None
+        fsum(item.metric_mae for item in comparisons) / len(comparisons) if comparisons else None
     )
     aggregate_rmse = (
-        fsum(item.metric_rmse for item in comparisons) / len(comparisons)
-        if comparisons
-        else None
+        fsum(item.metric_rmse for item in comparisons) / len(comparisons) if comparisons else None
     )
     synthetic_rank_values = {
         item.variant_key: item.synthetic_positive_share for item in comparisons
@@ -416,9 +403,7 @@ def calibrate_synthetic_panel(
         variant_rank_correlation=_pearson(
             _rank_map(synthetic_rank_values), _rank_map(survey_rank_values)
         ),
-        pairwise_rank_agreement=_pairwise_rank_agreement(
-            synthetic_rank_values, survey_rank_values
-        ),
+        pairwise_rank_agreement=_pairwise_rank_agreement(synthetic_rank_values, survey_rank_values),
         limitations=(
             "Observed-survey comparison measures synthetic aggregate outputs against observed "
             "survey aggregates; "

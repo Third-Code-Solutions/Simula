@@ -438,7 +438,7 @@ def _dataset_from_rows(
             if share_intent is not None:
                 group.share_intent_total += weight * share_intent
                 group.share_intent_count += 1
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             malformed_count += 1
 
     observations: list[SurveyVariantObservation] = []
@@ -465,9 +465,7 @@ def _dataset_from_rows(
                     )
                 ),
                 share_intent=(
-                    group.share_intent_total / weight
-                    if group.share_intent_count > 0
-                    else None
+                    group.share_intent_total / weight if group.share_intent_count > 0 else None
                 ),
                 quality_pass_rate=group.quality_total / group.count,
             )

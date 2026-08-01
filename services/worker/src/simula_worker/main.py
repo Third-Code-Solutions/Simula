@@ -579,9 +579,7 @@ async def serve() -> None:
         wait_tasks = {stop_task, worker_task}
         if campaign_evidence_task is not None:
             wait_tasks.add(campaign_evidence_task)
-        done, pending = await asyncio.wait(
-            wait_tasks, return_when=asyncio.FIRST_COMPLETED
-        )
+        done, pending = await asyncio.wait(wait_tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in pending:
             task.cancel()
         await asyncio.gather(*pending, return_exceptions=True)

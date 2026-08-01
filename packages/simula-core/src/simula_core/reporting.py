@@ -255,9 +255,7 @@ def build_complete_report(
         ],
         "transparency": transparency.model_dump(mode="json"),
         "repeated_simulation": (
-            None
-            if repeated_simulation is None
-            else repeated_simulation.model_dump(mode="json")
+            None if repeated_simulation is None else repeated_simulation.model_dump(mode="json")
         ),
         "limitations": list(
             dict.fromkeys(

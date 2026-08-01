@@ -133,9 +133,7 @@ def _summary(key: RepeatMetricKey, values: Sequence[float]) -> RepeatedValueSumm
     ordered = sorted(values)
     midpoint = len(ordered) // 2
     median = (
-        ordered[midpoint]
-        if len(ordered) % 2
-        else (ordered[midpoint - 1] + ordered[midpoint]) / 2
+        ordered[midpoint] if len(ordered) % 2 else (ordered[midpoint - 1] + ordered[midpoint]) / 2
     )
     variance = fsum((value - mean) ** 2 for value in values) / len(values)
     standard_deviation = sqrt(max(0.0, variance))
@@ -157,9 +155,7 @@ def _share_summary(values: Sequence[float]) -> RepeatedShareSummary:
     ordered = sorted(values)
     midpoint = len(ordered) // 2
     median = (
-        ordered[midpoint]
-        if len(ordered) % 2
-        else (ordered[midpoint - 1] + ordered[midpoint]) / 2
+        ordered[midpoint] if len(ordered) % 2 else (ordered[midpoint - 1] + ordered[midpoint]) / 2
     )
     variance = fsum((value - mean) ** 2 for value in values) / len(values)
     standard_deviation = sqrt(max(0.0, variance))
@@ -200,9 +196,7 @@ def summarize_variant_ranking(
     top_probabilities = {key: 0.0 for key in variant_keys}
     pairwise_agreements: list[float] = []
     for repetition_index in range(repetition_count):
-        values = {
-            key: float(values_by_variant[key][repetition_index]) for key in variant_keys
-        }
+        values = {key: float(values_by_variant[key][repetition_index]) for key in variant_keys}
         ordered = sorted(values.items(), key=lambda item: (-item[1], item[0]))
         cursor = 0
         while cursor < len(ordered):
@@ -270,6 +264,8 @@ def summarize_variant_ranking(
             "checks.",
         ),
     )
+
+
 def run_repeated_methodology(
     engine: MethodologyEngine,
     *,
@@ -317,9 +313,7 @@ def run_repeated_methodology(
         )
         for key in metric_keys
     )
-    positive_share = _share_summary(
-        [run.report.distribution.categories[0].value for run in runs]
-    )
+    positive_share = _share_summary([run.report.distribution.categories[0].value for run in runs])
     max_interval_half_width = max(
         [
             max(
@@ -356,8 +350,7 @@ def run_repeated_methodology(
         max_interval_half_width=max_interval_half_width,
         limitations=(
             EXPERIMENTAL_LIMITATION,
-            "Repeat interval is a Monte Carlo stability diagnostic, not a population "
-            "estimate.",
+            "Repeat interval is a Monte Carlo stability diagnostic, not a population estimate.",
             "No consented survey comparison or held-out historical outcome evidence is attached.",
         ),
     )
