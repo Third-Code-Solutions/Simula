@@ -13,7 +13,7 @@ source_of_truth: true
 ## 2026-07-30
 
 - Added E-5073: every deployed server now binds to migration head
-  `20260801135222`; production additionally requires one rollout UUID, the
+  `20260801150001`; production additionally requires one rollout UUID, the
   deterministic archive digest, verified Sigstore-bundle digest, and exact
   GitHub Actions run. PostgreSQL readiness independently checks the applied
   head and forced RLS.

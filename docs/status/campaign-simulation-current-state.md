@@ -33,13 +33,16 @@ classification: OBSERVED
   `20260801124952_campaign_lab_evidence_cancel_finalize`, and
   `20260801135222_campaign_lab_runtime_head`, applied to Supabase
   project `ywiwmczccktwzqyhzhiz`.
+- The visual-profile command now has the required asset foreign-key privilege
+  through `20260801150000_m6_visual_profile_fk_privilege`; runtime admission
+  is bound to `20260801150001_campaign_lab_runtime_head`.
 - Authenticated NestJS v2 survey-calibration and historical-backtest commands,
   idempotency, status/events/cancel reads, OpenAPI, and a native Evidence Lab
   UI were added. The worker now claims and evaluates these durable jobs with
   the deterministic core; held-out outcomes are never returned by the read API.
 - Project-scoped outcome references, per-run `retention_until` metadata, bounded
   retention deletion, and retention audit events were added in migration
-  `20260801135222_campaign_lab_runtime_head`.
+  `20260801150001_campaign_lab_runtime_head`.
 - Aggregate-only CSV, Formbricks, ODK, and generic JSON adapters now normalize
   external response exports in memory with duplicate, bot, low-quality,
   malformed, consent, rights, and prohibited-field controls. Respondent rows
