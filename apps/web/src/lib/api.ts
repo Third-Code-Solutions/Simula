@@ -900,7 +900,9 @@ export function createSurveyCalibration(
   }>,
 ): Promise<CampaignEvidenceRun> {
   return request<CampaignEvidenceRun>(
-    domainV2Path(`/projects/${projectId}/campaign-evidence/survey-calibrations`),
+    domainV2Path(
+      `/projects/${projectId}/campaign-evidence/survey-calibrations`,
+    ),
     { body: input, headers: idempotencyHeaders(), method: "POST" },
   );
 }

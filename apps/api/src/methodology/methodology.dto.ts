@@ -22,7 +22,10 @@ export class RepeatedSimulationConfigurationDto {
   @Max(10)
   repetition_count!: number;
 
-  @ApiProperty({ minimum: -9_223_372_036_854_775_808, maximum: 9_223_372_036_854_775_807 })
+  @ApiProperty({
+    minimum: -9_223_372_036_854_775_808,
+    maximum: 9_223_372_036_854_775_807,
+  })
   @IsInt()
   base_seed!: number;
 

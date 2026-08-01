@@ -53,9 +53,7 @@ import {
   HistoricalBacktestCreateDto,
   SurveyCalibrationCreateDto,
 } from "./campaign-evidence.dto";
-import type {
-  CampaignEvidenceServicePort,
-} from "./campaign-evidence.service";
+import type { CampaignEvidenceServicePort } from "./campaign-evidence.service";
 
 const IDEMPOTENCY_HEADER = {
   name: "Idempotency-Key",
@@ -142,7 +140,10 @@ export class CampaignEvidenceController {
     @Param("evidence_id") rawEvidenceId: string,
     @CurrentIdentity() identity: VerifiedIdentity,
   ): Promise<CampaignEvidenceRunResponseDto> {
-    return this.evidence.get(identity, resourceId(rawEvidenceId, "evidence_id"));
+    return this.evidence.get(
+      identity,
+      resourceId(rawEvidenceId, "evidence_id"),
+    );
   }
 
   @Get("campaign-evidence/:evidence_id/events")

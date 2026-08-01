@@ -118,8 +118,10 @@ export class PrivateMethodologyEngine implements MethodologyEngine {
         data.replayed !== false ||
         (command.repetition_configuration !== null &&
           command.repetition_configuration !== undefined &&
-          (object(repeated, "repeated methodology result").schema_version !== 1 ||
-            object(report.repeated_simulation, "repeated report evidence").schema_version !== 1))
+          (object(repeated, "repeated methodology result").schema_version !==
+            1 ||
+            object(report.repeated_simulation, "repeated report evidence")
+              .schema_version !== 1))
       ) {
         throw new Error("methodology response binding mismatch");
       }

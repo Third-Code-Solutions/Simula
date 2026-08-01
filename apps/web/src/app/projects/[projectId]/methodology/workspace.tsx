@@ -613,7 +613,7 @@ export function MethodologyWorkspace({
               <p className="eyebrow">Generated report · experimental</p>
               <h2 id="report-title">{text(report.executive_summary)}</h2>
             </div>
-          <span className="methodology-chip">component diagnostics</span>
+            <span className="methodology-chip">component diagnostics</span>
           </div>
           <p className="methodology-warning">
             {text(report.experimental_notice)}

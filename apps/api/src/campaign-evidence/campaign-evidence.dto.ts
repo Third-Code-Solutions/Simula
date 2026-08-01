@@ -164,7 +164,17 @@ export class CampaignEvidenceEventDto {
   @ApiProperty({ minimum: 0, maximum: 100 })
   progress!: number;
 
-  @ApiProperty({ enum: ["queued", "started", "progress", "completed", "retrying", "failed", "canceled"] })
+  @ApiProperty({
+    enum: [
+      "queued",
+      "started",
+      "progress",
+      "completed",
+      "retrying",
+      "failed",
+      "canceled",
+    ],
+  })
   event_kind!: string;
 
   @ApiPropertyOptional()

@@ -8,7 +8,10 @@ import {
 } from "../domain/domain.constants";
 import type { EnabledDomainRuntime } from "../domain/domain-runtime";
 import { AppProblem, dependencyUnavailable } from "../domain/problem";
-import { databaseClaims, databaseProblem } from "../organizations/pg-organization-gateway";
+import {
+  databaseClaims,
+  databaseProblem,
+} from "../organizations/pg-organization-gateway";
 import type {
   CampaignEvidenceEventCollectionDto,
   CampaignEvidenceEventDto,
@@ -77,7 +80,11 @@ interface EvidenceEventRow {
 }
 
 function timestamp(value: Date | string | null): string | null {
-  return value === null ? null : value instanceof Date ? value.toISOString() : value;
+  return value === null
+    ? null
+    : value instanceof Date
+      ? value.toISOString()
+      : value;
 }
 
 function notFound(): AppProblem {
@@ -170,12 +177,16 @@ export class CampaignEvidenceService implements CampaignEvidenceServicePort {
     const publicSurveyImport =
       surveyInput.survey_import === undefined
         ? undefined
-        : (({ payload: _payload, ...metadata }) => metadata)(surveyInput.survey_import);
+        : (({ payload: _payload, ...metadata }) => metadata)(
+            surveyInput.survey_import,
+          );
     const request =
       kind === "survey_calibration"
         ? {
             synthetic_observations: surveyInput.synthetic_observations,
-            ...(surveyInput.survey === undefined ? {} : { survey: surveyInput.survey }),
+            ...(surveyInput.survey === undefined
+              ? {}
+              : { survey: surveyInput.survey }),
             ...(publicSurveyImport === undefined
               ? {}
               : { survey_import: publicSurveyImport }),
@@ -185,7 +196,10 @@ export class CampaignEvidenceService implements CampaignEvidenceServicePort {
             prediction_set: backtestInput.prediction_set,
             ...(backtestInput.baseline_prediction_set === undefined
               ? {}
-              : { baseline_prediction_set: backtestInput.baseline_prediction_set }),
+              : {
+                  baseline_prediction_set:
+                    backtestInput.baseline_prediction_set,
+                }),
           };
     const secret =
       kind === "historical_backtest"
@@ -215,8 +229,12 @@ export class CampaignEvidenceService implements CampaignEvidenceServicePort {
             kind,
             JSON.stringify(request),
             secret === null ? null : JSON.stringify(secret),
-            kind === "survey_calibration" ? surveyInput.source_version_id : null,
-            kind === "historical_backtest" ? backtestInput.outcome_set_id : null,
+            kind === "survey_calibration"
+              ? surveyInput.source_version_id
+              : null,
+            kind === "historical_backtest"
+              ? backtestInput.outcome_set_id
+              : null,
             idempotencyKey,
             requestSha256,
             correlationId,
@@ -337,7 +355,10 @@ export class CampaignEvidenceService implements CampaignEvidenceServicePort {
 
   private assertPayloadBudget(value: object, field: string): void {
     const encoded = JSON.stringify(value);
-    if (encoded === undefined || Buffer.byteLength(encoded, "utf8") > 60 * 1024) {
+    if (
+      encoded === undefined ||
+      Buffer.byteLength(encoded, "utf8") > 60 * 1024
+    ) {
       throw new AppProblem(
         413,
         "evidence_payload_too_large",
@@ -390,9 +411,7 @@ export class CampaignEvidenceService implements CampaignEvidenceServicePort {
 }
 
 @Injectable()
-export class UnavailableCampaignEvidenceService
-  implements CampaignEvidenceServicePort
-{
+export class UnavailableCampaignEvidenceService implements CampaignEvidenceServicePort {
   create(): Promise<CampaignEvidenceRunResponseDto> {
     return Promise.reject(
       dependencyUnavailable("Campaign evidence evaluation is not enabled."),
