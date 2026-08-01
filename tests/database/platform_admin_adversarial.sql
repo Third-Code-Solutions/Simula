@@ -81,10 +81,18 @@ begin
   if private.platform_user_count(private.verified_subject()) <> 4 then
     raise exception 'platform user count was not bounded to the administrator';
   end if;
-  if (select pg_catalog.count(*) from api.organizations) <> 2 then
+  if (
+    select pg_catalog.count(*)
+    from api.organizations
+    where id in (select organization_id from pg_temp.platform_admin_state)
+  ) <> 2 then
     raise exception 'platform administrator could not see every organization';
   end if;
-  if (select pg_catalog.count(*) from api.organization_memberships) <> 2 then
+  if (
+    select pg_catalog.count(*)
+    from api.organization_memberships
+    where organization_id in (select organization_id from pg_temp.platform_admin_state)
+  ) <> 2 then
     raise exception 'platform administrator could not inspect organization membership';
   end if;
   if not private.has_org_role(
