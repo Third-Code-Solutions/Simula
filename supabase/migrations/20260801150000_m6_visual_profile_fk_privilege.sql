@@ -2,7 +2,7 @@
 -- command. PostgreSQL still checks the asset foreign key under that owner.
 
 set role postgres;
-grant references (id)
+grant references
 on table api.stimulus_assets
 to simula_command_owner;
 set role postgres;
