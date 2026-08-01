@@ -1,2 +1,13 @@
 a9ec80b6ca49be83cdb61bdb12f3f63725bdedd7:packages/simula-core/tests/test_deterministic_mock.py:generic-api-key:150
 a3c57935b039fc45ce09580d215040f8cb45411f:tests/integration/test_phase34_product.py:generic-api-key:324
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/methodology/methodology-engine.spec.ts:generic-api-key:22
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/organizations/cursor-codec.spec.ts:generic-api-key:14
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/assets/visual-profile-engine.spec.ts:generic-api-key:28
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/auth/supabase-token-verifier.spec.ts:generic-api-key:25
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/rate-limits/domain-rate-limiter.integration-spec.ts:generic-api-key:34
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/rate-limits/domain-rate-limiter.spec.ts:generic-api-key:17
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/rate-limits/domain-rate-limiter.spec.ts:generic-api-key:116
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/domain/domain-runtime.spec.ts:generic-api-key:18
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/src/organizations/pg-organization-gateway.spec.ts:generic-api-key:18
+9f8a2a73dd438917e5a461d0712258eab00086c3:apps/api/test/database/organization-gateway.database-int.ts:generic-api-key:197
+e2780ab3927e9ca784c722996a2cb3b9b50b0471:brain/QA/SIMULA_DASHBOARD_PRODUCTION_AUDIT_2026-07-22.md:generic-api-key:12
