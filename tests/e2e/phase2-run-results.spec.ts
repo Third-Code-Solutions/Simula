@@ -151,7 +151,7 @@ async function createTerminalRun(page: Page): Promise<void> {
   await expect(page.getByRole("link", { name: "Method" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Boundaries" })).toHaveCount(0);
   await page.getByLabel("Organization name").fill(organizationName);
-  await page.getByRole("button", { name: "Create workspace" }).click();
+  await page.getByRole("button", { name: "Create guided rehearsal" }).click();
   await expect(page).toHaveURL(/\/organizations\/[^/]+\/dashboard$/);
   await expect(
     page.getByRole("heading", { level: 1, name: organizationName }),
