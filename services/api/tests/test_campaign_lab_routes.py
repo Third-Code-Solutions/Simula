@@ -13,6 +13,10 @@ def test_campaign_lab_exposes_stage_read_endpoints() -> None:
     assert "/api/v1/campaign-lab/campaigns/{campaign_id}/research" in paths
     assert "/api/v1/campaign-lab/campaigns/{campaign_id}/cohorts" in paths
     assert "/api/v1/campaign-lab/campaigns/{campaign_id}/variants" in paths
+    assert "/api/v1/campaign-lab/research/runs/{run_id}" in paths
+    assert "/api/v1/campaign-lab/interviews/runs/{run_id}" in paths
+    assert "/api/v1/campaign-lab/campaigns/{campaign_id}/compliance/runs/{run_id}" in paths
+    assert "/api/v1/campaign-lab/reports/runs/{run_id}" in paths
 
 
 def test_report_can_bind_calibration_and_backtest_evidence_runs() -> None:

@@ -195,11 +195,11 @@ class DatabaseGateway:
                     cursor = await connection.execute("select 1 as ready")
                     row = await cursor.fetchone()
                     snapshot_cursor = await connection.execute(
-                        "select * from private.runtime_observability_snapshot()"
+                        "select * from private.runtime_observability_snapshot_v2()"
                     )
                     snapshot = await snapshot_cursor.fetchone()
                     schema_cursor = await connection.execute(
-                        "select * from private.runtime_schema_readiness()"
+                        "select * from private.runtime_schema_readiness_v2()"
                     )
                     schema = await schema_cursor.fetchone()
             ready = (

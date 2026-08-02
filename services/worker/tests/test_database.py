@@ -32,7 +32,7 @@ class _Transaction:
 
 
 class _Connection:
-    def __init__(self, *, migration_version: str = "20260802063625") -> None:
+    def __init__(self, *, migration_version: str = "20260802143000") -> None:
         self.queries: list[tuple[str, tuple[object, ...] | None]] = []
         self.migration_version = migration_version
 
@@ -109,7 +109,7 @@ async def test_worker_database_readiness_requires_the_exact_schema_head() -> Non
     database._pool = cast(Any, _Pool(connection))
     database._telemetry = None
     database._queue_transport = "bullmq"
-    database._migration_head = "20260802063625"
+    database._migration_head = "20260802143000"
 
     assert await database.ready() is True
 

@@ -17,6 +17,7 @@ from uuid import UUID, uuid5
 
 from pydantic import Field, model_validator
 
+import simula_core.behavioral_engine as behavioral
 from simula_core.json_codec import canonical_json_dumps
 from simula_core.methodology import (
     AudienceDefinitionVersion,
@@ -27,6 +28,7 @@ from simula_core.methodology import (
     MethodologyEngine,
     PopulationFrameVersion,
     SamplingConfiguration,
+    sample_population,
 )
 from simula_core.repeated_simulation import (
     RepeatedMethodologyResult,
@@ -434,6 +436,47 @@ class CampaignLabCohortFinding(FrozenModel):
     limitations: tuple[str, ...] = Field(min_length=1, max_length=20)
 
 
+class CampaignLabBehavioralAgentEvidence(FrozenModel):
+    """Bounded event and memory evidence available for a synthetic interview."""
+
+    agent_id: UUID
+    cohort_key: Key
+    variant_key: Key
+    repetition_index: int = Field(ge=0, le=29)
+    exposure_history: tuple[str, ...] = Field(min_length=1, max_length=50)
+    action_history: tuple[str, ...] = Field(min_length=1, max_length=50)
+    memory_entries: tuple[Mapping[str, Any], ...] = Field(max_length=32)
+    evidence_event_ids: tuple[UUID, ...] = Field(min_length=1, max_length=100)
+
+
+class CampaignLabBehavioralVariantDiagnostic(FrozenModel):
+    variant_key: Key
+    requested_rounds: int = Field(ge=1, le=50)
+    executed_rounds: int = Field(ge=1, le=50)
+    network_topology: Literal["independent", "small_world", "random_bounded"]
+    agent_count: int = Field(ge=10, le=2000)
+    repetition_count: int = Field(ge=1, le=30)
+    action_shares: Mapping[str, float]
+    mean_attention: float = Field(ge=0.0, le=100.0)
+    mean_resonance: float = Field(ge=0.0, le=100.0)
+    mean_trust: float = Field(ge=0.0, le=100.0)
+    interviewable_agents: tuple[CampaignLabBehavioralAgentEvidence, ...] = Field(
+        min_length=1, max_length=24
+    )
+
+
+class CampaignLabBehavioralDiagnostics(FrozenModel):
+    requested_panel_size: int = Field(ge=10, le=5000)
+    executed_agent_count: int = Field(ge=10, le=2000)
+    requested_rounds: int = Field(ge=1, le=50)
+    executed_rounds: int = Field(ge=1, le=50)
+    network_topology: Literal["independent", "small_world", "random_bounded"]
+    variants: tuple[CampaignLabBehavioralVariantDiagnostic, ...] = Field(
+        min_length=2, max_length=20
+    )
+    limitations: tuple[str, ...] = Field(min_length=1, max_length=20)
+
+
 class CampaignLabSimulationResult(FrozenModel):
     schema_version: Literal[1] = 1
     campaign_id: UUID
@@ -448,6 +491,7 @@ class CampaignLabSimulationResult(FrozenModel):
     limitations: tuple[str, ...] = Field(min_length=1, max_length=20)
     reproducibility_checksum_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     cohort_findings: tuple[CampaignLabCohortFinding, ...] = ()
+    behavioral_diagnostics: CampaignLabBehavioralDiagnostics | None = None
 
 
 class SyntheticPersonaInterview(FrozenModel):
@@ -457,9 +501,16 @@ class SyntheticPersonaInterview(FrozenModel):
     disclosure: Literal["Synthetic Persona / Not a " + "real " + "respondent"] = (  # type: ignore[valid-type]
         "Synthetic Persona / Not a " + "real " + "respondent"
     )
+    question: str = Field(default="What happened in this simulation?", min_length=1, max_length=500)
     transcript: str = Field(min_length=1, max_length=4000)
     evidence_status: Literal["Synthetic-only"] = "Synthetic-only"
     reviewed_by_human: bool = False
+    simulation_run_id: UUID | None = None
+    agent_id: UUID | None = None
+    exposure_history: tuple[str, ...] = Field(default=(), max_length=50)
+    action_history: tuple[str, ...] = Field(default=(), max_length=50)
+    memory_evidence: tuple[Mapping[str, Any], ...] = Field(default=(), max_length=32)
+    evidence_event_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
     limitations: tuple[str, ...] = Field(min_length=1, max_length=10)
 
 
@@ -667,9 +718,7 @@ def _cohort_findings(
         return ()
     first_result = next(iter(results.values()))
     sampled_keys = {
-        response.cell_key
-        for run in first_result.runs
-        for response in run.cohort_responses
+        response.cell_key for run in first_result.runs for response in run.cohort_responses
     }
     frame_by_key = {cell.key: cell for cell in request.cohort.population_frame.cells}
     findings: list[CampaignLabCohortFinding] = []
@@ -691,20 +740,14 @@ def _cohort_findings(
                 values: list[float] = []
                 for run in repeated.runs:
                     response = next(
-                        (
-                            item
-                            for item in run.cohort_responses
-                            if item.cell_key == cohort_key
-                        ),
+                        (item for item in run.cohort_responses if item.cell_key == cohort_key),
                         None,
                     )
                     if response is None:
                         raise ValueError("repeated cohort response coverage mismatch")
                     values.append(
                         next(
-                            metric.value
-                            for metric in response.metrics
-                            if metric.key == metric_key
+                            metric.value for metric in response.metrics if metric.key == metric_key
                         )
                     )
                 values_by_variant[variant_key] = values
@@ -728,6 +771,307 @@ def _cohort_findings(
             )
         )
     return tuple(findings)
+
+
+def _behavioral_key(value: str, *, prefix: str) -> str:
+    normalized = re.sub(r"[^a-z0-9_]", "_", value.casefold()).strip("_")
+    candidate = f"{prefix}_{normalized}" if normalized else prefix
+    return candidate[:64]
+
+
+def _behavioral_context_graph(
+    request: CampaignLabSimulationRequest,
+    variant: CampaignLabVariant,
+    sampled_cells: Sequence[Any],
+) -> behavioral.ContextGraph:
+    sources = request.research_sources or request.cohort.source_provenance
+    nodes: list[behavioral.ContextNode] = [
+        behavioral.ContextNode(
+            node_id="campaign_objective",
+            kind="market_context",
+            title="Campaign objective",
+            content=request.objective,
+            provenance=behavioral.EvidenceProvenance(
+                source_id="campaign_objective",
+                source_version="campaign_lab_request_v1",
+                owner="SIMULA campaign workspace",
+                license="Client-provided campaign brief",
+                allowed_use="Aggregate experimental message research",
+                collected_at="campaign_request",
+                transformation="Structured campaign request field",
+                validation_status="experimental",
+            ),
+        ),
+        behavioral.ContextNode(
+            node_id=_behavioral_key(variant.key, prefix="stimulus"),
+            kind="stimulus_fact",
+            title=variant.label,
+            content=variant.content,
+            provenance=behavioral.EvidenceProvenance(
+                source_id="authored_variant",
+                source_version=request.configuration.prompt_version,
+                owner="SIMULA campaign workspace",
+                license="Client-provided authored message",
+                allowed_use="Aggregate experimental message research",
+                collected_at="authored_variant",
+                transformation="No model-generated campaign claim",
+                validation_status="experimental",
+            ),
+        ),
+    ]
+    for source in sources:
+        if source.validation_status == "rejected":
+            raise ValueError("rejected research provenance cannot enter the behavioral engine")
+        source_id = _behavioral_key(source.source_id, prefix="source")
+        nodes.append(
+            behavioral.ContextNode(
+                node_id=source_id,
+                kind="audience_evidence",
+                title=source.title,
+                content=(
+                    f"{source.title}; geography={source.geography}; "
+                    f"methodology={source.collection_methodology}; "
+                    f"limitations={'; '.join(source.known_limitations)}"
+                )[:2000],
+                provenance=behavioral.EvidenceProvenance(
+                    source_id=source_id,
+                    source_version=source.dataset_version,
+                    owner=source.source_organization,
+                    license=source.license_or_usage_rights,
+                    allowed_use="Aggregate cohort research only",
+                    collected_at=source.processing_date.isoformat(),
+                    transformation=source.transformation,
+                    validation_status=(
+                        "benchmarked" if source.validation_status == "validated" else "experimental"
+                    ),
+                ),
+            )
+        )
+    for cell in sampled_cells:
+        cell_dimensions = {item.dimension: item.value for item in cell.dimensions}
+        nodes.append(
+            behavioral.ContextNode(
+                node_id=_behavioral_key(cell.key, prefix="audience"),
+                kind="audience_evidence",
+                title=f"Aggregate cohort {cell.key}",
+                content=(
+                    f"Population-weighted cohort dimensions: "
+                    f"{cell_dimensions}; "
+                    f"population weight={cell.population_weight}; "
+                    f"audience weight={cell.audience_weight}"
+                ),
+                provenance=behavioral.EvidenceProvenance(
+                    source_id="population_frame",
+                    source_version=request.cohort.population_frame.version.__str__(),
+                    owner="SIMULA population frame",
+                    license="Declared population frame use",
+                    allowed_use="Aggregate cohort diagnostics",
+                    collected_at=str(request.cohort.population_frame.version),
+                    transformation="Deterministic population-weighted cell sampling",
+                    validation_status="experimental",
+                ),
+            )
+        )
+    nodes.sort(key=lambda node: node.node_id)
+    return behavioral.ContextGraph(
+        graph_id=uuid5(request.campaign_id, f"campaign-lab-context:{variant.key}"),
+        organization_id=request.campaign_id,
+        version=1,
+        nodes=tuple(nodes),
+        limitations=(
+            "Context is a bounded synthetic diagnostic corpus, not a claim that every cited "
+            "source supports every generated action.",
+        ),
+    )
+
+
+def _behavioral_psychographics(
+    request: CampaignLabSimulationRequest,
+    sampled_cells: Sequence[Any],
+) -> tuple[behavioral.CohortPsychographics, ...]:
+    profiles: list[behavioral.CohortPsychographics] = []
+    source_dimensions = tuple(request.cohort.behavioral_dimensions)
+    for cell in sampled_cells:
+        traits = []
+        for definition in source_dimensions:
+            digest = sha256(
+                f"{request.configuration.random_seed}:{cell.key}:{definition.key}".encode()
+            ).digest()
+            unit = int.from_bytes(digest[:8], "big") / ((2**64) - 1)
+            bounded = definition.minimum + unit * (definition.maximum - definition.minimum)
+            traits.append(
+                behavioral.PsychographicTrait(
+                    key=definition.key,
+                    value=bounded * 2.0 - 1.0,
+                    evidence_node_ids=(_behavioral_key(cell.key, prefix="audience"),),
+                )
+            )
+        profiles.append(
+            behavioral.CohortPsychographics(
+                cohort_key=cell.key,
+                segment_key=_behavioral_key(cell.key, prefix="segment"),
+                segment_label=f"Aggregate {cell.key}",
+                traits=tuple(sorted(traits, key=lambda trait: trait.key)),
+                limitations=(
+                    "Traits are bounded synthetic projections of declared aggregate dimensions; "
+                    "they are not individual psychometric measurements.",
+                ),
+            )
+        )
+    return tuple(sorted(profiles, key=lambda profile: profile.cohort_key))
+
+
+def _behavioral_agent_evidence(
+    result: behavioral.BehavioralRunResult,
+    *,
+    variant_key: str,
+    repetition_index: int,
+) -> tuple[CampaignLabBehavioralAgentEvidence, ...]:
+    evidence: list[CampaignLabBehavioralAgentEvidence] = []
+    for agent in result.fleet.agents[:12]:
+        actions = [
+            action
+            for interaction_round in result.rounds
+            for action in interaction_round.actions
+            if action.agent_id == agent.agent_id
+        ]
+        memory = next((entry for entry in result.memory if entry.agent_id == agent.agent_id), None)
+        if not actions or memory is None:
+            continue
+        evidence.append(
+            CampaignLabBehavioralAgentEvidence(
+                agent_id=agent.agent_id,
+                cohort_key=agent.cohort_key,
+                variant_key=variant_key,
+                repetition_index=repetition_index,
+                exposure_history=tuple(
+                    f"round_{action.round_index}: exposed_to_variant_{variant_key}"
+                    for action in actions
+                ),
+                action_history=tuple(action.action for action in actions),
+                memory_entries=tuple(entry.model_dump(mode="json") for entry in memory.entries),
+                evidence_event_ids=tuple(action.event_id for action in actions),
+            )
+        )
+    if not evidence:
+        raise ValueError("behavioral run produced no interviewable agent evidence")
+    return tuple(evidence)
+
+
+def _run_behavioral_diagnostics(
+    request: CampaignLabSimulationRequest,
+) -> CampaignLabBehavioralDiagnostics:
+    """Run the replayable event engine over the same weighted aggregate design."""
+
+    agent_count = min(request.configuration.panel_size, 2000)
+    sampling = SamplingConfiguration(
+        sample_size=agent_count,
+        minimum_per_cell=1,
+        maximum_cells=request.configuration.sampling_maximum_cells,
+        seed=request.configuration.random_seed,
+        sparse_cell_threshold=request.configuration.sparse_cell_threshold,
+    )
+    provider = behavioral.DeterministicTieredProvider()
+    synthesizer = behavioral.DeterministicNarrativeSynthesizer()
+    variant_diagnostics: list[CampaignLabBehavioralVariantDiagnostic] = []
+    for variant in request.variants:
+        runs: list[behavioral.BehavioralRunResult] = []
+        for repetition_index in range(request.configuration.repetitions):
+            repetition_sampling = sampling.model_copy(
+                update={"seed": request.configuration.random_seed + repetition_index}
+            )
+            sample = sample_population(
+                request.cohort.population_frame,
+                request.cohort.audience,
+                repetition_sampling,
+            )
+            context = _behavioral_context_graph(request, variant, sample.cells)
+            psychographics = _behavioral_psychographics(request, sample.cells)
+            run_id = uuid5(
+                request.campaign_id,
+                f"campaign-lab-behavioral:{variant.key}:{repetition_index}",
+            )
+            study_id = uuid5(
+                request.campaign_id,
+                f"campaign-lab-behavioral-study:{repetition_index}",
+            )
+            command = behavioral.BehavioralRunCommand(
+                organization_id=request.campaign_id,
+                run_id=run_id,
+                study_id=study_id,
+                variant_key=variant.key,
+                stimulus=variant.content,
+                context_graph=context,
+                population=request.cohort.population_frame,
+                audience=request.cohort.audience,
+                sampling_configuration=repetition_sampling,
+                psychographics=psychographics,
+                fleet_configuration=behavioral.AgentFleetConfiguration(
+                    agent_count=agent_count,
+                    llm_agent_count=0,
+                    minimum_per_cohort=1,
+                    seed=request.configuration.random_seed,
+                    network_topology=request.configuration.network_topology,
+                ),
+                engine_configuration=behavioral.BehavioralEngineConfiguration(
+                    methodology_version="campaign_lab_behavioral_v1",
+                    round_count=request.configuration.rounds,
+                    maximum_memory_entries_per_agent=20,
+                    maximum_provider_calls=agent_count * request.configuration.rounds,
+                    cost_ceiling_microusd=request.configuration.cost_ceiling_microusd,
+                    deadline_seconds=float(request.configuration.timeout_seconds),
+                    seed=request.configuration.random_seed + repetition_index,
+                ),
+                provider=provider.descriptor,
+            )
+            runs.append(
+                behavioral.execute_behavioral_run(
+                    command,
+                    provider=provider,
+                    synthesizer=synthesizer,
+                )
+            )
+        action_shares: dict[str, float] = {
+            action: sum(dict(run.report.action_shares)[action] for run in runs) / len(runs)
+            for action in behavioral.ACTION_KINDS
+        }
+        variant_diagnostics.append(
+            CampaignLabBehavioralVariantDiagnostic(
+                variant_key=variant.key,
+                requested_rounds=request.configuration.rounds,
+                executed_rounds=request.configuration.rounds,
+                network_topology=request.configuration.network_topology,
+                agent_count=agent_count,
+                repetition_count=len(runs),
+                action_shares=action_shares,
+                mean_attention=sum(run.report.mean_attention for run in runs) / len(runs),
+                mean_resonance=sum(run.report.mean_resonance for run in runs) / len(runs),
+                mean_trust=sum(run.report.mean_trust for run in runs) / len(runs),
+                interviewable_agents=_behavioral_agent_evidence(
+                    runs[0], variant_key=variant.key, repetition_index=0
+                ),
+            )
+        )
+    limitations = [
+        "Behavioral diagnostics are replayable synthetic-agent events, not observed human "
+        "evidence or population uncertainty.",
+        "Agent weights inherit the admitted population frame and are not vote-share or "
+        "persuasion estimates.",
+    ]
+    if request.configuration.panel_size > agent_count:
+        limitations.append(
+            "The event engine is bounded at 2,000 synthetic agents; the population-weighted "
+            "methodology run still uses the requested panel size."
+        )
+    return CampaignLabBehavioralDiagnostics(
+        requested_panel_size=request.configuration.panel_size,
+        executed_agent_count=agent_count,
+        requested_rounds=request.configuration.rounds,
+        executed_rounds=request.configuration.rounds,
+        network_topology=request.configuration.network_topology,
+        variants=tuple(variant_diagnostics),
+        limitations=tuple(limitations),
+    )
 
 
 def run_campaign_lab_simulation(
@@ -765,6 +1109,7 @@ def run_campaign_lab_simulation(
         )
     rankings = _rankings(repeated_by_variant)
     cohort_findings = _cohort_findings(request, repeated_by_variant)
+    behavioral_diagnostics = _run_behavioral_diagnostics(request)
     variant_results = tuple(
         CampaignLabVariantResult(
             variant_key=variant.key,
@@ -782,6 +1127,7 @@ def run_campaign_lab_simulation(
         "variants": [item.model_dump(mode="json") for item in variant_results],
         "rankings": {key: value.model_dump(mode="json") for key, value in rankings.items()},
         "cohort_findings": [item.model_dump(mode="json") for item in cohort_findings],
+        "behavioral_diagnostics": behavioral_diagnostics.model_dump(mode="json"),
     }
     checksum = sha256(canonical_json_dumps(payload)).hexdigest()
     return CampaignLabSimulationResult(
@@ -802,6 +1148,7 @@ def run_campaign_lab_simulation(
         ),
         reproducibility_checksum_sha256=checksum,
         cohort_findings=cohort_findings,
+        behavioral_diagnostics=behavioral_diagnostics,
     )
 
 
@@ -821,9 +1168,7 @@ def build_campaign_lab_report(
         metric_key: ranking.model_dump(mode="json")
         for metric_key, ranking in result.overall_component_rankings.items()
     }
-    cohort_findings = tuple(
-        finding.model_dump(mode="json") for finding in result.cohort_findings
-    )
+    cohort_findings = tuple(finding.model_dump(mode="json") for finding in result.cohort_findings)
     if not cohort_findings:
         cohort_findings = tuple(
             {
@@ -951,6 +1296,13 @@ def create_synthetic_interview(
     variant_key: str,
     prompt_version: str,
     interview_id: UUID,
+    question: str = "What happened in this simulation?",
+    simulation_run_id: UUID | None = None,
+    agent_id: UUID | None = None,
+    exposure_history: Sequence[str] = (),
+    action_history: Sequence[str] = (),
+    memory_evidence: Sequence[Mapping[str, Any]] = (),
+    evidence_event_ids: Sequence[UUID] = (),
 ) -> SyntheticPersonaInterview:
     """Create a clearly disclosed interview artifact from a structured persona."""
 
@@ -958,6 +1310,7 @@ def create_synthetic_interview(
         raise ValueError("variant_key is required")
     transcript = (
         f"Synthetic persona {persona.persona_id} reviewed variant {variant_key}. "
+        f"Question: {question} "
         f"The structured aggregate profile indicates {len(persona.behavioral_vector)} "
         f"versioned behavioral dimensions. Prompt {prompt_version} rendered this "
         "illustrative explanation; it is not testimony from a real " + "respondent."
@@ -967,10 +1320,17 @@ def create_synthetic_interview(
         persona_id=persona.persona_id,
         variant_key=variant_key,
         transcript=transcript,
+        question=question,
         limitations=(
             "Narrative is synthetic and illustrative.",
             "The interview cannot establish human preference or population opinion.",
         ),
+        simulation_run_id=simulation_run_id,
+        agent_id=agent_id,
+        exposure_history=tuple(exposure_history),
+        action_history=tuple(action_history),
+        memory_evidence=tuple(memory_evidence),
+        evidence_event_ids=tuple(evidence_event_ids),
     )
 
 

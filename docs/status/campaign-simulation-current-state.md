@@ -35,8 +35,9 @@ classification: OBSERVED
   `ywiwmczccktwzqyhzhiz`.
 - The visual-profile command now has the required asset foreign-key privilege
   through `20260801150000_m6_visual_profile_fk_privilege`; runtime admission is
-  bound to `20260802063625_campaign_lab_api_wrappers` after the Campaign Lab API
-  security-wrapper correction.
+  bound to the then-current `20260802063625_campaign_lab_api_wrappers` after the
+  Campaign Lab API security-wrapper correction; the durable-workflow head below
+  supersedes that runtime binding.
 - Authenticated NestJS v2 survey-calibration and historical-backtest commands,
   idempotency, status/events/cancel reads, OpenAPI, and a native Evidence Lab UI
   were added. The worker now claims and evaluates these durable jobs with the
@@ -68,17 +69,30 @@ classification: OBSERVED
   idempotency receipts. Explicit `Idempotency-Key` headers are supported, with a
   deterministic request-derived fallback for legacy callers. The change is in
   `20260802105930_campaign_lab_mutation_idempotency`, applied to
-  `ywiwmczccktwzqyhzhiz`, and runtime readiness/observability bind to that head.
+  `ywiwmczccktwzqyhzhiz`; its compatibility entrypoints remain available while
+  the current runtime binding is the durable-workflow head below.
 - FastAPI `/api/v1/campaign-lab/...` routes now cover campaign state, typed
   research/cohort/variant/interview artifacts, durable simulations, status,
   progress events, cancellation, cloning, survey intake, calibration, historical
   backtest intake, compliance review, audit, and reports.
+- Research ingestion now runs as a bounded, provenance-first worker job for
+  text, Markdown, CSV, JSON, DOCX, and text-bearing PDF inputs; scanned PDFs
+  fail closed with an OCR-required state instead of inventing extracted text.
+- Persona interviews, compliance reviews, and report generation now use the same
+  durable leased run queue, with run-status endpoints and aggregate evidence
+  binding. Behavioral diagnostics persist repetition, round, topology, exposure,
+  action, memory, and event evidence for synthetic-agent disclosure.
 - Supabase migrations `20260802060315_campaign_simulation_lab` and
   `20260802063625_campaign_lab_api_wrappers` plus
   `20260802090954_campaign_lab_cultural_evaluation` are applied to project
   `ywiwmczccktwzqyhzhiz`. Campaign Lab campaign, artifact, run, event, and
   worker-secret relations have forced RLS; command and worker functions are
   least-privilege and lease-bound.
+- Supabase migration `20260802143000_campaign_lab_durable_workflows` is applied
+  to `ywiwmczccktwzqyhzhiz`. Because the hosted command/worker functions are
+  owned by dedicated database roles, the migration adds owned v2 entrypoints and
+  preserves the published API contract while binding the runtime
+  readiness/observability checks to the new head.
 - The worker now claims Campaign Lab runs from PostgreSQL, persists progress,
   retries bounded failures, finalizes cancellation, and keeps raw survey rows
   and held-out outcomes in the worker-only secret envelope.
@@ -87,13 +101,14 @@ classification: OBSERVED
   sidebar, end-to-end campaign setup, aggregate request editor, durable run
   polling, evidence-stage disclosure, and report boundary. Evidence results
   expose survey/backtest component metrics and cohort slices in the UI.
-- Verification completed locally: Python/API/worker suites 362/362, mypy
-  150/150 files, web tests 142/142, web production build, web typecheck/lint,
-  generated-contract drift, Python compile, and full Ruff checks. Hosted
-  Supabase migration/function/grant/readiness checks and security advisor
-  review also completed. The repository wrapper check is environment-blocked
-  by the installed UV version, while the project-interpreter generator check
-  passes.
+- Verification completed locally: Python/API/worker suites 365/365, mypy 152/152
+  files, full Ruff, generated-contract drift, web workspace navigation tests
+  4/4, admin tests 2/2, web/admin/API production builds, TypeScript
+  lint/typecheck tasks, and contract tests 7/7. Full API/web Jest/Vitest runs
+  exceeded the bounded test timeout without a failure report; they are not
+  counted as passing. The repository `uv run --frozen` wrapper remains
+  environment-blocked by installed UV `0.12.0` versus required `0.11.19`; direct
+  project-interpreter Ruff and mypy checks pass.
 
 ## Implemented before this turn
 

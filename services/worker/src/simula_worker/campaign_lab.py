@@ -10,15 +10,29 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping
 from typing import cast
+from uuid import UUID
 
 import structlog
 from pydantic import ValidationError
-from simula_core.campaign_lab import CampaignLabSimulationRequest, run_campaign_lab_simulation
+from simula_core.campaign_lab import (
+    CampaignLabResearchSource,
+    CampaignLabSimulationRequest,
+    CampaignLabSimulationResult,
+    build_campaign_lab_report,
+    build_compliance_review,
+    build_structured_persona,
+    create_synthetic_interview,
+    run_campaign_lab_simulation,
+)
 from simula_core.historical_backtesting import (
     BlindBacktestPredictionSet,
     HistoricalBacktestProtocol,
     HistoricalOutcomeDataset,
     evaluate_historical_backtest,
+)
+from simula_core.research_ingestion import (
+    ResearchMediaType,
+    ingest_research_document,
 )
 from simula_core.survey_calibration import (
     SurveyDataset,
@@ -96,6 +110,121 @@ def _evaluate_backtest(
     ).model_dump(mode="json")
 
 
+def _evaluate_research(
+    request: Mapping[str, object], secret_payload: Mapping[str, object] | None
+) -> Mapping[str, object]:
+    if secret_payload is None:
+        raise ValueError("research document is missing")
+    source = CampaignLabResearchSource.model_validate(request.get("source"))
+    filename = request.get("filename")
+    media_type = request.get("media_type")
+    if not isinstance(filename, str) or not isinstance(media_type, str):
+        raise ValueError("research document metadata is missing")
+    chunk_size_raw = request.get("chunk_size", 1200)
+    overlap_raw = request.get("overlap", 120)
+    if not isinstance(chunk_size_raw, int) or not isinstance(overlap_raw, int):
+        raise ValueError("research chunk sizing is invalid")
+    result = ingest_research_document(
+        source=source,
+        filename=filename,
+        media_type=cast(ResearchMediaType, media_type),
+        secret_payload=secret_payload,
+        chunk_size=chunk_size_raw,
+        overlap=overlap_raw,
+    )
+    return result.model_dump(mode="json")
+
+
+def _evaluate_interview(request: Mapping[str, object]) -> Mapping[str, object]:
+    simulation_request = CampaignLabSimulationRequest.model_validate(
+        request.get("simulation_request")
+    )
+    simulation_result = CampaignLabSimulationResult.model_validate(request.get("simulation_result"))
+    diagnostics = simulation_result.behavioral_diagnostics
+    if diagnostics is None:
+        raise ValueError("simulation has no behavioral interview evidence")
+    source_run_id = request.get("source_run_id")
+    agent_id = request.get("agent_id")
+    variant_key = request.get("variant_key")
+    question = request.get("question")
+    prompt_version = request.get("prompt_version")
+    if not all(
+        isinstance(item, str) and item
+        for item in (source_run_id, agent_id, variant_key, prompt_version)
+    ):
+        raise ValueError("interview source identifiers are missing")
+    source_run_id_value = cast(str, source_run_id)
+    agent_id_value = cast(str, agent_id)
+    variant_key_value = cast(str, variant_key)
+    prompt_version_value = cast(str, prompt_version)
+    variant = next(
+        (item for item in diagnostics.variants if item.variant_key == variant_key_value),
+        None,
+    )
+    if variant is None:
+        raise ValueError("interview variant is not part of the simulation")
+    evidence = next(
+        (item for item in variant.interviewable_agents if str(item.agent_id) == agent_id_value),
+        None,
+    )
+    if evidence is None:
+        raise ValueError("interview agent evidence is not part of the simulation")
+    persona = build_structured_persona(
+        simulation_request.cohort,
+        sampled_cell_key=evidence.cohort_key,
+        sample_index=abs(UUID(agent_id_value).int) % 900_000,
+        seed=simulation_request.configuration.random_seed,
+    )
+    interview = create_synthetic_interview(
+        persona,
+        variant_key=variant_key_value,
+        question=question if isinstance(question, str) else "What happened in this simulation?",
+        prompt_version=prompt_version_value,
+        interview_id=UUID(source_run_id_value),
+        simulation_run_id=UUID(source_run_id_value),
+        agent_id=UUID(agent_id_value),
+        exposure_history=evidence.exposure_history,
+        action_history=evidence.action_history,
+        memory_evidence=evidence.memory_entries,
+        evidence_event_ids=evidence.evidence_event_ids,
+    )
+    return interview.model_dump(mode="json")
+
+
+def _evaluate_compliance(request: Mapping[str, object]) -> Mapping[str, object]:
+    reviewer = request.get("reviewer")
+    return build_compliance_review(
+        review_id=UUID(str(request.get("review_id"))),
+        payload=request.get("payload"),
+        reviewer=reviewer if isinstance(reviewer, str) else None,
+    ).model_dump(mode="json")
+
+
+def _evaluate_report(request: Mapping[str, object]) -> Mapping[str, object]:
+    lab_request = CampaignLabSimulationRequest.model_validate(request.get("simulation_request"))
+    lab_result = CampaignLabSimulationResult.model_validate(request.get("simulation_result"))
+    survey_calibration = request.get("survey_calibration")
+    historical_backtest = request.get("historical_backtest")
+    cultural_evaluation = request.get("cultural_evaluation")
+    human_reviewer = request.get("human_reviewer")
+    report = build_campaign_lab_report(
+        lab_request,
+        lab_result,
+        survey_calibration=cast(Mapping[str, object], survey_calibration)
+        if isinstance(survey_calibration, Mapping)
+        else None,
+        historical_backtest=cast(Mapping[str, object], historical_backtest)
+        if isinstance(historical_backtest, Mapping)
+        else None,
+        cultural_evaluation=cast(Mapping[str, object], cultural_evaluation)
+        if isinstance(cultural_evaluation, Mapping)
+        else None,
+        human_reviewer=human_reviewer if isinstance(human_reviewer, str) else None,
+        approval_status=request.get("approval_status", "draft"),  # type: ignore[arg-type]
+    )
+    return report.model_dump(mode="json")
+
+
 def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]:
     if claim.run_type == "repeated_simulation":
         request = CampaignLabSimulationRequest.model_validate(claim.request)
@@ -106,6 +235,14 @@ def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]
         return _evaluate_calibration(claim.request, claim.secret_payload)
     if claim.run_type == "historical_backtest":
         return _evaluate_backtest(claim.request, claim.secret_payload)
+    if claim.run_type == "research_ingestion":
+        return _evaluate_research(claim.request, claim.secret_payload)
+    if claim.run_type == "interview":
+        return _evaluate_interview(claim.request)
+    if claim.run_type == "compliance_review":
+        return _evaluate_compliance(claim.request)
+    if claim.run_type == "report":
+        return _evaluate_report(claim.request)
     raise ValueError("unsupported Campaign Lab durable run type")
 
 
