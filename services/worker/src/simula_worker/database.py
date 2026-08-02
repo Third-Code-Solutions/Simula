@@ -92,6 +92,7 @@ class CampaignLabClaim:
     run_type: Literal[
         "repeated_simulation",
         "survey_calibration",
+        "survey_import",
         "historical_backtest",
         "research_ingestion",
         "interview",
@@ -238,7 +239,7 @@ class WorkerDatabase(WorkerExecutionGateway):
                     )
                     row = await cursor.fetchone()
                     schema_cursor = await connection.execute(
-                        "select * from private.runtime_schema_readiness_v2()"
+                        "select * from private.runtime_schema_readiness_v3()"
                     )
                     schema = await schema_cursor.fetchone()
             ready = (
@@ -265,7 +266,7 @@ class WorkerDatabase(WorkerExecutionGateway):
 
     async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
         row = await self._fetchone(
-            "select * from private.runtime_observability_snapshot_v2()",
+            "select * from private.runtime_observability_snapshot_v3()",
             (),
         )
         states = (
@@ -448,6 +449,7 @@ class WorkerDatabase(WorkerExecutionGateway):
             allowed_types = {
                 "repeated_simulation",
                 "survey_calibration",
+                "survey_import",
                 "historical_backtest",
                 "research_ingestion",
                 "interview",
@@ -469,6 +471,7 @@ class WorkerDatabase(WorkerExecutionGateway):
                         Literal[
                             "repeated_simulation",
                             "survey_calibration",
+                            "survey_import",
                             "historical_backtest",
                             "research_ingestion",
                             "interview",
@@ -503,7 +506,7 @@ class WorkerDatabase(WorkerExecutionGateway):
         self, run_id: UUID, lease_token: UUID, result: Mapping[str, object]
     ) -> bool:
         return await self._boolean_function(
-            "select private.complete_campaign_lab_run_v2(%s, %s, %s) as changed",
+            "select private.complete_campaign_lab_run_v3(%s, %s, %s) as changed",
             (run_id, lease_token, Jsonb(dict(result))),
         )
 
@@ -666,7 +669,7 @@ class WorkerDatabase(WorkerExecutionGateway):
             "claim_run_execution_v2_traced": "claim_execution",
             "complete_behavioral_run_execution": "complete_behavioral_execution",
             "complete_campaign_evidence_run": "complete_campaign_evidence",
-            "complete_campaign_lab_run_v2": "complete_campaign_lab",
+            "complete_campaign_lab_run_v3": "complete_campaign_lab",
             "complete_run_execution": "complete_execution",
             "confirm_run_dispatch": "confirm_dispatch",
             "evaluate_run_creation_control": "evaluate_run_control",

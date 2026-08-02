@@ -363,7 +363,7 @@ async def _store_run(
         identity,
         operation=f"create_campaign_lab_{run_type}_run",
         query="""
-          select api.create_campaign_lab_run_v2(
+          select api.create_campaign_lab_run_v3(
             %s, %s, %s, %s, %s, %s, %s, %s
           ) as payload
         """,
@@ -803,7 +803,13 @@ async def get_simulation(
 
 async def _get_campaign_lab_run(
     run_id: UUID,
-    expected_run_type: Literal["research_ingestion", "interview", "compliance_review", "report"],
+    expected_run_type: Literal[
+        "research_ingestion",
+        "survey_import",
+        "interview",
+        "compliance_review",
+        "report",
+    ],
     request: Request,
     identity: VerifiedIdentity,
 ) -> dict[str, Any]:
@@ -1131,31 +1137,35 @@ async def import_survey(
 ) -> dict[str, Any]:
     metadata = {**body.metadata, "format": body.format, "field_map": body.field_map}
     _validate_policy(metadata)
-    artifact = ArtifactCreate(
-        title=f"Survey import {body.metadata.get('source_id', 'unattributed')}",
+    # Survey rows must pass through the same durable lease/retry path as every
+    # other long-running Campaign Lab operation. The public request contains
+    # only schema/provenance metadata; the raw export remains in the worker
+    # secret envelope and is consumed in memory.
+    result = await _store_run(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        run_type="survey_import",
         payload={
             "format": body.format,
             "metadata": body.metadata,
             "field_map": body.field_map,
-            "raw_payload_stored_worker_only": True,
-        },
-        provenance={
-            "evidence_status": "Survey-derived",
-            "consent_recorded": body.metadata.get("consent_recorded", False),
         },
         secret_payload=body.secret_payload,
-    )
-    result = await _store_artifact(
-        request,
-        identity,
-        campaign_id=campaign_id,
-        kind="survey_import",
-        body=artifact,
         idempotency_key=idempotency_key,
         correlation_id=_correlation_id(request),
     )
     _replay_header(response, result)
     return result
+
+
+@router.get("/surveys/runs/{run_id}", operation_id="get_campaign_lab_survey_import_run")
+async def get_survey_import_run(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    return await _get_campaign_lab_run(run_id, "survey_import", request, identity)
 
 
 @router.post(

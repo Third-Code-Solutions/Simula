@@ -37,8 +37,8 @@ population frame + audience definition
 
 ### Phase 0: Audit and governance — complete
 
-- [x] Inspect SIMULA and PhantomCrowd source, manifests, schemas, workers,
-      auth, tenant, queue, storage, deployment, and CI boundaries.
+- [x] Inspect SIMULA and PhantomCrowd source, manifests, schemas, workers, auth,
+      tenant, queue, storage, deployment, and CI boundaries.
 - [x] Record capability classification, license obligations, security/privacy/
       political risks, and exact files in the integration audit.
 - [x] Create status, decisions, next-actions, and risk records.
@@ -84,22 +84,24 @@ synthetic artifact.
 - [x] Suppress or block universal-accuracy language in the result limitations.
 
 Acceptance: outcome leakage is rejected; backtest output names the exact
-methodology/dataset/version; results are marked held-out benchmark evidence,
-not universal prediction.
+methodology/dataset/version; results are marked held-out benchmark evidence, not
+universal prediction.
 
-### Phase 4: Durable integration - next
+### Phase 4: Durable integration - implemented; promotion gates open
 
-- [ ] Add forward-only tenant-scoped migrations and RLS.
-- [ ] Add authenticated idempotent API commands and worker jobs.
-- [ ] Add audit events, retries, cancellation, progress, retention, and
-      deletion behavior.
-- [ ] Regenerate/check OpenAPI and database contracts.
+- [x] Add forward-only tenant-scoped migrations and RLS.
+- [x] Add authenticated idempotent API commands and worker jobs, including
+      durable survey import with worker-only raw payload handling.
+- [x] Add audit events, retries, cancellation, progress, retention, and deletion
+      behavior.
+- [x] Regenerate/check OpenAPI and database contracts.
 
 ### Phase 5: Product/reporting and release
 
 - [x] Add existing-design-system views for weights, repetitions, calibration,
       backtest evidence, uncertainty, and limitations.
-- [ ] Add report/export fields with source citations and human approval state.
+- [x] Add report fields with source/evidence references and human approval
+      state.
 - [ ] Run local, browser, hosted dependency, data, and release gates.
 
 ## Verification checkpoints
@@ -119,7 +121,7 @@ not universal prediction.
 
 - No real Philippine survey or historical outcome dataset is attached in this
   checkout. Core contracts can be implemented and tested with explicit test
-  fixtures; production calibration/backtesting remains blocked until lawful
-  data and an approved protocol exist.
+  fixtures; production calibration/backtesting remains blocked until lawful data
+  and an approved protocol exist.
 - Existing SIMULA Phase 2/M7 formal gates remain canonical and are not waived by
   this feature request.

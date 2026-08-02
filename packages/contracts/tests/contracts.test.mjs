@@ -114,6 +114,7 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
     "/api/v1/campaign-lab/simulations/{run_id}/events",
     "/api/v1/campaign-lab/simulations/{run_id}/results",
     "/api/v1/campaign-lab/simulations/{run_id}/status",
+    "/api/v1/campaign-lab/surveys/runs/{run_id}",
     "/api/v1/exports/{export_id}",
     "/api/v1/me",
     "/api/v1/methodology/registry",

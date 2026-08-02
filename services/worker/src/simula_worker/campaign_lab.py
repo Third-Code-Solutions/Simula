@@ -52,6 +52,31 @@ from simula_worker.database import CampaignLabClaim, CampaignLabDatabase
 logger = structlog.get_logger()
 
 
+def _import_survey_payload(
+    request: Mapping[str, object], secret_payload: Mapping[str, object] | None
+) -> Mapping[str, object]:
+    """Normalize a raw survey export without returning respondent rows."""
+
+    import_format = request.get("format")
+    metadata = request.get("metadata")
+    field_map = request.get("field_map", {})
+    if import_format not in {"csv", "formbricks", "odk", "generic_json"}:
+        raise ValueError("survey import format is unsupported")
+    if secret_payload is None or "payload" not in secret_payload:
+        raise ValueError("survey import requires a worker-only payload")
+    if not isinstance(metadata, Mapping):
+        raise ValueError("survey import metadata is missing")
+    if not isinstance(field_map, Mapping):
+        raise ValueError("survey import field_map is invalid")
+    imported = import_survey(
+        cast(SurveyImportPayload, secret_payload["payload"]),
+        import_format=import_format,
+        metadata=SurveyImportMetadata.model_validate(metadata),
+        field_map=SurveyImportFieldMap.model_validate(field_map),
+    )
+    return imported.model_dump(mode="json")
+
+
 def _evaluate_calibration(
     request: Mapping[str, object], secret_payload: Mapping[str, object] | None
 ) -> Mapping[str, object]:
@@ -67,13 +92,12 @@ def _evaluate_calibration(
         survey_import = {**cast(Mapping[str, object], survey_import or {}), **secret_import}
     if isinstance(survey_import, Mapping):
         import_format = survey_import.get("format")
-        if import_format not in {"csv", "formbricks", "odk", "generic_json"}:
-            raise ValueError("survey import format is unsupported")
         metadata = survey_import.get("metadata")
-        if "payload" not in survey_import or not isinstance(metadata, Mapping):
+        import_payload = survey_import.get("payload")
+        if import_payload is None or not isinstance(metadata, Mapping):
             raise ValueError("survey import requires a worker-only payload and metadata")
         imported = import_survey(
-            cast(SurveyImportPayload, survey_import["payload"]),
+            cast(SurveyImportPayload, import_payload),
             import_format=cast(SurveyImportFormat, import_format),
             metadata=SurveyImportMetadata.model_validate(metadata),
             field_map=SurveyImportFieldMap.model_validate(survey_import.get("field_map", {})),
@@ -84,6 +108,12 @@ def _evaluate_calibration(
     return calibrate_synthetic_panel(synthetic_observations=synthetic, survey=survey).model_dump(
         mode="json"
     )
+
+
+def _evaluate_survey_import(
+    request: Mapping[str, object], secret_payload: Mapping[str, object] | None
+) -> Mapping[str, object]:
+    return _import_survey_payload(request, secret_payload)
 
 
 def _evaluate_backtest(
@@ -233,6 +263,8 @@ def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]
         return run_campaign_lab_simulation(request).model_dump(mode="json")
     if claim.run_type == "survey_calibration":
         return _evaluate_calibration(claim.request, claim.secret_payload)
+    if claim.run_type == "survey_import":
+        return _evaluate_survey_import(claim.request, claim.secret_payload)
     if claim.run_type == "historical_backtest":
         return _evaluate_backtest(claim.request, claim.secret_payload)
     if claim.run_type == "research_ingestion":

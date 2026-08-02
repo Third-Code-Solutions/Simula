@@ -78,6 +78,13 @@ classification: OBSERVED
 - Research ingestion now runs as a bounded, provenance-first worker job for
   text, Markdown, CSV, JSON, DOCX, and text-bearing PDF inputs; scanned PDFs
   fail closed with an OCR-required state instead of inventing extracted text.
+- Survey imports now run through the same durable worker queue as calibration
+  and backtesting. Public requests retain only format/field-map metadata; raw
+  CSV/Formbricks/ODK/generic JSON payloads stay in the worker-only secret
+  envelope, are normalized in memory, and are deleted after aggregate output
+  completion. The hosted registry recorded this forward-only migration as
+  `20260802150729` under `campaign_lab_survey_import_workflow` while the
+  compiled runtime head is `20260802150000`.
 - Persona interviews, compliance reviews, and report generation now use the same
   durable leased run queue, with run-status endpoints and aggregate evidence
   binding. Behavioral diagnostics persist repetition, round, topology, exposure,
@@ -93,8 +100,13 @@ classification: OBSERVED
   apply-time version `20260802131842` under the name
   `campaign_lab_durable_workflows`. Because the hosted command/worker functions
   are owned by dedicated database roles, the migration adds owned v2 entrypoints
-  and preserves the published API contract while binding runtime
-  readiness/observability to the compiled `20260802143000` head.
+  and preserves the published API contract.
+- Supabase migration SQL
+  `20260802150000_campaign_lab_survey_import_workflow.sql` is applied to the
+  same project; its hosted registry version is `20260802150729`. The v3
+  entrypoints are least-privilege replacements for the survey-import-capable run
+  admission/completion/readiness path, bound to the compiled `20260802150000`
+  head.
 - The worker now claims Campaign Lab runs from PostgreSQL, persists progress,
   retries bounded failures, finalizes cancellation, and keeps raw survey rows
   and held-out outcomes in the worker-only secret envelope.
@@ -103,12 +115,16 @@ classification: OBSERVED
   sidebar, end-to-end campaign setup, aggregate request editor, durable run
   polling, evidence-stage disclosure, and report boundary. Evidence results
   expose survey/backtest component metrics and cohort slices in the UI.
-- Verification completed locally: Python/API/worker suites 365/365, mypy 152/152
-  files, full Ruff, generated-contract drift, web workspace navigation tests
-  4/4, admin tests 2/2, web/admin/API production builds, TypeScript
-  lint/typecheck tasks, and contract tests 7/7. Full API/web Jest/Vitest runs
-  exceeded the bounded test timeout without a failure report; they are not
-  counted as passing. The repository `uv run --frozen` wrapper remains
+- Verification completed locally: non-integration Python suite 465 passed and 2
+  skipped, targeted Campaign Lab/API/worker tests 8/8, mypy 137/137 files, full
+  Ruff, generated-contract drift, web workspace navigation tests 4/4, admin
+  tests 2/2, web/admin/API production builds, TypeScript lint/typecheck tasks,
+  and contract tests 7/7. Two pre-existing Windows descendant-process timing
+  tests were excluded because their child PID files were not created before the
+  timeout assertion. Integration-inclusive pytest exceeded the five-minute
+  bounded run without a failure report; it is not counted as passing. Full
+  API/web Jest/Vitest runs also exceeded their bounded timeout without a failure
+  report and are not counted. The repository `uv run --frozen` wrapper remains
   environment-blocked by installed UV `0.12.0` versus required `0.11.19`; direct
   project-interpreter Ruff and mypy checks pass.
 
@@ -133,6 +149,12 @@ classification: OBSERVED
 - Railway project authorization and an observed GitHub-to-Railway deployment
   event; the currently logged-in Railway account is not authorized for the
   requested project.
+- The hosted `database_foundation.test.sql` transaction currently reports 30/35:
+  the five remaining failures are environment-specific local bootstrap
+  assumptions (provider-managed runtime-role passwords, hosted owner-role
+  membership shape, absent authored Auth fixtures, and absent local seed
+  fixtures). Hosted Campaign Lab migration/function/grant checks remain
+  separately verified; these fixtures must not be copied into production.
 
 ## Truth boundary
 
