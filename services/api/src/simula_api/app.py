@@ -29,6 +29,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from structlog.contextvars import bind_contextvars, reset_contextvars
 
 from simula_api.auth import SupabaseTokenVerifier
+from simula_api.campaign_lab_routes import router as campaign_lab_router
 from simula_api.config import ApiSettings, ConfigurationError
 from simula_api.cursor import CursorCodec
 from simula_api.database import DatabaseGateway
@@ -643,6 +644,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
     app.add_exception_handler(RequestValidationError, validation_problem_handler)
     app.add_exception_handler(StarletteHTTPException, http_problem_handler)
     app.include_router(router)
+    app.include_router(campaign_lab_router)
     app.include_router(phase34_router)
     app.include_router(platform_admin_router)
 

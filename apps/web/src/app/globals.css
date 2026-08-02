@@ -259,6 +259,7 @@ button:disabled {
 }
 
 .button-ghost,
+.button-quiet,
 .quiet-button {
   border-color: rgb(34 31 28 / 16%);
   background: rgb(255 255 255 / 22%);
@@ -266,6 +267,7 @@ button:disabled {
 }
 
 .button-ghost:hover,
+.button-quiet:hover,
 .quiet-button:hover {
   background: var(--white);
   color: var(--ink);
@@ -1491,7 +1493,8 @@ select {
   text-transform: uppercase;
 }
 
-.sidebar-nav a {
+.sidebar-nav a,
+.sidebar-nav-link-disabled {
   display: flex;
   align-items: center;
   gap: 0.625rem;
@@ -1502,11 +1505,27 @@ select {
   text-decoration: none;
 }
 
-.sidebar-nav a::before {
+.sidebar-nav a::before,
+.sidebar-nav-link-disabled::before {
   width: 0.25rem;
   height: 1rem;
   background: var(--teal);
   content: "";
+}
+
+.sidebar-nav-link-disabled {
+  color: var(--pebble);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.sidebar-nav-link-disabled small {
+  margin-left: auto;
+  color: var(--pebble);
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.02em;
+  text-align: right;
 }
 
 .sidebar-nav a:hover,
@@ -1570,6 +1589,38 @@ select {
 .run-heading {
   padding-top: 3.5rem;
   padding-bottom: 3rem;
+}
+
+.workflow-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.workflow-list li {
+  display: grid;
+  gap: 0.35rem;
+  min-height: 4.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--edge);
+  border-radius: 0.625rem;
+  color: var(--pebble);
+  font-size: 0.8rem;
+}
+
+.workflow-list li span {
+  color: var(--pebble);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+}
+
+.workflow-list li.is-active {
+  border-color: var(--teal-text);
+  background: rgb(34 111 111 / 7%);
+  color: var(--ink);
 }
 
 .content-section {
@@ -2811,7 +2862,8 @@ code {
     display: none;
   }
 
-  .sidebar-nav a {
+  .sidebar-nav a,
+  .sidebar-nav-link-disabled {
     white-space: nowrap;
   }
 

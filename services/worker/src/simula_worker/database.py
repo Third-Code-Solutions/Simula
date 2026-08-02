@@ -86,6 +86,22 @@ class CampaignEvidenceClaim:
     attempt_count: int
 
 
+@dataclass(frozen=True, slots=True)
+class CampaignLabClaim:
+    run_id: UUID
+    run_type: Literal[
+        "repeated_simulation",
+        "survey_calibration",
+        "historical_backtest",
+        "interview",
+        "report",
+    ]
+    request: Mapping[str, object]
+    secret_payload: Mapping[str, object] | None
+    lease_token: UUID
+    attempt_count: int
+
+
 class CampaignEvidenceDatabase(Protocol):
     async def expire_campaign_evidence_runs(self, requested_batch_size: int = 50) -> int: ...
 
@@ -113,6 +129,31 @@ class CampaignEvidenceDatabase(Protocol):
     async def fail_campaign_evidence_run(
         self,
         evidence_id: UUID,
+        lease_token: UUID,
+        error_code: str,
+        error_detail: str,
+        retryable: bool,
+    ) -> str: ...
+
+
+class CampaignLabDatabase(Protocol):
+    async def claim_campaign_lab_runs(
+        self, requested_batch_size: int = 5
+    ) -> list[CampaignLabClaim]: ...
+
+    async def update_campaign_lab_progress(
+        self, run_id: UUID, lease_token: UUID, stage: str, progress: int, message: str
+    ) -> bool: ...
+
+    async def finalize_canceled_campaign_lab_run(self, run_id: UUID, lease_token: UUID) -> bool: ...
+
+    async def complete_campaign_lab_run(
+        self, run_id: UUID, lease_token: UUID, result: Mapping[str, object]
+    ) -> bool: ...
+
+    async def fail_campaign_lab_run(
+        self,
+        run_id: UUID,
         lease_token: UUID,
         error_code: str,
         error_detail: str,
@@ -390,6 +431,91 @@ class WorkerDatabase(WorkerExecutionGateway):
             "stale",
         }:
             raise RuntimeError("worker database returned an invalid evidence failure state")
+        return next_state
+
+    async def claim_campaign_lab_runs(
+        self, requested_batch_size: int = 5
+    ) -> list[CampaignLabClaim]:
+        rows = await self._fetchall(
+            "select * from private.claim_campaign_lab_runs(%s)",
+            (requested_batch_size,),
+        )
+        claims: list[CampaignLabClaim] = []
+        for row in rows:
+            run_type = cast(str, row["run_type"])
+            allowed_types = {
+                "repeated_simulation",
+                "survey_calibration",
+                "historical_backtest",
+                "interview",
+                "report",
+            }
+            if run_type not in allowed_types:
+                raise RuntimeError("worker database returned an invalid Campaign Lab run type")
+            request = row["request"]
+            if not isinstance(request, Mapping):
+                raise RuntimeError("worker database returned an invalid Campaign Lab request")
+            secret_payload = row["secret_payload"]
+            if secret_payload is not None and not isinstance(secret_payload, Mapping):
+                raise RuntimeError("worker database returned an invalid Campaign Lab secret")
+            claims.append(
+                CampaignLabClaim(
+                    run_id=cast(UUID, row["run_id"]),
+                    run_type=cast(
+                        Literal[
+                            "repeated_simulation",
+                            "survey_calibration",
+                            "historical_backtest",
+                            "interview",
+                            "report",
+                        ],
+                        run_type,
+                    ),
+                    request=cast(Mapping[str, object], request),
+                    secret_payload=cast(Mapping[str, object] | None, secret_payload),
+                    lease_token=cast(UUID, row["lease_token"]),
+                    attempt_count=int(row["attempt_count"]),
+                )
+            )
+        return claims
+
+    async def update_campaign_lab_progress(
+        self, run_id: UUID, lease_token: UUID, stage: str, progress: int, message: str
+    ) -> bool:
+        return await self._boolean_function(
+            "select private.update_campaign_lab_run_progress(%s, %s, %s, %s, %s) as changed",
+            (run_id, lease_token, stage, progress, message),
+        )
+
+    async def finalize_canceled_campaign_lab_run(self, run_id: UUID, lease_token: UUID) -> bool:
+        return await self._boolean_function(
+            "select private.finalize_canceled_campaign_lab_run(%s, %s) as changed",
+            (run_id, lease_token),
+        )
+
+    async def complete_campaign_lab_run(
+        self, run_id: UUID, lease_token: UUID, result: Mapping[str, object]
+    ) -> bool:
+        return await self._boolean_function(
+            "select private.complete_campaign_lab_run(%s, %s, %s) as changed",
+            (run_id, lease_token, Jsonb(dict(result))),
+        )
+
+    async def fail_campaign_lab_run(
+        self,
+        run_id: UUID,
+        lease_token: UUID,
+        error_code: str,
+        error_detail: str,
+        retryable: bool,
+    ) -> str:
+        row = await self._fetchone(
+            "select private.fail_campaign_lab_run(%s, %s, %s, %s, %s) as next_state",
+            (run_id, lease_token, error_code, error_detail, retryable),
+        )
+        next_state = row["next_state"]
+        if not isinstance(next_state, str) or next_state not in {"retrying", "failed", "stale"}:
+            raise RuntimeError("worker database returned an invalid Campaign Lab failure state")
         return next_state
 
     async def claim_execution(self, run_id: UUID, generation: int, job_id: str) -> ExecutionClaim:

@@ -27,6 +27,13 @@ describe("workspace navigation", () => {
       "href",
       "/organizations",
     );
+    expect(screen.getByText("Dashboard", { exact: true })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(
+      screen.getByText("Campaign Simulation Lab", { exact: true }),
+    ).toHaveAttribute("aria-disabled", "true");
     expect(screen.queryByRole("link", { name: "Context map" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Method" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Boundaries" })).toBeNull();

@@ -49,6 +49,7 @@ from simula_worker.behavioral_engine_client import (
     serialize_behavioral_result,
 )
 from simula_worker.campaign_evidence import campaign_evidence_loop
+from simula_worker.campaign_lab import campaign_lab_loop
 from simula_worker.config import WorkerSettings
 from simula_worker.database import (
     ExecutionClaim,
@@ -527,6 +528,7 @@ async def serve() -> None:
     worker_task: asyncio.Task[None] | None = None
     dispatcher_task: asyncio.Task[None] | None = None
     campaign_evidence_task: asyncio.Task[None] | None = None
+    campaign_lab_task: asyncio.Task[None] | None = None
     payload_contract = "run_v1" if settings.queue_transport == "arq" else "run_v2"
     try:
         if settings.queue_transport == "arq":
@@ -569,6 +571,10 @@ async def serve() -> None:
             campaign_evidence_loop(stop, database),
             name="campaign-evidence-worker",
         )
+        campaign_lab_task = asyncio.create_task(
+            campaign_lab_loop(stop, database),
+            name="campaign-lab-worker",
+        )
         logger.info(
             "service_started",
             payload_contract=payload_contract,
@@ -579,6 +585,8 @@ async def serve() -> None:
         wait_tasks = {stop_task, worker_task}
         if campaign_evidence_task is not None:
             wait_tasks.add(campaign_evidence_task)
+        if campaign_lab_task is not None:
+            wait_tasks.add(campaign_lab_task)
         done, pending = await asyncio.wait(wait_tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in pending:
             task.cancel()
@@ -587,6 +595,8 @@ async def serve() -> None:
             await worker_task
         if campaign_evidence_task in done:
             await campaign_evidence_task
+        if campaign_lab_task in done:
+            await campaign_lab_task
     finally:
         if dispatcher_task is not None:
             dispatcher_task.cancel()
@@ -597,6 +607,9 @@ async def serve() -> None:
         if campaign_evidence_task is not None and not campaign_evidence_task.done():
             campaign_evidence_task.cancel()
             await asyncio.gather(campaign_evidence_task, return_exceptions=True)
+        if campaign_lab_task is not None and not campaign_lab_task.done():
+            campaign_lab_task.cancel()
+            await asyncio.gather(campaign_lab_task, return_exceptions=True)
         if dispatcher_redis is not None:
             await dispatcher_redis.aclose(close_connection_pool=True)
         telemetry.set_dependency_ready("database", False)

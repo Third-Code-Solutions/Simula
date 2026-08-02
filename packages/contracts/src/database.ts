@@ -739,6 +739,280 @@ export type Database = {
           },
         ]
       }
+      campaign_lab_artifacts: {
+        Row: {
+          campaign_id: string
+          checksum_sha256: string
+          created_at: string
+          created_by: string
+          id: string
+          idempotency_key: string
+          kind: string
+          organization_id: string
+          payload: Json
+          provenance: Json
+          request_sha256: string
+          retention_until: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          checksum_sha256: string
+          created_at?: string
+          created_by: string
+          id?: string
+          idempotency_key: string
+          kind: string
+          organization_id: string
+          payload: Json
+          provenance?: Json
+          request_sha256: string
+          retention_until?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          checksum_sha256?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          idempotency_key?: string
+          kind?: string
+          organization_id?: string
+          payload?: Json
+          provenance?: Json
+          request_sha256?: string
+          retention_until?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_lab_artifacts_campaign_foreign_key"
+            columns: ["organization_id", "campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_lab_campaigns"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      campaign_lab_campaigns: {
+        Row: {
+          compliance_status: string
+          created_at: string
+          created_by: string
+          current_stage: string
+          decision_definition: Json
+          deleted_at: string | null
+          id: string
+          idempotency_key: string
+          name: string
+          objective: string
+          organization_id: string
+          project_id: string
+          purpose: string
+          request_sha256: string
+          status: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          compliance_status?: string
+          created_at?: string
+          created_by: string
+          current_stage?: string
+          decision_definition?: Json
+          deleted_at?: string | null
+          id?: string
+          idempotency_key: string
+          name: string
+          objective: string
+          organization_id: string
+          project_id: string
+          purpose: string
+          request_sha256: string
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          compliance_status?: string
+          created_at?: string
+          created_by?: string
+          current_stage?: string
+          decision_definition?: Json
+          deleted_at?: string | null
+          id?: string
+          idempotency_key?: string
+          name?: string
+          objective?: string
+          organization_id?: string
+          project_id?: string
+          purpose?: string
+          request_sha256?: string
+          status?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_lab_campaigns_project_foreign_key"
+            columns: ["organization_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      campaign_lab_events: {
+        Row: {
+          artifact_id: string | null
+          campaign_id: string
+          created_at: string
+          event_kind: string
+          id: string
+          message: string | null
+          metadata: Json
+          organization_id: string
+          progress: number
+          run_id: string | null
+          stage: string
+        }
+        Insert: {
+          artifact_id?: string | null
+          campaign_id: string
+          created_at?: string
+          event_kind: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          organization_id: string
+          progress?: number
+          run_id?: string | null
+          stage: string
+        }
+        Update: {
+          artifact_id?: string | null
+          campaign_id?: string
+          created_at?: string
+          event_kind?: string
+          id?: string
+          message?: string | null
+          metadata?: Json
+          organization_id?: string
+          progress?: number
+          run_id?: string | null
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_lab_events_artifact_foreign_key"
+            columns: ["organization_id", "artifact_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_lab_artifacts"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "campaign_lab_events_campaign_foreign_key"
+            columns: ["organization_id", "campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_lab_campaigns"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "campaign_lab_events_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_lab_runs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      campaign_lab_runs: {
+        Row: {
+          attempt_count: number
+          campaign_id: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          idempotency_key: string
+          last_error_code: string | null
+          last_error_detail: string | null
+          lease_expires_at: string | null
+          lease_token: string | null
+          next_attempt_at: string
+          organization_id: string
+          progress: number
+          request: Json
+          request_sha256: string
+          result: Json | null
+          run_type: string
+          stage: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          attempt_count?: number
+          campaign_id: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          idempotency_key: string
+          last_error_code?: string | null
+          last_error_detail?: string | null
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          next_attempt_at?: string
+          organization_id: string
+          progress?: number
+          request: Json
+          request_sha256: string
+          result?: Json | null
+          run_type?: string
+          stage?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempt_count?: number
+          campaign_id?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          idempotency_key?: string
+          last_error_code?: string | null
+          last_error_detail?: string | null
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          next_attempt_at?: string
+          organization_id?: string
+          progress?: number
+          request?: Json
+          request_sha256?: string
+          result?: Json | null
+          run_type?: string
+          stage?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_lab_runs_campaign_foreign_key"
+            columns: ["organization_id", "campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_lab_campaigns"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       context_graph_versions: {
         Row: {
           checksum_sha256: string
@@ -2281,6 +2555,10 @@ export type Database = {
         Args: { requested_correlation_id: string; requested_run_id: string }
         Returns: Json
       }
+      cancel_campaign_lab_run: {
+        Args: { requested_correlation_id: string; requested_run_id: string }
+        Returns: Json
+      }
       confirm_organization_deletion: {
         Args: {
           requested_organization_id: string
@@ -2350,6 +2628,49 @@ export type Database = {
           requested_secret: Json
           requested_sha256: string
           requested_source_version_id: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_artifact: {
+        Args: {
+          requested_campaign_id: string
+          requested_checksum: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_kind: string
+          requested_organization_id: string
+          requested_payload: Json
+          requested_provenance: Json
+          requested_secret: Json
+          requested_sha256: string
+          requested_title: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_campaign: {
+        Args: {
+          requested_correlation_id: string
+          requested_decision: Json
+          requested_idempotency_key: string
+          requested_name: string
+          requested_objective: string
+          requested_organization_id: string
+          requested_project_id: string
+          requested_purpose: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_run: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_request: Json
+          requested_run_type: string
+          requested_secret: Json
+          requested_sha256: string
         }
         Returns: Json
       }
@@ -2729,6 +3050,17 @@ export type Database = {
         }
         Returns: Json
       }
+      update_campaign_lab_campaign: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_decision: Json
+          requested_expected_version: number
+          requested_name: string
+          requested_objective: string
+        }
+        Returns: Json
+      }
       update_project: {
         Args: {
           requested_category: string
@@ -3085,6 +3417,33 @@ export type Database = {
           organization_id?: string
           payload?: Json
           run_id?: string
+        }
+        Relationships: []
+      }
+      campaign_lab_secrets: {
+        Row: {
+          artifact_id: string | null
+          created_at: string
+          id: string
+          organization_id: string
+          payload: Json
+          run_id: string | null
+        }
+        Insert: {
+          artifact_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id: string
+          payload: Json
+          run_id?: string | null
+        }
+        Update: {
+          artifact_id?: string | null
+          created_at?: string
+          id?: string
+          organization_id?: string
+          payload?: Json
+          run_id?: string | null
         }
         Relationships: []
       }
@@ -3744,6 +4103,10 @@ export type Database = {
         Args: { requested_correlation_id: string; requested_run_id: string }
         Returns: Json
       }
+      cancel_campaign_lab_run_atomic: {
+        Args: { requested_correlation_id: string; requested_run_id: string }
+        Returns: Json
+      }
       claim_campaign_evidence_runs: {
         Args: { requested_batch_size: number }
         Returns: {
@@ -3752,6 +4115,17 @@ export type Database = {
           kind: string
           lease_token: string
           request: Json
+          secret_payload: Json
+        }[]
+      }
+      claim_campaign_lab_runs: {
+        Args: { requested_batch_size: number }
+        Returns: {
+          attempt_count: number
+          lease_token: string
+          request: Json
+          run_id: string
+          run_type: string
           secret_payload: Json
         }[]
       }
@@ -3905,6 +4279,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      complete_campaign_lab_run: {
+        Args: {
+          requested_lease_token: string
+          requested_result: Json
+          requested_run_id: string
+        }
+        Returns: boolean
+      }
       complete_organization_deletion_resource: {
         Args: { requested_claim_token: string; requested_resource_id: string }
         Returns: boolean
@@ -4002,6 +4384,49 @@ export type Database = {
           requested_secret: Json
           requested_sha256: string
           requested_source_version_id: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_artifact_atomic: {
+        Args: {
+          requested_campaign_id: string
+          requested_checksum: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_kind: string
+          requested_organization_id: string
+          requested_payload: Json
+          requested_provenance: Json
+          requested_secret: Json
+          requested_sha256: string
+          requested_title: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_campaign_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_decision: Json
+          requested_idempotency_key: string
+          requested_name: string
+          requested_objective: string
+          requested_organization_id: string
+          requested_project_id: string
+          requested_purpose: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_run_atomic: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_request: Json
+          requested_run_type: string
+          requested_secret: Json
+          requested_sha256: string
         }
         Returns: Json
       }
@@ -4259,6 +4684,16 @@ export type Database = {
         }
         Returns: string
       }
+      fail_campaign_lab_run: {
+        Args: {
+          requested_error_code: string
+          requested_error_detail: string
+          requested_lease_token: string
+          requested_retryable: boolean
+          requested_run_id: string
+        }
+        Returns: string
+      }
       fail_run_dispatch: {
         Args: {
           requested_claim_token: string
@@ -4278,6 +4713,10 @@ export type Database = {
         Returns: string
       }
       finalize_canceled_campaign_evidence_run: {
+        Args: { requested_lease_token: string; requested_run_id: string }
+        Returns: boolean
+      }
+      finalize_canceled_campaign_lab_run: {
         Args: { requested_lease_token: string; requested_run_id: string }
         Returns: boolean
       }
@@ -4607,6 +5046,27 @@ export type Database = {
         }[]
       }
       update_campaign_evidence_progress: {
+        Args: {
+          requested_lease_token: string
+          requested_message: string
+          requested_progress: number
+          requested_run_id: string
+          requested_stage: string
+        }
+        Returns: boolean
+      }
+      update_campaign_lab_campaign_atomic: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_decision: Json
+          requested_expected_version: number
+          requested_name: string
+          requested_objective: string
+        }
+        Returns: Json
+      }
+      update_campaign_lab_run_progress: {
         Args: {
           requested_lease_token: string
           requested_message: string
