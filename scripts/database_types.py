@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import difflib
 import subprocess
 from pathlib import Path
 from shutil import which
@@ -67,15 +66,7 @@ def main() -> None:
         OUTPUT.write_text(generated, encoding="utf-8", newline="\n")
         return
 
-    current = OUTPUT.read_text(encoding="utf-8") if OUTPUT.is_file() else ""
-    if current != generated:
-        diff = difflib.unified_diff(
-            current.splitlines(keepends=True),
-            generated.splitlines(keepends=True),
-            fromfile=str(OUTPUT.relative_to(ROOT)),
-            tofile="generated database types",
-        )
-        print("".join(diff), end="")
+    if not OUTPUT.is_file() or OUTPUT.read_text(encoding="utf-8") != generated:
         raise SystemExit(f"generated database type drift: {OUTPUT.relative_to(ROOT)}")
 
 
