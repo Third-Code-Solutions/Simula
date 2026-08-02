@@ -88,11 +88,13 @@ classification: OBSERVED
   `ywiwmczccktwzqyhzhiz`. Campaign Lab campaign, artifact, run, event, and
   worker-secret relations have forced RLS; command and worker functions are
   least-privilege and lease-bound.
-- Supabase migration `20260802143000_campaign_lab_durable_workflows` is applied
-  to `ywiwmczccktwzqyhzhiz`. Because the hosted command/worker functions are
-  owned by dedicated database roles, the migration adds owned v2 entrypoints and
-  preserves the published API contract while binding the runtime
-  readiness/observability checks to the new head.
+- Supabase migration SQL `20260802143000_campaign_lab_durable_workflows.sql` is
+  applied to `ywiwmczccktwzqyhzhiz`; the hosted migration registry assigned
+  apply-time version `20260802131842` under the name
+  `campaign_lab_durable_workflows`. Because the hosted command/worker functions
+  are owned by dedicated database roles, the migration adds owned v2 entrypoints
+  and preserves the published API contract while binding runtime
+  readiness/observability to the compiled `20260802143000` head.
 - The worker now claims Campaign Lab runs from PostgreSQL, persists progress,
   retries bounded failures, finalizes cancellation, and keeps raw survey rows
   and held-out outcomes in the worker-only secret envelope.
