@@ -13,3 +13,24 @@ paths = [
   '''^tests/integration/test_rate_limits\.py$''',
   '''^services/api/tests/test_m2_routes\.py$''',
 ]
+
+[[allowlists]]
+description = "Deterministic synthetic cursor secrets in test-only runtime fixtures are not credentials"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+regexes = [
+  '''^\s*(?:cursorSecret|SIMULA_CURSOR_SECRET)\s*:\s*"0123456789abcdef0123456789abcdef",?$''',
+  '''^\s*const key = "organization-key-0001";$''',
+]
+paths = [
+  '''^apps/api/src/organizations/cursor-codec\.spec\.ts$''',
+  '''^apps/api/src/auth/supabase-token-verifier\.spec\.ts$''',
+  '''^apps/api/src/domain/domain-runtime\.spec\.ts$''',
+  '''^apps/api/src/methodology/methodology-engine\.spec\.ts$''',
+  '''^apps/api/src/assets/visual-profile-engine\.spec\.ts$''',
+  '''^apps/api/src/organizations/pg-organization-gateway\.spec\.ts$''',
+  '''^apps/api/src/rate-limits/domain-rate-limiter\.integration-spec\.ts$''',
+  '''^apps/api/src/rate-limits/domain-rate-limiter\.spec\.ts$''',
+  '''^apps/api/test/database/organization-gateway\.database-int\.ts$''',
+]
