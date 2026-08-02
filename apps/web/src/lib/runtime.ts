@@ -7,7 +7,10 @@ export type RuntimeMetadata = Readonly<{
 export function runtimeMetadata(): RuntimeMetadata {
   return {
     environment: process.env.SIMULA_ENVIRONMENT ?? "local",
-    releaseSha: process.env.SIMULA_RELEASE_SHA ?? "dev",
+    releaseSha:
+      process.env.VERCEL_GIT_COMMIT_SHA ??
+      process.env.SIMULA_RELEASE_SHA ??
+      "dev",
     service: "web",
   };
 }
