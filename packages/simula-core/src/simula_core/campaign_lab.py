@@ -8,10 +8,11 @@ model to calculate a campaign result.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, cast
 from uuid import UUID, uuid5
 
 from pydantic import Field, model_validator
@@ -153,8 +154,27 @@ BEHAVIORAL_DIMENSIONS = (
 
 _PROHIBITED_KEYS = frozenset(
     {
+        "automated_harassment",
+        "coordinated_bot_amplification",
+        "deepfake_candidate",
+        "false_election_instruction",
+        "false_election_instructions",
+        "fake_endorsement",
+        "fake_grassroots",
+        "hidden_sponsorship",
+        "individual_persuasion_score",
+        "individual_persuasion_scoring",
+        "individual_persuadability",
+        "inferred_political_affiliation",
+        "most_persuadable_voter",
+        "political_affiliation_inference",
+        "psychological_vulnerability",
+        "unauthorized_voter_list",
+        "voter_dossier",
+        "voter_file",
         "voter_id",
         "voter_ids",
+        "voter_list",
         "contact_book",
         "contact_list",
         "political_affiliation",
@@ -164,31 +184,35 @@ _PROHIBITED_KEYS = frozenset(
         "private_profile",
         "false_voting_instruction",
         "voter_suppression",
-        "fake_endorsement",
-        "deepfake_candidate",
         "impersonation",
-        "fake_grassroots",
         "bot_amplification",
-        "automated_harassment",
         "defamation",
         "fabricated_evidence",
-        "hidden_sponsorship",
     }
 )
 _PROHIBITED_TERMS = frozenset(
     {
+        "automated harassment",
+        "coordinated bot amplification",
+        "false election instruction",
+        "false election instructions",
+        "identifiable voter dossier",
+        "individual persuasion scoring",
+        "inferred political affiliation",
         "most persuadable voter",
         "persuadable voters",
+        "psychological vulnerability",
         "psychological vulnerability targeting",
         "covert behavioral targeting",
         "household political map",
         "private-profile scraping",
         "contact-book harvesting",
+        "unauthorized voter list",
         "voter suppression",
         "fake endorsement",
         "deepfake candidate",
-        "automated harassment",
         "fabricated evidence",
+        "hidden political sponsorship",
     }
 )
 
@@ -465,6 +489,7 @@ class CampaignLabReport(FrozenModel):
     human_reviewer: str | None
     approval_status: Literal["draft", "needs_human_review", "approved_experimental"]
     report_timestamp: datetime
+    evidence_status: CampaignEvidenceStatus = "Synthetic-only"
 
 
 def _walk_policy(value: object, *, path: str = "root") -> list[str]:
@@ -513,14 +538,15 @@ def build_structured_persona(
         raise ValueError("sampled cell is not present in the frozen population frame")
     dimensions = cell.dimension_map()
     region = dimensions.get("region", cohort.geography)
-    persona_id = f"PH-{region.upper().replace(' ', '-')}-{sample_index:06d}"
-    digest = sha256(
-        f"{cohort.cohort_id}:{sampled_cell_key}:{seed}:{sample_index}".encode()
-    ).digest()
+    safe_region = re.sub(r"[^A-Z0-9]+", "-", region.upper()).strip("-")[:60] or "UNKNOWN"
+    persona_id = f"PH-{safe_region}-{sample_index:06d}"
+    seed_material = f"{cohort.cohort_id}:{sampled_cell_key}:{seed}:{sample_index}"
     vector = {
-        dimension: int.from_bytes(digest[index : index + 2], "big") / 65_535
-        for index, dimension in enumerate(BEHAVIORAL_DIMENSIONS)
-        if index + 2 <= len(digest)
+        dimension: int.from_bytes(
+            sha256(f"{seed_material}:{dimension}".encode()).digest()[:8], "big"
+        )
+        / ((2**64) - 1)
+        for dimension in BEHAVIORAL_DIMENSIONS
     }
     demographic = {
         key: PersonaAttribute(value=value, label="Population-weighted")
@@ -713,16 +739,41 @@ def build_campaign_lab_report(
         "scoring_version": request.configuration.scoring_version,
         "simulation_engine_version": request.configuration.simulation_engine_version,
     }
-    calibration = survey_calibration or {
-        "status": "not_run",
-        "evidence_status": "Synthetic-only",
-        "limitations": ["No consented survey dataset has been attached to this report."],
-    }
-    backtest = historical_backtest or {
-        "status": "not_run",
-        "evidence_status": "Synthetic-only",
-        "limitations": ["No blind held-out historical outcome dataset has been attached."],
-    }
+    calibration = (
+        dict(survey_calibration)
+        if survey_calibration is not None
+        else {
+            "status": "not_run",
+            "evidence_status": "Synthetic-only",
+            "limitations": ["No consented survey dataset has been attached to this report."],
+        }
+    )
+    backtest = (
+        dict(historical_backtest)
+        if historical_backtest is not None
+        else {
+            "status": "not_run",
+            "evidence_status": "Synthetic-only",
+            "limitations": ["No blind held-out historical outcome dataset has been attached."],
+        }
+    )
+    calibration_status = str(calibration.get("evidence_status") or calibration.get("status"))
+    backtest_status = str(backtest.get("evidence_status") or backtest.get("status"))
+    if backtest_status == "Historically backtested" and calibration_status in {
+        "Partially calibrated",
+        "Survey-calibrated",
+    }:
+        evidence_status: CampaignEvidenceStatus = "Mixed evidence"
+    elif backtest_status == "Historically backtested":
+        evidence_status = "Historically backtested"
+    elif calibration_status in {"Partially calibrated", "Survey-calibrated"}:
+        evidence_status = cast(CampaignEvidenceStatus, calibration_status)
+    elif (
+        calibration_status == "Insufficient evidence" or backtest_status == "Insufficient evidence"
+    ):
+        evidence_status = "Insufficient evidence"
+    else:
+        evidence_status = "Synthetic-only"
     cultural = cultural_evaluation or {
         "status": "not_run",
         "supported_languages": ["english", "filipino", "taglish"],
@@ -769,7 +820,7 @@ def build_campaign_lab_report(
         survey_calibration=calibration,
         historical_backtest_results=backtest,
         confidence_and_uncertainty={
-            "evidence_status": result.evidence_status,
+            "evidence_status": evidence_status,
             "reproducibility_checksum_sha256": result.reproducibility_checksum_sha256,
             "stability": findings,
         },
@@ -787,6 +838,7 @@ def build_campaign_lab_report(
         human_reviewer=human_reviewer,
         approval_status=approval_status,
         report_timestamp=datetime.now(UTC),
+        evidence_status=evidence_status,
     )
 
 

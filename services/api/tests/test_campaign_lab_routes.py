@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+import inspect
+from uuid import UUID
+
+from fastapi.routing import APIRoute
+from simula_api.campaign_lab_routes import ReportCreate, router
+
+
+def test_campaign_lab_exposes_stage_read_endpoints() -> None:
+    paths = {route.path for route in router.routes if isinstance(route, APIRoute)}
+
+    assert "/api/v1/campaign-lab/campaigns/{campaign_id}/research" in paths
+    assert "/api/v1/campaign-lab/campaigns/{campaign_id}/cohorts" in paths
+    assert "/api/v1/campaign-lab/campaigns/{campaign_id}/variants" in paths
+
+
+def test_report_can_bind_calibration_and_backtest_evidence_runs() -> None:
+    body = ReportCreate(
+        run_id=UUID("30000000-0000-4000-8000-000000000001"),
+        calibration_run_id=UUID("30000000-0000-4000-8000-000000000002"),
+        historical_backtest_run_id=UUID("30000000-0000-4000-8000-000000000003"),
+    )
+
+    assert body.calibration_run_id is not None
+    assert body.historical_backtest_run_id is not None
+
+
+def test_mutating_campaign_lab_commands_require_idempotency_keys() -> None:
+    endpoints = {
+        route.operation_id: route.endpoint for route in router.routes if isinstance(route, APIRoute)
+    }
+
+    assert (
+        "idempotency_key" in inspect.signature(endpoints["update_campaign_lab_campaign"]).parameters
+    )
+    assert (
+        "idempotency_key"
+        in inspect.signature(endpoints["cancel_campaign_lab_simulation"]).parameters
+    )

@@ -21,6 +21,11 @@ classification: PROPOSED
    attach its artifact to a report; keep regional languages blocked until data
    rights and coverage exist.
 6. Add focused integration tests for tenant isolation, retries, cancellation,
-   retention, deletion, and project-scoped outcome references.
+   retention, deletion, and project-scoped outcome references; the new route
+   contract tests cover read-stage endpoints and mutation idempotency, while
+   the cross-tenant/database integration suite remains open.
 7. Re-run the project release/readiness gates before making any deployment or
    validity claim.
+8. Start Docker and run the local Supabase lint/pgtap suite; the hosted
+   migration/function/grant checks are complete, but the local Docker engine
+   was unavailable during this release audit.

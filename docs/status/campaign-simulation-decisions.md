@@ -42,3 +42,7 @@ classification: PROPOSED
 13. Raw survey imports and held-out outcomes are worker-only secrets. Public
     artifacts contain aggregate summaries, provenance, checksums, and evidence
     status only.
+14. Campaign update and cancellation commands use the existing tenant-scoped
+    idempotency table and command-owner boundary. The explicit header is
+    optional only for backward compatibility; the API derives a stable request
+    key when omitted, so every mutation still receives a durable receipt.

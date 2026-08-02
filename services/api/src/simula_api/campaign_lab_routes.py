@@ -40,6 +40,7 @@ from simula_api.database import canonical_request_sha256
 from simula_api.problems import AppProblem, ProblemError
 from simula_api.routes import (
     IdempotencyKey,
+    OptionalIdempotencyKey,
     PageSize,
     _correlation_id,
     _problem_response,
@@ -172,6 +173,8 @@ class ComplianceCreate(_LabModel):
 
 class ReportCreate(_LabModel):
     run_id: UUID
+    calibration_run_id: UUID | None = None
+    historical_backtest_run_id: UUID | None = None
     cultural_evaluation_artifact_id: UUID | None = None
     human_reviewer: str | None = Field(default=None, min_length=1, max_length=160)
     approval_status: Literal["draft", "needs_human_review", "approved_experimental"] = "draft"
@@ -448,13 +451,19 @@ async def update_campaign(
     request: Request,
     response: Response,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: OptionalIdempotencyKey = None,
 ) -> dict[str, Any]:
     await _campaign_organization(request, identity, campaign_id)
+    payload = {
+        "campaign_id": str(campaign_id),
+        **body.model_dump(mode="json"),
+    }
+    effective_idempotency_key = idempotency_key or f"campaign-lab-{_request_sha(payload)}"
     result = await _services(request).database.execute_product_command(
         identity,
         operation="update_campaign_lab_campaign",
         query="""
-          select api.update_campaign_lab_campaign(%s, %s, %s, %s, %s, %s) as payload
+          select api.update_campaign_lab_campaign(%s, %s, %s, %s, %s, %s, %s, %s) as payload
         """,
         parameters=(
             campaign_id,
@@ -462,6 +471,8 @@ async def update_campaign(
             body.name,
             body.objective,
             _json(body.decision),
+            effective_idempotency_key,
+            _request_sha(payload),
             _correlation_id(request),
         ),
     )
@@ -504,6 +515,80 @@ async def list_artifacts(
         identity, operation="list_campaign_lab_artifacts", query=query, parameters=parameters
     )
     return {"items": items, "pagination": {"limit": limit, "offset": offset}}
+
+
+async def _list_artifacts_by_kind(
+    campaign_id: UUID,
+    kind: Literal["research_source", "cohort", "variant"],
+    request: Request,
+    identity: VerifiedIdentity,
+    *,
+    limit: int,
+    offset: int,
+) -> dict[str, Any]:
+    await _campaign_row(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation=f"list_campaign_lab_{kind}",
+        query="""
+          select id, organization_id, campaign_id, kind, status, title, payload,
+                 provenance, checksum_sha256, retention_until, created_by, created_at, updated_at
+          from api.campaign_lab_artifacts
+          where campaign_id = %s and kind = %s
+          order by created_at desc, id desc
+          limit %s offset %s
+        """,
+        parameters=(campaign_id, kind, limit, offset),
+    )
+    return {"items": rows, "pagination": {"limit": limit, "offset": offset}}
+
+
+@router.get(
+    "/campaigns/{campaign_id}/research",
+    operation_id="list_campaign_lab_research",
+)
+async def list_research(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 50,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    return await _list_artifacts_by_kind(
+        campaign_id, "research_source", request, identity, limit=limit, offset=offset
+    )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/cohorts",
+    operation_id="list_campaign_lab_cohorts",
+)
+async def list_cohorts(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 50,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    return await _list_artifacts_by_kind(
+        campaign_id, "cohort", request, identity, limit=limit, offset=offset
+    )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/variants",
+    operation_id="list_campaign_lab_variants",
+)
+async def list_variants(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 50,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    return await _list_artifacts_by_kind(
+        campaign_id, "variant", request, identity, limit=limit, offset=offset
+    )
 
 
 @router.post(
@@ -754,12 +839,20 @@ async def cancel_simulation(
     request: Request,
     response: Response,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: OptionalIdempotencyKey = None,
 ) -> dict[str, Any]:
+    payload = {"run_id": str(run_id)}
+    effective_idempotency_key = idempotency_key or f"campaign-lab-{_request_sha(payload)}"
     result = await _services(request).database.execute_product_command(
         identity,
         operation="cancel_campaign_lab_simulation",
-        query="select api.cancel_campaign_lab_run(%s, %s) as payload",
-        parameters=(run_id, _correlation_id(request)),
+        query="select api.cancel_campaign_lab_run(%s, %s, %s, %s) as payload",
+        parameters=(
+            run_id,
+            effective_idempotency_key,
+            _request_sha(payload),
+            _correlation_id(request),
+        ),
     )
     _replay_header(response, result)
     return result
@@ -1132,6 +1225,42 @@ async def create_report(
             detail="A report can only be created from a succeeded durable run.",
         )
     source = rows[0]
+
+    async def evidence_result(
+        run_id: UUID | None,
+        expected_type: Literal["survey_calibration", "historical_backtest"],
+    ) -> Mapping[str, Any] | None:
+        if run_id is None:
+            return None
+        evidence_rows = await _services(request).database.read_product_rows(
+            identity,
+            operation=f"campaign_lab_report_{expected_type}",
+            query="""
+              select id, campaign_id, run_type, status, result
+              from api.campaign_lab_runs
+              where id = %s and campaign_id = %s and run_type = %s
+            """,
+            parameters=(run_id, campaign_id, expected_type),
+        )
+        if (
+            not evidence_rows
+            or evidence_rows[0].get("status") != "succeeded"
+            or not isinstance(evidence_rows[0].get("result"), Mapping)
+        ):
+            raise AppProblem(
+                status=409,
+                code="version_conflict",
+                title="Report evidence is not ready",
+                detail=(
+                    "Attach a succeeded calibration or backtest run before generating the report."
+                ),
+            )
+        return cast(Mapping[str, Any], evidence_rows[0]["result"])
+
+    calibration_result = await evidence_result(body.calibration_run_id, "survey_calibration")
+    historical_backtest_result = await evidence_result(
+        body.historical_backtest_run_id, "historical_backtest"
+    )
     cultural_evaluation: Mapping[str, Any] | None = None
     if body.cultural_evaluation_artifact_id is not None:
         cultural_rows = await _services(request).database.read_product_rows(
@@ -1165,6 +1294,8 @@ async def create_report(
         report = build_campaign_lab_report(
             lab_request,
             lab_result,
+            survey_calibration=calibration_result,
+            historical_backtest=historical_backtest_result,
             cultural_evaluation=cultural_evaluation,
             human_reviewer=body.human_reviewer,
             approval_status=body.approval_status,
@@ -1177,8 +1308,16 @@ async def create_report(
         title=f"Campaign Lab report {body.run_id}",
         payload=report.model_dump(mode="json"),
         provenance={
-            "evidence_status": lab_result.evidence_status,
+            "evidence_status": report.evidence_status,
             "run_id": str(body.run_id),
+            "calibration_run_id": (
+                str(body.calibration_run_id) if body.calibration_run_id is not None else None
+            ),
+            "historical_backtest_run_id": (
+                str(body.historical_backtest_run_id)
+                if body.historical_backtest_run_id is not None
+                else None
+            ),
             "report_schema": "campaign_lab_report_v1",
         },
     )

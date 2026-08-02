@@ -5,6 +5,7 @@ from uuid import UUID
 
 import pytest
 from simula_core.campaign_lab import (
+    BEHAVIORAL_DIMENSIONS,
     BehavioralDimensionDefinition,
     CampaignLabCohort,
     CampaignLabPolicyError,
@@ -148,6 +149,8 @@ def test_structured_persona_has_explicit_labels_and_disclosed_interview() -> Non
     )
     assert interview.disclosure == "Synthetic Persona / Not a real respondent"
     assert "not testimony" in interview.transcript.casefold()
+    assert tuple(persona.behavioral_vector) == BEHAVIORAL_DIMENSIONS
+    assert len(persona.behavioral_vector) == 19
 
 
 def test_policy_rejects_individual_persuasion_and_compliance_fails_closed() -> None:
@@ -160,6 +163,22 @@ def test_policy_rejects_individual_persuasion_and_compliance_fails_closed() -> N
     )
     assert review.status == "blocked"
     assert review.aggregate_only is False
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"voter_dossier": {"region": "ncr"}},
+        {"political_affiliation_inference": "party_a"},
+        {"individual_persuasion_scoring": True},
+        {"false_election_instructions": "polling place"},
+    ],
+)
+def test_policy_rejects_additional_prohibited_political_patterns(
+    payload: dict[str, object],
+) -> None:
+    with pytest.raises(CampaignLabPolicyError):
+        validate_campaign_policy(payload)
 
 
 def test_persona_narrative_cannot_claim_a_real_respondent() -> None:
@@ -184,3 +203,16 @@ def test_campaign_lab_report_keeps_cultural_evaluation_separate_from_component_m
 
     assert report.language_cultural_evaluation["status"] == "Human-reviewed"
     assert "viral_score" not in report.model_dump(mode="json")
+
+
+def test_campaign_lab_report_labels_mixed_evidence_without_collapsing_metrics() -> None:
+    result = run_campaign_lab_simulation(_request())
+    report = build_campaign_lab_report(
+        _request(),
+        result,
+        survey_calibration={"status": "Survey-calibrated"},
+        historical_backtest={"status": "Historically backtested"},
+    )
+
+    assert report.evidence_status == "Mixed evidence"
+    assert report.confidence_and_uncertainty["evidence_status"] == "Mixed evidence"

@@ -60,6 +60,11 @@ classification: OBSERVED
   have a versioned core contract, focused tests, a durable Campaign Lab artifact
   route, and an optional report attachment field. Regional languages remain
   disabled until an admitted evaluation dataset exists.
+- Campaign update and simulation-cancellation commands now persist replay-safe
+  idempotency receipts. Explicit `Idempotency-Key` headers are supported, with a
+  deterministic request-derived fallback for legacy callers. The change is in
+  `20260802105930_campaign_lab_mutation_idempotency`, applied to
+  `ywiwmczccktwzqyhzhiz`, and runtime readiness/observability bind to that head.
 - FastAPI `/api/v1/campaign-lab/...` routes now cover campaign state, typed
   research/cohort/variant/interview artifacts, durable simulations, status,
   progress events, cancellation, cloning, survey intake, calibration, historical
@@ -78,10 +83,11 @@ classification: OBSERVED
   sidebar, end-to-end campaign setup, aggregate request editor, durable run
   polling, evidence-stage disclosure, and report boundary. Evidence results
   expose survey/backtest component metrics and cohort slices in the UI.
-- Verification completed locally: core/worker suites 277/277, API tests
-  77/77, web tests 142/142, web production build, web typecheck/lint, Python
-  compile, and focused Ruff checks. Hosted Supabase migration/RLS/function
-  checks and security advisor review also completed.
+- Verification completed locally: Python/API/worker suites 362/362, mypy
+  150/150 files, web tests 142/142, web production build, web typecheck/lint,
+  generated-contract drift, Python compile, and focused Ruff checks. Hosted
+  Supabase migration/function/grant/readiness checks and security advisor
+  review also completed.
 
 ## Implemented before this turn
 
