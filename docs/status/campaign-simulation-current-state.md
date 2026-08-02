@@ -52,12 +52,21 @@ classification: OBSERVED
   deterministic weighted sampling, repeated seeded runs, structured synthetic
   personas, disclosed interviews, compliance review, and a 30-section report
   contract. No `viral_score` field or LLM final score exists.
+- Historical backtests now persist a version-2 result with explicit
+  campaign/cohort/variant keys, declared cohort weights, weighted campaign
+  aggregates, and per-cohort component slices. The durable outcome schema's
+  `subgroup_key` is accepted as a compatibility alias.
+- Human-reviewed English, Filipino, and Taglish cultural evaluation suites now
+  have a versioned core contract, focused tests, a durable Campaign Lab artifact
+  route, and an optional report attachment field. Regional languages remain
+  disabled until an admitted evaluation dataset exists.
 - FastAPI `/api/v1/campaign-lab/...` routes now cover campaign state, typed
   research/cohort/variant/interview artifacts, durable simulations, status,
   progress events, cancellation, cloning, survey intake, calibration, historical
   backtest intake, compliance review, audit, and reports.
 - Supabase migrations `20260802060315_campaign_simulation_lab` and
-  `20260802063625_campaign_lab_api_wrappers` are applied to project
+  `20260802063625_campaign_lab_api_wrappers` plus
+  `20260802090954_campaign_lab_cultural_evaluation` are applied to project
   `ywiwmczccktwzqyhzhiz`. Campaign Lab campaign, artifact, run, event, and
   worker-secret relations have forced RLS; command and worker functions are
   least-privilege and lease-bound.
@@ -65,12 +74,14 @@ classification: OBSERVED
   retries bounded failures, finalizes cancellation, and keeps raw survey rows
   and held-out outcomes in the worker-only secret envelope.
 - The web project workspace now exposes Campaign Simulation Lab as a primary
-  navigation destination with an end-to-end campaign setup, aggregate request
-  editor, durable run polling, evidence-stage disclosure, and report boundary.
-- Verification completed locally: core focused tests 9/9, API tests 77/77,
-  worker tests 90/90, web tests 141/141, web typecheck/lint, Python compile, and
-  focused Ruff checks. Hosted Supabase migration/RLS/function checks and
-  security advisor review also completed.
+  navigation destination with a permanently visible 14-item Campaign Lab
+  sidebar, end-to-end campaign setup, aggregate request editor, durable run
+  polling, evidence-stage disclosure, and report boundary. Evidence results
+  expose survey/backtest component metrics and cohort slices in the UI.
+- Verification completed locally: core/worker suites 277/277, API tests
+  77/77, web tests 142/142, web production build, web typecheck/lint, Python
+  compile, and focused Ruff checks. Hosted Supabase migration/RLS/function
+  checks and security advisor review also completed.
 
 ## Implemented before this turn
 
@@ -85,10 +96,9 @@ classification: OBSERVED
 
 ## Not yet verified or supplied
 
-- Lawfully admitted Philippine survey and historical campaign datasets. The
-  adapters and evaluators are functional, but no real dataset is attached to
-  this release, so no validity or accuracy claim is permitted.
 - Lawfully admitted Philippine survey and historical campaign datasets.
+- The non-deterministic provider adapters are contract-level only; the first
+  deployable worker release intentionally admits the deterministic provider.
 - End-to-end hosted authenticated browser/API/worker evidence for the new routes
   after the GitHub release is promoted.
 - Railway project authorization and an observed GitHub-to-Railway deployment

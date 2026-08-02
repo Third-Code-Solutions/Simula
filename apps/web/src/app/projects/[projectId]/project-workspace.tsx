@@ -344,7 +344,11 @@ export function ProjectWorkspace({
               </Link>
             </div>
             {dashboard.permissions.can_create_projects ? (
-              <form className="panel form-stack" onSubmit={saveProject}>
+              <form
+                className="panel form-stack"
+                id="settings"
+                onSubmit={saveProject}
+              >
                 <h2>Project details</h2>
                 <label htmlFor="edit-project-name">Project name</label>
                 <input

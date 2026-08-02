@@ -1,5 +1,70 @@
 import Link from "next/link";
 
+const CAMPAIGN_LAB_NAVIGATION = [
+  {
+    label: "Overview",
+    href: (projectId: string) => `/projects/${projectId}/campaign-lab#overview`,
+  },
+  {
+    label: "Research",
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#stage-research_validated`,
+  },
+  {
+    label: "Audience Cohorts",
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#stage-cohort_defined`,
+  },
+  {
+    label: "Message Lab",
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#stage-variants_added`,
+  },
+  {
+    label: "Simulations",
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#stage-simulated`,
+  },
+  {
+    label: "Agent Activity",
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#agent-activity`,
+  },
+  {
+    label: "Persona Interviews",
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#stage-interviewed`,
+  },
+  {
+    label: "Surveys",
+    href: (projectId: string) => `/projects/${projectId}/evidence#surveys`,
+  },
+  {
+    label: "Calibration",
+    href: (projectId: string) => `/projects/${projectId}/evidence#calibration`,
+  },
+  {
+    label: "Backtesting",
+    href: (projectId: string) => `/projects/${projectId}/evidence#backtesting`,
+  },
+  {
+    label: "Compliance",
+    href: (projectId: string) => `/projects/${projectId}/evidence#compliance`,
+  },
+  {
+    label: "Reports",
+    href: (projectId: string) => `/projects/${projectId}/evidence#reports`,
+  },
+  {
+    label: "Audit",
+    href: (projectId: string) => `/projects/${projectId}/evidence#audit`,
+  },
+  {
+    label: "Settings",
+    href: (projectId: string) => `/projects/${projectId}#settings`,
+  },
+] as const;
+
 function SidebarItem({
   active = false,
   disabledReason,
@@ -135,6 +200,18 @@ export function WorkspaceSidebar({
               }
               label="Campaign Simulation Lab"
             />
+          </div>
+          <div className="sidebar-nav-section sidebar-nav-section-campaign">
+            <span>Campaign Simulation Lab</span>
+            {CAMPAIGN_LAB_NAVIGATION.map(({ href, label }) => (
+              <SidebarItem
+                active={current === "campaign-lab" && label === "Overview"}
+                disabledReason="Select a project"
+                href={projectId ? href(projectId) : undefined}
+                key={label}
+                label={label}
+              />
+            ))}
           </div>
           <div className="sidebar-nav-section">
             <span>Rehearsal</span>

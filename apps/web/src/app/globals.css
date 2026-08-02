@@ -1484,6 +1484,11 @@ select {
   gap: 0.25rem;
 }
 
+.sidebar-nav-section-campaign {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--edge);
+}
+
 .sidebar-nav-section > span {
   padding: 0 0.625rem 0.2rem;
   color: var(--pebble);
@@ -1549,6 +1554,10 @@ select {
   margin-bottom: 0.25rem;
   color: var(--ink);
   font-size: 0.75rem;
+}
+
+.workspace-main :where([id]) {
+  scroll-margin-top: 5.5rem;
 }
 
 .workspace-main > :not(.workspace-header):not(.workspace-sidebar) {
@@ -2457,6 +2466,19 @@ code {
   margin-top: 1rem;
 }
 
+.evidence-result-summary {
+  margin: 1.25rem 0;
+  padding: 1rem;
+  border: 1px solid var(--edge);
+  border-radius: 0.75rem;
+  background: var(--paper);
+}
+
+.evidence-result-summary h3,
+.evidence-result-summary h4 {
+  margin-top: 0;
+}
+
 .evidence-metrics {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -2856,6 +2878,13 @@ code {
 
   .sidebar-nav-section {
     display: flex;
+  }
+
+  .sidebar-nav-section-campaign {
+    padding-top: 0;
+    padding-left: 0.75rem;
+    border-top: 0;
+    border-left: 1px solid var(--edge);
   }
 
   .sidebar-nav-section > span {

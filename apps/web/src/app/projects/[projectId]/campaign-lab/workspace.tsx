@@ -27,6 +27,7 @@ const STAGES = [
   "Compare components",
   "Cohort analysis",
   "Synthetic interviews",
+  "Survey import",
   "Survey calibration",
   "Historical backtest",
   "Compliance",
@@ -49,6 +50,7 @@ const STAGE_KEYS = [
   "survey_imported",
   "calibrated",
   "backtested",
+  "compliance_reviewed",
   "reported",
 ] as const;
 
@@ -358,7 +360,7 @@ export function CampaignLabWorkspace({
       id="main-content"
       tabIndex={-1}
     >
-      <header className="workspace-header">
+      <header className="workspace-header" id="overview">
         <Link className="wordmark" href={`/projects/${projectId}`}>
           SIMULA
         </Link>
@@ -442,13 +444,14 @@ export function CampaignLabWorkspace({
           </div>
         </div>
       </section>
-      <section className="panel" aria-labelledby="flow-title">
+      <section className="panel" aria-labelledby="flow-title" id="research">
         <p className="eyebrow">02 / Evidence workflow</p>
         <h2 id="flow-title">Traceable flow</h2>
         <ol className="workflow-list">
           {STAGES.map((stage, index) => (
             <li
               className={index <= activeStageIndex ? "is-active" : undefined}
+              id={`stage-${STAGE_KEYS[index]}`}
               key={stage}
             >
               <span>{String(index + 1).padStart(2, "0")}</span>
@@ -484,7 +487,7 @@ export function CampaignLabWorkspace({
               {running ? "Queueing…" : "Queue repeated simulation"}
             </button>
           </form>
-          <div className="panel" aria-live="polite">
+          <div className="panel" aria-live="polite" id="agent-activity">
             <p className="eyebrow">Run status</p>
             {run ? (
               <>

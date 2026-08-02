@@ -12,6 +12,7 @@ from simula_core.campaign_lab import (
     CampaignLabSimulationConfiguration,
     CampaignLabSimulationRequest,
     CampaignLabVariant,
+    build_campaign_lab_report,
     build_compliance_review,
     build_structured_persona,
     create_synthetic_interview,
@@ -167,3 +168,19 @@ def test_persona_narrative_cannot_claim_a_real_respondent() -> None:
     )
     with pytest.raises(CampaignLabPolicyError):
         validate_persona_narrative(persona, "This is a real respondent's testimony.")
+
+
+def test_campaign_lab_report_keeps_cultural_evaluation_separate_from_component_metrics() -> None:
+    result = run_campaign_lab_simulation(_request())
+    report = build_campaign_lab_report(
+        _request(),
+        result,
+        cultural_evaluation={
+            "status": "Human-reviewed",
+            "suite_id": "philippine_language_suite",
+            "supported_languages": ["english", "filipino", "taglish"],
+        },
+    )
+
+    assert report.language_cultural_evaluation["status"] == "Human-reviewed"
+    assert "viral_score" not in report.model_dump(mode="json")

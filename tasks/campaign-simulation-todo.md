@@ -13,11 +13,11 @@
       methodology report path.
 - [x] Persist repeated evidence metadata on tenant-scoped report artifacts;
       apply and verify the Supabase migration.
-- [ ] Add aggregate cohort/subgroup backtest slices to the durable outcome
+- [x] Add aggregate cohort/subgroup backtest slices to the durable outcome
       schema and evaluation report.
-- [ ] Add durable API/worker integration for survey calibration and historical
+- [x] Add durable API/worker integration for survey calibration and historical
       backtesting.
 - [x] Add repeated-run UI/report fields without a standalone prediction score.
-- [ ] Add survey/backtest UI/report fields without a standalone prediction
+- [x] Add survey/backtest UI/report fields without a standalone prediction
       score.
 - [ ] Re-run full release gates and independent review.

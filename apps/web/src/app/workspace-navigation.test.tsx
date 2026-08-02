@@ -1,8 +1,12 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { SiteHeader } from "./landing/site-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
+
+afterEach(() => {
+  cleanup();
+});
 
 describe("workspace navigation", () => {
   it("keeps the landing header focused on account entry", () => {
@@ -32,8 +36,31 @@ describe("workspace navigation", () => {
       "true",
     );
     expect(
-      screen.getByText("Campaign Simulation Lab", { exact: true }),
+      screen
+        .getAllByText("Campaign Simulation Lab", { exact: true })
+        .find((element) => element.getAttribute("aria-disabled") === "true"),
     ).toHaveAttribute("aria-disabled", "true");
+    for (const label of [
+      "Overview",
+      "Research",
+      "Audience Cohorts",
+      "Message Lab",
+      "Simulations",
+      "Agent Activity",
+      "Persona Interviews",
+      "Surveys",
+      "Calibration",
+      "Backtesting",
+      "Compliance",
+      "Reports",
+      "Audit",
+      "Settings",
+    ]) {
+      expect(screen.getByText(label, { exact: true })).toHaveAttribute(
+        "aria-disabled",
+        "true",
+      );
+    }
     expect(screen.queryByRole("link", { name: "Context map" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Method" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Boundaries" })).toBeNull();
@@ -68,5 +95,48 @@ describe("workspace navigation", () => {
       "aria-current",
       "page",
     );
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/campaign-lab#overview",
+    );
+    expect(screen.getByRole("link", { name: "Surveys" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/evidence#surveys",
+    );
+    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute(
+      "href",
+      "/projects/project-1#settings",
+    );
+  });
+
+  it("keeps every Campaign Lab destination available on the project sidebar", () => {
+    render(<WorkspaceSidebar current="campaign-lab" projectId="project-1" />);
+
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+    expect(
+      screen
+        .getAllByRole("link")
+        .filter((link) =>
+          [
+            "Overview",
+            "Research",
+            "Audience Cohorts",
+            "Message Lab",
+            "Simulations",
+            "Agent Activity",
+            "Persona Interviews",
+            "Surveys",
+            "Calibration",
+            "Backtesting",
+            "Compliance",
+            "Reports",
+            "Audit",
+            "Settings",
+          ].includes(link.textContent ?? ""),
+        ),
+    ).toHaveLength(14);
   });
 });

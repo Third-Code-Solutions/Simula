@@ -12,8 +12,11 @@ benchmark, not a universal campaign-winner guarantee.
 methodology version, outcome metric, development campaign IDs, holdout campaign
 IDs, and minimum campaign count. Development and holdout IDs must be disjoint.
 
-`BlindBacktestPredictionSet` contains only campaign/variant predicted values
-and a blind attestation. `HistoricalOutcomeDataset` is a separate observed
+`BlindBacktestPredictionSet` contains campaign/cohort/variant predicted values
+and a blind attestation. The cohort key defaults to `aggregate`; callers may
+also provide the durable outcome table's `subgroup_key` alias. Each
+`HistoricalOutcome` carries a declared cohort weight, and weights must sum to
+one per campaign. `HistoricalOutcomeDataset` is a separate observed
 artifact with source/version, rights, geography, outcome definition, held-out
 flag, authorization, checksum, bias, and coverage limitations. Development
 leakage, missing holdout campaigns, metric mismatch, non-held-out outcomes, and
@@ -29,6 +32,10 @@ Values are compared on the declared outcome scale (the current contract uses
 - top-variant accuracy;
 - per-campaign rank correlation where defined;
 - optional baseline MAE and `baseline_mae - model_mae` improvement.
+
+The result also includes `subgroups`, one row per campaign/cohort slice with
+the same component metrics. Campaign rows are weighted aggregates across the
+declared cohort weights; they are not a hidden winner or persuasion score.
 
 The result records the exact model/methodology/protocol/outcome source and is
 `Historically backtested` only when the declared minimum campaign count is met;

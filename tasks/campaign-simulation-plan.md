@@ -79,7 +79,7 @@ synthetic artifact.
       data is joined.
 - [x] Compute ranking agreement, pairwise directional accuracy, MAE/RMSE, and
       model-version regression deltas.
-- [ ] Add subgroup-specific backtest slices after the durable outcome schema
+- [x] Add subgroup-specific backtest slices after the durable outcome schema
       carries aggregate cohort keys.
 - [x] Suppress or block universal-accuracy language in the result limitations.
 
@@ -97,7 +97,7 @@ not universal prediction.
 
 ### Phase 5: Product/reporting and release
 
-- [ ] Add existing-design-system views for weights, repetitions, calibration,
+- [x] Add existing-design-system views for weights, repetitions, calibration,
       backtest evidence, uncertainty, and limitations.
 - [ ] Add report/export fields with source citations and human approval state.
 - [ ] Run local, browser, hosted dependency, data, and release gates.
