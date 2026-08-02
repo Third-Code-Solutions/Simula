@@ -263,7 +263,7 @@ async def _store_artifact(
     if validate:
         _validate_policy({"payload": body.payload, "provenance": body.provenance})
     organization_id = await _campaign_organization(request, identity, campaign_id)
-    payload = {
+    payload: dict[str, Any] = {
         "kind": kind,
         "campaign_id": str(campaign_id),
         "title": body.title,
@@ -380,6 +380,7 @@ async def list_campaigns(
     offset: int = Query(default=0, ge=0, le=10_000),
     project_id: UUID | None = None,
 ) -> dict[str, Any]:
+    parameters: tuple[object, ...]
     if project_id is None:
         query = """
           select id, organization_id, project_id, name, objective, purpose, status,
@@ -469,6 +470,7 @@ async def list_artifacts(
     kind: str | None = Query(default=None, min_length=2, max_length=64),
 ) -> dict[str, Any]:
     await _campaign_row(request, identity, campaign_id)
+    parameters: tuple[object, ...]
     if kind is None:
         query = """
           select id, organization_id, campaign_id, kind, status, title, payload,

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
@@ -35,7 +36,7 @@ def _source() -> CampaignLabResearchSource:
         geography="Philippines aggregate fixture",
         collection_methodology="Authored non-representative test fixture.",
         license_or_usage_rights="Internal test use only.",
-        processing_date="2026-08-02T00:00:00Z",
+        processing_date=datetime(2026, 8, 2, tzinfo=UTC),
         transformation="None.",
         known_limitations=("Not representative.",),
         checksum_sha256="0" * 64,
