@@ -23,6 +23,10 @@ from simula_core.methodology import (
     SamplingConfiguration,
     SourceProvenance,
 )
+from simula_core.repeated_simulation import (
+    RepeatedSimulationConfiguration,
+    run_repeated_methodology,
+)
 from simula_core.reporting import (
     CompleteReport,
     build_complete_report,
@@ -640,15 +644,37 @@ async def create_methodology_preview(
             f"{body.stimulus_version_id}:{idempotency_key}",
         )
     try:
-        result = MethodologyEngine(DeterministicCohortProvider()).run(
-            run_id=run_id,
-            stimulus=cast(str, stimulus_rows[0]["content"]),
-            population=_population_from_row(row),
-            audience=_audience_from_row(row),
-            configuration=SamplingConfiguration.model_validate(row["sampling_configuration"]),
-            methodology_version=cast(str, row["methodology_key"]),
-            cost_ceiling_microusd=cast(int, row["cost_ceiling_microusd"]),
-        )
+        engine = MethodologyEngine(DeterministicCohortProvider())
+        population = _population_from_row(row)
+        audience = _audience_from_row(row)
+        configuration = SamplingConfiguration.model_validate(row["sampling_configuration"])
+        if body.repetition_configuration is None:
+            result = engine.run(
+                run_id=run_id,
+                stimulus=cast(str, stimulus_rows[0]["content"]),
+                population=population,
+                audience=audience,
+                configuration=configuration,
+                methodology_version=cast(str, row["methodology_key"]),
+                cost_ceiling_microusd=cast(int, row["cost_ceiling_microusd"]),
+            )
+            repeated = None
+        else:
+            core_repetition_configuration = RepeatedSimulationConfiguration.model_validate(
+                body.repetition_configuration.model_dump()
+            )
+            repeated = run_repeated_methodology(
+                engine,
+                run_group_id=run_id,
+                stimulus=cast(str, stimulus_rows[0]["content"]),
+                population=population,
+                audience=audience,
+                configuration=configuration,
+                methodology_version=cast(str, row["methodology_key"]),
+                cost_ceiling_microusd=cast(int, row["cost_ceiling_microusd"]),
+                repetition_configuration=core_repetition_configuration,
+            )
+            result = repeated.runs[0].model_copy(update={"run_id": run_id})
         report = build_complete_report(
             result,
             report_id=uuid5(NAMESPACE_URL, f"simula-report:{run_id}"),
@@ -657,6 +683,7 @@ async def create_methodology_preview(
             variant_key=body.variant_key,
             variant_label=body.variant_label,
             created_at=row["created_at"],
+            repeated_simulation=repeated,
         )
     except ValueError as error:
         raise AppProblem(
@@ -673,6 +700,11 @@ async def create_methodology_preview(
                     "methodology_result": result.model_dump(mode="json"),
                     "report": report.model_dump(mode="json"),
                     "replayed": False,
+                    **(
+                        {"repeated_methodology_result": repeated.model_dump(mode="json")}
+                        if repeated is not None
+                        else {}
+                    ),
                 }
             ),
         )
@@ -911,6 +943,7 @@ async def create_run_methodology_report(
             variant_key=body.variant_key,
             variant_label=body.variant_label,
             run_id=run_id,
+            repetition_configuration=body.repetition_configuration,
         ),
         request,
         idempotency_key,

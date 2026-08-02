@@ -1,0 +1,19 @@
+[project]
+name = "simula-ai-engine"
+version = "0.0.0"
+description = "SIMULA private behavioral methodology service"
+requires-python = "==3.14.6"
+dependencies = [
+    "fastapi==0.139.2",
+    "pydantic==2.13.4",
+    "simula-core",
+    "structlog==26.1.0",
+    "uvicorn==0.51.0",
+]
+
+[build-system]
+requires = ["uv_build==0.11.19"]
+build-backend = "uv_build"
+
+[tool.uv.sources]
+simula-core = { workspace = true }

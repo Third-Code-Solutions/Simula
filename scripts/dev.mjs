@@ -42,6 +42,27 @@ export function assertRequiredWebEnvironment(environment) {
       `Missing web development environment: ${missing.join(", ")}. Add the values to the repository .env.local file.`,
     );
   }
+
+  if (environment.SIMULA_ENVIRONMENT === "local") {
+    let supabaseUrl;
+    try {
+      supabaseUrl = new URL(environment.NEXT_PUBLIC_SUPABASE_URL);
+    } catch {
+      throw new Error(
+        "Local web development requires NEXT_PUBLIC_SUPABASE_URL to target local Supabase at http://127.0.0.1:54321.",
+      );
+    }
+
+    if (
+      supabaseUrl.protocol !== "http:" ||
+      !["127.0.0.1", "localhost"].includes(supabaseUrl.hostname) ||
+      supabaseUrl.port !== "54321"
+    ) {
+      throw new Error(
+        "Local web development requires NEXT_PUBLIC_SUPABASE_URL to target local Supabase at http://127.0.0.1:54321.",
+      );
+    }
+  }
 }
 
 async function runDev() {

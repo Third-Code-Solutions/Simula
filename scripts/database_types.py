@@ -47,9 +47,7 @@ def generate() -> str:
     if process.returncode != 0:
         raise SystemExit("local database type generation failed")
 
-    generated = process.stdout.replace("\r\n", "\n")
-    if not generated.endswith("\n"):
-        generated += "\n"
+    generated = process.stdout.replace("\r\n", "\n").rstrip("\n") + "\n"
     missing = [marker for marker in REQUIRED_MARKERS if marker not in generated]
     if missing:
         raise SystemExit("generated database types are incomplete")

@@ -94,6 +94,701 @@ export type Database = {
           },
         ]
       }
+      behavioral_agent_public_summaries: {
+        Row: {
+          agent_id: string
+          created_at: string
+          evidence_event_ids: string[]
+          latest_action: string
+          organization_id: string
+          round_count: number
+          run_id: string
+          synthetic_identity: boolean
+          tier: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          evidence_event_ids: string[]
+          latest_action: string
+          organization_id: string
+          round_count: number
+          run_id: string
+          synthetic_identity?: boolean
+          tier: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          evidence_event_ids?: string[]
+          latest_action?: string
+          organization_id?: string
+          round_count?: number
+          run_id?: string
+          synthetic_identity?: boolean
+          tier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_agent_public_summaries_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_run_results"
+            referencedColumns: ["organization_id", "run_id"]
+          },
+        ]
+      }
+      behavioral_evaluation_members: {
+        Row: {
+          baseline_score: number | null
+          behavioral_run_id: string
+          campaign_id: string
+          created_at: string
+          evaluation_run_id: string
+          id: string
+          observed_outcome_value_id: string
+          observed_score: number
+          organization_id: string
+          outcome_provenance_sha256: string
+          predicted_score: number
+          split: string
+          subgroup_keys: string[]
+        }
+        Insert: {
+          baseline_score?: number | null
+          behavioral_run_id: string
+          campaign_id: string
+          created_at?: string
+          evaluation_run_id: string
+          id?: string
+          observed_outcome_value_id: string
+          observed_score: number
+          organization_id: string
+          outcome_provenance_sha256: string
+          predicted_score: number
+          split: string
+          subgroup_keys: string[]
+        }
+        Update: {
+          baseline_score?: number | null
+          behavioral_run_id?: string
+          campaign_id?: string
+          created_at?: string
+          evaluation_run_id?: string
+          id?: string
+          observed_outcome_value_id?: string
+          observed_score?: number
+          organization_id?: string
+          outcome_provenance_sha256?: string
+          predicted_score?: number
+          split?: string
+          subgroup_keys?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_evaluation_members_behavioral_run_foreign_key"
+            columns: ["organization_id", "behavioral_run_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_run_results"
+            referencedColumns: ["organization_id", "run_id"]
+          },
+          {
+            foreignKeyName: "behavioral_evaluation_members_evaluation_foreign_key"
+            columns: ["organization_id", "evaluation_run_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_evaluation_runs"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "behavioral_evaluation_members_outcome_foreign_key"
+            columns: ["organization_id", "observed_outcome_value_id"]
+            isOneToOne: false
+            referencedRelation: "observed_outcome_values"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      behavioral_evaluation_protocol_versions: {
+        Row: {
+          checksum_sha256: string
+          created_at: string
+          created_by: string | null
+          development_campaign_ids: string[]
+          holdout_campaign_ids: string[]
+          id: string
+          limitations: string[]
+          manifest: Json
+          methodology_version: string
+          minimum_subgroup_size: number
+          organization_id: string | null
+          primary_metric: string
+          protocol_id: string
+          registered_at: string
+          score_maximum: number
+          score_minimum: number
+          secondary_metric: string
+          validation_label: string
+          version: number
+        }
+        Insert: {
+          checksum_sha256: string
+          created_at?: string
+          created_by?: string | null
+          development_campaign_ids: string[]
+          holdout_campaign_ids: string[]
+          id?: string
+          limitations: string[]
+          manifest: Json
+          methodology_version: string
+          minimum_subgroup_size: number
+          organization_id?: string | null
+          primary_metric: string
+          protocol_id: string
+          registered_at: string
+          score_maximum: number
+          score_minimum: number
+          secondary_metric: string
+          validation_label: string
+          version: number
+        }
+        Update: {
+          checksum_sha256?: string
+          created_at?: string
+          created_by?: string | null
+          development_campaign_ids?: string[]
+          holdout_campaign_ids?: string[]
+          id?: string
+          limitations?: string[]
+          manifest?: Json
+          methodology_version?: string
+          minimum_subgroup_size?: number
+          organization_id?: string | null
+          primary_metric?: string
+          protocol_id?: string
+          registered_at?: string
+          score_maximum?: number
+          score_minimum?: number
+          secondary_metric?: string
+          validation_label?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_evaluation_protocol_versions_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_evaluation_protocols"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      behavioral_evaluation_protocols: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          protocol_key: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          protocol_key: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          protocol_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_evaluation_protocols_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      behavioral_evaluation_runs: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          limitations: string[]
+          observation_sha256: string | null
+          organization_id: string
+          outcome_set_id: string
+          protocol_version_id: string
+          report: Json | null
+          status: string
+          validation_label: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          limitations: string[]
+          observation_sha256?: string | null
+          organization_id: string
+          outcome_set_id: string
+          protocol_version_id: string
+          report?: Json | null
+          status: string
+          validation_label: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          limitations?: string[]
+          observation_sha256?: string | null
+          organization_id?: string
+          outcome_set_id?: string
+          protocol_version_id?: string
+          report?: Json | null
+          status?: string
+          validation_label?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_evaluation_runs_outcome_set_foreign_key"
+            columns: ["organization_id", "outcome_set_id"]
+            isOneToOne: false
+            referencedRelation: "observed_outcome_sets"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "behavioral_evaluation_runs_protocol_version_id_fkey"
+            columns: ["protocol_version_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_evaluation_protocol_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      behavioral_fleet_summaries: {
+        Row: {
+          agent_count: number
+          cohort_count: number
+          created_at: string
+          llm_agent_count: number
+          organization_id: string
+          relationship_count: number
+          rule_agent_count: number
+          run_id: string
+          synthetic_identity: boolean
+        }
+        Insert: {
+          agent_count: number
+          cohort_count: number
+          created_at?: string
+          llm_agent_count: number
+          organization_id: string
+          relationship_count: number
+          rule_agent_count: number
+          run_id: string
+          synthetic_identity?: boolean
+        }
+        Update: {
+          agent_count?: number
+          cohort_count?: number
+          created_at?: string
+          llm_agent_count?: number
+          organization_id?: string
+          relationship_count?: number
+          rule_agent_count?: number
+          run_id?: string
+          synthetic_identity?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_fleet_summaries_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_run_results"
+            referencedColumns: ["organization_id", "run_id"]
+          },
+        ]
+      }
+      behavioral_report_evidence: {
+        Row: {
+          action_event_id: string
+          created_at: string
+          evidence_key: string
+          evidence_kind: string
+          organization_id: string
+          output_type: string
+          run_id: string
+        }
+        Insert: {
+          action_event_id: string
+          created_at?: string
+          evidence_key: string
+          evidence_kind: string
+          organization_id: string
+          output_type: string
+          run_id: string
+        }
+        Update: {
+          action_event_id?: string
+          created_at?: string
+          evidence_key?: string
+          evidence_kind?: string
+          organization_id?: string
+          output_type?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_report_evidence_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_run_results"
+            referencedColumns: ["organization_id", "run_id"]
+          },
+        ]
+      }
+      behavioral_round_summaries: {
+        Row: {
+          action_shares: Json
+          checksum_sha256: string
+          created_at: string
+          event_count: number
+          evidence_node_ids: string[]
+          mean_attention: number
+          mean_resonance: number
+          mean_trust: number
+          mean_valence: number
+          organization_id: string
+          round_index: number
+          run_id: string
+        }
+        Insert: {
+          action_shares: Json
+          checksum_sha256: string
+          created_at?: string
+          event_count: number
+          evidence_node_ids: string[]
+          mean_attention: number
+          mean_resonance: number
+          mean_trust: number
+          mean_valence: number
+          organization_id: string
+          round_index: number
+          run_id: string
+        }
+        Update: {
+          action_shares?: Json
+          checksum_sha256?: string
+          created_at?: string
+          event_count?: number
+          evidence_node_ids?: string[]
+          mean_attention?: number
+          mean_resonance?: number
+          mean_trust?: number
+          mean_valence?: number
+          organization_id?: string
+          round_index?: number
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_round_summaries_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_run_results"
+            referencedColumns: ["organization_id", "run_id"]
+          },
+        ]
+      }
+      behavioral_run_results: {
+        Row: {
+          agent_fleet_sha256: string
+          artifact_sha256: string
+          artifact_size_bytes: number
+          context_graph_sha256: string
+          cost_microusd: number
+          created_at: string
+          id: string
+          input_sha256: string
+          input_tokens: number
+          methodology_version: string
+          model_id: string
+          organization_id: string
+          output_sha256: string
+          output_tokens: number
+          provider_calls: number
+          provider_id: string
+          provider_version: string
+          report: Json
+          run_id: string
+          schema_version: number
+          stimulus_sha256: string
+          study_id: string
+          template_id: string
+          validation_label: string
+          variant_key: string
+        }
+        Insert: {
+          agent_fleet_sha256: string
+          artifact_sha256: string
+          artifact_size_bytes: number
+          context_graph_sha256: string
+          cost_microusd: number
+          created_at?: string
+          id?: string
+          input_sha256: string
+          input_tokens: number
+          methodology_version: string
+          model_id: string
+          organization_id: string
+          output_sha256: string
+          output_tokens: number
+          provider_calls: number
+          provider_id: string
+          provider_version: string
+          report: Json
+          run_id: string
+          schema_version: number
+          stimulus_sha256: string
+          study_id: string
+          template_id: string
+          validation_label: string
+          variant_key: string
+        }
+        Update: {
+          agent_fleet_sha256?: string
+          artifact_sha256?: string
+          artifact_size_bytes?: number
+          context_graph_sha256?: string
+          cost_microusd?: number
+          created_at?: string
+          id?: string
+          input_sha256?: string
+          input_tokens?: number
+          methodology_version?: string
+          model_id?: string
+          organization_id?: string
+          output_sha256?: string
+          output_tokens?: number
+          provider_calls?: number
+          provider_id?: string
+          provider_version?: string
+          report?: Json
+          run_id?: string
+          schema_version?: number
+          stimulus_sha256?: string
+          study_id?: string
+          template_id?: string
+          validation_label?: string
+          variant_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_run_results_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: true
+            referencedRelation: "simulation_runs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      campaign_evidence_events: {
+        Row: {
+          created_at: string
+          event_kind: string
+          id: string
+          message: string | null
+          organization_id: string
+          progress: number
+          run_id: string
+          stage: string
+        }
+        Insert: {
+          created_at?: string
+          event_kind: string
+          id?: string
+          message?: string | null
+          organization_id: string
+          progress: number
+          run_id: string
+          stage: string
+        }
+        Update: {
+          created_at?: string
+          event_kind?: string
+          id?: string
+          message?: string | null
+          organization_id?: string
+          progress?: number
+          run_id?: string
+          stage?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_evidence_events_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_evidence_runs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      campaign_evidence_runs: {
+        Row: {
+          attempt_count: number
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          id: string
+          kind: string
+          last_error_code: string | null
+          last_error_detail: string | null
+          lease_expires_at: string | null
+          lease_token: string | null
+          next_attempt_at: string
+          organization_id: string
+          outcome_set_id: string | null
+          progress: number
+          project_id: string
+          request: Json
+          result: Json | null
+          retention_until: string
+          source_version_id: string | null
+          stage: string
+          started_at: string | null
+          status: string
+        }
+        Insert: {
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          id?: string
+          kind: string
+          last_error_code?: string | null
+          last_error_detail?: string | null
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          next_attempt_at?: string
+          organization_id: string
+          outcome_set_id?: string | null
+          progress?: number
+          project_id: string
+          request: Json
+          result?: Json | null
+          retention_until?: string
+          source_version_id?: string | null
+          stage?: string
+          started_at?: string | null
+          status?: string
+        }
+        Update: {
+          attempt_count?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          id?: string
+          kind?: string
+          last_error_code?: string | null
+          last_error_detail?: string | null
+          lease_expires_at?: string | null
+          lease_token?: string | null
+          next_attempt_at?: string
+          organization_id?: string
+          outcome_set_id?: string | null
+          progress?: number
+          project_id?: string
+          request?: Json
+          result?: Json | null
+          retention_until?: string
+          source_version_id?: string | null
+          stage?: string
+          started_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_evidence_runs_outcome_foreign_key"
+            columns: ["organization_id", "outcome_set_id"]
+            isOneToOne: false
+            referencedRelation: "observed_outcome_sets"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "campaign_evidence_runs_project_foreign_key"
+            columns: ["organization_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "campaign_evidence_runs_source_foreign_key"
+            columns: ["organization_id", "source_version_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_source_versions"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      context_graph_versions: {
+        Row: {
+          checksum_sha256: string
+          created_at: string
+          edge_count: number
+          graph_id: string
+          graph_version: number
+          id: string
+          limitations: string[]
+          manifest: Json
+          node_count: number
+          organization_id: string
+          run_id: string
+        }
+        Insert: {
+          checksum_sha256: string
+          created_at?: string
+          edge_count: number
+          graph_id: string
+          graph_version: number
+          id?: string
+          limitations: string[]
+          manifest: Json
+          node_count: number
+          organization_id: string
+          run_id: string
+        }
+        Update: {
+          checksum_sha256?: string
+          created_at?: string
+          edge_count?: number
+          graph_id?: string
+          graph_version?: number
+          id?: string
+          limitations?: string[]
+          manifest?: Json
+          node_count?: number
+          organization_id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_graph_versions_run_foreign_key"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "behavioral_run_results"
+            referencedColumns: ["organization_id", "run_id"]
+          },
+        ]
+      }
       evaluation_runs: {
         Row: {
           benchmark_checksum_sha256: string
@@ -151,6 +846,112 @@ export type Database = {
           },
           {
             foreignKeyName: "evaluation_runs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_source_versions: {
+        Row: {
+          allowed_uses: string[]
+          checksum_sha256: string
+          collection_ended_on: string | null
+          collection_started_on: string | null
+          consent_basis: string
+          created_at: string
+          created_by: string | null
+          evidence_source_id: string
+          id: string
+          license_name: string
+          organization_id: string | null
+          owner_name: string
+          prohibited_uses: string[]
+          provenance: Json
+          rights_expires_at: string | null
+          rights_status: string
+          source_version: string
+          version: number
+        }
+        Insert: {
+          allowed_uses: string[]
+          checksum_sha256: string
+          collection_ended_on?: string | null
+          collection_started_on?: string | null
+          consent_basis: string
+          created_at?: string
+          created_by?: string | null
+          evidence_source_id: string
+          id?: string
+          license_name: string
+          organization_id?: string | null
+          owner_name: string
+          prohibited_uses: string[]
+          provenance: Json
+          rights_expires_at?: string | null
+          rights_status: string
+          source_version: string
+          version: number
+        }
+        Update: {
+          allowed_uses?: string[]
+          checksum_sha256?: string
+          collection_ended_on?: string | null
+          collection_started_on?: string | null
+          consent_basis?: string
+          created_at?: string
+          created_by?: string | null
+          evidence_source_id?: string
+          id?: string
+          license_name?: string
+          organization_id?: string | null
+          owner_name?: string
+          prohibited_uses?: string[]
+          provenance?: Json
+          rights_expires_at?: string | null
+          rights_status?: string
+          source_version?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_source_versions_evidence_source_id_fkey"
+            columns: ["evidence_source_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_sources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_sources: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          organization_id: string | null
+          source_key: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          organization_id?: string | null
+          source_key: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          organization_id?: string | null
+          source_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_sources_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -294,6 +1095,122 @@ export type Database = {
           version?: number
         }
         Relationships: []
+      }
+      observed_outcome_sets: {
+        Row: {
+          checksum_sha256: string
+          created_at: string
+          created_by: string
+          evidence_source_version_id: string
+          id: string
+          manifest: Json
+          name: string
+          observed_ended_at: string
+          observed_started_at: string
+          organization_id: string
+          outcome_kind: string
+          project_id: string
+          status: string
+        }
+        Insert: {
+          checksum_sha256: string
+          created_at?: string
+          created_by: string
+          evidence_source_version_id: string
+          id?: string
+          manifest: Json
+          name: string
+          observed_ended_at: string
+          observed_started_at: string
+          organization_id: string
+          outcome_kind: string
+          project_id: string
+          status: string
+        }
+        Update: {
+          checksum_sha256?: string
+          created_at?: string
+          created_by?: string
+          evidence_source_version_id?: string
+          id?: string
+          manifest?: Json
+          name?: string
+          observed_ended_at?: string
+          observed_started_at?: string
+          organization_id?: string
+          outcome_kind?: string
+          project_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observed_outcome_sets_evidence_source_version_id_fkey"
+            columns: ["evidence_source_version_id"]
+            isOneToOne: false
+            referencedRelation: "evidence_source_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "observed_outcome_sets_project_foreign_key"
+            columns: ["organization_id", "project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      observed_outcome_values: {
+        Row: {
+          campaign_key: string
+          checksum_sha256: string
+          created_at: string
+          id: string
+          metric_key: string
+          metric_unit: string
+          metric_value: number
+          observation_count: number
+          organization_id: string
+          outcome_set_id: string
+          subgroup_key: string | null
+          variant_key: string
+        }
+        Insert: {
+          campaign_key: string
+          checksum_sha256: string
+          created_at?: string
+          id?: string
+          metric_key: string
+          metric_unit: string
+          metric_value: number
+          observation_count: number
+          organization_id: string
+          outcome_set_id: string
+          subgroup_key?: string | null
+          variant_key: string
+        }
+        Update: {
+          campaign_key?: string
+          checksum_sha256?: string
+          created_at?: string
+          id?: string
+          metric_key?: string
+          metric_unit?: string
+          metric_value?: number
+          observation_count?: number
+          organization_id?: string
+          outcome_set_id?: string
+          subgroup_key?: string | null
+          variant_key?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "observed_outcome_values_set_foreign_key"
+            columns: ["organization_id", "outcome_set_id"]
+            isOneToOne: false
+            referencedRelation: "observed_outcome_sets"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
       }
       organization_invitations: {
         Row: {
@@ -605,30 +1522,39 @@ export type Database = {
           content_sha256: string
           created_at: string
           created_by: string
+          evidence_status: string
           id: string
           organization_id: string
+          repetition_count: number
           run_id: string
           schema_version: string
+          stability_label: string
         }
         Insert: {
           artifact: Json
           content_sha256: string
           created_at?: string
           created_by: string
+          evidence_status?: string
           id?: string
           organization_id: string
+          repetition_count?: number
           run_id: string
           schema_version: string
+          stability_label?: string
         }
         Update: {
           artifact?: Json
           content_sha256?: string
           created_at?: string
           created_by?: string
+          evidence_status?: string
           id?: string
           organization_id?: string
+          repetition_count?: number
           run_id?: string
           schema_version?: string
+          stability_label?: string
         }
         Relationships: [
           {
@@ -1042,6 +1968,74 @@ export type Database = {
           },
         ]
       }
+      stimulus_assets: {
+        Row: {
+          byte_size: number | null
+          content_sha256: string | null
+          created_at: string
+          created_by: string
+          deleted_at: string | null
+          deletion_requested_at: string | null
+          expected_byte_size: number
+          expected_content_sha256: string
+          filename: string
+          id: string
+          media_type: string
+          organization_id: string
+          retention_until: string
+          status: string
+          stimulus_id: string
+          storage_bucket_id: string
+          storage_object_name: string
+        }
+        Insert: {
+          byte_size?: number | null
+          content_sha256?: string | null
+          created_at?: string
+          created_by: string
+          deleted_at?: string | null
+          deletion_requested_at?: string | null
+          expected_byte_size: number
+          expected_content_sha256: string
+          filename: string
+          id?: string
+          media_type: string
+          organization_id: string
+          retention_until: string
+          status?: string
+          stimulus_id: string
+          storage_bucket_id?: string
+          storage_object_name: string
+        }
+        Update: {
+          byte_size?: number | null
+          content_sha256?: string | null
+          created_at?: string
+          created_by?: string
+          deleted_at?: string | null
+          deletion_requested_at?: string | null
+          expected_byte_size?: number
+          expected_content_sha256?: string
+          filename?: string
+          id?: string
+          media_type?: string
+          organization_id?: string
+          retention_until?: string
+          status?: string
+          stimulus_id?: string
+          storage_bucket_id?: string
+          storage_object_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stimulus_assets_stimulus_foreign_key"
+            columns: ["organization_id", "stimulus_id"]
+            isOneToOne: false
+            referencedRelation: "stimuli"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       stimulus_versions: {
         Row: {
           content: string
@@ -1080,6 +2074,79 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "stimuli"
             referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
+      stimulus_visual_profiles: {
+        Row: {
+          asset_content_sha256: string
+          asset_id: string
+          created_at: string
+          created_by: string
+          id: string
+          methodology_version: string
+          model_id: string
+          organization_id: string
+          profile: Json
+          profile_checksum_sha256: string
+          provider_id: string
+          provider_version: string
+          stimulus_id: string
+          template_id: string
+        }
+        Insert: {
+          asset_content_sha256: string
+          asset_id: string
+          created_at?: string
+          created_by: string
+          id: string
+          methodology_version: string
+          model_id: string
+          organization_id: string
+          profile: Json
+          profile_checksum_sha256: string
+          provider_id: string
+          provider_version: string
+          stimulus_id: string
+          template_id: string
+        }
+        Update: {
+          asset_content_sha256?: string
+          asset_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          methodology_version?: string
+          model_id?: string
+          organization_id?: string
+          profile?: Json
+          profile_checksum_sha256?: string
+          provider_id?: string
+          provider_version?: string
+          stimulus_id?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stimulus_visual_profiles_asset_id_fkey"
+            columns: ["asset_id"]
+            isOneToOne: true
+            referencedRelation: "stimulus_assets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stimulus_visual_profiles_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stimulus_visual_profiles_stimulus_id_fkey"
+            columns: ["stimulus_id"]
+            isOneToOne: false
+            referencedRelation: "stimuli"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1210,6 +2277,30 @@ export type Database = {
           version_id: string
         }[]
       }
+      cancel_campaign_evidence_run: {
+        Args: { requested_correlation_id: string; requested_run_id: string }
+        Returns: Json
+      }
+      confirm_organization_deletion: {
+        Args: {
+          requested_organization_id: string
+          requested_request_id: string
+        }
+        Returns: Json
+      }
+      confirm_stimulus_asset_deletion: {
+        Args: { requested_asset_id: string; requested_correlation_id: string }
+        Returns: Json
+      }
+      confirm_stimulus_asset_upload: {
+        Args: {
+          requested_asset_id: string
+          requested_byte_size: number
+          requested_content_sha256: string
+          requested_correlation_id: string
+        }
+        Returns: Json
+      }
       create_audience_definition: {
         Args: {
           requested_correlation_id: string
@@ -1219,6 +2310,46 @@ export type Database = {
           requested_name: string
           requested_organization_id: string
           requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_behavioral_demo_run: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_project_id: string
+          requested_sha256: string
+          requested_stimulus_version_id: string
+          requested_traceparent: string
+          requested_variant_key: string
+        }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          replayed: boolean
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
+        }[]
+      }
+      create_campaign_evidence_run: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_kind: string
+          requested_organization_id: string
+          requested_outcome_set_id: string
+          requested_project_id: string
+          requested_request: Json
+          requested_secret: Json
+          requested_sha256: string
+          requested_source_version_id: string
         }
         Returns: Json
       }
@@ -1416,6 +2547,31 @@ export type Database = {
           version_created_at: string
         }[]
       }
+      create_stimulus_asset: {
+        Args: {
+          requested_correlation_id: string
+          requested_expected_byte_size: number
+          requested_expected_content_sha256: string
+          requested_filename: string
+          requested_idempotency_key: string
+          requested_media_type: string
+          requested_retention_until: string
+          requested_sha256: string
+          requested_stimulus_id: string
+        }
+        Returns: Json
+      }
+      create_stimulus_visual_profile: {
+        Args: {
+          requested_analysis_id: string
+          requested_asset_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_profile: Json
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       create_variant_group: {
         Args: {
           requested_correlation_id: string
@@ -1434,6 +2590,19 @@ export type Database = {
       get_organization_audit_feed: {
         Args: { requested_limit?: number; requested_organization_id: string }
         Returns: Json
+      }
+      get_run_audit_history: {
+        Args: { requested_limit?: number; requested_run_id: string }
+        Returns: {
+          actor_type: Database["private"]["Enums"]["audit_actor_type"]
+          attempt_number: number
+          correlation_id: string
+          created_at: string
+          event_id: string
+          new_state: Database["api"]["Enums"]["run_state"]
+          previous_state: Database["api"]["Enums"]["run_state"]
+          safe_reason: string
+        }[]
       }
       get_run_failure_context: {
         Args: { requested_run_id: string }
@@ -1486,6 +2655,16 @@ export type Database = {
         Args: { requested_correlation_id: string; requested_session_id: string }
         Returns: boolean
       }
+      request_organization_deletion: {
+        Args: {
+          requested_confirmation: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       request_run_cancel: {
         Args: { requested_correlation_id: string; requested_run_id: string }
         Returns: {
@@ -1502,6 +2681,15 @@ export type Database = {
           stimulus_version_id: string
         }[]
       }
+      request_stimulus_asset_deletion: {
+        Args: {
+          requested_asset_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       revoke_report_share_grant: {
         Args: {
           requested_correlation_id: string
@@ -1510,6 +2698,24 @@ export type Database = {
           requested_share_id: string
         }
         Returns: Json
+      }
+      search_context_nodes: {
+        Args: {
+          requested_context_graph_version_id: string
+          requested_embedding: string
+          requested_limit?: number
+          requested_max_distance?: number
+          requested_model_key: string
+          requested_model_version: string
+        }
+        Returns: {
+          content_sha256: string
+          cosine_distance: number
+          node_id: string
+          node_kind: string
+          rank: number
+          title: string
+        }[]
       }
       set_feature_flag: {
         Args: {
@@ -1640,6 +2846,370 @@ export type Database = {
         }
         Relationships: []
       }
+      behavioral_action_events: {
+        Row: {
+          action: string
+          agent_id: string
+          attention: number
+          cohort_key: string
+          confidence: number
+          created_at: string
+          event_id: string
+          evidence_node_ids: string[]
+          organization_id: string
+          resonance: number
+          round_index: number
+          run_id: string
+          segment_key: string
+          sequence: number
+          synthetic_rationale: string
+          target_agent_id: string | null
+          tier: string
+          trust: number
+          valence: number
+          weight: number
+        }
+        Insert: {
+          action: string
+          agent_id: string
+          attention: number
+          cohort_key: string
+          confidence: number
+          created_at?: string
+          event_id: string
+          evidence_node_ids: string[]
+          organization_id: string
+          resonance: number
+          round_index: number
+          run_id: string
+          segment_key: string
+          sequence: number
+          synthetic_rationale: string
+          target_agent_id?: string | null
+          tier: string
+          trust: number
+          valence: number
+          weight: number
+        }
+        Update: {
+          action?: string
+          agent_id?: string
+          attention?: number
+          cohort_key?: string
+          confidence?: number
+          created_at?: string
+          event_id?: string
+          evidence_node_ids?: string[]
+          organization_id?: string
+          resonance?: number
+          round_index?: number
+          run_id?: string
+          segment_key?: string
+          sequence?: number
+          synthetic_rationale?: string
+          target_agent_id?: string | null
+          tier?: string
+          trust?: number
+          valence?: number
+          weight?: number
+        }
+        Relationships: []
+      }
+      behavioral_agent_fleets: {
+        Row: {
+          agent_count: number
+          checksum_sha256: string
+          created_at: string
+          llm_agent_count: number
+          manifest: Json
+          organization_id: string
+          run_id: string
+          study_id: string
+        }
+        Insert: {
+          agent_count: number
+          checksum_sha256: string
+          created_at?: string
+          llm_agent_count: number
+          manifest: Json
+          organization_id: string
+          run_id: string
+          study_id: string
+        }
+        Update: {
+          agent_count?: number
+          checksum_sha256?: string
+          created_at?: string
+          llm_agent_count?: number
+          manifest?: Json
+          organization_id?: string
+          run_id?: string
+          study_id?: string
+        }
+        Relationships: []
+      }
+      behavioral_agent_memories: {
+        Row: {
+          agent_id: string
+          created_at: string
+          entries: Json
+          entry_count: number
+          organization_id: string
+          run_id: string
+          run_scoped: boolean
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          entries: Json
+          entry_count: number
+          organization_id: string
+          run_id: string
+          run_scoped: boolean
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          entries?: Json
+          entry_count?: number
+          organization_id?: string
+          run_id?: string
+          run_scoped?: boolean
+        }
+        Relationships: []
+      }
+      behavioral_provider_receipts: {
+        Row: {
+          artifact_sha256: string
+          attempt_id: string
+          cost_microusd: number
+          created_at: string
+          ended_at: string
+          input_tokens: number
+          model_id: string
+          organization_id: string
+          output_tokens: number
+          provider_calls: number
+          provider_id: string
+          provider_version: string
+          request_id: string
+          run_id: string
+          started_at: string
+          template_id: string
+        }
+        Insert: {
+          artifact_sha256: string
+          attempt_id: string
+          cost_microusd: number
+          created_at?: string
+          ended_at: string
+          input_tokens: number
+          model_id: string
+          organization_id: string
+          output_tokens: number
+          provider_calls: number
+          provider_id: string
+          provider_version: string
+          request_id: string
+          run_id: string
+          started_at: string
+          template_id: string
+        }
+        Update: {
+          artifact_sha256?: string
+          attempt_id?: string
+          cost_microusd?: number
+          created_at?: string
+          ended_at?: string
+          input_tokens?: number
+          model_id?: string
+          organization_id?: string
+          output_tokens?: number
+          provider_calls?: number
+          provider_id?: string
+          provider_version?: string
+          request_id?: string
+          run_id?: string
+          started_at?: string
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "behavioral_provider_receipts_attempt_foreign_key"
+            columns: ["organization_id", "run_id", "attempt_id"]
+            isOneToOne: false
+            referencedRelation: "run_attempts"
+            referencedColumns: ["organization_id", "run_id", "id"]
+          },
+        ]
+      }
+      behavioral_result_payloads: {
+        Row: {
+          artifact_sha256: string
+          canonical_artifact: string
+          created_at: string
+          organization_id: string
+          run_id: string
+        }
+        Insert: {
+          artifact_sha256: string
+          canonical_artifact: string
+          created_at?: string
+          organization_id: string
+          run_id: string
+        }
+        Update: {
+          artifact_sha256?: string
+          canonical_artifact?: string
+          created_at?: string
+          organization_id?: string
+          run_id?: string
+        }
+        Relationships: []
+      }
+      campaign_evidence_secrets: {
+        Row: {
+          created_at: string
+          organization_id: string
+          payload: Json
+          run_id: string
+        }
+        Insert: {
+          created_at?: string
+          organization_id: string
+          payload: Json
+          run_id: string
+        }
+        Update: {
+          created_at?: string
+          organization_id?: string
+          payload?: Json
+          run_id?: string
+        }
+        Relationships: []
+      }
+      context_node_embeddings: {
+        Row: {
+          content_sha256: string
+          context_graph_version_id: string
+          created_at: string
+          embedding: string
+          embedding_model_version_id: string
+          embedding_sha256: string
+          id: string
+          node_id: string
+          organization_id: string
+        }
+        Insert: {
+          content_sha256: string
+          context_graph_version_id: string
+          created_at?: string
+          embedding: string
+          embedding_model_version_id: string
+          embedding_sha256: string
+          id?: string
+          node_id: string
+          organization_id: string
+        }
+        Update: {
+          content_sha256?: string
+          context_graph_version_id?: string
+          created_at?: string
+          embedding?: string
+          embedding_model_version_id?: string
+          embedding_sha256?: string
+          id?: string
+          node_id?: string
+          organization_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "context_node_embeddings_model_foreign_key"
+            columns: ["embedding_model_version_id"]
+            isOneToOne: false
+            referencedRelation: "embedding_model_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      embedding_model_versions: {
+        Row: {
+          admission_status: string
+          admitted_at: string | null
+          allowed_use: string | null
+          artifact_sha256: string
+          benchmark_evaluated_at: string | null
+          benchmark_id: string | null
+          benchmark_query_count: number | null
+          benchmark_sha256: string | null
+          created_at: string
+          dimensions: number
+          exact_recall_at_10: number | null
+          id: string
+          license_reviewed_at: string | null
+          model_key: string
+          model_name: string
+          model_version: string
+          normalization: string
+          prohibited_uses: string[] | null
+          provider: string
+          retired_at: string | null
+          rights_license: string | null
+          rights_owner: string | null
+          semantic_relevance_at_10: number | null
+        }
+        Insert: {
+          admission_status?: string
+          admitted_at?: string | null
+          allowed_use?: string | null
+          artifact_sha256: string
+          benchmark_evaluated_at?: string | null
+          benchmark_id?: string | null
+          benchmark_query_count?: number | null
+          benchmark_sha256?: string | null
+          created_at?: string
+          dimensions: number
+          exact_recall_at_10?: number | null
+          id?: string
+          license_reviewed_at?: string | null
+          model_key: string
+          model_name: string
+          model_version: string
+          normalization: string
+          prohibited_uses?: string[] | null
+          provider: string
+          retired_at?: string | null
+          rights_license?: string | null
+          rights_owner?: string | null
+          semantic_relevance_at_10?: number | null
+        }
+        Update: {
+          admission_status?: string
+          admitted_at?: string | null
+          allowed_use?: string | null
+          artifact_sha256?: string
+          benchmark_evaluated_at?: string | null
+          benchmark_id?: string | null
+          benchmark_query_count?: number | null
+          benchmark_sha256?: string | null
+          created_at?: string
+          dimensions?: number
+          exact_recall_at_10?: number | null
+          id?: string
+          license_reviewed_at?: string | null
+          model_key?: string
+          model_name?: string
+          model_version?: string
+          normalization?: string
+          prohibited_uses?: string[] | null
+          provider?: string
+          retired_at?: string | null
+          rights_license?: string | null
+          rights_owner?: string | null
+          semantic_relevance_at_10?: number | null
+        }
+        Relationships: []
+      }
       idempotency_keys: {
         Row: {
           actor_user_id: string
@@ -1681,6 +3251,101 @@ export type Database = {
           scope_resource_id?: string | null
         }
         Relationships: []
+      }
+      organization_deletion_requests: {
+        Row: {
+          actor_user_id: string
+          completed_at: string | null
+          correlation_id: string
+          id: string
+          idempotency_key_sha256: string
+          organization_id: string
+          request_sha256: string
+          requested_at: string
+          resource_manifest: Json
+          status: string
+        }
+        Insert: {
+          actor_user_id: string
+          completed_at?: string | null
+          correlation_id: string
+          id?: string
+          idempotency_key_sha256: string
+          organization_id: string
+          request_sha256: string
+          requested_at?: string
+          resource_manifest: Json
+          status?: string
+        }
+        Update: {
+          actor_user_id?: string
+          completed_at?: string | null
+          correlation_id?: string
+          id?: string
+          idempotency_key_sha256?: string
+          organization_id?: string
+          request_sha256?: string
+          requested_at?: string
+          resource_manifest?: Json
+          status?: string
+        }
+        Relationships: []
+      }
+      organization_deletion_resources: {
+        Row: {
+          cleanup_attempt_count: number
+          cleanup_claim_expires_at: string | null
+          cleanup_claim_token: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          last_error_code: string | null
+          next_attempt_at: string
+          organization_id: string
+          request_id: string
+          resource_key: string
+          resource_kind: string
+          status: string
+        }
+        Insert: {
+          cleanup_attempt_count?: number
+          cleanup_claim_expires_at?: string | null
+          cleanup_claim_token?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          next_attempt_at?: string
+          organization_id: string
+          request_id: string
+          resource_key: string
+          resource_kind: string
+          status?: string
+        }
+        Update: {
+          cleanup_attempt_count?: number
+          cleanup_claim_expires_at?: string | null
+          cleanup_claim_token?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          last_error_code?: string | null
+          next_attempt_at?: string
+          organization_id?: string
+          request_id?: string
+          resource_key?: string
+          resource_kind?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organization_deletion_resources_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "organization_deletion_requests"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       phase4_command_receipts: {
         Row: {
@@ -1831,6 +3496,27 @@ export type Database = {
           },
         ]
       }
+      queue_transport_control: {
+        Row: {
+          active_transport: string
+          correlation_id: string
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          active_transport: string
+          correlation_id: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          active_transport?: string
+          correlation_id?: string
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       run_attempts: {
         Row: {
           attempt_number: number
@@ -1965,6 +3651,7 @@ export type Database = {
       }
       runtime_controls: {
         Row: {
+          bullmq_pressure_reason: string | null
           control_name: string
           correlation_id: string
           enabled: boolean
@@ -1972,6 +3659,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          bullmq_pressure_reason?: string | null
           control_name: string
           correlation_id: string
           enabled: boolean
@@ -1979,6 +3667,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          bullmq_pressure_reason?: string | null
           control_name?: string
           correlation_id?: string
           enabled?: boolean
@@ -2041,6 +3730,31 @@ export type Database = {
           replayed: boolean
         }[]
       }
+      behavioral_result_artifact_is_valid: {
+        Args: {
+          requested_artifact: string
+          requested_manifest: Json
+          requested_organization_id: string
+          requested_run_id: string
+          requested_seed: number
+        }
+        Returns: boolean
+      }
+      cancel_campaign_evidence_run_atomic: {
+        Args: { requested_correlation_id: string; requested_run_id: string }
+        Returns: Json
+      }
+      claim_campaign_evidence_runs: {
+        Args: { requested_batch_size: number }
+        Returns: {
+          attempt_count: number
+          evidence_id: string
+          kind: string
+          lease_token: string
+          request: Json
+          secret_payload: Json
+        }[]
+      }
       claim_due_run_outbox: {
         Args: { requested_batch_size: number }
         Returns: {
@@ -2050,6 +3764,41 @@ export type Database = {
           job_id: string
           outbox_id: string
           run_id: string
+        }[]
+      }
+      claim_due_run_outbox_unfenced: {
+        Args: { requested_batch_size: number }
+        Returns: {
+          claim_expires_at: string
+          claim_token: string
+          generation: number
+          job_id: string
+          outbox_id: string
+          run_id: string
+        }[]
+      }
+      claim_due_run_outbox_v2: {
+        Args: { requested_batch_size: number }
+        Returns: {
+          claim_expires_at: string
+          claim_token: string
+          generation: number
+          job_id: string
+          outbox_id: string
+          run_id: string
+        }[]
+      }
+      claim_organization_deletion_resources: {
+        Args: { requested_batch_size: number }
+        Returns: {
+          attempt_count: number
+          claim_expires_at: string
+          claim_token: string
+          organization_id: string
+          request_id: string
+          resource_id: string
+          resource_key: string
+          resource_kind: string
         }[]
       }
       claim_run_execution: {
@@ -2086,6 +3835,80 @@ export type Database = {
           traceparent: string
         }[]
       }
+      claim_run_execution_unfenced: {
+        Args: {
+          requested_generation: number
+          requested_job_id: string
+          requested_run_id: string
+        }
+        Returns: {
+          attempt_id: string
+          claim_status: string
+          deterministic_seed: number
+          frozen_manifest: Json
+          frozen_manifest_sha256: string
+          lease_expires_at: string
+          lease_token: string
+        }[]
+      }
+      claim_run_execution_unfenced_traced: {
+        Args: {
+          requested_generation: number
+          requested_job_id: string
+          requested_run_id: string
+        }
+        Returns: {
+          attempt_id: string
+          claim_status: string
+          correlation_id: string
+          deterministic_seed: number
+          frozen_manifest: Json
+          frozen_manifest_sha256: string
+          lease_expires_at: string
+          lease_token: string
+          traceparent: string
+        }[]
+      }
+      claim_run_execution_v2_traced: {
+        Args: {
+          requested_generation: number
+          requested_job_id: string
+          requested_run_id: string
+        }
+        Returns: {
+          attempt_id: string
+          claim_status: string
+          correlation_id: string
+          deterministic_seed: number
+          frozen_manifest: Json
+          frozen_manifest_sha256: string
+          lease_expires_at: string
+          lease_token: string
+          traceparent: string
+        }[]
+      }
+      complete_behavioral_run_execution: {
+        Args: {
+          requested_artifact: string
+          requested_attempt_id: string
+          requested_execution_receipt: Json
+          requested_lease_token: string
+          requested_run_id: string
+        }
+        Returns: boolean
+      }
+      complete_campaign_evidence_run: {
+        Args: {
+          requested_lease_token: string
+          requested_result: Json
+          requested_run_id: string
+        }
+        Returns: boolean
+      }
+      complete_organization_deletion_resource: {
+        Args: { requested_claim_token: string; requested_resource_id: string }
+        Returns: boolean
+      }
       complete_run_execution:
         | {
             Args: {
@@ -2106,9 +3929,29 @@ export type Database = {
             }
             Returns: boolean
           }
+      confirm_organization_deletion_atomic: {
+        Args: {
+          requested_organization_id: string
+          requested_request_id: string
+        }
+        Returns: Json
+      }
       confirm_run_dispatch: {
         Args: { requested_claim_token: string; requested_outbox_id: string }
         Returns: boolean
+      }
+      confirm_stimulus_asset_deletion_atomic: {
+        Args: { requested_asset_id: string; requested_correlation_id: string }
+        Returns: Json
+      }
+      confirm_stimulus_asset_upload_atomic: {
+        Args: {
+          requested_asset_id: string
+          requested_byte_size: number
+          requested_content_sha256: string
+          requested_correlation_id: string
+        }
+        Returns: Json
       }
       create_audience_definition_atomic: {
         Args: {
@@ -2119,6 +3962,46 @@ export type Database = {
           requested_name: string
           requested_organization_id: string
           requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_behavioral_demo_run_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_project_id: string
+          requested_sha256: string
+          requested_stimulus_version_id: string
+          requested_traceparent: string
+          requested_variant_key: string
+        }
+        Returns: {
+          audience_version_id: string
+          created_at: string
+          dispatch_generation: number
+          job_id: string
+          organization_id: string
+          project_id: string
+          replayed: boolean
+          run_id: string
+          run_state: Database["api"]["Enums"]["run_state"]
+          run_version: number
+          schema_version: number
+          stimulus_version_id: string
+        }[]
+      }
+      create_campaign_evidence_run_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_kind: string
+          requested_organization_id: string
+          requested_outcome_set_id: string
+          requested_project_id: string
+          requested_request: Json
+          requested_secret: Json
+          requested_sha256: string
+          requested_source_version_id: string
         }
         Returns: Json
       }
@@ -2290,6 +4173,20 @@ export type Database = {
           stimulus_version_id: string
         }[]
       }
+      create_stimulus_asset_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_expected_byte_size: number
+          requested_expected_content_sha256: string
+          requested_filename: string
+          requested_idempotency_key: string
+          requested_media_type: string
+          requested_retention_until: string
+          requested_sha256: string
+          requested_stimulus_id: string
+        }
+        Returns: Json
+      }
       create_stimulus_atomic: {
         Args: {
           requested_content: string
@@ -2315,6 +4212,17 @@ export type Database = {
           version_created_at: string
         }[]
       }
+      create_stimulus_visual_profile_atomic: {
+        Args: {
+          requested_analysis_id: string
+          requested_asset_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_profile: Json
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       create_variant_group_atomic: {
         Args: {
           requested_correlation_id: string
@@ -2337,6 +4245,20 @@ export type Database = {
           run_creation_enabled: boolean
         }[]
       }
+      expire_campaign_evidence_runs: {
+        Args: { requested_batch_size: number }
+        Returns: number
+      }
+      fail_campaign_evidence_run: {
+        Args: {
+          requested_error_code: string
+          requested_error_detail: string
+          requested_lease_token: string
+          requested_retryable: boolean
+          requested_run_id: string
+        }
+        Returns: string
+      }
       fail_run_dispatch: {
         Args: {
           requested_claim_token: string
@@ -2355,7 +4277,15 @@ export type Database = {
         }
         Returns: string
       }
+      finalize_canceled_campaign_evidence_run: {
+        Args: { requested_lease_token: string; requested_run_id: string }
+        Returns: boolean
+      }
       finalize_poisoned_dispatches: {
+        Args: { requested_batch_size: number }
+        Returns: number
+      }
+      finalize_ready_organization_deletions: {
         Args: { requested_batch_size: number }
         Returns: number
       }
@@ -2370,6 +4300,27 @@ export type Database = {
           requested_response: Json
         }
         Returns: undefined
+      }
+      get_queue_transport_control: {
+        Args: never
+        Returns: {
+          active_transport: string
+          correlation_id: string
+          updated_at: string
+        }[]
+      }
+      get_run_audit_history: {
+        Args: { requested_limit?: number; requested_run_id: string }
+        Returns: {
+          actor_type: Database["private"]["Enums"]["audit_actor_type"]
+          attempt_number: number
+          correlation_id: string
+          created_at: string
+          event_id: string
+          new_state: Database["api"]["Enums"]["run_state"]
+          previous_state: Database["api"]["Enums"]["run_state"]
+          safe_reason: string
+        }[]
       }
       get_run_creation_control: {
         Args: never
@@ -2437,6 +4388,22 @@ export type Database = {
         Returns: boolean
       }
       latch_run_creation_for_poison: { Args: never; Returns: boolean }
+      normalize_behavioral_public_summaries: {
+        Args: {
+          requested_artifact: string
+          requested_organization_id: string
+          requested_run_id: string
+        }
+        Returns: undefined
+      }
+      normalize_behavioral_result_payload: {
+        Args: {
+          requested_artifact: string
+          requested_organization_id: string
+          requested_run_id: string
+        }
+        Returns: undefined
+      }
       organization_admin_summary: {
         Args: { requested_organization_id: string }
         Returns: Json
@@ -2507,6 +4474,24 @@ export type Database = {
         Args: { requested_correlation_id: string; requested_session_id: string }
         Returns: boolean
       }
+      release_organization_deletion_resource: {
+        Args: {
+          requested_claim_token: string
+          requested_error_code: string
+          requested_resource_id: string
+        }
+        Returns: boolean
+      }
+      request_organization_deletion_atomic: {
+        Args: {
+          requested_confirmation: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       request_run_cancel_atomic: {
         Args: { requested_correlation_id: string; requested_run_id: string }
         Returns: {
@@ -2522,6 +4507,19 @@ export type Database = {
           schema_version: number
           stimulus_version_id: string
         }[]
+      }
+      request_stimulus_asset_deletion_atomic: {
+        Args: {
+          requested_asset_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      require_queue_transport: {
+        Args: { requested_transport: string }
+        Returns: boolean
       }
       revoke_report_share_grant_atomic: {
         Args: {
@@ -2548,6 +4546,31 @@ export type Database = {
           succeeded_count: number
         }[]
       }
+      runtime_schema_readiness: {
+        Args: never
+        Returns: {
+          migration_version: number
+          rls_force_enabled: boolean
+        }[]
+      }
+      search_context_nodes: {
+        Args: {
+          requested_context_graph_version_id: string
+          requested_embedding: string
+          requested_limit?: number
+          requested_max_distance?: number
+          requested_model_key: string
+          requested_model_version: string
+        }
+        Returns: {
+          content_sha256: string
+          cosine_distance: number
+          node_id: string
+          node_kind: string
+          rank: number
+          title: string
+        }[]
+      }
       set_feature_flag_atomic: {
         Args: {
           requested_correlation_id: string
@@ -2560,11 +4583,36 @@ export type Database = {
         }
         Returns: Json
       }
+      set_queue_transport: {
+        Args: { requested_correlation_id: string; requested_transport: string }
+        Returns: boolean
+      }
       set_run_creation_control: {
         Args: {
           requested_correlation_id: string
           requested_enabled: boolean
           requested_reason: string
+        }
+        Returns: boolean
+      }
+      update_bullmq_run_pressure: {
+        Args: {
+          requested_oldest_ready_age_seconds: number
+          requested_ready_depth: number
+          requested_redis_memory_percent: number
+        }
+        Returns: {
+          changed: boolean
+          pressure_reason: string
+        }[]
+      }
+      update_campaign_evidence_progress: {
+        Args: {
+          requested_lease_token: string
+          requested_message: string
+          requested_progress: number
+          requested_run_id: string
+          requested_stage: string
         }
         Returns: boolean
       }
@@ -2591,6 +4639,19 @@ export type Database = {
           project_status: Database["api"]["Enums"]["project_status"]
           project_version: number
           updated_at: string
+        }[]
+      }
+      upsert_context_node_embedding: {
+        Args: {
+          requested_context_graph_version_id: string
+          requested_embedding: string
+          requested_model_key: string
+          requested_model_version: string
+          requested_node_id: string
+        }
+        Returns: {
+          created: boolean
+          embedding_sha256: string
         }[]
       }
       verified_subject: { Args: never; Returns: string }
@@ -2792,4 +4853,3 @@ export const Constants = {
     },
   },
 } as const
-

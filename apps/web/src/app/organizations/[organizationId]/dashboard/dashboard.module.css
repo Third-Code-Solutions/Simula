@@ -488,6 +488,41 @@
   grid-column: 1 / -1;
 }
 
+.dangerPanel {
+  grid-column: 1 / -1;
+  border-top-color: var(--danger);
+  background: var(--danger-wash);
+}
+
+.deletionWarning {
+  margin-bottom: 1.25rem;
+  padding: 1rem;
+  border: 1px solid rgb(159 18 57 / 28%);
+  background: var(--white);
+}
+
+.deletionWarning strong {
+  color: var(--danger);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.deletionWarning p {
+  margin: 0.35rem 0 0;
+  color: var(--stone);
+}
+
+.dangerButton {
+  border-color: var(--danger);
+  background: var(--danger);
+}
+
+.dangerButton:hover:not(:disabled) {
+  background: #79102e;
+}
+
 .subsectionHeading {
   margin-top: 1.75rem;
   padding-top: 1rem;

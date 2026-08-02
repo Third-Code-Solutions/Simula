@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from uuid import UUID
 
+import pytest
 from simula_core.arq_codec import job_id_for
 from simula_core.queue_runtime import QueuePublishAmbiguousError
 from simula_worker.database import DispatchClaim
@@ -11,14 +12,26 @@ from simula_worker.telemetry import WorkerTelemetry
 
 
 class RecordingDatabase:
-    def __init__(self, claims: list[DispatchClaim], *, poisoned: int = 0) -> None:
+    def __init__(
+        self,
+        claims: list[DispatchClaim],
+        *,
+        poisoned: int = 0,
+        transport_active: bool = True,
+    ) -> None:
         self.claims = claims
         self.poisoned = poisoned
+        self.transport_active = transport_active
         self.confirmations: list[tuple[UUID, UUID]] = []
         self.dispatch_failures: list[tuple[UUID, UUID, str]] = []
         self.finalized_batch_sizes: list[int] = []
         self.poisoned_batch_sizes: list[int] = []
         self.reconciled_batch_sizes: list[tuple[int, bool]] = []
+
+    async def require_queue_transport(self, requested_transport: str) -> None:
+        assert requested_transport == "arq"
+        if not self.transport_active:
+            raise RuntimeError("queue_transport_inactive")
 
     async def finalize_requested_cancellations(self, requested_batch_size: int = 10) -> int:
         self.finalized_batch_sizes.append(requested_batch_size)
@@ -95,6 +108,18 @@ async def test_dispatcher_confirms_only_after_queue_proof() -> None:
     rendered = telemetry.render().decode()
     assert 'simula_worker_dispatch_total{outcome="claimed"} 1.0' in rendered
     assert 'simula_worker_dispatch_total{outcome="confirmed"} 1.0' in rendered
+
+
+async def test_dispatcher_fails_before_mutation_when_arq_does_not_own_transport() -> None:
+    database = RecordingDatabase([_claim()], transport_active=False)
+    queue = RecordingQueue(proves=True)
+
+    with pytest.raises(RuntimeError, match="queue_transport_inactive"):
+        await RunDispatcher(database, queue).dispatch_once()
+
+    assert database.finalized_batch_sizes == []
+    assert database.reconciled_batch_sizes == []
+    assert queue.enqueued_job_ids == []
 
 
 async def test_dispatcher_leaves_outbox_unconfirmed_when_enqueue_is_ambiguous() -> None:

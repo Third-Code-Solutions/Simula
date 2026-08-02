@@ -64,6 +64,23 @@ describe("RunStatusPanel", () => {
     expect(screen.getByText(/Taking longer than expected/)).toBeInTheDocument();
   });
 
+  it("describes schema-v2 work as synthetic-agent execution", () => {
+    render(
+      <RunStatusPanel
+        isSlow={false}
+        run={{
+          ...runFixture("running"),
+          schema_version: 2,
+          job_id: `run-${RUN_ID}-generation-1`,
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByText(/governed behavioral engine.*synthetic-agent rounds/i),
+    ).toBeInTheDocument();
+  });
+
   it("explains failed runs without presenting a substitute result", () => {
     render(<RunStatusPanel isSlow={false} run={runFixture("failed")} />);
 

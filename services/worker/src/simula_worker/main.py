@@ -24,6 +24,9 @@ from simula_core.arq_codec import (
     arq_json_loads,
     parse_job_id,
 )
+from simula_core.behavioral_demo import authored_demo_behavioral_command
+from simula_core.behavioral_engine import BehavioralRunCommand, BehavioralRunResult
+from simula_core.bullmq_codec import BullMqBindingError, bind_bullmq_delivery
 from simula_core.queue_runtime import create_queue_client
 from simula_core.runtime import RuntimeMetadata
 from simula_core.simulation import (
@@ -38,6 +41,14 @@ from simula_core.simulation import (
 from simula_core.trace_context import TraceContext
 from structlog.contextvars import bound_contextvars
 
+from simula_worker.behavioral_engine_client import (
+    BehavioralEngineHttpClient,
+    BehavioralEngineRateLimitedError,
+    BehavioralEngineRejectedError,
+    BehavioralEngineUnavailableError,
+    serialize_behavioral_result,
+)
+from simula_worker.campaign_evidence import campaign_evidence_loop
 from simula_worker.config import WorkerSettings
 from simula_worker.database import (
     ExecutionClaim,
@@ -84,6 +95,57 @@ class RunControlDatabase(Protocol):
     async def evaluate_run_creation_control(
         self, redis_memory_percent: float, poisoned_count: int
     ) -> RunCreationControl: ...
+
+
+class BullMqWorkerExecutionGateway(WorkerExecutionGateway, Protocol):
+    async def claim_execution_v2(
+        self, run_id: UUID, generation: int, job_id: str
+    ) -> ExecutionClaim: ...
+
+
+class BehavioralEngineExecutor(Protocol):
+    def execute(self, command: BehavioralRunCommand) -> BehavioralRunResult: ...
+
+    def close(self) -> None: ...
+
+
+class BullMqRuntimeSnapshot(Protocol):
+    @property
+    def depth(self) -> int: ...
+
+    @property
+    def oldest_ready_age_seconds(self) -> float: ...
+
+    @property
+    def memory_percent(self) -> float: ...
+
+
+class BullMqRuntimePort(Protocol):
+    async def run(self) -> None: ...
+
+    async def ping(self) -> bool: ...
+
+    async def snapshot(self) -> BullMqRuntimeSnapshot: ...
+
+    async def close(self, *, force: bool) -> None: ...
+
+
+class BullMqDeliveryRetry(RuntimeError):
+    """A database-authorized delivery deferral that the BullMQ adapter must apply."""
+
+    def __init__(self, delay_seconds: int) -> None:
+        if delay_seconds not in range(1, 61):
+            raise ValueError("BullMQ delivery delay is outside its bounded contract")
+        super().__init__("BullMQ delivery requires a database-authorized delay")
+        self.delay_seconds = delay_seconds
+
+
+class _DatabaseAuthorizedRetry(RuntimeError):
+    def __init__(self, delay_seconds: int) -> None:
+        if delay_seconds not in range(1, 61):
+            raise ValueError("database-authorized retry delay is outside its bounded contract")
+        super().__init__("run delivery requires a database-authorized retry")
+        self.delay_seconds = delay_seconds
 
 
 async def _probe_ready(probe: Awaitable[object]) -> bool:
@@ -327,6 +389,121 @@ async def _run_arq_worker_forever(
             await _close_arq_worker(worker, redis)
 
 
+def _create_bullmq_runtime(
+    settings: WorkerSettings,
+    database: WorkerDatabase,
+    telemetry: WorkerTelemetry,
+) -> BullMqRuntimePort:
+    from simula_worker.bullmq_runtime import (
+        PinnedBullMqRuntime,
+        require_worker_gateway,
+    )
+
+    behavioral_engine: BehavioralEngineExecutor | None = None
+    if settings.behavioral_engine_transport == "private_http":
+        if settings.behavioral_engine_url is None or settings.behavioral_engine_token is None:
+            raise RuntimeError("private behavioral engine configuration is incomplete")
+        behavioral_engine = BehavioralEngineHttpClient(
+            base_url=settings.behavioral_engine_url,
+            token=settings.behavioral_engine_token,
+        )
+
+    return PinnedBullMqRuntime(
+        redis_url=settings.redis_url,
+        database=require_worker_gateway(database),
+        provider=DeterministicMockProvider(),
+        behavioral_engine=behavioral_engine,
+        telemetry=telemetry,
+        release_sha=settings.release_sha,
+    )
+
+
+async def _monitor_bullmq_dependencies(
+    stop: asyncio.Event,
+    *,
+    runtime: BullMqRuntimePort,
+    database: WorkerDatabase,
+    telemetry: WorkerTelemetry,
+) -> None:
+    while not stop.is_set():
+        database_ready, queue_ready = await asyncio.gather(
+            _probe_ready(database.ready()),
+            _probe_ready(runtime.ping()),
+        )
+        telemetry.set_dependency_ready("database", database_ready)
+        telemetry.set_dependency_ready("queue", queue_ready)
+        if database_ready:
+            try:
+                async with asyncio.timeout(1.0):
+                    snapshot = await database.runtime_observability_snapshot()
+                telemetry.set_runtime_snapshot(
+                    migration_version=snapshot.migration_version,
+                    rls_force_enabled=snapshot.rls_force_enabled,
+                    state_counts=dict(snapshot.state_counts),
+                    stuck_lease_count=snapshot.stuck_lease_count,
+                    oldest_cancellation_age_seconds=snapshot.oldest_cancellation_age_seconds,
+                )
+            except Exception:
+                telemetry.set_dependency_ready("database", False)
+        if queue_ready:
+            try:
+                async with asyncio.timeout(1.0):
+                    queue_snapshot = await runtime.snapshot()
+                telemetry.set_queue_snapshot(
+                    depth=queue_snapshot.depth,
+                    oldest_ready_age_seconds=queue_snapshot.oldest_ready_age_seconds,
+                    memory_percent=queue_snapshot.memory_percent,
+                )
+            except Exception:
+                telemetry.set_dependency_ready("queue", False)
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=1.0)
+        except TimeoutError:
+            continue
+
+
+async def _run_bullmq_worker_forever(
+    stop: asyncio.Event,
+    *,
+    settings: WorkerSettings,
+    database: WorkerDatabase,
+    telemetry: WorkerTelemetry,
+) -> None:
+    runtime = _create_bullmq_runtime(settings, database, telemetry)
+    worker_task = asyncio.create_task(runtime.run(), name="bullmq-poll-loop")
+    monitor_task = asyncio.create_task(
+        _monitor_bullmq_dependencies(
+            stop,
+            runtime=runtime,
+            database=database,
+            telemetry=telemetry,
+        ),
+        name="bullmq-readiness-monitor",
+    )
+    stop_task = asyncio.create_task(stop.wait(), name="bullmq-poll-stop")
+    try:
+        done, _pending = await asyncio.wait(
+            {worker_task, stop_task},
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        if stop_task in done:
+            return
+        await worker_task
+        if not stop.is_set():
+            raise RuntimeError("BullMQ worker poll loop exited unexpectedly")
+    finally:
+        for task in (worker_task, monitor_task, stop_task):
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(
+            worker_task,
+            monitor_task,
+            stop_task,
+            return_exceptions=True,
+        )
+        await runtime.close(force=not stop.is_set())
+
+
 async def serve() -> None:
     """Run the strict worker with bounded dependencies and graceful signal shutdown."""
 
@@ -344,46 +521,72 @@ async def serve() -> None:
     telemetry = WorkerTelemetry()
     database = WorkerDatabase(settings, telemetry=telemetry)
     await database.open()
-    dispatcher_redis = create_queue_client(settings.redis_url, max_connections=4)
+    dispatcher_redis: ArqRedis | None = None
     metrics_server = WorkerMetricsServer(telemetry, port=settings.metrics_port)
     await metrics_server.start()
     worker_task: asyncio.Task[None] | None = None
     dispatcher_task: asyncio.Task[None] | None = None
+    campaign_evidence_task: asyncio.Task[None] | None = None
+    payload_contract = "run_v1" if settings.queue_transport == "arq" else "run_v2"
     try:
-        dispatcher = RunDispatcher(
-            database,
-            RedisRunQueue(cast(RedisDispatchClient, dispatcher_redis)),
-            telemetry=telemetry,
-        )
-        worker_task = asyncio.create_task(
-            _run_arq_worker_forever(
-                stop,
-                settings=settings,
-                database=database,
+        if settings.queue_transport == "arq":
+            dispatcher_redis = create_queue_client(settings.redis_url, max_connections=4)
+            dispatcher = RunDispatcher(
+                database,
+                RedisRunQueue(cast(RedisDispatchClient, dispatcher_redis)),
                 telemetry=telemetry,
-            ),
-            name="arq-worker-supervisor",
+            )
+            worker_task = asyncio.create_task(
+                _run_arq_worker_forever(
+                    stop,
+                    settings=settings,
+                    database=database,
+                    telemetry=telemetry,
+                ),
+                name="arq-worker-supervisor",
+            )
+            dispatcher_task = asyncio.create_task(
+                _dispatch_forever(
+                    dispatcher,
+                    stop,
+                    database=database,
+                    queue=cast(ReadinessQueue, dispatcher_redis),
+                    telemetry=telemetry,
+                ),
+                name="run-dispatcher",
+            )
+        else:
+            worker_task = asyncio.create_task(
+                _run_bullmq_worker_forever(
+                    stop,
+                    settings=settings,
+                    database=database,
+                    telemetry=telemetry,
+                ),
+                name="bullmq-worker-supervisor",
+            )
+        campaign_evidence_task = asyncio.create_task(
+            campaign_evidence_loop(stop, database),
+            name="campaign-evidence-worker",
         )
-        dispatcher_task = asyncio.create_task(
-            _dispatch_forever(
-                dispatcher,
-                stop,
-                database=database,
-                queue=cast(ReadinessQueue, dispatcher_redis),
-                telemetry=telemetry,
-            ),
-            name="run-dispatcher",
+        logger.info(
+            "service_started",
+            payload_contract=payload_contract,
+            queue_transport=settings.queue_transport,
+            **metadata.model_dump(),
         )
-        logger.info("service_started", payload_contract="run_v1", **metadata.model_dump())
         stop_task = asyncio.create_task(stop.wait(), name="worker-stop")
-        done, pending = await asyncio.wait(
-            {stop_task, worker_task}, return_when=asyncio.FIRST_COMPLETED
-        )
+        wait_tasks = {stop_task, worker_task}
+        if campaign_evidence_task is not None:
+            wait_tasks.add(campaign_evidence_task)
+        done, pending = await asyncio.wait(wait_tasks, return_when=asyncio.FIRST_COMPLETED)
         for task in pending:
             task.cancel()
         await asyncio.gather(*pending, return_exceptions=True)
         if worker_task in done:
             await worker_task
+        if campaign_evidence_task in done:
+            await campaign_evidence_task
     finally:
         if dispatcher_task is not None:
             dispatcher_task.cancel()
@@ -391,12 +594,21 @@ async def serve() -> None:
         if worker_task is not None and not worker_task.done():
             worker_task.cancel()
             await asyncio.gather(worker_task, return_exceptions=True)
-        await dispatcher_redis.aclose(close_connection_pool=True)
+        if campaign_evidence_task is not None and not campaign_evidence_task.done():
+            campaign_evidence_task.cancel()
+            await asyncio.gather(campaign_evidence_task, return_exceptions=True)
+        if dispatcher_redis is not None:
+            await dispatcher_redis.aclose(close_connection_pool=True)
         telemetry.set_dependency_ready("database", False)
         telemetry.set_dependency_ready("queue", False)
         await database.close()
         await metrics_server.close()
-        logger.info("service_stopped", payload_contract="run_v1", **metadata.model_dump())
+        logger.info(
+            "service_stopped",
+            payload_contract=payload_contract,
+            queue_transport=settings.queue_transport,
+            **metadata.model_dump(),
+        )
 
 
 def _context_dependency(ctx: Mapping[str, object], name: str) -> object:
@@ -483,6 +695,211 @@ def _provider_request(
         deadline_at=deadline_at,
         cost_ceiling=0,
     )
+
+
+def _behavioral_command(
+    *,
+    run_id: UUID,
+    frozen_manifest: Mapping[str, object],
+    deterministic_seed: int,
+    runtime_release_sha: str,
+) -> BehavioralRunCommand:
+    if set(frozen_manifest) != {"behavioral_demo_input", "code", "contract"}:
+        raise ValueError("behavioral run manifest has an invalid shape")
+    if frozen_manifest.get("contract") != "behavioral_demo_run_v1":
+        raise ValueError("behavioral run manifest contract is unsupported")
+    code = frozen_manifest.get("code")
+    if not isinstance(code, Mapping) or set(code) != {"release_sha"}:
+        raise ValueError("behavioral run release binding is invalid")
+    if code.get("release_sha") != runtime_release_sha:
+        raise ValueError("worker release does not match the behavioral run")
+    raw_input = frozen_manifest.get("behavioral_demo_input")
+    if not isinstance(raw_input, Mapping) or set(raw_input) != {
+        "organization_id",
+        "run_id",
+        "study_id",
+        "stimulus",
+        "variant_key",
+    }:
+        raise ValueError("behavioral demo input is invalid")
+    command = authored_demo_behavioral_command(
+        organization_id=UUID(str(raw_input.get("organization_id"))),
+        run_id=UUID(str(raw_input.get("run_id"))),
+        study_id=UUID(str(raw_input.get("study_id"))),
+        variant_key=cast(str, raw_input.get("variant_key")),
+        stimulus=cast(str, raw_input.get("stimulus")),
+    )
+    if command.run_id != run_id or command.engine_configuration.seed != deterministic_seed:
+        raise ValueError("behavioral command does not match the durable run")
+    return command
+
+
+async def _resolve_execution_failure(
+    *,
+    database: WorkerExecutionGateway,
+    run_id: UUID,
+    attempt_id: UUID,
+    lease_token: UUID,
+    safe_error_code: str,
+    retryable: bool,
+    observation: JobObservation,
+    telemetry: WorkerTelemetry | None,
+) -> None:
+    resolution = await database.fail_execution(
+        run_id,
+        attempt_id,
+        lease_token,
+        safe_error_code,
+        retryable,
+    )
+    if resolution.state == "retrying":
+        observation.outcome = "retrying"
+        if telemetry is not None:
+            telemetry.observe_run_event("retry")
+        if resolution.retry_after_seconds is None:
+            raise RuntimeError("retrying resolution is missing its delay")
+        raise _DatabaseAuthorizedRetry(resolution.retry_after_seconds)
+    observation.outcome = resolution.state
+    if telemetry is not None and resolution.state == "failed":
+        telemetry.observe_run_event("terminal_failure")
+
+
+async def _process_claimed_behavioral_run(
+    *,
+    run_id: UUID,
+    claim: ExecutionClaim,
+    database: WorkerExecutionGateway,
+    behavioral_engine: BehavioralEngineExecutor,
+    telemetry: WorkerTelemetry | None,
+    observation: JobObservation,
+    runtime_release_sha: str,
+) -> None:
+    attempt_id = cast(UUID, claim.attempt_id)
+    lease_token = cast(UUID, claim.lease_token)
+    frozen_manifest = cast(Mapping[str, object], claim.frozen_manifest)
+    deterministic_seed = cast(int, claim.deterministic_seed)
+
+    observation.outcome = "failed"
+    if not await _heartbeat_execution(
+        database,
+        run_id,
+        attempt_id,
+        lease_token,
+        checkpoint="before_provider",
+        telemetry=telemetry,
+    ):
+        observation.outcome = "lease_rejected"
+        return
+
+    started_at = datetime.now(UTC)
+    try:
+        command = _behavioral_command(
+            run_id=run_id,
+            frozen_manifest=frozen_manifest,
+            deterministic_seed=deterministic_seed,
+            runtime_release_sha=runtime_release_sha,
+        )
+        result = await asyncio.to_thread(behavioral_engine.execute, command)
+        ended_at = datetime.now(UTC)
+        canonical_artifact, receipt = serialize_behavioral_result(
+            result,
+            attempt_id=attempt_id,
+            started_at=started_at,
+            ended_at=ended_at,
+        )
+        if telemetry is not None:
+            telemetry.observe_provider("completed")
+    except asyncio.CancelledError:
+        raise
+    except (
+        BehavioralEngineRateLimitedError,
+        BehavioralEngineUnavailableError,
+        TimeoutError,
+    ) as error:
+        safe_error_code = (
+            "behavioral_engine_rate_limited"
+            if isinstance(error, BehavioralEngineRateLimitedError)
+            else "behavioral_engine_unavailable"
+        )
+        if telemetry is not None:
+            telemetry.observe_provider("retryable_failure")
+            telemetry.observe_provider_failure(
+                "rate_limit"
+                if isinstance(error, BehavioralEngineRateLimitedError)
+                else "unavailable"
+            )
+        logger.warning(
+            "behavioral_run_retryable_failure",
+            reason=safe_error_code,
+            run_id=str(run_id),
+        )
+        await _resolve_execution_failure(
+            database=database,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            lease_token=lease_token,
+            safe_error_code=safe_error_code,
+            retryable=True,
+            observation=observation,
+            telemetry=telemetry,
+        )
+        return
+    except (BehavioralEngineRejectedError, ValidationError, ValueError) as error:
+        if telemetry is not None:
+            telemetry.observe_provider("failed")
+            telemetry.observe_provider_failure("policy")
+        logger.error(
+            "behavioral_run_rejected",
+            error_class=type(error).__name__,
+            run_id=str(run_id),
+        )
+        await _resolve_execution_failure(
+            database=database,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            lease_token=lease_token,
+            safe_error_code="behavioral_execution_rejected",
+            retryable=False,
+            observation=observation,
+            telemetry=telemetry,
+        )
+        return
+    except Exception as error:
+        if telemetry is not None:
+            telemetry.observe_provider("failed")
+            telemetry.observe_provider_failure("schema")
+        logger.error(
+            "behavioral_run_failed",
+            error_class=type(error).__name__,
+            run_id=str(run_id),
+        )
+        await _resolve_execution_failure(
+            database=database,
+            run_id=run_id,
+            attempt_id=attempt_id,
+            lease_token=lease_token,
+            safe_error_code="behavioral_execution_failed",
+            retryable=False,
+            observation=observation,
+            telemetry=telemetry,
+        )
+        return
+
+    completed = await database.complete_behavioral_execution(
+        run_id,
+        attempt_id,
+        lease_token,
+        canonical_artifact,
+        receipt.model_dump(mode="json"),
+    )
+    observation.outcome = "completed" if completed else "completion_rejected"
+    if not completed:
+        if telemetry is not None:
+            telemetry.observe_run_event("invalid_transition")
+        logger.warning(
+            "behavioral_run_completion_rejected",
+            run_id=str(run_id),
+        )
 
 
 async def _process_claimed_run(
@@ -578,7 +995,7 @@ async def _process_claimed_run(
                 telemetry.observe_run_event("retry")
             if resolution.retry_after_seconds is None:
                 raise RuntimeError("retrying resolution is missing its delay") from None
-            raise Retry(defer=resolution.retry_after_seconds) from None
+            raise _DatabaseAuthorizedRetry(resolution.retry_after_seconds) from None
         return
     except Exception as error:
         if telemetry is not None:
@@ -619,6 +1036,96 @@ async def _process_claimed_run(
         logger.warning("run_execution_completion_rejected", run_id=str(run_id))
 
 
+async def _execute_delivery_claim(
+    *,
+    run_id: UUID,
+    claim: ExecutionClaim,
+    delivery_attempt: int | None,
+    database: WorkerExecutionGateway,
+    provider: SimulationProvider,
+    behavioral_engine: BehavioralEngineExecutor | None,
+    telemetry: WorkerTelemetry | None,
+    observation: JobObservation,
+    runtime_release_sha: str,
+) -> None:
+    if claim.status != "claimed":
+        observation.outcome = "claim_rejected"
+        if telemetry is not None and claim.status in {"busy", "no_work"}:
+            telemetry.observe_run_event("duplicate_delivery")
+        logger.info(
+            "run_execution_claim_rejected",
+            reason=_safe_claim_rejection_reason(claim.status),
+            run_id=str(run_id),
+        )
+    if (
+        claim.status == "awaiting_confirmation"
+        and isinstance(delivery_attempt, int)
+        and not isinstance(delivery_attempt, bool)
+        and delivery_attempt <= 3
+    ):
+        raise _DatabaseAuthorizedRetry(1)
+    if (
+        claim.status == "organization_capacity"
+        and isinstance(delivery_attempt, int)
+        and not isinstance(delivery_attempt, bool)
+        and delivery_attempt <= 13
+    ):
+        raise _DatabaseAuthorizedRetry(5)
+    if (
+        claim.status != "claimed"
+        or claim.attempt_id is None
+        or claim.lease_token is None
+        or claim.frozen_manifest is None
+        or claim.frozen_manifest_sha256 is None
+        or claim.deterministic_seed is None
+        or claim.correlation_id is None
+        or claim.traceparent is None
+    ):
+        return
+
+    trace = TraceContext.from_header(claim.traceparent)
+    claim_manifest = claim.frozen_manifest
+    claim_code = cast(Mapping[str, object], claim_manifest["code"])
+    active_release_sha = runtime_release_sha or cast(str, claim_code["release_sha"])
+    with bound_contextvars(
+        correlation_id=str(claim.correlation_id),
+        span_id=trace.span_id,
+        trace_id=trace.trace_id,
+    ):
+        if claim_manifest.get("contract") == "behavioral_demo_run_v1":
+            if behavioral_engine is None:
+                await _resolve_execution_failure(
+                    database=database,
+                    run_id=run_id,
+                    attempt_id=claim.attempt_id,
+                    lease_token=claim.lease_token,
+                    safe_error_code="behavioral_engine_unavailable",
+                    retryable=True,
+                    observation=observation,
+                    telemetry=telemetry,
+                )
+                return
+            await _process_claimed_behavioral_run(
+                run_id=run_id,
+                claim=claim,
+                database=database,
+                behavioral_engine=behavioral_engine,
+                telemetry=telemetry,
+                observation=observation,
+                runtime_release_sha=active_release_sha,
+            )
+        else:
+            await _process_claimed_run(
+                run_id=run_id,
+                claim=claim,
+                database=database,
+                provider=provider,
+                telemetry=telemetry,
+                observation=observation,
+                runtime_release_sha=active_release_sha,
+            )
+
+
 async def process_run_v1(
     ctx: Mapping[str, object],
     payload: object,
@@ -652,53 +1159,88 @@ async def process_run_v1(
         database = database or cast(WorkerExecutionGateway, _context_dependency(ctx, "database"))
         provider = provider or cast(SimulationProvider, _context_dependency(ctx, "provider"))
         claim = await database.claim_execution(context_run_id, generation, str(ctx["job_id"]))
-        job_try = ctx.get("job_try")
-        if claim.status != "claimed":
-            observation.outcome = "claim_rejected"
-            if active_telemetry is not None and claim.status in {"busy", "no_work"}:
-                active_telemetry.observe_run_event("duplicate_delivery")
-            logger.info(
-                "run_execution_claim_rejected",
-                reason=_safe_claim_rejection_reason(claim.status),
-                run_id=str(context_run_id),
-            )
-        if claim.status == "awaiting_confirmation" and isinstance(job_try, int) and job_try <= 3:
-            raise Retry(defer=1)
-        if claim.status == "organization_capacity" and isinstance(job_try, int) and job_try <= 13:
-            raise Retry(defer=5)
-        if (
-            claim.status != "claimed"
-            or claim.attempt_id is None
-            or claim.lease_token is None
-            or claim.frozen_manifest is None
-            or claim.frozen_manifest_sha256 is None
-            or claim.deterministic_seed is None
-            or claim.correlation_id is None
-            or claim.traceparent is None
-        ):
-            return None
-
-        trace = TraceContext.from_header(claim.traceparent)
-        claim_manifest = claim.frozen_manifest
-        claim_code = cast(Mapping[str, object], claim_manifest["code"])
-        runtime_release_sha = cast(
-            str,
-            ctx.get("release_sha") or claim_code["release_sha"],
-        )
-        with bound_contextvars(
-            correlation_id=str(claim.correlation_id),
-            span_id=trace.span_id,
-            trace_id=trace.trace_id,
-        ):
-            await _process_claimed_run(
+        try:
+            await _execute_delivery_claim(
                 run_id=context_run_id,
                 claim=claim,
+                delivery_attempt=cast(int | None, ctx.get("job_try")),
                 database=database,
                 provider=provider,
+                behavioral_engine=None,
                 telemetry=active_telemetry,
                 observation=observation,
-                runtime_release_sha=runtime_release_sha,
+                runtime_release_sha=cast(str, ctx.get("release_sha") or ""),
             )
+        except _DatabaseAuthorizedRetry as retry:
+            raise Retry(defer=retry.delay_seconds) from None
         return None
+    finally:
+        observation.finish()
+
+
+async def process_run_v2(
+    ctx: Mapping[str, object],
+    payload: object,
+    *,
+    database: BullMqWorkerExecutionGateway | None = None,
+    provider: SimulationProvider | None = None,
+    behavioral_engine: BehavioralEngineExecutor | None = None,
+    telemetry: WorkerTelemetry | None = None,
+) -> None:
+    """Bind one BullMQ delivery before database claim or provider work."""
+
+    candidate_telemetry = telemetry or ctx.get("telemetry")
+    active_telemetry = (
+        candidate_telemetry if isinstance(candidate_telemetry, WorkerTelemetry) else None
+    )
+    observation = JobObservation(active_telemetry)
+    try:
+        try:
+            job = bind_bullmq_delivery(
+                queue_name=ctx.get("queue_name"),
+                job_name=ctx.get("job_name"),
+                job_id=ctx.get("job_id"),
+                data=payload,
+            )
+        except BullMqBindingError:
+            logger.warning("run_execution_binding_rejected", reason="invalid_bullmq_binding")
+            return
+        attempts_started = ctx.get("attempts_started")
+        if (
+            not isinstance(attempts_started, int)
+            or isinstance(attempts_started, bool)
+            or attempts_started not in range(1, 17)
+        ):
+            logger.warning(
+                "run_execution_binding_rejected",
+                reason="invalid_delivery_attempt",
+            )
+            return
+
+        observation.outcome = "failed"
+        database = database or cast(
+            BullMqWorkerExecutionGateway,
+            _context_dependency(ctx, "database"),
+        )
+        provider = provider or cast(SimulationProvider, _context_dependency(ctx, "provider"))
+        claim = await database.claim_execution_v2(
+            job.run_uuid,
+            job.dispatch_generation,
+            job.job_id,
+        )
+        try:
+            await _execute_delivery_claim(
+                run_id=job.run_uuid,
+                claim=claim,
+                delivery_attempt=attempts_started,
+                database=database,
+                provider=provider,
+                behavioral_engine=behavioral_engine,
+                telemetry=active_telemetry,
+                observation=observation,
+                runtime_release_sha=cast(str, ctx.get("release_sha") or ""),
+            )
+        except _DatabaseAuthorizedRetry as retry:
+            raise BullMqDeliveryRetry(retry.delay_seconds) from None
     finally:
         observation.finish()

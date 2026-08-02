@@ -84,18 +84,26 @@ class SimulationConfigurationCommandResponse(ProductModel):
     replayed: bool
 
 
+class RepeatedSimulationConfigurationInput(ProductModel):
+    repetition_count: int = Field(ge=3, le=10)
+    base_seed: int = Field(ge=-(2**63), le=2**63 - 1)
+    stability_tolerance: int = Field(ge=1, le=100)
+
+
 class MethodologyPreviewCreate(ProductModel):
     configuration_version_id: UUID
     stimulus_version_id: UUID
     variant_key: IdKey
     variant_label: Label
     run_id: UUID | None = None
+    repetition_configuration: RepeatedSimulationConfigurationInput | None = None
 
 
 class RunMethodologyReportCreate(ProductModel):
     configuration_version_id: UUID
     variant_key: IdKey
     variant_label: Label
+    repetition_configuration: RepeatedSimulationConfigurationInput | None = None
 
 
 class VariantMemberInput(ProductModel):

@@ -5,6 +5,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 WORKDIR /workspace
 
 ARG NEXT_PUBLIC_SIMULA_API_URL
+ARG NEXT_PUBLIC_SIMULA_DOMAIN_API_VERSION=v1
+ARG NEXT_PUBLIC_SIMULA_ENVIRONMENT=local
+ARG NEXT_PUBLIC_SIMULA_RELEASE_SHA
+ARG NEXT_PUBLIC_SIMULA_TELEMETRY_ENABLED=false
+ARG NEXT_PUBLIC_SENTRY_DSN
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 
@@ -35,6 +40,7 @@ RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack 
 
 COPY --from=build --chown=node:node /workspace/apps/web/.next/standalone ./
 COPY --from=build --chown=node:node /workspace/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=node:node /workspace/apps/web/public ./apps/web/public
 
 USER node
 EXPOSE 3000

@@ -33,6 +33,7 @@ export function ProjectsWorkspace({
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
+  const [loadRevision, setLoadRevision] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -65,7 +66,13 @@ export function ProjectsWorkspace({
     return () => {
       stale = true;
     };
-  }, [organizationId]);
+  }, [loadRevision, organizationId]);
+
+  function retryInitialLoad(): void {
+    setError(undefined);
+    setLoading(true);
+    setLoadRevision((current) => current + 1);
+  }
 
   async function loadMore() {
     if (!nextCursor) {
@@ -110,6 +117,9 @@ export function ProjectsWorkspace({
     }
   }
 
+  const initialLoadFailed =
+    !loading && dashboard === undefined && items.length === 0 && Boolean(error);
+
   return (
     <main className="workspace-main" id="main-content" tabIndex={-1}>
       <header className="workspace-header">
@@ -124,7 +134,7 @@ export function ProjectsWorkspace({
         <span aria-hidden="true"> / </span>
         <span>Projects</span>
       </nav>
-      <section className="workspace-grid" aria-labelledby="page-title">
+      <section className="workspace-grid">
         <div>
           <p className="eyebrow">Organization workspace</p>
           <h1 id="page-title">Projects</h1>
@@ -169,16 +179,27 @@ export function ProjectsWorkspace({
         ) : null}
       </section>
       {error ? (
-        <p className="problem" role="alert">
-          {error}
-        </p>
+        <>
+          <p className="problem" role="alert">
+            {error}
+          </p>
+          {initialLoadFailed ? (
+            <button onClick={retryInitialLoad} type="button">
+              Retry projects
+            </button>
+          ) : null}
+        </>
       ) : null}
-      <section className="list-section" aria-labelledby="project-list-title">
+      <section
+        className="list-section"
+        aria-busy={loading}
+        aria-labelledby="project-list-title"
+      >
         <div className="section-heading">
           <h2 id="project-list-title">Projects</h2>
           {loading ? <p aria-live="polite">Loading projects…</p> : null}
         </div>
-        {!loading && items.length === 0 ? (
+        {!loading && !initialLoadFailed && items.length === 0 ? (
           <p className="empty-state">
             No projects yet. Create the first project for this organization.
           </p>

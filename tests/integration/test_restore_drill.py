@@ -13,29 +13,13 @@ from tests.integration.test_database_boundary import (
     _run_captured,
 )
 
-_APP_COUNT_QUERY = """
-select pg_catalog.concat_ws(
-  '|',
-  (select pg_catalog.count(*) from api.audience_versions),
-  (select pg_catalog.count(*) from api.audiences),
-  (select pg_catalog.count(*) from api.organization_memberships),
-  (select pg_catalog.count(*) from api.organizations),
-  (select pg_catalog.count(*) from api.projects),
-  (select pg_catalog.count(*) from api.simulation_results),
-  (select pg_catalog.count(*) from api.simulation_runs),
-  (select pg_catalog.count(*) from api.stimuli),
-  (select pg_catalog.count(*) from api.stimulus_versions),
-  (select pg_catalog.count(*) from private.audit_events),
-  (select pg_catalog.count(*) from private.idempotency_keys),
-  (select pg_catalog.count(*) from private.provider_success_receipts),
-  (select pg_catalog.count(*) from private.run_attempts),
-  (select pg_catalog.count(*) from private.run_events),
-  (select pg_catalog.count(*) from private.run_outbox),
-  (select pg_catalog.count(*) from private.runtime_controls)
-);
-"""
-
 _MIGRATIONS_DIRECTORY = Path(__file__).parents[2] / "supabase" / "migrations"
+_APPLICATION_TABLES_QUERY = """
+select schemaname || '.' || tablename
+from pg_catalog.pg_tables
+where schemaname in ('api', 'private')
+order by schemaname, tablename;
+"""
 
 
 def _repository_migration_head() -> str:
@@ -103,6 +87,33 @@ def _psql(database: str, query: str, *, password: str) -> str:
     )
 
 
+def _application_counts(database: str, *, password: str) -> dict[str, int]:
+    tables = tuple(
+        value
+        for value in _psql(
+            database,
+            _APPLICATION_TABLES_QUERY,
+            password=password,
+        ).splitlines()
+        if value
+    )
+    if not tables or any(
+        re.fullmatch(r"(?:api|private)\.[a-z][a-z0-9_]*", table) is None for table in tables
+    ):
+        pytest.fail("application table inventory is invalid")
+    return {
+        table: int(
+            _psql(
+                database,
+                # Identifier comes only from pg_catalog and the strict regex above.
+                f"select pg_catalog.count(*) from {table};",  # noqa: S608
+                password=password,
+            )
+        )
+        for table in tables
+    }
+
+
 @pytest.mark.integration
 def test_phase2_full_database_backup_restores_into_isolated_database() -> None:
     """OPS-RESTORE-001: prove a checksumed full restore without touching source."""
@@ -117,7 +128,7 @@ def test_phase2_full_database_backup_restores_into_isolated_database() -> None:
     target_created = False
 
     try:
-        source_counts = _psql("postgres", _APP_COUNT_QUERY, password=password)
+        source_counts = _application_counts("postgres", password=password)
         source_run_creation_enabled = _psql(
             "postgres",
             "select enabled::text from private.runtime_controls "
@@ -183,7 +194,7 @@ def test_phase2_full_database_backup_restores_into_isolated_database() -> None:
             check_message="full database restore failed",
         )
 
-        assert _psql(target_database, _APP_COUNT_QUERY, password=password) == source_counts
+        assert _application_counts(target_database, password=password) == source_counts
         assert (
             _psql(
                 target_database,

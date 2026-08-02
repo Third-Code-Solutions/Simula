@@ -1,0 +1,643 @@
+{
+  "records": [
+    {
+      "y": 0,
+      "header": {
+        "top": 0,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": [
+        {
+          "index": 0,
+          "heading": "An agent to do your work &An everything app to manage it",
+          "top": 0,
+          "height": 1400,
+          "opacity": "1",
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "y": 400,
+      "header": {
+        "top": -400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": [
+        {
+          "index": 0,
+          "heading": "An agent to do your work &An everything app to manage it",
+          "top": -400,
+          "height": 1400,
+          "opacity": "1",
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "y": 800,
+      "header": {
+        "top": -800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": [
+        {
+          "index": 0,
+          "heading": "An agent to do your work &An everything app to manage it",
+          "top": -800,
+          "height": 1400,
+          "opacity": "1",
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "y": 1200,
+      "header": {
+        "top": -1200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": [
+        {
+          "index": 0,
+          "heading": "An agent to do your work &An everything app to manage it",
+          "top": -1200,
+          "height": 1400,
+          "opacity": "1",
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "y": 1600,
+      "header": {
+        "top": -1600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 2000,
+      "header": {
+        "top": -2000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 2400,
+      "header": {
+        "top": -2400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 2800,
+      "header": {
+        "top": -2800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 3200,
+      "header": {
+        "top": -3200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 3600,
+      "header": {
+        "top": -3600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 4000,
+      "header": {
+        "top": -4000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 4400,
+      "header": {
+        "top": -4400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 4800,
+      "header": {
+        "top": -4800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 5200,
+      "header": {
+        "top": -5200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 5600,
+      "header": {
+        "top": -5600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 6000,
+      "header": {
+        "top": -6000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 6400,
+      "header": {
+        "top": -6400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 6800,
+      "header": {
+        "top": -6800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 7200,
+      "header": {
+        "top": -7200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 7600,
+      "header": {
+        "top": -7600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 8000,
+      "header": {
+        "top": -8000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 8400,
+      "header": {
+        "top": -8400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 8800,
+      "header": {
+        "top": -8800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 9200,
+      "header": {
+        "top": -9200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 9600,
+      "header": {
+        "top": -9600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 10000,
+      "header": {
+        "top": -10000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 10400,
+      "header": {
+        "top": -10400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 10800,
+      "header": {
+        "top": -10800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 11200,
+      "header": {
+        "top": -11200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 11600,
+      "header": {
+        "top": -11600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 12000,
+      "header": {
+        "top": -12000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 12400,
+      "header": {
+        "top": -12400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 12800,
+      "header": {
+        "top": -12800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 13200,
+      "header": {
+        "top": -13200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 13600,
+      "header": {
+        "top": -13600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 14000,
+      "header": {
+        "top": -14000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 14400,
+      "header": {
+        "top": -14400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 14800,
+      "header": {
+        "top": -14800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 15200,
+      "header": {
+        "top": -15200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 15600,
+      "header": {
+        "top": -15600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 16000,
+      "header": {
+        "top": -16000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 16400,
+      "header": {
+        "top": -16400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 16800,
+      "header": {
+        "top": -16800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 17200,
+      "header": {
+        "top": -17200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 17600,
+      "header": {
+        "top": -17600,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 18000,
+      "header": {
+        "top": -18000,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 18400,
+      "header": {
+        "top": -18400,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 18800,
+      "header": {
+        "top": -18800,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 19200,
+      "header": {
+        "top": -19200,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    },
+    {
+      "y": 19447,
+      "header": {
+        "top": -19447,
+        "position": "static",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "opacity": "1",
+        "transform": "none",
+        "boxShadow": "none"
+      },
+      "visible": []
+    }
+  ],
+  "finalHeight": 20447,
+  "rootClasses": "overflow-x-hidden overscroll-none bg-background light",
+  "bodyClasses": "haffer_e43b1cfa-module__PRJ7iW__variable perfectlynineties_74615c95-module__D4FO6W__variable font-sans antialiased overflow-x-hidden"
+}

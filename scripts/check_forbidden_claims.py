@@ -25,7 +25,10 @@ FORBIDDEN_CLAIM_PATTERNS = {
         re.IGNORECASE,
     ),
     "predictive statistics": re.compile(
-        r"\b(?:predictive accuracy|calibration|confidence interval|margin of error)\b",
+        # Calibration is an admitted evidence workflow; it is not itself a
+        # claim that SIMULA predicts an outcome. Keep unsupported performance
+        # and inferential-statistics claims blocked.
+        r"\b(?:predictive accuracy|confidence interval|margin of error)\b",
         re.IGNORECASE,
     ),
     "human evidence": re.compile(

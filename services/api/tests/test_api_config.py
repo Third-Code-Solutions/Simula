@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from simula_api.config import ApiSettings, ConfigurationError
+from simula_core.runtime_admission import REQUIRED_DATABASE_MIGRATION_HEAD
 
 
 def _environment(monkeypatch: pytest.MonkeyPatch, **overrides: str) -> None:
@@ -17,6 +18,14 @@ def _environment(monkeypatch: pytest.MonkeyPatch, **overrides: str) -> None:
         "SIMULA_REDIS_URL": "rediss://redis.example.test:6379/0",
         "SIMULA_CURSOR_SECRET": "a" * 64,
         "SIMULA_CORS_ORIGINS": "https://app.example.test",
+        "SIMULA_DATABASE_MIGRATION_HEAD": REQUIRED_DATABASE_MIGRATION_HEAD,
+        "SIMULA_PRODUCTION_ADMISSION_ENABLED": "true",
+        "SIMULA_PRODUCTION_ROLLOUT_ID": "018f274b-3c77-4b22-b749-c9274230ef9a",
+        "SIMULA_RELEASE_PROVENANCE_URL": (
+            "https://github.com/Third-Code-Solutions/Simula/actions/runs/12345678"
+        ),
+        "SIMULA_RELEASE_BUNDLE_SHA256": "b" * 64,
+        "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": "c" * 64,
     }
     values.update(overrides)
     for name, value in values.items():
@@ -44,7 +53,11 @@ def test_deployed_api_accepts_database_hostname_verification(
 ) -> None:
     _environment(monkeypatch)
 
-    assert ApiSettings.from_environment().environment == "production"
+    settings = ApiSettings.from_environment()
+
+    assert settings.environment == "production"
+    assert settings.migration_head == REQUIRED_DATABASE_MIGRATION_HEAD
+    assert settings.production_admission is not None
 
 
 def test_deployed_api_accepts_project_scoped_supavisor_role(
@@ -60,3 +73,13 @@ def test_deployed_api_accepts_project_scoped_supavisor_role(
     )
 
     assert ApiSettings.from_environment().environment == "production"
+
+
+def test_deployed_api_rejects_missing_release_admission(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _environment(monkeypatch)
+    monkeypatch.delenv("SIMULA_RELEASE_BUNDLE_SHA256")
+
+    with pytest.raises(ConfigurationError, match="BUNDLE_SHA256 is required"):
+        ApiSettings.from_environment()

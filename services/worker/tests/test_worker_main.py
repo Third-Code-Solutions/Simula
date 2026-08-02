@@ -174,3 +174,103 @@ async def test_worker_supervisor_restarts_after_bounded_redis_poll_timeout(
 
     assert len(created_workers) == 2
     assert closed_workers == created_workers
+
+
+async def test_bullmq_worker_supervisor_closes_gracefully_on_stop(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    stop = asyncio.Event()
+    closed: list[bool] = []
+
+    class FakeRuntime:
+        async def run(self) -> None:
+            await asyncio.Event().wait()
+
+        async def ping(self) -> bool:
+            return True
+
+        async def snapshot(self) -> object:
+            raise AssertionError("stop wins before a monitoring snapshot")
+
+        async def close(self, *, force: bool) -> None:
+            closed.append(force)
+
+    class FakeDatabase:
+        async def ready(self) -> bool:
+            return False
+
+    monkeypatch.setattr(
+        worker_main,
+        "_create_bullmq_runtime",
+        lambda *_args: FakeRuntime(),
+    )
+    task = asyncio.create_task(
+        worker_main._run_bullmq_worker_forever(
+            stop,
+            settings=WorkerSettings(
+                environment="test",
+                release_sha="a" * 40,
+                database_url=(
+                    "postgresql://simula_worker:test@127.0.0.1:54322/postgres?sslmode=disable"
+                ),
+                redis_url="redis://127.0.0.1:6379/13",
+                metrics_port=9464,
+                queue_transport="bullmq",
+            ),
+            database=cast(WorkerDatabase, FakeDatabase()),
+            telemetry=WorkerTelemetry(),
+        )
+    )
+    await asyncio.sleep(0)
+    stop.set()
+    await task
+
+    assert closed == [False]
+
+
+async def test_bullmq_worker_supervisor_fails_closed_on_unexpected_exit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    closed: list[bool] = []
+
+    class FakeRuntime:
+        async def run(self) -> None:
+            return None
+
+        async def ping(self) -> bool:
+            return True
+
+        async def snapshot(self) -> object:
+            raise AssertionError("worker exit wins")
+
+        async def close(self, *, force: bool) -> None:
+            closed.append(force)
+
+    class FakeDatabase:
+        async def ready(self) -> bool:
+            return False
+
+    monkeypatch.setattr(
+        worker_main,
+        "_create_bullmq_runtime",
+        lambda *_args: FakeRuntime(),
+    )
+
+    with pytest.raises(RuntimeError, match="exited unexpectedly"):
+        await worker_main._run_bullmq_worker_forever(
+            asyncio.Event(),
+            settings=WorkerSettings(
+                environment="test",
+                release_sha="a" * 40,
+                database_url=(
+                    "postgresql://simula_worker:test@127.0.0.1:54322/postgres?sslmode=disable"
+                ),
+                redis_url="redis://127.0.0.1:6379/13",
+                metrics_port=9464,
+                queue_transport="bullmq",
+            ),
+            database=cast(WorkerDatabase, FakeDatabase()),
+            telemetry=WorkerTelemetry(),
+        )
+
+    assert closed == [True]

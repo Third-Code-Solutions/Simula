@@ -2,7 +2,7 @@
 title: SIMULA Conceptual Data Model
 status: approved-for-prototype
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-07-30
 owner: Architecture and data leads
 classification: PROPOSED
 source_of_truth: true
@@ -19,6 +19,12 @@ source_of_truth: true
 - Workspace and membership where distinct.
 - Invitation.
 - Audit event.
+- Durable organization-deletion request/tombstone. It is private, survives the
+  organization cascade, retains a bounded external-cleanup manifest only while
+  pending, and minimizes that manifest on completion.
+- Durable organization-deletion resource ledger. It is private, forced-RLS,
+  request/organization bound, uniquely identifies cache/run/storage cleanup,
+  and retains only bounded lease/retry state until completion purges it.
 
 Every tenant-owned record needs a defensible organization ownership path; derived records cannot become orphaned from tenant authorization.
 
@@ -41,11 +47,19 @@ Every tenant-owned record needs a defensible organization ownership path; derive
 - Prompt/template version.
 - Provider/model configuration version.
 - Validation/evaluation status.
+- Embedding model/version admission with artifact, rights, benchmark, and
+  lifecycle evidence.
+- Immutable context-node embedding bound to tenant, graph version, node-content
+  checksum, model version, and vector checksum.
 
 ## Execution and results
 
 - Simulation run and attempt.
 - Job event/progress/error.
+- Private transactional outbox plus a singleton queue-transport authority.
+  Transport defaults to ARQ; an audited operator-only transition is serialized
+  against worker claims and requires disabled admission, no non-terminal runs,
+  and no pending/claimed outboxes.
 - Sample/cell configuration reference.
 - Structured response artifact.
 - Aggregate estimate and segment estimate.
@@ -70,6 +84,10 @@ Ground truth remains separate from simulation results and retains its own consen
 - Immutable or append-only versions for reproducibility-critical objects.
 - Soft lifecycle status does not replace required deletion.
 - Retention and deletion propagation across storage, exports, caches, providers, logs, and backups.
+- Organization deletion is a saga: persist the request/manifest and disable the
+  organization first; absence-verify storage, queue, and cache cleanup; cascade
+  the relational graph last. A failed external step leaves a retryable pending
+  request rather than a partial database deletion.
 - Timestamps and actor/correlation context for material changes.
 
 ## Resolved Phase 2 decisions
@@ -78,6 +96,9 @@ Ground truth remains separate from simulation results and retains its own consen
 - Typed immutable result JSON plus indexed run summary fields; full metric normalization deferred.
 - Versions/results are append-only; correction creates a successor.
 - Content deletion retains at most approved non-content tombstone/audit metadata.
+- Completed organization tombstones retain request/organization/actor,
+  request/idempotency hashes, status, and timestamps; run/object manifests are
+  replaced by empty arrays.
 - Administration uses owner role, server authorization, explicit atomic commands, grants, and RLS.
 - Table/function policy: [[AUTHORIZATION_MATRIX|Authorization and RLS Matrix]].
 

@@ -16,6 +16,12 @@ import pytest
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_SQL = REPOSITORY_ROOT / "tests" / "database" / "runtime_adversarial.sql"
 M2_RUNTIME_SQL = REPOSITORY_ROOT / "tests" / "database" / "m2_commands_adversarial.sql"
+ORGANIZATION_DELETION_SQL = (
+    REPOSITORY_ROOT / "tests" / "database" / "organization_deletion_adversarial.sql"
+)
+ORGANIZATION_DELETION_RECOVERY_SQL = (
+    REPOSITORY_ROOT / "tests" / "database" / "organization_deletion_recovery_adversarial.sql"
+)
 PLATFORM_ADMIN_SQL = REPOSITORY_ROOT / "tests" / "database" / "platform_admin_adversarial.sql"
 SUPABASE_DB_CONTAINER = "supabase_db_simula-local"
 EXPECTED_API_URL = "http://127.0.0.1:54321"
@@ -246,6 +252,22 @@ def test_runtime_role_claims_rls_and_atomic_command_graph() -> None:
 @pytest.mark.integration
 def test_m2_project_and_stimulus_command_graph() -> None:
     _run_runtime_sql(M2_RUNTIME_SQL, "m2 command adversarial database tests: PASS")
+
+
+@pytest.mark.integration
+def test_owner_organization_deletion_is_durable_and_replay_safe() -> None:
+    _run_runtime_sql(
+        ORGANIZATION_DELETION_SQL,
+        "organization deletion adversarial database tests: PASS",
+    )
+
+
+@pytest.mark.integration
+def test_pending_organization_deletion_has_crash_safe_worker_recovery() -> None:
+    _run_runtime_sql(
+        ORGANIZATION_DELETION_RECOVERY_SQL,
+        "organization deletion recovery adversarial database tests: PASS",
+    )
 
 
 @pytest.mark.integration

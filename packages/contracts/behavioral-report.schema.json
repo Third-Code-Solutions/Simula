@@ -1,0 +1,323 @@
+{
+  "$defs": {
+    "BehavioralFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Detail",
+          "type": "string"
+        },
+        "evidence_event_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "minItems": 1,
+          "title": "Evidence Event Ids",
+          "type": "array"
+        },
+        "finding_id": {
+          "pattern": "^[a-z][a-z0-9_]{0,63}$",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "output_type": {
+          "enum": [
+            "heuristic",
+            "qualitative",
+            "recommendation"
+          ],
+          "title": "Output Type",
+          "type": "string"
+        },
+        "title": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "finding_id",
+        "output_type",
+        "title",
+        "detail",
+        "evidence_event_ids"
+      ],
+      "title": "BehavioralFinding",
+      "type": "object"
+    },
+    "BehavioralScore": {
+      "additionalProperties": false,
+      "properties": {
+        "evidence_event_ids": {
+          "items": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "maxItems": 2000,
+          "minItems": 1,
+          "title": "Evidence Event Ids",
+          "type": "array"
+        },
+        "key": {
+          "enum": [
+            "attention",
+            "resonance",
+            "trust"
+          ],
+          "title": "Key",
+          "type": "string"
+        },
+        "method": {
+          "const": "weighted_synthetic_agent_mean",
+          "default": "weighted_synthetic_agent_mean",
+          "title": "Method",
+          "type": "string"
+        },
+        "score_type": {
+          "const": "heuristic",
+          "default": "heuristic",
+          "title": "Score Type",
+          "type": "string"
+        },
+        "unit": {
+          "const": "synthetic_points",
+          "default": "synthetic_points",
+          "title": "Unit",
+          "type": "string"
+        },
+        "value": {
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "value",
+        "evidence_event_ids"
+      ],
+      "title": "BehavioralScore",
+      "type": "object"
+    },
+    "NarrativeSynthesis": {
+      "additionalProperties": false,
+      "properties": {
+        "claim_scope": {
+          "const": "synthetic_agent_explanation",
+          "default": "synthetic_agent_explanation",
+          "title": "Claim Scope",
+          "type": "string"
+        },
+        "evidence_finding_ids": {
+          "items": {
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "type": "string"
+          },
+          "maxItems": 50,
+          "minItems": 1,
+          "title": "Evidence Finding Ids",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "output_type": {
+          "const": "qualitative",
+          "default": "qualitative",
+          "title": "Output Type",
+          "type": "string"
+        },
+        "summary": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        }
+      },
+      "required": [
+        "summary",
+        "evidence_finding_ids",
+        "limitations"
+      ],
+      "title": "NarrativeSynthesis",
+      "type": "object"
+    },
+    "SyntheticUncertainty": {
+      "additionalProperties": false,
+      "properties": {
+        "attention_weighted_standard_deviation": {
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Attention Weighted Standard Deviation",
+          "type": "number"
+        },
+        "effective_agent_count": {
+          "minimum": 1.0,
+          "title": "Effective Agent Count",
+          "type": "number"
+        },
+        "limitations": {
+          "default": [
+            "Dispersion describes this frozen synthetic fleet only; it is not sampling error, formal population inference, or population uncertainty."
+          ],
+          "items": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "title": "Limitations",
+          "type": "array"
+        },
+        "resonance_weighted_standard_deviation": {
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Resonance Weighted Standard Deviation",
+          "type": "number"
+        },
+        "trust_weighted_standard_deviation": {
+          "maximum": 100.0,
+          "minimum": 0.0,
+          "title": "Trust Weighted Standard Deviation",
+          "type": "number"
+        },
+        "uncertainty_type": {
+          "const": "synthetic_agent_dispersion_not_population_uncertainty",
+          "default": "synthetic_agent_dispersion_not_population_uncertainty",
+          "title": "Uncertainty Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "effective_agent_count",
+        "attention_weighted_standard_deviation",
+        "resonance_weighted_standard_deviation",
+        "trust_weighted_standard_deviation"
+      ],
+      "title": "SyntheticUncertainty",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "action_shares": {
+      "items": {
+        "maxItems": 2,
+        "minItems": 2,
+        "prefixItems": [
+          {
+            "enum": [
+              "attend",
+              "resonate",
+              "question",
+              "reject",
+              "share",
+              "discuss",
+              "reconsider",
+              "ignore"
+            ],
+            "type": "string"
+          },
+          {
+            "type": "number"
+          }
+        ],
+        "type": "array"
+      },
+      "title": "Action Shares",
+      "type": "array"
+    },
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/BehavioralFinding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "limitations": {
+      "default": [
+        "Synthetic-agent diagnostic only. It is not observed human evidence or a population estimate."
+      ],
+      "items": {
+        "maxLength": 1000,
+        "minLength": 1,
+        "type": "string"
+      },
+      "title": "Limitations",
+      "type": "array"
+    },
+    "mean_attention": {
+      "maximum": 100.0,
+      "minimum": 0.0,
+      "title": "Mean Attention",
+      "type": "number"
+    },
+    "mean_resonance": {
+      "maximum": 100.0,
+      "minimum": 0.0,
+      "title": "Mean Resonance",
+      "type": "number"
+    },
+    "mean_trust": {
+      "maximum": 100.0,
+      "minimum": 0.0,
+      "title": "Mean Trust",
+      "type": "number"
+    },
+    "scores": {
+      "maxItems": 3,
+      "minItems": 3,
+      "prefixItems": [
+        {
+          "$ref": "#/$defs/BehavioralScore"
+        },
+        {
+          "$ref": "#/$defs/BehavioralScore"
+        },
+        {
+          "$ref": "#/$defs/BehavioralScore"
+        }
+      ],
+      "title": "Scores",
+      "type": "array"
+    },
+    "synthesis": {
+      "$ref": "#/$defs/NarrativeSynthesis"
+    },
+    "uncertainty": {
+      "$ref": "#/$defs/SyntheticUncertainty"
+    },
+    "validation_label": {
+      "const": "experimental",
+      "default": "experimental",
+      "title": "Validation Label",
+      "type": "string"
+    }
+  },
+  "required": [
+    "action_shares",
+    "mean_attention",
+    "mean_resonance",
+    "mean_trust",
+    "scores",
+    "uncertainty",
+    "findings",
+    "synthesis"
+  ],
+  "title": "BehavioralReport",
+  "type": "object",
+  "x-generated-by": "scripts/generate_contracts.py"
+}

@@ -16,3 +16,27 @@ export function runtimeMetadata(): RuntimeMetadata {
 export function resultExperienceEnabled(): boolean {
   return process.env.SIMULA_RESULT_EXPERIENCE_ENABLED !== "false";
 }
+
+/** Server-owned admission switch for the experimental NestJS behavioral path. */
+export function behavioralDemoEnabled(): boolean {
+  return (
+    process.env.SIMULA_BEHAVIORAL_DEMO_ENABLED === "true" &&
+    process.env.NEXT_PUBLIC_SIMULA_DOMAIN_API_VERSION === "v2"
+  );
+}
+
+/** Server-owned admission switch for governed private stimulus files. */
+export function privateAssetWorkflowEnabled(): boolean {
+  return (
+    process.env.SIMULA_PRIVATE_ASSET_WORKFLOW_ENABLED === "true" &&
+    process.env.NEXT_PUBLIC_SIMULA_DOMAIN_API_VERSION === "v2"
+  );
+}
+
+/** Server-owned admission switch for measured technical image profiling. */
+export function technicalVisualProfileEnabled(): boolean {
+  return (
+    privateAssetWorkflowEnabled() &&
+    process.env.SIMULA_TECHNICAL_VISUAL_PROFILE_ENABLED === "true"
+  );
+}

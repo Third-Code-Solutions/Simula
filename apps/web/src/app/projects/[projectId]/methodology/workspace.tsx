@@ -15,6 +15,7 @@ import {
   createMethodologyPreview,
   createSimulationConfiguration,
   createVariantGroup,
+  compareVariantReports,
   getMethodologyRegistry,
   getOrganizationAdminSummary,
   getOrganizationAudit,
@@ -22,6 +23,7 @@ import {
   getProject,
   listAudienceDefinitions,
   listSimulationConfigurations,
+  listVariantGroups,
 } from "@/lib/api";
 
 function message(error: unknown): string {
@@ -73,11 +75,15 @@ export function MethodologyWorkspace({
   const [registry, setRegistry] = useState<MethodologyRegistry>();
   const [audiences, setAudiences] = useState<ProductRecord[]>([]);
   const [configurations, setConfigurations] = useState<ProductRecord[]>([]);
+  const [variantGroups, setVariantGroups] = useState<ProductRecord[]>([]);
+  const [comparison, setComparison] = useState<ProductRecord[]>([]);
+  const [comparisonRequested, setComparisonRequested] = useState(false);
   const [admin, setAdmin] = useState<ProductRecord>();
   const [audit, setAudit] = useState<ProductRecord[]>([]);
   const [preview, setPreview] = useState<ProductRecord>();
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState<string | undefined>("load");
+  const [loadRevision, setLoadRevision] = useState(0);
 
   const stimuli = useMemo(
     () => (project ? latestVersions(project) : []),
@@ -93,12 +99,17 @@ export function MethodologyWorkspace({
         const loadedDashboard = await getOrganizationDashboard(
           loadedProject.organization_id,
         );
-        const [loadedRegistry, loadedAudiences, loadedConfigurations] =
-          await Promise.all([
-            getMethodologyRegistry(),
-            listAudienceDefinitions(loadedProject.organization_id),
-            listSimulationConfigurations(projectId),
-          ]);
+        const [
+          loadedRegistry,
+          loadedAudiences,
+          loadedConfigurations,
+          loadedVariantGroups,
+        ] = await Promise.all([
+          getMethodologyRegistry(),
+          listAudienceDefinitions(loadedProject.organization_id),
+          listSimulationConfigurations(projectId),
+          listVariantGroups(projectId),
+        ]);
         const [summary, events] = loadedDashboard.permissions
           .can_manage_settings
           ? await Promise.all([
@@ -112,6 +123,7 @@ export function MethodologyWorkspace({
           setRegistry(loadedRegistry);
           setAudiences(loadedAudiences.items);
           setConfigurations(loadedConfigurations.items);
+          setVariantGroups(loadedVariantGroups.items);
           setAdmin(summary?.data);
           setAudit(events?.items ?? []);
           setError(undefined);
@@ -127,7 +139,13 @@ export function MethodologyWorkspace({
     return () => {
       stale = true;
     };
-  }, [projectId]);
+  }, [loadRevision, projectId]);
+
+  function retryInitialLoad(): void {
+    setError(undefined);
+    setBusy("load");
+    setLoadRevision((current) => current + 1);
+  }
 
   async function addAudience(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -207,6 +225,11 @@ export function MethodologyWorkspace({
         stimulus_version_id: text(form.get("stimulus")),
         variant_key: "selected_variant",
         variant_label: "Selected variant",
+        repetition_configuration: {
+          repetition_count: 5,
+          base_seed: 20260801,
+          stability_tolerance: 5,
+        },
       });
       setPreview(response.data);
       setError(undefined);
@@ -229,9 +252,28 @@ export function MethodologyWorkspace({
           label: stimulus.label,
         })),
       });
+      const loaded = await listVariantGroups(projectId);
+      setVariantGroups(loaded.items);
+      setComparison([]);
+      setComparisonRequested(false);
       setError(undefined);
     } catch (variantError) {
       setError(message(variantError));
+    } finally {
+      setBusy(undefined);
+    }
+  }
+
+  async function compareVariants(variantGroupId: string) {
+    setBusy(`compare:${variantGroupId}`);
+    setComparisonRequested(true);
+    try {
+      const loaded = await compareVariantReports(variantGroupId);
+      setComparison(loaded.items);
+      setError(undefined);
+    } catch (comparisonError) {
+      setComparison([]);
+      setError(message(comparisonError));
     } finally {
       setBusy(undefined);
     }
@@ -255,6 +297,9 @@ export function MethodologyWorkspace({
       )
     : [];
   const transparency = record(report.transparency);
+  const repeated = record(report.repeated_simulation);
+  const initialLoadFailed =
+    busy !== "load" && dashboard === undefined && Boolean(error);
 
   return (
     <main className="workspace-main" id="main-content" tabIndex={-1}>
@@ -293,12 +338,21 @@ export function MethodologyWorkspace({
       </section>
 
       {busy === "load" ? (
-        <p aria-live="polite">Loading methodology state…</p>
+        <p aria-label="Loading methodology state" aria-live="polite">
+          Loading methodology state…
+        </p>
       ) : null}
       {error ? (
-        <p className="problem" role="alert">
-          {error}
-        </p>
+        <>
+          <p className="problem" role="alert">
+            {error}
+          </p>
+          {initialLoadFailed ? (
+            <button onClick={retryInitialLoad} type="button">
+              Retry methodology state
+            </button>
+          ) : null}
+        </>
       ) : null}
 
       {dashboard?.permissions.can_create_runs ? (
@@ -357,6 +411,11 @@ export function MethodologyWorkspace({
                   </option>
                 ))}
               </select>
+              {audiences.length === 0 ? (
+                <p className="field-note">
+                  No audience versions yet. Create one in step 1.
+                </p>
+              ) : null}
               <input
                 name="population"
                 type="hidden"
@@ -409,6 +468,11 @@ export function MethodologyWorkspace({
                   </option>
                 ))}
               </select>
+              {configurations.length === 0 ? (
+                <p className="field-note">
+                  No configurations yet. Freeze one in step 2.
+                </p>
+              ) : null}
               <label htmlFor="preview-stimulus">Stimulus version</label>
               <select id="preview-stimulus" name="stimulus" required>
                 <option value="">Select stimulus</option>
@@ -418,6 +482,12 @@ export function MethodologyWorkspace({
                   </option>
                 ))}
               </select>
+              {stimuli.length === 0 ? (
+                <p className="field-note">
+                  No stimulus versions yet. Add a stimulus in the project
+                  workspace.
+                </p>
+              ) : null}
               <button disabled={busy === "preview"} type="submit">
                 {busy === "preview" ? "Running…" : "Run zero-cost preview"}
               </button>
@@ -435,6 +505,9 @@ export function MethodologyWorkspace({
                 Freeze the latest versions into one ordered comparison group.
                 Reports remain diagnostics; no winner is declared.
               </p>
+              {variantGroups.length === 0 ? (
+                <p className="field-note">No saved variant groups yet.</p>
+              ) : null}
             </div>
             <button
               disabled={stimuli.length < 2 || busy === "variants"}
@@ -444,6 +517,83 @@ export function MethodologyWorkspace({
               {busy === "variants" ? "Creating…" : "Group latest variants"}
             </button>
           </section>
+          {variantGroups.length ? (
+            <section
+              className="panel form-stack"
+              aria-labelledby="saved-groups"
+            >
+              <div>
+                <p className="eyebrow">Durable comparison sets</p>
+                <h2 id="saved-groups">Saved variant groups</h2>
+                <p className="field-note">
+                  Comparison is available after at least two grouped stimulus
+                  versions have complete reports under one frozen configuration.
+                </p>
+              </div>
+              <ul>
+                {variantGroups.map((group) => {
+                  const groupId = text(group.variant_group_id);
+                  return (
+                    <li key={groupId}>
+                      <strong>{text(group.name)}</strong>{" "}
+                      <span>
+                        {records(group.members).length} ordered variants
+                      </span>{" "}
+                      <button
+                        disabled={busy === `compare:${groupId}`}
+                        onClick={() => void compareVariants(groupId)}
+                        type="button"
+                      >
+                        {busy === `compare:${groupId}`
+                          ? "Comparing…"
+                          : "Compare reports"}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+          {comparison.length ? (
+            <section
+              className="panel form-stack"
+              aria-labelledby="comparison-results"
+            >
+              <p className="eyebrow">Compatible modeled differences</p>
+              <h2 id="comparison-results">Variant comparison</h2>
+              <p className="methodology-warning">
+                Diagnostics only. No variant winner or causal market lift is
+                established.
+              </p>
+              <ol>
+                {comparison.map((item) => {
+                  const compared = record(item.comparison);
+                  return (
+                    <li key={text(item.candidate_variant_key)}>
+                      <strong>
+                        {text(item.baseline_variant_key)} →{" "}
+                        {text(item.candidate_variant_key)}
+                      </strong>
+                      <p>{text(compared.largest_absolute_change)}</p>
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ) : null}
+          {comparisonRequested &&
+          !busy?.startsWith("compare:") &&
+          comparison.length === 0 &&
+          !error ? (
+            <section className="panel" aria-labelledby="comparison-empty">
+              <p className="eyebrow">Compatible modeled differences</p>
+              <h2 id="comparison-empty">No comparison available</h2>
+              <p className="field-note">
+                No compatible completed reports exist for this saved group.
+                Finish reports under one frozen configuration, then retry.
+              </p>
+            </section>
+          ) : null}
         </>
       ) : dashboard ? (
         <section className="panel" aria-labelledby="methodology-read-only">
@@ -463,24 +613,33 @@ export function MethodologyWorkspace({
               <p className="eyebrow">Generated report · experimental</p>
               <h2 id="report-title">{text(report.executive_summary)}</h2>
             </div>
-            <span className="methodology-chip">heuristic score</span>
+            <span className="methodology-chip">component diagnostics</span>
           </div>
           <p className="methodology-warning">
             {text(report.experimental_notice)}
+          </p>
+          <p className="field-note">
+            {repeated.repetition_count
+              ? `${String(repeated.repetition_count)} seeded runs · stability ${text(repeated.stability_label)} · synthetic-only evidence`
+              : "Synthetic-only evidence; repeated stability was not attached."}
           </p>
           <div
             className="methodology-distribution"
             aria-label="Synthetic reaction distribution"
           >
-            {categories.map((category) => (
-              <div key={text(category.key)}>
-                <span>{text(category.key).replaceAll("_", " ")}</span>
-                <strong>{Math.round(number(category.value) * 100)}%</strong>
-                <div aria-hidden="true">
-                  <i style={{ width: `${number(category.value) * 100}%` }} />
+            {categories.length ? (
+              categories.map((category) => (
+                <div key={text(category.key)}>
+                  <span>{text(category.key).replaceAll("_", " ")}</span>
+                  <strong>{Math.round(number(category.value) * 100)}%</strong>
+                  <div aria-hidden="true">
+                    <i style={{ width: `${number(category.value) * 100}%` }} />
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p>No reaction distribution generated.</p>
+            )}
           </div>
           <div className="methodology-report-grid">
             <section aria-labelledby="segment-results-title">
@@ -500,42 +659,60 @@ export function MethodologyWorkspace({
             </section>
             <section aria-labelledby="risk-results-title">
               <h3 id="risk-results-title">Risk signals</h3>
-              <ul>
-                {risks.map((risk) => (
-                  <li key={text(risk.key)}>
-                    {text(risk.key).replaceAll("_", " ")}:{" "}
-                    {number(risk.value).toFixed(1)}
-                  </li>
-                ))}
-              </ul>
+              {risks.length ? (
+                <ul>
+                  {risks.map((risk) => (
+                    <li key={text(risk.key)}>
+                      {text(risk.key).replaceAll("_", " ")}:{" "}
+                      {number(risk.value).toFixed(1)}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No risk signals generated.</p>
+              )}
             </section>
             <section aria-labelledby="rationale-results-title">
               <h3 id="rationale-results-title">Generated rationales</h3>
               <p className="field-note">
                 Synthetic text. Never participant quotes.
               </p>
-              <ul>
-                {rationales.map((rationale) => (
-                  <li key={text(rationale.cell_key)}>{text(rationale.text)}</li>
-                ))}
-              </ul>
+              {rationales.length ? (
+                <ul>
+                  {rationales.map((rationale) => (
+                    <li key={text(rationale.cell_key)}>
+                      {text(rationale.text)}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No generated rationales.</p>
+              )}
             </section>
             <section aria-labelledby="guidance-results-title">
               <h3 id="guidance-results-title">Decision guidance</h3>
-              <ul>
-                {recommendations.map((recommendation) => (
-                  <li key={recommendation}>{recommendation}</li>
-                ))}
-              </ul>
+              {recommendations.length ? (
+                <ul>
+                  {recommendations.map((recommendation) => (
+                    <li key={recommendation}>{recommendation}</li>
+                  ))}
+                </ul>
+              ) : (
+                <p>No decision guidance generated.</p>
+              )}
             </section>
           </div>
           <details className="methodology-provenance">
             <summary>Limitations and uncertainty</summary>
-            <ul>
-              {limitations.map((limitation) => (
-                <li key={limitation}>{limitation}</li>
-              ))}
-            </ul>
+            {limitations.length ? (
+              <ul>
+                {limitations.map((limitation) => (
+                  <li key={limitation}>{limitation}</li>
+                ))}
+              </ul>
+            ) : (
+              <p>No limitations were supplied with this report.</p>
+            )}
           </details>
           <details className="methodology-provenance">
             <summary>Methodology and reproducibility receipt</summary>
@@ -599,16 +776,20 @@ export function MethodologyWorkspace({
           <div className="panel">
             <p className="eyebrow">Audit trail</p>
             <h2>Recent actions</h2>
-            <ol className="methodology-audit">
-              {audit.slice(0, 8).map((event) => (
-                <li key={text(event.id)}>
-                  <strong>{text(event.action)}</strong>
-                  <span>
-                    {text(event.outcome)} · {text(event.source_service)}
-                  </span>
-                </li>
-              ))}
-            </ol>
+            {audit.length ? (
+              <ol className="methodology-audit">
+                {audit.slice(0, 8).map((event) => (
+                  <li key={text(event.id)}>
+                    <strong>{text(event.action)}</strong>
+                    <span>
+                      {text(event.outcome)} · {text(event.source_service)}
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="field-note">No recent owner actions.</p>
+            )}
           </div>
         </section>
       ) : null}

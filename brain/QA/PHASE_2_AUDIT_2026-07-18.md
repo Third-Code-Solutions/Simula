@@ -67,7 +67,7 @@ No known Critical or High code finding remains from the focused remediation revi
 |---|---|---|
 | High — governance | GitHub required-check enforcement is unavailable on the current private-repository plan; protection/ruleset APIs returned `403`. | Authorized plan/visibility change or equivalent enforceable merge control. |
 | Exit evidence | Human keyboard/screen-reader smoke is not recorded. Automated keyboard, accessibility-tree, responsive, and Axe proofs pass but are not a substitute. | Human assistive-technology pass on the current build. |
-| Medium | Deletion is proven as privileged PostgreSQL cascade, not as a user-facing API plus Redis/storage/cache cleanup workflow. | Add authorized deletion orchestration before user-facing retention/deletion claims. |
+| Medium — locally remediated 2026-07-30 | The audit originally found only a privileged PostgreSQL cascade. E-5070 now proves a user-facing, durable owner command with verified local object/BullMQ/Redis cleanup before cascade; E-5072 adds leased local recovery for abandoned requests. | Retain hosted populated-manifest deletion/recovery, killed-process restart, and backup-expiry propagation as Plan 003 release gates. |
 | Medium | Restore proves PostgreSQL rows and migration history, not runtime owners/grants, Auth, API/worker, queue/storage, or tombstone compatibility. | Run the full application-compatible staging restore drill. |
 
 ## Stop condition

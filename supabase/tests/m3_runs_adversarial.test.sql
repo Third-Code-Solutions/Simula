@@ -317,7 +317,7 @@ select extensions.ok(
     pg_catalog.pg_get_functiondef(
       'private.runtime_observability_snapshot()'::pg_catalog.regprocedure
     ),
-    '20260720072350'
+    '20260801150001'
   ) > 0,
   'runtime observability reports the exact current compatibility migration'
 );

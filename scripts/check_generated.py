@@ -14,7 +14,16 @@ from scripts.openapi_compatibility import find_breaking_changes
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = ROOT / "packages" / "contracts"
-FILES = ("openapi.json", "result.schema.json", "src/openapi.ts")
+FILES = (
+    "behavioral-comparison.schema.json",
+    "behavioral-evaluation-report.schema.json",
+    "behavioral-report.schema.json",
+    "context-graph.schema.json",
+    "openapi.json",
+    "result.schema.json",
+    "src/control-plane.ts",
+    "src/openapi.ts",
+)
 OPENAPI_PATH = "packages/contracts/openapi.json"
 
 
@@ -43,6 +52,30 @@ def main() -> None:
         corepack = which("corepack")
         if corepack is None:
             raise SystemExit("corepack executable not found")
+        subprocess.run(  # noqa: S603 - resolved toolchain binary; fixed workspace command.
+            [
+                corepack,
+                "pnpm@11.13.1",
+                "--config.engine-strict=false",
+                "--filter",
+                "@simula/api",
+                "build",
+            ],
+            cwd=ROOT,
+            check=True,
+        )
+        subprocess.run(  # noqa: S603 - resolved toolchain binary; fixed workspace command.
+            [
+                corepack,
+                "pnpm@11.13.1",
+                "--config.engine-strict=false",
+                "--filter",
+                "@simula/api",
+                "openapi:check",
+            ],
+            cwd=ROOT,
+            check=True,
+        )
         subprocess.run(  # noqa: S603 - resolved toolchain binary; arguments are fixed paths.
             [
                 corepack,
@@ -53,6 +86,21 @@ def main() -> None:
                 str(generated / "openapi.json"),
                 "-o",
                 str(generated / "src" / "openapi.ts"),
+                "--alphabetize",
+            ],
+            cwd=CONTRACTS,
+            check=True,
+        )
+        subprocess.run(  # noqa: S603 - resolved toolchain binary; arguments are fixed paths.
+            [
+                corepack,
+                "pnpm@11.13.1",
+                "--config.engine-strict=false",
+                "exec",
+                "openapi-typescript",
+                str(ROOT / "apps" / "api" / "openapi.json"),
+                "-o",
+                str(generated / "src" / "control-plane.ts"),
                 "--alphabetize",
             ],
             cwd=CONTRACTS,

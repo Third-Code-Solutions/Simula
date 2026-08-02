@@ -76,6 +76,50 @@ class RuntimeObservabilitySnapshot:
     oldest_cancellation_age_seconds: float
 
 
+@dataclass(frozen=True, slots=True)
+class CampaignEvidenceClaim:
+    evidence_id: UUID
+    kind: Literal["survey_calibration", "historical_backtest"]
+    request: Mapping[str, object]
+    secret_payload: Mapping[str, object] | None
+    lease_token: UUID
+    attempt_count: int
+
+
+class CampaignEvidenceDatabase(Protocol):
+    async def expire_campaign_evidence_runs(self, requested_batch_size: int = 50) -> int: ...
+
+    async def claim_campaign_evidence_runs(
+        self, requested_batch_size: int = 5
+    ) -> list[CampaignEvidenceClaim]: ...
+
+    async def update_campaign_evidence_progress(
+        self,
+        evidence_id: UUID,
+        lease_token: UUID,
+        stage: str,
+        progress: int,
+        message: str,
+    ) -> bool: ...
+
+    async def complete_campaign_evidence_run(
+        self, evidence_id: UUID, lease_token: UUID, result: Mapping[str, object]
+    ) -> bool: ...
+
+    async def finalize_canceled_campaign_evidence_run(
+        self, evidence_id: UUID, lease_token: UUID
+    ) -> bool: ...
+
+    async def fail_campaign_evidence_run(
+        self,
+        evidence_id: UUID,
+        lease_token: UUID,
+        error_code: str,
+        error_detail: str,
+        retryable: bool,
+    ) -> str: ...
+
+
 class WorkerExecutionGateway(Protocol):
     """Lease-bound execution mutations available to the ARQ handler."""
 
@@ -96,6 +140,15 @@ class WorkerExecutionGateway(Protocol):
         receipt: Mapping[str, object],
     ) -> bool: ...
 
+    async def complete_behavioral_execution(
+        self,
+        run_id: UUID,
+        attempt_id: UUID,
+        lease_token: UUID,
+        canonical_artifact: bytes,
+        receipt: Mapping[str, object],
+    ) -> bool: ...
+
     async def fail_execution(
         self,
         run_id: UUID,
@@ -113,6 +166,8 @@ class WorkerDatabase(WorkerExecutionGateway):
         self, settings: WorkerSettings, *, telemetry: WorkerTelemetry | None = None
     ) -> None:
         self._telemetry = telemetry
+        self._queue_transport = settings.queue_transport
+        self._migration_head = settings.migration_head
         self._pool = AsyncConnectionPool(
             conninfo=settings.database_url,
             min_size=1,
@@ -134,15 +189,36 @@ class WorkerDatabase(WorkerExecutionGateway):
         try:
             async with self._pool.connection(timeout=2.0) as connection:
                 async with connection.transaction():
-                    cursor = await connection.execute("select 1 as ready")
+                    cursor = await connection.execute(
+                        "select private.require_queue_transport(%s) as ready",
+                        (self._queue_transport,),
+                    )
                     row = await cursor.fetchone()
-            ready = row is not None and cast(DatabaseRow, row)["ready"] == 1
+                    schema_cursor = await connection.execute(
+                        "select * from private.runtime_schema_readiness()"
+                    )
+                    schema = await schema_cursor.fetchone()
+            ready = (
+                row is not None
+                and cast(DatabaseRow, row)["ready"] is True
+                and schema is not None
+                and str(cast(DatabaseRow, schema)["migration_version"]) == self._migration_head
+                and cast(DatabaseRow, schema)["rls_force_enabled"] is True
+            )
             outcome = "success" if ready else "error"
             return ready
-        except PoolTimeout, psycopg.Error:
+        except KeyError, TypeError, ValueError, PoolTimeout, psycopg.Error:
             return False
         finally:
             self._observe_database("readiness", outcome, started_at)
+
+    async def require_queue_transport(self, requested_transport: Literal["arq", "bullmq"]) -> None:
+        row = await self._fetchone(
+            "select private.require_queue_transport(%s) as active",
+            (requested_transport,),
+        )
+        if row["active"] is not True:
+            raise RuntimeError("worker queue transport is not active")
 
     async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
         row = await self._fetchone(
@@ -229,11 +305,117 @@ class WorkerDatabase(WorkerExecutionGateway):
             (outbox_id, claim_token, safe_error_code),
         )
 
+    async def claim_campaign_evidence_runs(
+        self, requested_batch_size: int = 5
+    ) -> list[CampaignEvidenceClaim]:
+        rows = await self._fetchall(
+            "select * from private.claim_campaign_evidence_runs(%s)",
+            (requested_batch_size,),
+        )
+        claims: list[CampaignEvidenceClaim] = []
+        for row in rows:
+            kind = cast(str, row["kind"])
+            if kind not in {"survey_calibration", "historical_backtest"}:
+                raise RuntimeError("worker database returned an invalid evidence kind")
+            request = row["request"]
+            if not isinstance(request, Mapping):
+                raise RuntimeError("worker database returned an invalid evidence request")
+            secret_payload = row["secret_payload"]
+            if secret_payload is not None and not isinstance(secret_payload, Mapping):
+                raise RuntimeError("worker database returned an invalid evidence secret")
+            claims.append(
+                CampaignEvidenceClaim(
+                    evidence_id=cast(UUID, row["evidence_id"]),
+                    kind=cast(Literal["survey_calibration", "historical_backtest"], kind),
+                    request=cast(Mapping[str, object], request),
+                    secret_payload=cast(Mapping[str, object] | None, secret_payload),
+                    lease_token=cast(UUID, row["lease_token"]),
+                    attempt_count=int(row["attempt_count"]),
+                )
+            )
+        return claims
+
+    async def expire_campaign_evidence_runs(self, requested_batch_size: int = 50) -> int:
+        row = await self._fetchone(
+            "select private.expire_campaign_evidence_runs(%s) as deleted",
+            (requested_batch_size,),
+        )
+        return int(row["deleted"])
+
+    async def update_campaign_evidence_progress(
+        self,
+        evidence_id: UUID,
+        lease_token: UUID,
+        stage: str,
+        progress: int,
+        message: str,
+    ) -> bool:
+        return await self._boolean_function(
+            "select private.update_campaign_evidence_progress(%s, %s, %s, %s, %s) as changed",
+            (evidence_id, lease_token, stage, progress, message),
+        )
+
+    async def complete_campaign_evidence_run(
+        self, evidence_id: UUID, lease_token: UUID, result: Mapping[str, object]
+    ) -> bool:
+        return await self._boolean_function(
+            "select private.complete_campaign_evidence_run(%s, %s, %s) as changed",
+            (evidence_id, lease_token, Jsonb(dict(result))),
+        )
+
+    async def finalize_canceled_campaign_evidence_run(
+        self, evidence_id: UUID, lease_token: UUID
+    ) -> bool:
+        return await self._boolean_function(
+            "select private.finalize_canceled_campaign_evidence_run(%s, %s) as changed",
+            (evidence_id, lease_token),
+        )
+
+    async def fail_campaign_evidence_run(
+        self,
+        evidence_id: UUID,
+        lease_token: UUID,
+        error_code: str,
+        error_detail: str,
+        retryable: bool,
+    ) -> str:
+        row = await self._fetchone(
+            "select private.fail_campaign_evidence_run(%s, %s, %s, %s, %s) as next_state",
+            (evidence_id, lease_token, error_code, error_detail, retryable),
+        )
+        next_state = row["next_state"]
+        if not isinstance(next_state, str) or next_state not in {
+            "retrying",
+            "failed",
+            "stale",
+        }:
+            raise RuntimeError("worker database returned an invalid evidence failure state")
+        return next_state
+
     async def claim_execution(self, run_id: UUID, generation: int, job_id: str) -> ExecutionClaim:
         row = await self._fetchone(
             "select * from private.claim_run_execution_traced(%s, %s, %s)",
             (run_id, generation, job_id),
         )
+        return self._execution_claim(row)
+
+    async def claim_execution_v2(
+        self, run_id: UUID, generation: int, job_id: str
+    ) -> ExecutionClaim:
+        row = await self._fetchone(
+            "select * from private.claim_run_execution_v2_traced(%s, %s, %s)",
+            (run_id, generation, job_id),
+        )
+        return self._execution_claim(row)
+
+    async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:
+        return await self._boolean_function(
+            "select private.heartbeat_run_execution(%s, %s, %s) as changed",
+            (run_id, attempt_id, lease_token),
+        )
+
+    @staticmethod
+    def _execution_claim(row: DatabaseRow) -> ExecutionClaim:
         manifest = row["frozen_manifest"]
         return ExecutionClaim(
             status=cast(str, row["claim_status"]),
@@ -248,12 +430,6 @@ class WorkerDatabase(WorkerExecutionGateway):
             else None,
             correlation_id=cast(UUID | None, row["correlation_id"]),
             traceparent=cast(str | None, row["traceparent"]),
-        )
-
-    async def heartbeat_execution(self, run_id: UUID, attempt_id: UUID, lease_token: UUID) -> bool:
-        return await self._boolean_function(
-            "select private.heartbeat_run_execution(%s, %s, %s) as changed",
-            (run_id, attempt_id, lease_token),
         )
 
     async def complete_execution(
@@ -271,6 +447,25 @@ class WorkerDatabase(WorkerExecutionGateway):
                 attempt_id,
                 lease_token,
                 Jsonb(dict(artifact)),
+                Jsonb(dict(receipt)),
+            ),
+        )
+
+    async def complete_behavioral_execution(
+        self,
+        run_id: UUID,
+        attempt_id: UUID,
+        lease_token: UUID,
+        canonical_artifact: bytes,
+        receipt: Mapping[str, object],
+    ) -> bool:
+        return await self._boolean_function(
+            ("select private.complete_behavioral_run_execution(%s, %s, %s, %s, %s) as changed"),
+            (
+                run_id,
+                attempt_id,
+                lease_token,
+                canonical_artifact,
                 Jsonb(dict(receipt)),
             ),
         )
@@ -333,17 +528,26 @@ class WorkerDatabase(WorkerExecutionGateway):
     def _database_operation(query: str) -> str:
         operations = {
             "claim_due_run_outbox": "claim_dispatch",
+            "claim_campaign_evidence_runs": "claim_campaign_evidence",
             "claim_run_execution_traced": "claim_execution",
+            "claim_run_execution_v2_traced": "claim_execution",
+            "complete_behavioral_run_execution": "complete_behavioral_execution",
+            "complete_campaign_evidence_run": "complete_campaign_evidence",
             "complete_run_execution": "complete_execution",
             "confirm_run_dispatch": "confirm_dispatch",
             "evaluate_run_creation_control": "evaluate_run_control",
+            "expire_campaign_evidence_runs": "expire_campaign_evidence",
             "fail_run_dispatch": "fail_dispatch",
+            "fail_campaign_evidence_run": "fail_campaign_evidence",
             "fail_run_execution": "fail_execution",
+            "finalize_canceled_campaign_evidence_run": "finalize_canceled_campaign_evidence",
             "finalize_requested_cancellations": "finalize_cancellations",
             "finalize_poisoned_dispatches": "finalize_poison",
             "heartbeat_run_execution": "heartbeat_execution",
             "reconcile_run_dispatch": "reconcile_dispatch",
+            "require_queue_transport": "require_queue_transport",
             "runtime_observability_snapshot": "runtime_snapshot",
+            "update_campaign_evidence_progress": "update_campaign_evidence",
         }
         matches = [operation for marker, operation in operations.items() if marker in query]
         if len(matches) != 1:

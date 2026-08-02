@@ -34,7 +34,7 @@ const runFailureSchema = z
   })
   .strict();
 
-export const simulationRunSchema = z
+const simulationRunBaseSchema = z
   .object({
     id: UUID,
     organization_id: UUID,
@@ -42,14 +42,36 @@ export const simulationRunSchema = z
     stimulus_version_id: UUID,
     audience_version_id: UUID,
     state: runStateSchema,
-    schema_version: z.literal(1),
     dispatch_generation: z.number().int().min(1).max(3),
-    job_id: z.string().regex(/^run:[0-9a-f-]{36}:dispatch:[1-3]$/),
     version: z.number().int().positive(),
     created_at: TIMESTAMP,
     failure: runFailureSchema.nullable(),
   })
-  .strict()
+  .strict();
+
+const simulationRunV1Schema = simulationRunBaseSchema.extend({
+  schema_version: z.literal(1),
+  job_id: z
+    .string()
+    .regex(
+      /^run:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}:dispatch:[1-3]$/,
+    ),
+});
+
+const simulationRunV2Schema = simulationRunBaseSchema.extend({
+  schema_version: z.literal(2),
+  job_id: z
+    .string()
+    .regex(
+      /^run-[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}-generation-[1-3]$/,
+    ),
+});
+
+export const simulationRunSchema = z
+  .discriminatedUnion("schema_version", [
+    simulationRunV1Schema,
+    simulationRunV2Schema,
+  ])
   .superRefine((value, context) => {
     if (value.state === "failed" && value.failure === null) {
       context.addIssue({

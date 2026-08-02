@@ -10,12 +10,27 @@ resolutionMode: highest
 savePrefix: ""
 strictPeerDependencies: true
 
+# Dev-only legacy minimatch paths cannot consume brace-expansion 5 without API
+# breakage. No production dependency path exists. Review by 2026-08-29.
+auditConfig:
+  ignoreGhsas:
+    - GHSA-mh99-v99m-4gvg
+
 overrides:
+  # Security floors. Remove only after upstream ranges resolve to patched versions.
+  "brace-expansion@2": 2.1.3
+  "brace-expansion@5": 5.0.8
   js-yaml: 4.3.0
   next>postcss: 8.5.19
+  sharp: 0.35.0
 
 allowBuilds:
-  # Native installers required by the pinned Next.js and resolver toolchains.
+  # Native installers required by the pinned Next.js, Vite, and resolver toolchains.
+  "@scarf/scarf": false
+  "@sentry/cli": false
+  esbuild: true
+  msgpackr-extract: false
+  protobufjs: false
   sharp: true
   unrs-resolver: true
 
@@ -44,5 +59,37 @@ minimumReleaseAgeExclude:
   - "@tailwindcss/postcss@4.3.3"
   - tailwindcss@4.3.3
   - vite@8.1.5
+  - brace-expansion@2.1.3
+  - "@sentry/core@10.69.0"
+  - "@sentry/node-core@10.69.0"
+  - "@sentry/node@10.69.0"
+  - "@sentry/opentelemetry@10.69.0"
+  - "@sentry/server-utils@10.69.0"
+  - "@sentry/browser-utils@10.69.0"
+  - "@sentry/browser@10.69.0"
+  - "@sentry/feedback@10.69.0"
+  - "@sentry/nextjs@10.69.0"
+  - "@sentry/react@10.69.0"
+  - "@sentry/replay-canvas@10.69.0"
+  - "@sentry/replay@10.69.0"
+  - "@sentry/vercel-edge@10.69.0"
+  - enhanced-resolve@5.24.4
+  - webpack@5.109.2
+  # Reviewed 2026-07-29 as one exact AWS SDK release train. Remove after the
+  # minimum-release-age window elapses; do not broaden these package names.
+  - "@aws-sdk/checksums@3.1000.22"
+  - "@aws-sdk/client-s3@3.1097.0"
+  - "@aws-sdk/core@3.977.2"
+  - "@aws-sdk/credential-provider-env@3.972.63"
+  - "@aws-sdk/credential-provider-http@3.972.65"
+  - "@aws-sdk/credential-provider-ini@3.973.8"
+  - "@aws-sdk/credential-provider-login@3.972.70"
+  - "@aws-sdk/credential-provider-node@3.972.74"
+  - "@aws-sdk/credential-provider-process@3.972.63"
+  - "@aws-sdk/credential-provider-sso@3.973.7"
+  - "@aws-sdk/credential-provider-web-identity@3.972.69"
+  - "@aws-sdk/middleware-sdk-s3@3.972.68"
+  - "@aws-sdk/nested-clients@3.997.37"
+  - "@aws-sdk/token-providers@3.1097.0"
 
 sharedWorkspaceLockfile: true

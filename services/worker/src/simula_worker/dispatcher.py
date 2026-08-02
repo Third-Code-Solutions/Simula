@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Literal, Protocol
 from uuid import UUID
 
 import structlog
@@ -25,6 +25,10 @@ RECOVERY_INTERVAL_SECONDS = 30.0
 
 
 class DispatcherDatabase(Protocol):
+    async def require_queue_transport(
+        self, requested_transport: Literal["arq", "bullmq"]
+    ) -> None: ...
+
     async def finalize_requested_cancellations(self, requested_batch_size: int = 10) -> int: ...
 
     async def finalize_poisoned_dispatches(self, requested_batch_size: int = 10) -> int: ...
@@ -90,6 +94,7 @@ class RunDispatcher:
         self._next_recovery_at = 0.0
 
     async def dispatch_once(self, *, batch_size: int = 10) -> DispatchPass:
+        await self._database.require_queue_transport("arq")
         cancellation_started_at = asyncio.get_running_loop().time()
         canceled = await self._database.finalize_requested_cancellations(batch_size)
         if self._telemetry is not None:

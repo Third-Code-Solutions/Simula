@@ -10,6 +10,7 @@ from datetime import UTC, datetime
 from http.client import HTTPConnection
 from uuid import UUID
 
+from simula_core.observability import initialize_observability
 from simula_core.runtime import RuntimeMetadata
 from simula_core.simulation import DeterministicMockProvider, ProviderRequest
 
@@ -117,11 +118,18 @@ def main() -> None:
     if args.health_check:
         _verify_live_worker(port=WorkerSettings.from_environment().metrics_port)
         return
+    observability = initialize_observability("worker")
     configure_logging()
-    if os.name == "nt":
-        _serve_windows()
-        return
-    asyncio.run(serve())
+    try:
+        if os.name == "nt":
+            _serve_windows()
+            return
+        asyncio.run(serve())
+    except BaseException as error:
+        observability.capture_exception(error)
+        raise
+    finally:
+        observability.shutdown()
 
 
 if __name__ == "__main__":

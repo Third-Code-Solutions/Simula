@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from typing import Any, Never
 
 MAX_JSON_BYTES = 256 * 1024
+MAX_CANONICAL_JSON_BYTES = 16_000_000
 MAX_JSON_DEPTH = 32
 
 
@@ -39,8 +40,17 @@ def _depth(value: Any, current: int = 0) -> int:
     return current
 
 
-def canonical_json_dumps(value: Any) -> bytes:
-    """Encode one JSON value deterministically and within the queue budget."""
+def canonical_json_dumps_bounded(value: Any, *, maximum_bytes: int) -> bytes:
+    """Encode strict canonical JSON within one explicitly governed byte budget."""
+
+    if (
+        not isinstance(maximum_bytes, int)
+        or isinstance(maximum_bytes, bool)
+        or maximum_bytes not in range(1, MAX_CANONICAL_JSON_BYTES + 1)
+    ):
+        raise CanonicalJsonCodecError(
+            f"maximum size must be from 1 through {MAX_CANONICAL_JSON_BYTES}"
+        )
 
     try:
         payload = json.dumps(
@@ -53,9 +63,15 @@ def canonical_json_dumps(value: Any) -> bytes:
     except (TypeError, ValueError) as error:
         raise CanonicalJsonCodecError("value is not strict JSON") from error
     _depth(value)
-    if len(payload) > MAX_JSON_BYTES:
-        raise CanonicalJsonCodecError(f"JSON exceeds maximum size {MAX_JSON_BYTES}")
+    if len(payload) > maximum_bytes:
+        raise CanonicalJsonCodecError(f"JSON exceeds maximum size {maximum_bytes}")
     return payload
+
+
+def canonical_json_dumps(value: Any) -> bytes:
+    """Encode one JSON value deterministically and within the queue budget."""
+
+    return canonical_json_dumps_bounded(value, maximum_bytes=MAX_JSON_BYTES)
 
 
 def canonical_json_loads(payload: bytes) -> Any:

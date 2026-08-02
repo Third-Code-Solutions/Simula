@@ -151,7 +151,7 @@ async function createTerminalRun(page: Page): Promise<void> {
   await expect(page.getByRole("link", { name: "Method" })).toHaveCount(0);
   await expect(page.getByRole("link", { name: "Boundaries" })).toHaveCount(0);
   await page.getByLabel("Organization name").fill(organizationName);
-  await page.getByRole("button", { name: "Create workspace" }).click();
+  await page.getByRole("button", { name: "Create empty workspace" }).click();
   await expect(page).toHaveURL(/\/organizations\/[^/]+\/dashboard$/);
   await expect(
     page.getByRole("heading", { level: 1, name: organizationName }),
@@ -200,7 +200,7 @@ async function createTerminalRun(page: Page): Promise<void> {
     .getByLabel("Text", { exact: true })
     .fill("A neutral fictional local browser-test message.");
   await page.getByRole("button", { name: "Add immutable stimulus" }).click();
-  await page.getByRole("button", { name: "Run version 1" }).click();
+  await page.getByRole("button", { name: "Run pipeline demo 1" }).click();
   await expect(page).toHaveURL(/\/runs\/[0-9a-f-]{36}$/);
   await expect(page.getByRole("heading", { name: "Complete" })).toBeVisible({
     timeout: 30_000,

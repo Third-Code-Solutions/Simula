@@ -1,0 +1,138 @@
+{
+  "tag": "main",
+  "id": "",
+  "classes": "overflow-x-hidden",
+  "rect": {
+    "y": 0,
+    "width": 1425,
+    "height": 1400
+  },
+  "directText": "",
+  "headings": [],
+  "children": [
+    {
+      "tag": "section",
+      "id": "",
+      "classes": "bg-background relative",
+      "rect": {
+        "y": 0,
+        "width": 1425,
+        "height": 1400
+      },
+      "directText": "",
+      "headings": [],
+      "children": [
+        {
+          "tag": "div",
+          "id": "",
+          "classes": "dither-xl pointer-events-none absolute inset-0 opacity-[0.25]",
+          "rect": {
+            "y": 0,
+            "width": 1425,
+            "height": 1400
+          },
+          "directText": "",
+          "headings": [],
+          "children": []
+        },
+        {
+          "tag": "div",
+          "id": "",
+          "classes": "pointer-events-none absolute inset-0 overflow-hidden z-0",
+          "rect": {
+            "y": 0,
+            "width": 1425,
+            "height": 1400
+          },
+          "directText": "",
+          "headings": [],
+          "children": [
+            {
+              "tag": "img",
+              "id": "",
+              "classes": "dark:hidden size-full object-cover scale-[1.4] translate-y-[-17%] rotate-[0.5deg]",
+              "rect": {
+                "y": 649,
+                "width": 2012,
+                "height": 1977
+              },
+              "directText": "",
+              "headings": [],
+              "children": []
+            },
+            {
+              "tag": "img",
+              "id": "",
+              "classes": "hidden dark:block size-full object-cover scale-[1.4] translate-y-[-17%] rotate-[0.5deg]",
+              "rect": {
+                "y": 0,
+                "width": 0,
+                "height": 0
+              },
+              "directText": "",
+              "headings": [],
+              "children": []
+            },
+            {
+              "tag": "div",
+              "id": "",
+              "classes": "absolute inset-0",
+              "rect": {
+                "y": 0,
+                "width": 1425,
+                "height": 1400
+              },
+              "directText": "",
+              "headings": [],
+              "children": []
+            }
+          ]
+        },
+        {
+          "tag": "div",
+          "id": "",
+          "classes": "relative z-10 pb-20 pt-24 md:pt-32 lg:pt-40",
+          "rect": {
+            "y": 0,
+            "width": 1425,
+            "height": 1400
+          },
+          "directText": "",
+          "headings": [
+            "An agent to do your work &An everything app to manage it"
+          ],
+          "children": [
+            {
+              "tag": "div",
+              "id": "",
+              "classes": "mx-auto max-w-6xl px-6 text-center lg:px-12",
+              "rect": {
+                "y": 160,
+                "width": 1152,
+                "height": 351
+              },
+              "directText": "",
+              "headings": [
+                "An agent to do your work &An everything app to manage it"
+              ],
+              "children": []
+            },
+            {
+              "tag": "div",
+              "id": "",
+              "classes": "relative mx-auto max-w-7xl",
+              "rect": {
+                "y": 511,
+                "width": 1280,
+                "height": 809
+              },
+              "directText": "",
+              "headings": [],
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

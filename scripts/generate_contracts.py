@@ -9,6 +9,12 @@ from typing import Any
 
 from simula_api.app import app
 from simula_api.problem_codes import STABLE_PROBLEM_CODES
+from simula_core.behavioral_engine import (
+    BehavioralReport,
+    ContextGraph,
+    MatchedVariantComparison,
+)
+from simula_core.behavioral_evaluation import BehavioralEvaluationReport
 from simula_core.simulation import SimulationResultV1
 
 GENERATED_BY = "scripts/generate_contracts.py"
@@ -32,6 +38,31 @@ def generate(output_directory: Path) -> None:
     result_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
     result_schema["x-generated-by"] = GENERATED_BY
     _write_json(output_directory / "result.schema.json", result_schema)
+    behavioral_report_schema = BehavioralReport.model_json_schema()
+    behavioral_report_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    behavioral_report_schema["x-generated-by"] = GENERATED_BY
+    _write_json(
+        output_directory / "behavioral-report.schema.json",
+        behavioral_report_schema,
+    )
+    context_graph_schema = ContextGraph.model_json_schema()
+    context_graph_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    context_graph_schema["x-generated-by"] = GENERATED_BY
+    _write_json(output_directory / "context-graph.schema.json", context_graph_schema)
+    comparison_schema = MatchedVariantComparison.model_json_schema()
+    comparison_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    comparison_schema["x-generated-by"] = GENERATED_BY
+    _write_json(
+        output_directory / "behavioral-comparison.schema.json",
+        comparison_schema,
+    )
+    evaluation_report_schema = BehavioralEvaluationReport.model_json_schema()
+    evaluation_report_schema["$schema"] = "https://json-schema.org/draft/2020-12/schema"
+    evaluation_report_schema["x-generated-by"] = GENERATED_BY
+    _write_json(
+        output_directory / "behavioral-evaluation-report.schema.json",
+        evaluation_report_schema,
+    )
 
 
 def main() -> None:

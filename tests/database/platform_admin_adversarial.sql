@@ -36,6 +36,13 @@ set session authorization simula_api;
 set local request.jwt.claims =
   '{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated","iss":"http://127.0.0.1:54321/auth/v1","aud":"authenticated","exp":4102444800}';
 do $test$
+declare
+  organization_a uuid := (
+    select organization_id from pg_temp.platform_admin_state where label = 'organization_a'
+  );
+  organization_b uuid := (
+    select organization_id from pg_temp.platform_admin_state where label = 'organization_b'
+  );
 begin
   if private.is_platform_superadmin(private.verified_subject()) then
     raise exception 'ordinary organization owner received platform authority';
@@ -43,8 +50,17 @@ begin
   if private.platform_user_count(private.verified_subject()) <> 0 then
     raise exception 'ordinary organization owner received platform user count';
   end if;
-  if (select pg_catalog.count(*) from api.organizations) <> 1 then
-    raise exception 'ordinary owner crossed tenant RLS';
+  if (
+    select pg_catalog.count(*)
+    from api.organizations
+    where id = organization_a
+  ) <> 1 then
+    raise exception 'ordinary organization owner could not read authored organization';
+  end if;
+  if exists (
+    select 1 from api.organizations where id = organization_b
+  ) then
+    raise exception 'ordinary organization owner crossed tenant RLS';
   end if;
 end
 $test$;
@@ -65,10 +81,18 @@ begin
   if private.platform_user_count(private.verified_subject()) <> 4 then
     raise exception 'platform user count was not bounded to the administrator';
   end if;
-  if (select pg_catalog.count(*) from api.organizations) <> 2 then
+  if (
+    select pg_catalog.count(*)
+    from api.organizations
+    where id in (select organization_id from pg_temp.platform_admin_state)
+  ) <> 2 then
     raise exception 'platform administrator could not see every organization';
   end if;
-  if (select pg_catalog.count(*) from api.organization_memberships) <> 2 then
+  if (
+    select pg_catalog.count(*)
+    from api.organization_memberships
+    where organization_id in (select organization_id from pg_temp.platform_admin_state)
+  ) <> 2 then
     raise exception 'platform administrator could not inspect organization membership';
   end if;
   if not private.has_org_role(

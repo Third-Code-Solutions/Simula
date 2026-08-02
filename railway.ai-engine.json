@@ -1,0 +1,22 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "services/ai-engine/Dockerfile",
+    "watchPatterns": [
+      "services/ai-engine/**",
+      "packages/simula-core/**",
+      "pyproject.toml",
+      "railway.ai-engine.json",
+      "uv.lock"
+    ]
+  },
+  "deploy": {
+    "drainingSeconds": 30,
+    "healthcheckPath": "/health/ready",
+    "healthcheckTimeout": 120,
+    "overlapSeconds": 15,
+    "restartPolicyMaxRetries": 10,
+    "restartPolicyType": "ON_FAILURE"
+  }
+}

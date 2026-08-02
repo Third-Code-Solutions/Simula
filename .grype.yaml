@@ -1,10 +1,28 @@
-# Reviewed exception: CVE-2026-15308 affects html.parser.HTMLParser when it
-# parses attacker-controlled HTML. SIMULA accepts JSON only and neither the
-# API nor worker imports or invokes HTMLParser. Python has no stable 3.14 fix;
-# the upstream issue is https://github.com/python/cpython/issues/153030.
-# Accepted 2026-07-18. Review no later than 2026-08-01 or before hosted use.
+# Reviewed exceptions: these findings affect optional Python stdlib parsers
+# that are not reachable by SIMULA's JSON API, bounded media-byte upload flow,
+# or deterministic worker. The repository has no tarfile/html.parser call site.
+# CVE-2026-11940: crafted tarfile hardlink/symlink extraction can escape the
+# destination directory. Upstream advisory:
+# https://nvd.nist.gov/vuln/detail/CVE-2026-11940
+# CVE-2026-11972: tarfile streaming mode can loop on a crafted archive.
+# Upstream advisory: https://nvd.nist.gov/vuln/detail/CVE-2026-11972
+# Grype currently maps both fixes to Python 3.15.0b4, a prerelease; SIMULA
+# remains pinned to stable Python 3.14.6 until a supported 3.14 fix is shipped.
+# CVE-2026-15308: html.parser.HTMLParser parses attacker-controlled HTML.
+# Upstream issue: https://github.com/python/cpython/issues/153030.
+# Reviewed 2026-08-01. Reassess by 2026-09-01 or before hosted use.
 ignore:
   - vulnerability: CVE-2026-15308
+    package:
+      name: python
+      version: 3.14.6
+      type: binary
+  - vulnerability: CVE-2026-11940
+    package:
+      name: python
+      version: 3.14.6
+      type: binary
+  - vulnerability: CVE-2026-11972
     package:
       name: python
       version: 3.14.6

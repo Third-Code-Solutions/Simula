@@ -1,0 +1,63 @@
+groups:
+  - name: simula-runtime
+    rules:
+      - alert: SimulaRequiredDependencyUnavailable
+        expr: min by (dependency) (simula_api_dependency_ready) < 1
+        for: 5m
+        labels:
+          severity: page
+          service: api
+        annotations:
+          summary: A required API dependency is unavailable.
+          runbook: brain/Operations/OBSERVABILITY_RUNBOOK.md#required-dependency-unavailable
+      - alert: SimulaQueueBacklog
+        expr: simula_worker_queue_oldest_ready_age_seconds > 300
+        for: 5m
+        labels:
+          severity: page
+          service: worker
+        annotations:
+          summary:
+            The oldest ready simulation job is more than five minutes old.
+          runbook: brain/Operations/OBSERVABILITY_RUNBOOK.md#queue-backlog
+      - alert: SimulaStuckRunLease
+        expr: simula_worker_run_stuck_lease_count > 0
+        for: 2m
+        labels:
+          severity: page
+          service: worker
+        annotations:
+          summary: At least one run has an expired worker lease.
+          runbook: brain/Operations/OBSERVABILITY_RUNBOOK.md#stuck-run-lease
+      - alert: SimulaTerminalFailureRate
+        expr:
+          sum(rate(simula_worker_jobs_total{outcome="failed"}[10m])) /
+          clamp_min(sum(rate(simula_worker_jobs_total[10m])), 0.001) > 0.10
+        for: 10m
+        labels:
+          severity: page
+          service: worker
+        annotations:
+          summary:
+            More than ten percent of worker jobs are terminating as failed.
+          runbook: brain/Operations/OBSERVABILITY_RUNBOOK.md#terminal-failure-rate
+      - alert: SimulaRunCreationDisabled
+        expr: simula_worker_run_creation_enabled < 1
+        for: 1m
+        labels:
+          severity: ticket
+          service: worker
+        annotations:
+          summary: The durable run-control circuit breaker is active.
+          runbook: brain/Operations/RUNBOOK_RUN_CREATION_DISABLED.md
+      - alert: SimulaRlsControlMissing
+        expr:
+          min(simula_database_rls_force_enabled or
+          simula_worker_database_rls_force_enabled) < 1
+        for: 1m
+        labels:
+          severity: page
+          service: database
+        annotations:
+          summary: A runtime reports that forced RLS is not fully enabled.
+          runbook: brain/Operations/OBSERVABILITY_RUNBOOK.md#rls-control-missing
