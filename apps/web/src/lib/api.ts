@@ -93,6 +93,35 @@ export type CampaignLabRunStatus = Readonly<{
   completed_at: string | null;
   last_error_code: string | null;
 }>;
+export type CampaignLabRanking = Readonly<{
+  metric_key: string;
+  repetition_count: number;
+  pairwise_rank_agreement: number;
+  top_variant_key: string | null;
+  stability_label: string;
+  variants: ReadonlyArray<Readonly<{
+    variant_key: string;
+    mean_rank: number;
+    top_rank_probability: number;
+  }>>;
+}>;
+export type CampaignLabSimulationResult = Readonly<{
+  run_id: string;
+  evidence_status: "Synthetic-only";
+  result: Readonly<{
+    sample_size: number;
+    repetitions: number;
+    overall_component_rankings: Readonly<Record<string, CampaignLabRanking>>;
+    cohort_findings: ReadonlyArray<Readonly<{
+      cohort_key: string;
+      dimensions: Readonly<Record<string, string>>;
+      population_weight: number;
+      repetition_count: number;
+      evidence_status: "Synthetic-only";
+      component_rankings: Readonly<Record<string, CampaignLabRanking>>;
+    }>>;
+  }>;
+}>;
 export type Stimulus = Schemas["StimulusResponse"];
 export type StimulusVersion = Schemas["StimulusVersionResponse"];
 export type AudienceDisclosure = Schemas["AudienceDisclosureResponse"];
@@ -537,6 +566,14 @@ export function getCampaignLabSimulationStatus(
 ): Promise<CampaignLabRunStatus> {
   return request<CampaignLabRunStatus>(
     domainPath(`/campaign-lab/simulations/${runId}/status`),
+  );
+}
+
+export function getCampaignLabSimulationResults(
+  runId: string,
+): Promise<CampaignLabSimulationResult> {
+  return request<CampaignLabSimulationResult>(
+    domainPath(`/campaign-lab/simulations/${runId}/results`),
   );
 }
 

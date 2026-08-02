@@ -7,9 +7,11 @@ import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 import {
   ApiProblem,
   type CampaignLabCampaign,
+  type CampaignLabSimulationResult,
   type CampaignLabRunStatus,
   createCampaignLabCampaign,
   createCampaignLabSimulation,
+  getCampaignLabSimulationResults,
   getCampaignLabSimulationStatus,
   listCampaignLabCampaigns,
 } from "@/lib/api";
@@ -208,6 +210,10 @@ function campaignId(campaign: CampaignLabCampaign): string {
   return campaign.campaign_id ?? campaign.id ?? "";
 }
 
+function percent(value: number): string {
+  return `${(value * 100).toFixed(1)}%`;
+}
+
 export function CampaignLabWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
@@ -216,6 +222,7 @@ export function CampaignLabWorkspace({
   >([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
   const [run, setRun] = useState<CampaignLabRunStatus>();
+  const [result, setResult] = useState<CampaignLabSimulationResult>();
   const [requestText, setRequestText] = useState("");
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
@@ -256,12 +263,32 @@ export function CampaignLabWorkspace({
     if (!run || !["queued", "running", "retrying"].includes(run.status)) {
       return;
     }
+    let stale = false;
     const timer = window.setInterval(() => {
       void getCampaignLabSimulationStatus(run.id)
-        .then(setRun)
+        .then((nextRun) => {
+          if (stale) return;
+          if (nextRun.status === "succeeded") {
+            void getCampaignLabSimulationResults(nextRun.id)
+              .then((nextResult) => {
+                if (!stale) {
+                  setRun(nextRun);
+                  setResult(nextResult);
+                }
+              })
+              .catch((resultError: unknown) => {
+                if (!stale) setError(problemMessage(resultError));
+              });
+          } else {
+            setRun(nextRun);
+          }
+        })
         .catch((pollError: unknown) => setError(problemMessage(pollError)));
     }, 2000);
-    return () => window.clearInterval(timer);
+    return () => {
+      stale = true;
+      window.clearInterval(timer);
+    };
   }, [run]);
 
   async function createCampaign(event: React.FormEvent<HTMLFormElement>) {
@@ -314,6 +341,7 @@ export function CampaignLabWorkspace({
     }
     setRunning(true);
     setError(undefined);
+    setResult(undefined);
     try {
       const parsed = JSON.parse(requestText) as Record<string, unknown>;
       parsed.campaign_id = selectedCampaignId;
@@ -323,7 +351,7 @@ export function CampaignLabWorkspace({
       );
       if (!created.run_id)
         throw new Error("Campaign Lab did not return a run id.");
-      setRun({
+      const nextRun = {
         id: created.run_id,
         campaign_id: selectedCampaignId,
         run_type: "repeated_simulation",
@@ -335,7 +363,11 @@ export function CampaignLabWorkspace({
         started_at: null,
         completed_at: null,
         last_error_code: null,
-      });
+      } satisfies CampaignLabRunStatus;
+      setRun(nextRun);
+      if (nextRun.status === "succeeded") {
+        setResult(await getCampaignLabSimulationResults(nextRun.id));
+      }
     } catch (launchError) {
       setError(
         launchError instanceof SyntaxError
@@ -434,6 +466,7 @@ export function CampaignLabWorkspace({
                     setSelectedCampaignId(id);
                     setRequestText(JSON.stringify(starterRequest(id), null, 2));
                     setRun(undefined);
+                    setResult(undefined);
                   }}
                   type="button"
                 >
@@ -512,6 +545,91 @@ export function CampaignLabWorkspace({
               </p>
             )}
           </div>
+        </section>
+      ) : null}
+      {result ? (
+        <section
+          aria-labelledby="campaign-lab-results-title"
+          className="panel campaign-lab-results"
+          id="results"
+        >
+          <p className="eyebrow">04 / Component results</p>
+          <div className="section-heading-row">
+            <div>
+              <h2 id="campaign-lab-results-title">
+                Repeated component findings
+              </h2>
+              <p className="field-note">
+                {result.result.sample_size} synthetic panel records ·{" "}
+                {result.result.repetitions} seeded repetitions · evidence status{" "}
+                <strong>{result.evidence_status}</strong>
+              </p>
+            </div>
+          </div>
+          <div className="campaign-lab-result-grid">
+            {Object.entries(result.result.overall_component_rankings).map(
+              ([metric, ranking]) => (
+                <article className="campaign-lab-result-card" key={metric}>
+                  <p className="eyebrow">{metric}</p>
+                  <h3>
+                    {ranking.top_variant_key ?? "No stable top variant"}
+                  </h3>
+                  <p>
+                    {ranking.stability_label} · pairwise agreement{" "}
+                    {percent(ranking.pairwise_rank_agreement)}
+                  </p>
+                  <ul>
+                    {ranking.variants.map((variant) => (
+                      <li key={variant.variant_key}>
+                        {variant.variant_key}: {percent(variant.top_rank_probability)}
+                        {" top-rank probability"}
+                      </li>
+                    ))}
+                  </ul>
+                </article>
+              ),
+            )}
+          </div>
+          <div className="campaign-lab-cohort-results">
+            <div>
+              <p className="eyebrow">Cohort differences</p>
+              <h3>Population-weighted cells, shown separately</h3>
+            </div>
+            <div className="campaign-lab-cohort-list">
+              {(result.result.cohort_findings ?? []).map((finding) => (
+                <article
+                  className="campaign-lab-cohort-card"
+                  key={finding.cohort_key}
+                >
+                  <h4>{finding.cohort_key}</h4>
+                  <p className="field-note">
+                    Population weight {percent(finding.population_weight)} ·{" "}
+                    {finding.repetition_count} repetitions
+                  </p>
+                  <p>
+                    {Object.entries(finding.dimensions)
+                      .map(([key, value]) => key + ": " + value)
+                      .join(" · ")}
+                  </p>
+                  <ul>
+                    {Object.entries(finding.component_rankings).map(
+                      ([metric, ranking]) => (
+                        <li key={metric}>
+                          {metric}: {ranking.top_variant_key ?? "no stable leader"}
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </article>
+              ))}
+            </div>
+          </div>
+          <p className="field-note">
+            These are synthetic repeated-run diagnostics. They are not survey
+            estimates, vote-share forecasts, or evidence of individual
+            persuadability. Attach consented survey calibration and held-out
+            backtesting before consequential use.
+          </p>
         </section>
       ) : null}
       <p className="field-note">

@@ -1609,6 +1609,53 @@ select {
   list-style: none;
 }
 
+.campaign-lab-results {
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+.campaign-lab-result-grid,
+.campaign-lab-cohort-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.campaign-lab-result-card,
+.campaign-lab-cohort-card {
+  padding: 1rem;
+  border: 1px solid var(--edge);
+  border-radius: 0.75rem;
+  background: var(--white);
+}
+
+.campaign-lab-result-card h3,
+.campaign-lab-cohort-card h4 {
+  margin: 0.25rem 0 0.5rem;
+  overflow-wrap: anywhere;
+}
+
+.campaign-lab-result-card ul,
+.campaign-lab-cohort-card ul {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--stone);
+  font-size: 0.78rem;
+}
+
+.campaign-lab-cohort-results {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--edge);
+}
+
+.campaign-lab-cohort-card p {
+  overflow-wrap: anywhere;
+  color: var(--stone);
+  font-size: 0.8rem;
+}
+
 .workflow-list li {
   display: grid;
   gap: 0.35rem;

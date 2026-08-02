@@ -128,6 +128,25 @@ def test_campaign_lab_repeated_result_has_population_weights_and_no_standalone_s
     assert result.repetitions == 3
     assert len(result.variants) == 2
     assert result.variants[0].cohort_weights[0]["label"] == "Population-weighted"
+    assert len(result.cohort_findings) == 4
+    assert {finding.cohort_key for finding in result.cohort_findings} == {
+        "metro_early",
+        "metro_late",
+        "regional_late",
+        "regional_early",
+    }
+    assert set(result.cohort_findings[0].component_rankings) == {
+        "clarity",
+        "relevance",
+        "trust",
+        "persuasiveness",
+        "consideration",
+    }
+    assert all(
+        {variant.variant_key for variant in ranking.variants}
+        == {"variant_a", "variant_b"}
+        for ranking in result.cohort_findings[0].component_rankings.values()
+    )
     assert result.reproducibility_checksum_sha256 != "0" * 64
     assert "viral_score" not in result.model_dump(mode="json")
 
@@ -202,6 +221,8 @@ def test_campaign_lab_report_keeps_cultural_evaluation_separate_from_component_m
     )
 
     assert report.language_cultural_evaluation["status"] == "Human-reviewed"
+    assert report.cohort_level_findings[0]["cohort_key"] == "metro_early"
+    assert "component_rankings" in report.cohort_level_findings[0]
     assert "viral_score" not in report.model_dump(mode="json")
 
 

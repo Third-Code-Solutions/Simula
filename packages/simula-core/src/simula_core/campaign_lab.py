@@ -417,6 +417,23 @@ class CampaignLabVariantResult(FrozenModel):
     synthetic_interviews_available: bool = True
 
 
+class CampaignLabCohortFinding(FrozenModel):
+    """Component-level comparison for one admitted population cell.
+
+    A weight row alone cannot support segment-level analysis. This contract binds
+    each cohort finding to the exact dimensions and population weight used by
+    the repeated runs, while keeping the result synthetic-only.
+    """
+
+    cohort_key: Key
+    dimensions: Mapping[str, str]
+    population_weight: float = Field(gt=0.0, le=1.0)
+    component_rankings: Mapping[str, RepeatedVariantRankingResult]
+    repetition_count: int = Field(ge=1, le=500)
+    evidence_status: Literal["Synthetic-only"] = "Synthetic-only"
+    limitations: tuple[str, ...] = Field(min_length=1, max_length=20)
+
+
 class CampaignLabSimulationResult(FrozenModel):
     schema_version: Literal[1] = 1
     campaign_id: UUID
@@ -430,6 +447,7 @@ class CampaignLabSimulationResult(FrozenModel):
     repetitions: int = Field(ge=3)
     limitations: tuple[str, ...] = Field(min_length=1, max_length=20)
     reproducibility_checksum_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    cohort_findings: tuple[CampaignLabCohortFinding, ...] = ()
 
 
 class SyntheticPersonaInterview(FrozenModel):
@@ -634,6 +652,84 @@ def _rankings(
     return rankings
 
 
+def _cohort_findings(
+    request: CampaignLabSimulationRequest,
+    results: Mapping[str, RepeatedMethodologyResult],
+) -> tuple[CampaignLabCohortFinding, ...]:
+    """Compare variants within each sampled population cell.
+
+    Every variant uses the same derived repetition seeds and frozen frame. The
+    per-cell response values therefore form matched repeated observations rather
+    than a new synthetic population estimate.
+    """
+
+    if not results:
+        return ()
+    first_result = next(iter(results.values()))
+    sampled_keys = {
+        response.cell_key
+        for run in first_result.runs
+        for response in run.cohort_responses
+    }
+    frame_by_key = {cell.key: cell for cell in request.cohort.population_frame.cells}
+    findings: list[CampaignLabCohortFinding] = []
+    metric_keys: tuple[RepeatMetricKey, ...] = (
+        "clarity",
+        "relevance",
+        "trust",
+        "persuasiveness",
+        "consideration",
+    )
+    for cohort_key in sorted(sampled_keys):
+        frame_cell = frame_by_key.get(cohort_key)
+        if frame_cell is None:
+            raise ValueError("sampled cohort is absent from the frozen population frame")
+        rankings: dict[str, RepeatedVariantRankingResult] = {}
+        for metric_key in metric_keys:
+            values_by_variant: dict[str, list[float]] = {}
+            for variant_key, repeated in results.items():
+                values: list[float] = []
+                for run in repeated.runs:
+                    response = next(
+                        (
+                            item
+                            for item in run.cohort_responses
+                            if item.cell_key == cohort_key
+                        ),
+                        None,
+                    )
+                    if response is None:
+                        raise ValueError("repeated cohort response coverage mismatch")
+                    values.append(
+                        next(
+                            metric.value
+                            for metric in response.metrics
+                            if metric.key == metric_key
+                        )
+                    )
+                values_by_variant[variant_key] = values
+            rankings[metric_key] = summarize_variant_ranking(
+                metric_key=metric_key,
+                values_by_variant=values_by_variant,
+            )
+        findings.append(
+            CampaignLabCohortFinding(
+                cohort_key=cohort_key,
+                dimensions=frame_cell.dimension_map(),
+                population_weight=frame_cell.weight,
+                component_rankings=rankings,
+                repetition_count=first_result.repetition_count,
+                limitations=(
+                    "Cohort rankings describe repeated synthetic diagnostics, "
+                    "not human preference.",
+                    "Population weight is inherited from the cited frozen frame; "
+                    "it is not a vote-share estimate.",
+                ),
+            )
+        )
+    return tuple(findings)
+
+
 def run_campaign_lab_simulation(
     request: CampaignLabSimulationRequest,
     *,
@@ -668,6 +764,7 @@ def run_campaign_lab_simulation(
             repetition_configuration=repeated_configuration,
         )
     rankings = _rankings(repeated_by_variant)
+    cohort_findings = _cohort_findings(request, repeated_by_variant)
     variant_results = tuple(
         CampaignLabVariantResult(
             variant_key=variant.key,
@@ -684,6 +781,7 @@ def run_campaign_lab_simulation(
         "configuration": request.configuration.model_dump(mode="json"),
         "variants": [item.model_dump(mode="json") for item in variant_results],
         "rankings": {key: value.model_dump(mode="json") for key, value in rankings.items()},
+        "cohort_findings": [item.model_dump(mode="json") for item in cohort_findings],
     }
     checksum = sha256(canonical_json_dumps(payload)).hexdigest()
     return CampaignLabSimulationResult(
@@ -703,6 +801,7 @@ def run_campaign_lab_simulation(
             "stages.",
         ),
         reproducibility_checksum_sha256=checksum,
+        cohort_findings=cohort_findings,
     )
 
 
@@ -723,13 +822,17 @@ def build_campaign_lab_report(
         for metric_key, ranking in result.overall_component_rankings.items()
     }
     cohort_findings = tuple(
-        {
-            "variant_key": item.variant_key,
-            "cohort_weights": list(item.cohort_weights),
-            "evidence_status": "Population-weighted",
-        }
-        for item in result.variants
+        finding.model_dump(mode="json") for finding in result.cohort_findings
     )
+    if not cohort_findings:
+        cohort_findings = tuple(
+            {
+                "variant_key": item.variant_key,
+                "cohort_weights": list(item.cohort_weights),
+                "evidence_status": "Population-weighted",
+            }
+            for item in result.variants
+        )
     model_versions = {
         "methodology_version": result.methodology_version,
         "model_name": request.configuration.model_name,

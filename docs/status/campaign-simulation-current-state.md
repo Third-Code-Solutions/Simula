@@ -52,6 +52,10 @@ classification: OBSERVED
   deterministic weighted sampling, repeated seeded runs, structured synthetic
   personas, disclosed interviews, compliance review, and a 30-section report
   contract. No `viral_score` field or LLM final score exists.
+- Repeated Campaign Lab results now include per-cell component rankings bound to
+  each sampled cohort's frozen dimensions and population weight, so aggregate
+  results do not hide cohort differences. These findings remain explicitly
+  synthetic diagnostics, not survey estimates or vote-share forecasts.
 - Historical backtests now persist a version-2 result with explicit
   campaign/cohort/variant keys, declared cohort weights, weighted campaign
   aggregates, and per-cohort component slices. The durable outcome schema's
@@ -85,9 +89,11 @@ classification: OBSERVED
   expose survey/backtest component metrics and cohort slices in the UI.
 - Verification completed locally: Python/API/worker suites 362/362, mypy
   150/150 files, web tests 142/142, web production build, web typecheck/lint,
-  generated-contract drift, Python compile, and focused Ruff checks. Hosted
+  generated-contract drift, Python compile, and full Ruff checks. Hosted
   Supabase migration/function/grant/readiness checks and security advisor
-  review also completed.
+  review also completed. The repository wrapper check is environment-blocked
+  by the installed UV version, while the project-interpreter generator check
+  passes.
 
 ## Implemented before this turn
 
