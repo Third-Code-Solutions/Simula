@@ -13,6 +13,7 @@ export function WorkspaceSidebar({
     | "project"
     | "methodology"
     | "evidence"
+    | "campaign-lab"
     | "run";
   organizationId?: string;
   projectId?: string;
@@ -22,6 +23,7 @@ export function WorkspaceSidebar({
     dashboard: "Dashboard",
     methodology: "Methodology lab",
     evidence: "Evidence lab",
+    "campaign-lab": "Campaign Simulation Lab",
     organizations: "Organizations",
     project: "Project",
     projects: "Projects",
@@ -80,6 +82,12 @@ export function WorkspaceSidebar({
                 href={`/projects/${projectId}/evidence`}
               >
                 Evidence lab
+              </Link>
+              <Link
+                aria-current={current === "campaign-lab" ? "page" : undefined}
+                href={`/projects/${projectId}/campaign-lab`}
+              >
+                Campaign Simulation Lab
               </Link>
             </div>
           ) : null}

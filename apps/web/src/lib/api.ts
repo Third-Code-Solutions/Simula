@@ -51,6 +51,48 @@ export type OrganizationDeletion =
 export type Project = Schemas["ProjectResponse"];
 export type ProjectDetail = Schemas["ProjectDetail"];
 export type ProjectPage = Schemas["ProjectPage"];
+export type CampaignLabCampaign = Readonly<{
+  campaign_id?: string;
+  id?: string;
+  organization_id: string;
+  project_id: string;
+  name: string;
+  objective: string;
+  purpose: string;
+  status: string;
+  current_stage: string;
+  compliance_status: string;
+  version: number;
+  created_at: string;
+  updated_at: string;
+}>;
+export type CampaignLabCampaignPage = Readonly<{
+  items: ReadonlyArray<CampaignLabCampaign>;
+  pagination: Readonly<{ limit: number; offset: number }>;
+}>;
+export type CampaignLabCommand = Readonly<{
+  campaign_id?: string;
+  run_id?: string;
+  artifact_id?: string;
+  status: string;
+  stage?: string;
+  progress?: number;
+  replayed?: boolean;
+  created_at?: string;
+}>;
+export type CampaignLabRunStatus = Readonly<{
+  id: string;
+  campaign_id: string;
+  run_type: string;
+  status: string;
+  stage: string;
+  progress: number;
+  attempt_count: number;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  last_error_code: string | null;
+}>;
 export type Stimulus = Schemas["StimulusResponse"];
 export type StimulusVersion = Schemas["StimulusVersionResponse"];
 export type AudienceDisclosure = Schemas["AudienceDisclosureResponse"];
@@ -436,6 +478,52 @@ export function createProject(
 
 export function getProject(projectId: string): Promise<ProjectDetail> {
   return request<ProjectDetail>(domainPath(`/projects/${projectId}`));
+}
+
+export function listCampaignLabCampaigns(
+  projectId: string,
+): Promise<CampaignLabCampaignPage> {
+  return request<CampaignLabCampaignPage>(
+    domainPath(
+      `/campaign-lab/campaigns?project_id=${encodeURIComponent(projectId)}`,
+    ),
+  );
+}
+
+export function createCampaignLabCampaign(input: {
+  project_id: string;
+  name: string;
+  objective: string;
+  purpose: string;
+  decision: Record<string, unknown>;
+}): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(domainPath("/campaign-lab/campaigns"), {
+    body: input,
+    headers: idempotencyHeaders(),
+    method: "POST",
+  });
+}
+
+export function createCampaignLabSimulation(
+  campaignId: string,
+  requestBody: Record<string, unknown>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/simulations`),
+    {
+      body: { request: requestBody },
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export function getCampaignLabSimulationStatus(
+  runId: string,
+): Promise<CampaignLabRunStatus> {
+  return request<CampaignLabRunStatus>(
+    domainPath(`/campaign-lab/simulations/${runId}/status`),
+  );
 }
 
 export function getDemoAudience(): Promise<AudienceDisclosure> {

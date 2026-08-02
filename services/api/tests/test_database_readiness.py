@@ -75,11 +75,11 @@ class _Pool:
 
 
 async def test_api_database_readiness_requires_the_exact_schema_head() -> None:
-    connection = _Connection("20260801150001")
+    connection = _Connection("20260802060315")
     database = DatabaseGateway.__new__(DatabaseGateway)
     database._pool = cast(Any, _Pool(connection))
     database._telemetry = None
-    database._migration_head = "20260801150001"
+    database._migration_head = "20260802060315"
 
     assert await database.ready() is True
 
