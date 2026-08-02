@@ -640,6 +640,7 @@ select extensions.is(
     'simula_command_owner|api.campaign_evidence_runs|UPDATE',
     'simula_command_owner|api.campaign_lab_artifacts|INSERT',
     'simula_command_owner|api.campaign_lab_artifacts|SELECT',
+    'simula_command_owner|api.campaign_lab_artifacts|UPDATE',
     'simula_command_owner|api.campaign_lab_campaigns|INSERT',
     'simula_command_owner|api.campaign_lab_campaigns|SELECT',
     'simula_command_owner|api.campaign_lab_campaigns|UPDATE',
