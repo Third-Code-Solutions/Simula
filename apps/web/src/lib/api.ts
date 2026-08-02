@@ -518,6 +518,20 @@ export function createCampaignLabSimulation(
   );
 }
 
+export function createCampaignLabCulturalEvaluation(
+  campaignId: string,
+  suite: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/cultural-evaluations`),
+    {
+      body: { suite },
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
 export function getCampaignLabSimulationStatus(
   runId: string,
 ): Promise<CampaignLabRunStatus> {

@@ -29,6 +29,10 @@ from simula_core.campaign_lab import (
     create_synthetic_interview,
     validate_campaign_policy,
 )
+from simula_core.cultural_evaluation import (
+    CulturalEvaluationSuite,
+    evaluate_cultural_suite,
+)
 from simula_core.json_codec import canonical_json_dumps
 
 from simula_api.auth import VerifiedIdentity
@@ -114,6 +118,10 @@ class InterviewCreate(_LabModel):
     prompt_version: str = Field(min_length=1, max_length=120)
 
 
+class CulturalEvaluationCreate(_LabModel):
+    suite: dict[str, Any]
+
+
 class SurveyImportCreate(_LabModel):
     format: Literal["csv", "formbricks", "odk", "generic_json"]
     metadata: dict[str, Any]
@@ -164,6 +172,7 @@ class ComplianceCreate(_LabModel):
 
 class ReportCreate(_LabModel):
     run_id: UUID
+    cultural_evaluation_artifact_id: UUID | None = None
     human_reviewer: str | None = Field(default=None, min_length=1, max_length=160)
     approval_status: Literal["draft", "needs_human_review", "approved_experimental"] = "draft"
 
@@ -656,6 +665,23 @@ async def get_simulation(
     return rows[0]
 
 
+async def _get_evidence_run(
+    run_id: UUID,
+    expected_run_type: Literal["survey_calibration", "historical_backtest"],
+    request: Request,
+    identity: VerifiedIdentity,
+) -> dict[str, Any]:
+    run = await get_simulation(run_id, request, identity)
+    if run.get("run_type") != expected_run_type:
+        raise AppProblem(
+            status=404,
+            code="not_found",
+            title="Campaign Lab evidence run not found",
+            detail="The requested evidence run is absent or has a different type.",
+        )
+    return run
+
+
 @router.get("/simulations/{run_id}/status", operation_id="get_campaign_lab_simulation_status")
 async def simulation_status(
     run_id: UUID,
@@ -826,6 +852,80 @@ async def create_interview(
     return result
 
 
+@router.get("/interviews/{artifact_id}", operation_id="get_campaign_lab_interview")
+async def get_interview(
+    artifact_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_interview",
+        query="""
+          select id, organization_id, campaign_id, kind, status, title, payload,
+                 provenance, checksum_sha256, retention_until, created_by, created_at, updated_at
+          from api.campaign_lab_artifacts
+          where id = %s and kind = 'interview'
+        """,
+        parameters=(artifact_id,),
+    )
+    if not rows:
+        raise AppProblem(
+            status=404,
+            code="not_found",
+            title="Campaign Lab interview not found",
+            detail="The interview is absent or not visible.",
+        )
+    return rows[0]
+
+
+@router.post(
+    "/campaigns/{campaign_id}/cultural-evaluations",
+    status_code=201,
+    operation_id="create_campaign_lab_cultural_evaluation",
+)
+async def create_cultural_evaluation(
+    campaign_id: UUID,
+    body: CulturalEvaluationCreate,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: IdempotencyKey,
+) -> dict[str, Any]:
+    try:
+        suite = CulturalEvaluationSuite.model_validate(body.suite)
+        evaluation = evaluate_cultural_suite(suite)
+    except ValueError as error:
+        raise _invalid(
+            "The cultural evaluation requires human-reviewed English, Filipino, and Taglish cases.",
+            field="suite",
+        ) from error
+    artifact = ArtifactCreate(
+        title=f"Language and cultural evaluation {suite.suite_id}",
+        payload={
+            "suite": suite.model_dump(mode="json"),
+            "result": evaluation.model_dump(mode="json"),
+        },
+        provenance={
+            "evidence_status": "Human-reviewed",
+            "suite_id": suite.suite_id,
+            "suite_checksum_sha256": suite.checksum_sha256,
+            "supported_languages": ["english", "filipino", "taglish"],
+        },
+    )
+    result = await _store_artifact(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        kind="cultural_evaluation",
+        body=artifact,
+        idempotency_key=idempotency_key,
+        correlation_id=_correlation_id(request),
+    )
+    _replay_header(response, result)
+    return {**result, "evaluation": evaluation.model_dump(mode="json")}
+
+
 @router.post(
     "/campaigns/{campaign_id}/surveys/import",
     status_code=202,
@@ -896,6 +996,15 @@ async def create_calibration(
     return result
 
 
+@router.get("/calibrations/{run_id}", operation_id="get_campaign_lab_calibration")
+async def get_calibration(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    return await _get_evidence_run(run_id, "survey_calibration", request, identity)
+
+
 @router.post(
     "/campaigns/{campaign_id}/backtests",
     status_code=202,
@@ -922,6 +1031,15 @@ async def create_backtest(
     )
     _replay_header(response, result)
     return result
+
+
+@router.get("/backtests/{run_id}", operation_id="get_campaign_lab_backtest")
+async def get_backtest(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    return await _get_evidence_run(run_id, "historical_backtest", request, identity)
 
 
 @router.post(
@@ -1014,12 +1132,40 @@ async def create_report(
             detail="A report can only be created from a succeeded durable run.",
         )
     source = rows[0]
+    cultural_evaluation: Mapping[str, Any] | None = None
+    if body.cultural_evaluation_artifact_id is not None:
+        cultural_rows = await _services(request).database.read_product_rows(
+            identity,
+            operation="campaign_lab_report_cultural_evaluation",
+            query="""
+              select payload
+              from api.campaign_lab_artifacts
+              where id = %s and campaign_id = %s and kind = 'cultural_evaluation'
+            """,
+            parameters=(body.cultural_evaluation_artifact_id, campaign_id),
+        )
+        if not cultural_rows or not isinstance(cultural_rows[0].get("payload"), Mapping):
+            raise AppProblem(
+                status=404,
+                code="not_found",
+                title="Cultural evaluation not found",
+                detail="The selected language evaluation is absent or not visible.",
+            )
+        payload = cast(Mapping[str, Any], cultural_rows[0]["payload"])
+        raw_result = payload.get("result", payload)
+        if not isinstance(raw_result, Mapping):
+            raise _invalid(
+                "The cultural evaluation artifact does not contain a valid result.",
+                field="cultural_evaluation_artifact_id",
+            )
+        cultural_evaluation = raw_result
     try:
         lab_request = CampaignLabSimulationRequest.model_validate(source["request"])
         lab_result = CampaignLabSimulationResult.model_validate(source["result"])
         report = build_campaign_lab_report(
             lab_request,
             lab_result,
+            cultural_evaluation=cultural_evaluation,
             human_reviewer=body.human_reviewer,
             approval_status=body.approval_status,
         )

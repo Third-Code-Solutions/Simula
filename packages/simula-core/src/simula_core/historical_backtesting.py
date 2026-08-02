@@ -13,7 +13,7 @@ from hashlib import sha256
 from math import fsum, isclose, sqrt
 from typing import Literal, Self
 
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 
 from simula_core.json_codec import canonical_json_dumps
 from simula_core.methodology import FrozenModel, Key, Label, Sha256, ShortText
@@ -62,6 +62,10 @@ class BlindBacktestPrediction(FrozenModel):
     campaign_key: Key
     variant_key: Key
     predicted_value: float = Field(ge=0.0, le=100.0)
+    cohort_key: Key = Field(
+        default="aggregate",
+        validation_alias=AliasChoices("cohort_key", "subgroup_key"),
+    )
 
 
 class BlindBacktestPredictionSet(FrozenModel):
@@ -74,9 +78,9 @@ class BlindBacktestPredictionSet(FrozenModel):
 
     @model_validator(mode="after")
     def unique_predictions(self) -> Self:
-        keys = [(item.campaign_key, item.variant_key) for item in self.predictions]
+        keys = [(item.campaign_key, item.cohort_key, item.variant_key) for item in self.predictions]
         if len(keys) != len(set(keys)):
-            raise ValueError("blind predictions must have unique campaign/variant keys")
+            raise ValueError("blind predictions must have unique campaign/cohort/variant keys")
         return self
 
 
@@ -85,6 +89,11 @@ class HistoricalOutcome(FrozenModel):
     variant_key: Key
     outcome_metric: Key
     observed_value: float = Field(ge=0.0, le=100.0)
+    cohort_key: Key = Field(
+        default="aggregate",
+        validation_alias=AliasChoices("cohort_key", "subgroup_key"),
+    )
+    cohort_weight: float = Field(default=1.0, gt=0.0, le=1.0)
 
 
 class HistoricalOutcomeDataset(FrozenModel):
@@ -93,9 +102,24 @@ class HistoricalOutcomeDataset(FrozenModel):
 
     @model_validator(mode="after")
     def unique_outcomes(self) -> Self:
-        keys = [(item.campaign_key, item.variant_key) for item in self.outcomes]
+        keys = [(item.campaign_key, item.cohort_key, item.variant_key) for item in self.outcomes]
         if len(keys) != len(set(keys)):
-            raise ValueError("historical outcomes must have unique campaign/variant keys")
+            raise ValueError("historical outcomes must have unique campaign/cohort/variant keys")
+        cohort_weights: dict[tuple[str, str], float] = {}
+        for item in self.outcomes:
+            key = (item.campaign_key, item.cohort_key)
+            previous = cohort_weights.get(key)
+            if previous is not None and not isclose(previous, item.cohort_weight, abs_tol=1e-9):
+                raise ValueError("historical cohort weights must be consistent")
+            cohort_weights[key] = item.cohort_weight
+        for campaign_key in {item.campaign_key for item in self.outcomes}:
+            total = fsum(
+                weight
+                for (item_campaign_key, _), weight in cohort_weights.items()
+                if item_campaign_key == campaign_key
+            )
+            if not isclose(total, 1.0, abs_tol=1e-9):
+                raise ValueError("historical cohort weights must sum to one per campaign")
         return self
 
 
@@ -111,8 +135,21 @@ class HistoricalCampaignResult(FrozenModel):
     rank_correlation: float | None = Field(default=None, ge=-1.0, le=1.0)
 
 
+class HistoricalSubgroupResult(FrozenModel):
+    campaign_key: Key
+    cohort_key: Key
+    variant_count: int = Field(ge=2)
+    mae: float = Field(ge=0.0, le=100.0)
+    rmse: float = Field(ge=0.0, le=100.0)
+    pairwise_rank_accuracy: float = Field(ge=0.0, le=1.0)
+    predicted_top_variant: Key
+    observed_top_variant: Key
+    top_variant_correct: float = Field(ge=0.0, le=1.0)
+    rank_correlation: float | None = Field(default=None, ge=-1.0, le=1.0)
+
+
 class HistoricalBacktestResult(FrozenModel):
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
     status: CalibrationStatus
     protocol_id: Key
     protocol_version: Label
@@ -124,6 +161,7 @@ class HistoricalBacktestResult(FrozenModel):
     campaign_count: int = Field(ge=0)
     prediction_count: int = Field(ge=0)
     campaigns: tuple[HistoricalCampaignResult, ...]
+    subgroups: tuple[HistoricalSubgroupResult, ...] = ()
     mae: float | None = Field(default=None, ge=0.0, le=100.0)
     rmse: float | None = Field(default=None, ge=0.0, le=100.0)
     pairwise_rank_accuracy: float | None = Field(default=None, ge=0.0, le=1.0)
@@ -141,6 +179,7 @@ class HistoricalBacktestResult(FrozenModel):
 class _CampaignValues:
     predicted: dict[str, float]
     observed: dict[str, float]
+    cohort_weight: float = 1.0
 
 
 def _rank_correlation(left: Mapping[str, float], right: Mapping[str, float]) -> float | None:
@@ -194,7 +233,7 @@ def _validate_prediction_set(
     protocol: HistoricalBacktestProtocol,
     prediction_set: BlindBacktestPredictionSet,
     expected_model_version: str | None,
-) -> dict[tuple[str, str], BlindBacktestPrediction]:
+) -> dict[tuple[str, str, str], BlindBacktestPrediction]:
     if prediction_set.protocol_id != protocol.protocol_id:
         raise ValueError("prediction protocol id mismatch")
     if prediction_set.protocol_version != protocol.protocol_version:
@@ -211,14 +250,17 @@ def _validate_prediction_set(
     campaign_keys = {item.campaign_key for item in prediction_set.predictions}
     if campaign_keys != set(protocol.holdout_campaign_ids):
         raise ValueError("predictions may only cover the declared holdout campaigns")
-    return {(item.campaign_key, item.variant_key): item for item in prediction_set.predictions}
+    return {
+        (item.campaign_key, item.cohort_key, item.variant_key): item
+        for item in prediction_set.predictions
+    }
 
 
 def _validate_outcomes(
     *,
     protocol: HistoricalBacktestProtocol,
     outcomes: HistoricalOutcomeDataset,
-) -> dict[tuple[str, str], HistoricalOutcome]:
+) -> dict[tuple[str, str, str], HistoricalOutcome]:
     if not outcomes.provenance.held_out:
         raise ValueError("historical outcome dataset must be held out")
     if not outcomes.provenance.authorized_for_evaluation:
@@ -230,35 +272,91 @@ def _validate_outcomes(
     campaign_keys = {item.campaign_key for item in outcomes.outcomes}
     if campaign_keys != set(protocol.holdout_campaign_ids):
         raise ValueError("outcomes must cover the declared holdout campaigns")
-    return {(item.campaign_key, item.variant_key): item for item in outcomes.outcomes}
+    return {
+        (item.campaign_key, item.cohort_key, item.variant_key): item for item in outcomes.outcomes
+    }
 
 
 def _campaign_results(
-    predictions: Mapping[tuple[str, str], BlindBacktestPrediction],
-    outcomes: Mapping[tuple[str, str], HistoricalOutcome],
+    predictions: Mapping[tuple[str, str, str], BlindBacktestPrediction],
+    outcomes: Mapping[tuple[str, str, str], HistoricalOutcome],
 ) -> tuple[HistoricalCampaignResult, ...]:
-    campaign_values: dict[str, _CampaignValues] = {}
-    for (campaign_key, variant_key), prediction in predictions.items():
-        outcome = outcomes.get((campaign_key, variant_key))
-        if outcome is None:
-            raise ValueError("prediction and outcome variant coverage mismatch")
-        campaign_values.setdefault(
-            campaign_key, _CampaignValues(predicted={}, observed={})
-        ).predicted[variant_key] = prediction.predicted_value
-        campaign_values[campaign_key].observed[variant_key] = outcome.observed_value
+    slices = _grouped_values(predictions, outcomes)
+    campaign_values: dict[str, dict[str, list[float]]] = {}
+    for (campaign_key, _), values in slices.items():
+        variants = campaign_values.setdefault(campaign_key, {})
+        for variant_key, predicted_value in values.predicted.items():
+            bucket = variants.setdefault(variant_key, [0.0, 0.0, 0.0])
+            bucket[0] += values.cohort_weight * predicted_value
+            bucket[1] += values.cohort_weight * values.observed[variant_key]
+            bucket[2] += values.cohort_weight
     if set(predictions) != set(outcomes):
         raise ValueError("prediction and outcome variant coverage mismatch")
 
     results: list[HistoricalCampaignResult] = []
     for campaign_key in sorted(campaign_values):
-        values = campaign_values[campaign_key]
-        if len(values.predicted) < 2:
+        variants = campaign_values[campaign_key]
+        if len(variants) < 2:
             raise ValueError("historical backtest requires at least two variants per campaign")
+        predicted = {variant_key: bucket[0] / bucket[2] for variant_key, bucket in variants.items()}
+        observed = {variant_key: bucket[1] / bucket[2] for variant_key, bucket in variants.items()}
+        values = _CampaignValues(predicted=predicted, observed=observed)
         errors = [values.predicted[key] - values.observed[key] for key in values.predicted]
         rank_correlation = _rank_correlation(values.predicted, values.observed)
         results.append(
             HistoricalCampaignResult(
                 campaign_key=campaign_key,
+                variant_count=len(values.predicted),
+                mae=fsum(abs(error) for error in errors) / len(errors),
+                rmse=sqrt(fsum(error * error for error in errors) / len(errors)),
+                pairwise_rank_accuracy=_pairwise_rank_accuracy(values.predicted, values.observed),
+                predicted_top_variant=_top_variant(values.predicted),
+                observed_top_variant=_top_variant(values.observed),
+                top_variant_correct=float(
+                    _top_variant(values.predicted) == _top_variant(values.observed)
+                ),
+                rank_correlation=rank_correlation,
+            )
+        )
+    return tuple(results)
+
+
+def _grouped_values(
+    predictions: Mapping[tuple[str, str, str], BlindBacktestPrediction],
+    outcomes: Mapping[tuple[str, str, str], HistoricalOutcome],
+) -> dict[tuple[str, str], _CampaignValues]:
+    grouped: dict[tuple[str, str], _CampaignValues] = {}
+    for (campaign_key, cohort_key, variant_key), prediction in predictions.items():
+        outcome = outcomes.get((campaign_key, cohort_key, variant_key))
+        if outcome is None:
+            raise ValueError("prediction and outcome variant coverage mismatch")
+        group_key = (campaign_key, cohort_key)
+        values = grouped.setdefault(
+            group_key,
+            _CampaignValues(predicted={}, observed={}, cohort_weight=outcome.cohort_weight),
+        )
+        if not isclose(values.cohort_weight, outcome.cohort_weight, abs_tol=1e-9):
+            raise ValueError("historical cohort weights must be consistent")
+        values.predicted[variant_key] = prediction.predicted_value
+        values.observed[variant_key] = outcome.observed_value
+    return grouped
+
+
+def _subgroup_results(
+    predictions: Mapping[tuple[str, str, str], BlindBacktestPrediction],
+    outcomes: Mapping[tuple[str, str, str], HistoricalOutcome],
+) -> tuple[HistoricalSubgroupResult, ...]:
+    grouped = _grouped_values(predictions, outcomes)
+    results: list[HistoricalSubgroupResult] = []
+    for (campaign_key, cohort_key), values in sorted(grouped.items()):
+        if len(values.predicted) < 2:
+            raise ValueError("historical backtest requires at least two variants per cohort")
+        errors = [values.predicted[key] - values.observed[key] for key in values.predicted]
+        rank_correlation = _rank_correlation(values.predicted, values.observed)
+        results.append(
+            HistoricalSubgroupResult(
+                campaign_key=campaign_key,
+                cohort_key=cohort_key,
                 variant_count=len(values.predicted),
                 mae=fsum(abs(error) for error in errors) / len(errors),
                 rmse=sqrt(fsum(error * error for error in errors) / len(errors)),
@@ -290,6 +388,7 @@ def evaluate_historical_backtest(
     )
     outcome_values = _validate_outcomes(protocol=protocol, outcomes=outcomes)
     campaign_results = _campaign_results(predictions, outcome_values)
+    subgroup_results = _subgroup_results(predictions, outcome_values)
     prediction_errors = [
         predictions[key].predicted_value - outcome_values[key].observed_value for key in predictions
     ]
@@ -338,6 +437,7 @@ def evaluate_historical_backtest(
         campaign_count=len(campaign_results),
         prediction_count=len(predictions),
         campaigns=campaign_results,
+        subgroups=subgroup_results,
         mae=mae,
         rmse=rmse,
         pairwise_rank_accuracy=pairwise_rank_accuracy,

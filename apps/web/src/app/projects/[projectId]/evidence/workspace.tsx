@@ -76,6 +76,95 @@ function parseArray(value: string, field: string): Record<string, unknown>[] {
   );
 }
 
+function formatEvidenceValue(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  if (typeof value === "number") return value.toFixed(3);
+  if (typeof value === "string" || typeof value === "boolean") {
+    return String(value);
+  }
+  return "See detailed report";
+}
+
+function EvidenceResultSummary({
+  run,
+}: Readonly<{ run: CampaignEvidenceRun }>) {
+  const result = run.result;
+  if (!result) return null;
+  const metrics: readonly (readonly [string, string])[] =
+    run.kind === "survey_calibration"
+      ? [
+          ["status", "Evidence status"],
+          ["matched_variant_count", "Matched variants"],
+          ["tvd", "Total variation distance"],
+          ["brier_like_score", "Categorical Brier-like distance"],
+          ["mae", "Mean absolute error"],
+          ["rmse", "Root mean squared error"],
+          ["positive_share_mae", "Positive-share MAE"],
+          ["rank_correlation", "Variant rank correlation"],
+          ["pairwise_rank_agreement", "Pairwise rank agreement"],
+        ]
+      : [
+          ["status", "Evidence status"],
+          ["campaign_count", "Held-out campaigns"],
+          ["prediction_count", "Prediction observations"],
+          ["mae", "Mean absolute error"],
+          ["rmse", "Root mean squared error"],
+          ["pairwise_rank_accuracy", "Pairwise rank accuracy"],
+          ["top_variant_accuracy", "Top-variant agreement"],
+          ["rank_correlation", "Rank correlation"],
+          ["baseline_mae", "Baseline MAE"],
+          ["mae_improvement_vs_baseline", "MAE delta vs baseline"],
+        ];
+  const subgroups = Array.isArray(result.subgroups)
+    ? result.subgroups.filter(
+        (item): item is Record<string, unknown> =>
+          !!item && typeof item === "object" && !Array.isArray(item),
+      )
+    : [];
+
+  return (
+    <section
+      aria-labelledby="evidence-result-summary-heading"
+      className="evidence-result-summary"
+    >
+      <p className="eyebrow">Observed evidence metrics</p>
+      <h3 id="evidence-result-summary-heading">Component results</h3>
+      <p className="field-note">
+        These are scoped comparison and stability measures. SIMULA does not
+        collapse them into a viral score, vote-share estimate, or individual
+        persuasion claim.
+      </p>
+      <dl className="evidence-metrics">
+        {metrics.map(([key, label]) => (
+          <div key={key}>
+            <dt>{label}</dt>
+            <dd>{formatEvidenceValue(result[key])}</dd>
+          </div>
+        ))}
+      </dl>
+      {subgroups.length > 0 ? (
+        <>
+          <h4>Aggregate cohort / subgroup slices</h4>
+          <ul className="evidence-events">
+            {subgroups.map((item, index) => (
+              <li
+                key={`${String(item.campaign_key)}-${String(item.cohort_key)}-${index}`}
+              >
+                <strong>
+                  {String(item.campaign_key)} · {String(item.cohort_key)}
+                </strong>{" "}
+                · MAE {formatEvidenceValue(item.mae)} · RMSE{" "}
+                {formatEvidenceValue(item.rmse)} · pairwise rank{" "}
+                {formatEvidenceValue(item.pairwise_rank_accuracy)}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
 export function CampaignEvidenceWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
@@ -402,9 +491,12 @@ export function CampaignEvidenceWorkspace({
               </div>
             </dl>
             {run.result ? (
-              <pre className="evidence-report">
-                {JSON.stringify(run.result, null, 2)}
-              </pre>
+              <>
+                <EvidenceResultSummary run={run} />
+                <pre className="evidence-report">
+                  {JSON.stringify(run.result, null, 2)}
+                </pre>
+              </>
             ) : null}
             {run.last_error_detail ? (
               <p className="problem">{run.last_error_detail}</p>

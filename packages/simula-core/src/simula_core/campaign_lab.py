@@ -451,6 +451,7 @@ class CampaignLabReport(FrozenModel):
     clarity: Mapping[str, Any]
     share_and_ignore_propensity: Mapping[str, Any]
     cultural_risks: tuple[str, ...]
+    language_cultural_evaluation: Mapping[str, Any]
     backlash_risks: tuple[str, ...]
     common_objections: tuple[str, ...]
     confusion_points: tuple[str, ...]
@@ -685,6 +686,7 @@ def build_campaign_lab_report(
     *,
     survey_calibration: Mapping[str, Any] | None = None,
     historical_backtest: Mapping[str, Any] | None = None,
+    cultural_evaluation: Mapping[str, Any] | None = None,
     human_reviewer: str | None = None,
     approval_status: Literal["draft", "needs_human_review", "approved_experimental"] = "draft",
 ) -> CampaignLabReport:
@@ -721,6 +723,13 @@ def build_campaign_lab_report(
         "evidence_status": "Synthetic-only",
         "limitations": ["No blind held-out historical outcome dataset has been attached."],
     }
+    cultural = cultural_evaluation or {
+        "status": "not_run",
+        "supported_languages": ["english", "filipino", "taglish"],
+        "limitations": [
+            "Attach a human-reviewed language suite before making cultural-fit claims."
+        ],
+    }
     return CampaignLabReport(
         executive_summary=(
             "This report compares aggregate, population-weighted synthetic runs across "
@@ -753,6 +762,7 @@ def build_campaign_lab_report(
         cultural_risks=(
             "Cultural interpretation requires Filipino human review and held-out validation.",
         ),
+        language_cultural_evaluation=cultural,
         backlash_risks=("Synthetic reactions cannot establish real-world backlash probability.",),
         common_objections=("Collect and code observed objections before external decisions.",),
         confusion_points=("Review low-clarity cohorts with human participants.",),

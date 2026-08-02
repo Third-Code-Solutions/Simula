@@ -147,3 +147,67 @@ def test_historical_backtest_downgrades_status_below_declared_campaign_minimum()
 
     assert result.status == "Insufficient evidence"
     assert result.campaign_count == 2
+
+
+def test_historical_backtest_reports_weighted_cohort_slices_and_campaign_aggregates() -> None:
+    predictions = BlindBacktestPredictionSet(
+        protocol_id="message_outcome_protocol",
+        protocol_version="v1",
+        model_version="repeated_methodology_v1",
+        methodology_version="phase3_method_v1",
+        predictions=tuple(
+            BlindBacktestPrediction(
+                campaign_key=campaign_key,
+                cohort_key=cohort_key,
+                variant_key=variant_key,
+                predicted_value=predicted_value,
+            )
+            for campaign_key in ("holdout_campaign_a", "holdout_campaign_b")
+            for cohort_key, values in (
+                ("rural", (("variant_a", 60.0), ("variant_b", 40.0))),
+                ("urban", (("variant_a", 80.0), ("variant_b", 20.0))),
+            )
+            for variant_key, predicted_value in values
+        ),
+    )
+    outcomes = _outcomes_with_cohorts()
+
+    result = evaluate_historical_backtest(
+        protocol=_protocol(),
+        prediction_set=predictions,
+        outcomes=outcomes,
+    )
+
+    assert result.schema_version == 2
+    assert len(result.subgroups) == 4
+    assert {(item.campaign_key, item.cohort_key) for item in result.subgroups} == {
+        (campaign_key, cohort_key)
+        for campaign_key in ("holdout_campaign_a", "holdout_campaign_b")
+        for cohort_key in ("rural", "urban")
+    }
+    assert result.subgroups[0].variant_count == 2
+    assert result.campaigns[0].mae == pytest.approx(3.2)
+    assert result.campaigns[0].predicted_top_variant == "variant_a"
+
+
+def _outcomes_with_cohorts() -> HistoricalOutcomeDataset:
+    base = _outcomes().provenance
+    return HistoricalOutcomeDataset(
+        provenance=base,
+        outcomes=tuple(
+            HistoricalOutcome(
+                campaign_key=campaign_key,
+                cohort_key=cohort_key,
+                cohort_weight=cohort_weight,
+                variant_key=variant_key,
+                outcome_metric="observed_positive_share_percent",
+                observed_value=observed_value,
+            )
+            for campaign_key in ("holdout_campaign_a", "holdout_campaign_b")
+            for cohort_key, cohort_weight, values in (
+                ("rural", 0.4, (("variant_a", 55.0), ("variant_b", 45.0))),
+                ("urban", 0.6, (("variant_a", 78.0), ("variant_b", 22.0))),
+            )
+            for variant_key, observed_value in values
+        ),
+    )
