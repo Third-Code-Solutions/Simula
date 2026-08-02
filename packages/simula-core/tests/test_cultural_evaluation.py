@@ -6,7 +6,14 @@ from simula_core.cultural_evaluation import (
     CulturalDimensionRating,
     CulturalEvaluationSuite,
     HumanReviewedLanguageExample,
+    LanguageVariant,
     evaluate_cultural_suite,
+)
+
+_LANGUAGE_CASES: tuple[tuple[LanguageVariant, int], ...] = (
+    ("english", 5),
+    ("filipino", 4),
+    ("taglish", 3),
 )
 
 
@@ -30,7 +37,7 @@ def _suite() -> CulturalEvaluationSuite:
                 for dimension in REQUIRED_DIMENSIONS
             ),
         )
-        for language, rating in (("english", 5), ("filipino", 4), ("taglish", 3))
+        for language, rating in _LANGUAGE_CASES
     )
     return CulturalEvaluationSuite(
         suite_id="philippine_language_suite",
