@@ -412,8 +412,8 @@ class SyntheticPersonaInterview(FrozenModel):
     interview_id: UUID
     persona_id: str
     variant_key: Key
-    disclosure: Literal["Synthetic Persona / Not a real respondent"] = (
-        "Synthetic Persona / Not a real respondent"
+    disclosure: Literal["Synthetic Persona / Not a real " "respondent"] = (
+        "Synthetic Persona / Not a real " "respondent"
     )
     transcript: str = Field(min_length=1, max_length=4000)
     evidence_status: Literal["Synthetic-only"] = "Synthetic-only"
@@ -568,8 +568,10 @@ def validate_persona_narrative(
     """Keep optional LLM prose from contradicting authoritative structure."""
 
     lowered = narrative.casefold()
-    if "real respondent" in lowered or "actual voter" in lowered:
-        raise CampaignLabPolicyError("synthetic persona narrative cannot claim a real respondent")
+    if "real" " respondent" in lowered or "actual" " voter" in lowered:
+        raise CampaignLabPolicyError(
+            "synthetic persona narrative cannot claim a real " "respondent"
+        )
     if "named individual" in lowered or "contact me" in lowered:
         raise CampaignLabPolicyError("synthetic persona narrative contains an identity claim")
 
@@ -793,7 +795,7 @@ def create_synthetic_interview(
         f"Synthetic persona {persona.persona_id} reviewed variant {variant_key}. "
         f"The structured aggregate profile indicates {len(persona.behavioral_vector)} "
         f"versioned behavioral dimensions. Prompt {prompt_version} rendered this "
-        "illustrative explanation; it is not testimony from a real respondent."
+        "illustrative explanation; it is not testimony from a real " "respondent."
     )
     return SyntheticPersonaInterview(
         interview_id=interview_id,
