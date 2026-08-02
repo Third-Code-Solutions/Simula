@@ -1493,7 +1493,8 @@ select {
   text-transform: uppercase;
 }
 
-.sidebar-nav a {
+.sidebar-nav a,
+.sidebar-nav-link-disabled {
   display: flex;
   align-items: center;
   gap: 0.625rem;
@@ -1504,11 +1505,27 @@ select {
   text-decoration: none;
 }
 
-.sidebar-nav a::before {
+.sidebar-nav a::before,
+.sidebar-nav-link-disabled::before {
   width: 0.25rem;
   height: 1rem;
   background: var(--teal);
   content: "";
+}
+
+.sidebar-nav-link-disabled {
+  color: var(--pebble);
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+
+.sidebar-nav-link-disabled small {
+  margin-left: auto;
+  color: var(--pebble);
+  font-family: var(--font-ibm-plex-mono);
+  font-size: 0.55rem;
+  letter-spacing: 0.02em;
+  text-align: right;
 }
 
 .sidebar-nav a:hover,
@@ -2845,7 +2862,8 @@ code {
     display: none;
   }
 
-  .sidebar-nav a {
+  .sidebar-nav a,
+  .sidebar-nav-link-disabled {
     white-space: nowrap;
   }
 

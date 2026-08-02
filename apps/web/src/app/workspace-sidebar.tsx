@@ -1,5 +1,40 @@
 import Link from "next/link";
 
+function SidebarItem({
+  active = false,
+  disabledReason,
+  href,
+  label,
+}: Readonly<{
+  active?: boolean;
+  disabledReason?: string;
+  href?: string;
+  label: string;
+}>) {
+  if (!href) {
+    return (
+      <span
+        aria-disabled="true"
+        className="sidebar-nav-link sidebar-nav-link-disabled"
+        title={disabledReason}
+      >
+        {label}
+        <small>{disabledReason}</small>
+      </span>
+    );
+  }
+
+  return (
+    <Link
+      aria-current={active ? "page" : undefined}
+      className="sidebar-nav-link"
+      href={href}
+    >
+      {label}
+    </Link>
+  );
+}
+
 export function WorkspaceSidebar({
   current,
   organizationId,
@@ -37,71 +72,79 @@ export function WorkspaceSidebar({
         <nav className="sidebar-nav">
           <div className="sidebar-nav-section">
             <span>Workspace</span>
-            <Link
-              aria-current={current === "organizations" ? "page" : undefined}
+            <SidebarItem
+              active={current === "organizations"}
               href="/organizations"
-            >
-              Organizations
-            </Link>
-            <Link href="/organizations#guided-rehearsal">Guided setup</Link>
+              label="Organizations"
+            />
+            <SidebarItem
+              href="/organizations#guided-rehearsal"
+              label="Guided setup"
+            />
           </div>
-          {organizationId ? (
-            <div className="sidebar-nav-section">
-              <span>Organization</span>
-              <Link
-                aria-current={current === "dashboard" ? "page" : undefined}
-                href={`/organizations/${organizationId}/dashboard`}
-              >
-                Dashboard
-              </Link>
-              <Link
-                aria-current={current === "projects" ? "page" : undefined}
-                href={`/organizations/${organizationId}/projects`}
-              >
-                Projects
-              </Link>
-            </div>
-          ) : null}
-          {projectId ? (
-            <div className="sidebar-nav-section">
-              <span>Project</span>
-              <Link
-                aria-current={current === "project" ? "page" : undefined}
-                href={`/projects/${projectId}`}
-              >
-                Project workspace
-              </Link>
-              <Link
-                aria-current={current === "methodology" ? "page" : undefined}
-                href={`/projects/${projectId}/methodology`}
-              >
-                Methodology lab
-              </Link>
-              <Link
-                aria-current={current === "evidence" ? "page" : undefined}
-                href={`/projects/${projectId}/evidence`}
-              >
-                Evidence lab
-              </Link>
-              <Link
-                aria-current={current === "campaign-lab" ? "page" : undefined}
-                href={`/projects/${projectId}/campaign-lab`}
-              >
-                Campaign Simulation Lab
-              </Link>
-            </div>
-          ) : null}
-          {runId ? (
-            <div className="sidebar-nav-section">
-              <span>Rehearsal</span>
-              <Link
-                aria-current={current === "run" ? "page" : undefined}
-                href={`/runs/${runId}`}
-              >
-                Run result
-              </Link>
-            </div>
-          ) : null}
+          <div className="sidebar-nav-section">
+            <span>Organization</span>
+            <SidebarItem
+              active={current === "dashboard"}
+              disabledReason="Select an organization"
+              href={
+                organizationId
+                  ? `/organizations/${organizationId}/dashboard`
+                  : undefined
+              }
+              label="Dashboard"
+            />
+            <SidebarItem
+              active={current === "projects"}
+              disabledReason="Select an organization"
+              href={
+                organizationId
+                  ? `/organizations/${organizationId}/projects`
+                  : undefined
+              }
+              label="Projects"
+            />
+          </div>
+          <div className="sidebar-nav-section">
+            <span>Project</span>
+            <SidebarItem
+              active={current === "project"}
+              disabledReason="Select a project"
+              href={projectId ? `/projects/${projectId}` : undefined}
+              label="Project workspace"
+            />
+            <SidebarItem
+              active={current === "methodology"}
+              disabledReason="Select a project"
+              href={
+                projectId ? `/projects/${projectId}/methodology` : undefined
+              }
+              label="Methodology lab"
+            />
+            <SidebarItem
+              active={current === "evidence"}
+              disabledReason="Select a project"
+              href={projectId ? `/projects/${projectId}/evidence` : undefined}
+              label="Evidence lab"
+            />
+            <SidebarItem
+              active={current === "campaign-lab"}
+              disabledReason="Select a project"
+              href={
+                projectId ? `/projects/${projectId}/campaign-lab` : undefined
+              }
+              label="Campaign Simulation Lab"
+            />
+          </div>
+          <div className="sidebar-nav-section">
+            <span>Rehearsal</span>
+            <SidebarItem
+              active={current === "run"}
+              disabledReason="Open a run"
+              href={runId ? `/runs/${runId}` : undefined}
+              label="Run result"
+            />
+          </div>
         </nav>
       </div>
       <p className="sidebar-boundary">
