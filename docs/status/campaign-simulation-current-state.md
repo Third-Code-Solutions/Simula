@@ -35,7 +35,8 @@ classification: OBSERVED
   `ywiwmczccktwzqyhzhiz`.
 - The visual-profile command now has the required asset foreign-key privilege
   through `20260801150000_m6_visual_profile_fk_privilege`; runtime admission is
-  bound to `20260802060315_campaign_simulation_lab`.
+  bound to `20260802063625_campaign_lab_api_wrappers` after the Campaign Lab API
+  security-wrapper correction.
 - Authenticated NestJS v2 survey-calibration and historical-backtest commands,
   idempotency, status/events/cancel reads, OpenAPI, and a native Evidence Lab UI
   were added. The worker now claims and evaluates these durable jobs with the
@@ -55,9 +56,10 @@ classification: OBSERVED
   research/cohort/variant/interview artifacts, durable simulations, status,
   progress events, cancellation, cloning, survey intake, calibration, historical
   backtest intake, compliance review, audit, and reports.
-- Supabase migration `20260802060315_campaign_simulation_lab` is applied to
-  project `ywiwmczccktwzqyhzhiz`. Campaign Lab campaign, artifact, run, event,
-  and worker-secret relations have forced RLS; command and worker functions are
+- Supabase migrations `20260802060315_campaign_simulation_lab` and
+  `20260802063625_campaign_lab_api_wrappers` are applied to project
+  `ywiwmczccktwzqyhzhiz`. Campaign Lab campaign, artifact, run, event, and
+  worker-secret relations have forced RLS; command and worker functions are
   least-privilege and lease-bound.
 - The worker now claims Campaign Lab runs from PostgreSQL, persists progress,
   retries bounded failures, finalizes cancellation, and keeps raw survey rows

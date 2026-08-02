@@ -92,6 +92,9 @@ changing the above architecture decision:
   bounded tenant schema and forced-RLS capabilities. The migration is applied to
   project `ywiwmczccktwzqyhzhiz` and recorded by the provider as
   `20260802060315`.
+- `supabase/migrations/20260802063625_campaign_lab_api_wrappers.sql` moves the
+  command implementations behind private security-definer functions and restores
+  invoker-only `api.*` wrappers; hosted readiness now binds to `20260802063625`.
 
 The remaining gaps are evidence and release gates, not permission to treat
 synthetic output as measured public opinion: no real Philippine survey or
