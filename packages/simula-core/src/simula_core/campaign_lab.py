@@ -12,6 +12,7 @@ import re
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from hashlib import sha256
+from math import fsum
 from typing import Any, Literal, Self, cast
 from uuid import UUID, uuid5
 
@@ -308,7 +309,7 @@ class StructuredSyntheticPersona(FrozenModel):
     demographic_attributes: Mapping[str, PersonaAttribute]
     language_profile: Mapping[str, PersonaAttribute]
     media_profile: Mapping[str, PersonaAttribute]
-    behavioral_vector: Mapping[str, float]
+    behavioral_vector: Mapping[str, PersonaAttribute]
     issue_priorities: tuple[PersonaAttribute, ...] = Field(min_length=1, max_length=20)
     brand_or_candidate_familiarity: PersonaAttribute
     source_provenance: tuple[CampaignLabResearchSource, ...]
@@ -320,11 +321,21 @@ class StructuredSyntheticPersona(FrozenModel):
     def valid_vector(self) -> Self:
         if not self.behavioral_vector:
             raise ValueError("structured persona requires a behavioral vector")
-        if any(value < 0.0 or value > 1.0 for value in self.behavioral_vector.values()):
-            raise ValueError("behavioral vector values must be between 0 and 1")
+        for key, attribute in self.behavioral_vector.items():
+            try:
+                value = float(attribute.value)
+            except ValueError as error:
+                raise ValueError(f"behavioral vector value is not numeric: {key}") from error
+            if value < 0.0 or value > 1.0:
+                raise ValueError("behavioral vector values must be between 0 and 1")
         labels = [
             attribute.label
-            for group in (self.demographic_attributes, self.language_profile, self.media_profile)
+            for group in (
+                self.demographic_attributes,
+                self.language_profile,
+                self.media_profile,
+                self.behavioral_vector,
+            )
             for attribute in group.values()
         ]
         if any(
@@ -400,6 +411,7 @@ class CampaignLabSimulationRequest(FrozenModel):
     variants: tuple[CampaignLabVariant, ...] = Field(min_length=2, max_length=20)
     configuration: CampaignLabSimulationConfiguration
     research_sources: tuple[CampaignLabResearchSource, ...] = Field(max_length=20)
+    research_knowledge: tuple[Mapping[str, Any], ...] = Field(default=(), max_length=20)
     ranking_metric: RepeatMetricKey = "clarity"
 
     @model_validator(mode="after")
@@ -407,6 +419,19 @@ class CampaignLabSimulationRequest(FrozenModel):
         keys = [variant.key for variant in self.variants]
         if len(keys) != len(set(keys)):
             raise ValueError("campaign variants must have unique keys")
+        source_ids = {source.source_id for source in self.research_sources}
+        for raw_graph in self.research_knowledge:
+            if not isinstance(raw_graph, Mapping):
+                raise ValueError("research knowledge entries must be objects")
+            if any(
+                key in raw_graph for key in ("raw", "chunks", "respondents", "responses")
+            ):
+                raise ValueError(
+                    "research knowledge must not contain raw document or respondent rows"
+                )
+            graph_source_id = raw_graph.get("source_id")
+            if graph_source_id not in source_ids:
+                raise ValueError("research knowledge source must be declared in research_sources")
         validate_campaign_policy(self.model_dump(mode="json"))
         return self
 
@@ -445,8 +470,15 @@ class CampaignLabBehavioralAgentEvidence(FrozenModel):
     repetition_index: int = Field(ge=0, le=29)
     exposure_history: tuple[str, ...] = Field(min_length=1, max_length=50)
     action_history: tuple[str, ...] = Field(min_length=1, max_length=50)
+    action_timestamps_ms: tuple[int, ...] = Field(min_length=1, max_length=50)
     memory_entries: tuple[Mapping[str, Any], ...] = Field(max_length=32)
     evidence_event_ids: tuple[UUID, ...] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def timestamp_coverage(self) -> Self:
+        if len(self.action_timestamps_ms) != len(self.action_history):
+            raise ValueError("behavioral action timestamps must cover every action")
+        return self
 
 
 class CampaignLabBehavioralVariantDiagnostic(FrozenModel):
@@ -460,6 +492,10 @@ class CampaignLabBehavioralVariantDiagnostic(FrozenModel):
     mean_attention: float = Field(ge=0.0, le=100.0)
     mean_resonance: float = Field(ge=0.0, le=100.0)
     mean_trust: float = Field(ge=0.0, le=100.0)
+    provider_calls: int = Field(ge=0)
+    input_tokens: int = Field(ge=0)
+    output_tokens: int = Field(ge=0)
+    cost_microusd: int = Field(ge=0)
     interviewable_agents: tuple[CampaignLabBehavioralAgentEvidence, ...] = Field(
         min_length=1, max_length=24
     )
@@ -511,6 +547,8 @@ class SyntheticPersonaInterview(FrozenModel):
     action_history: tuple[str, ...] = Field(default=(), max_length=50)
     memory_evidence: tuple[Mapping[str, Any], ...] = Field(default=(), max_length=32)
     evidence_event_ids: tuple[UUID, ...] = Field(default=(), max_length=100)
+    research_source_ids: tuple[Key, ...] = Field(default=(), max_length=20)
+    research_citation_ids: tuple[Key, ...] = Field(default=(), max_length=100)
     limitations: tuple[str, ...] = Field(min_length=1, max_length=10)
 
 
@@ -611,10 +649,15 @@ def build_structured_persona(
     persona_id = f"PH-{safe_region}-{sample_index:06d}"
     seed_material = f"{cohort.cohort_id}:{sampled_cell_key}:{seed}:{sample_index}"
     vector = {
-        dimension: int.from_bytes(
-            sha256(f"{seed_material}:{dimension}".encode()).digest()[:8], "big"
+        dimension: PersonaAttribute(
+            value=str(
+                int.from_bytes(
+                    sha256(f"{seed_material}:{dimension}".encode()).digest()[:8], "big"
+                )
+                / ((2**64) - 1)
+            ),
+            label="Synthetic",
         )
-        / ((2**64) - 1)
         for dimension in BEHAVIORAL_DIMENSIONS
     }
     demographic = {
@@ -773,6 +816,132 @@ def _cohort_findings(
     return tuple(findings)
 
 
+def _synthetic_category_summary(
+    runs: Sequence[Any],
+    *,
+    field: str,
+    interpretation: str,
+) -> Mapping[str, Any]:
+    """Expose repeated category values without pretending they are real rates."""
+
+    if not runs:
+        return {
+            "categories": {},
+            "evidence_status": "Synthetic-only",
+            "interpretation": interpretation,
+        }
+    first = getattr(runs[0].report, field)
+    categories: dict[str, Any] = {}
+    for index, category in enumerate(first.categories):
+        values = [float(getattr(run.report, field).categories[index].value) for run in runs]
+        categories[category.key] = {
+            "mean": fsum(values) / len(values),
+            "run_min": min(values),
+            "run_max": max(values),
+        }
+    return {
+        "categories": categories,
+        "evidence_status": "Synthetic-only",
+        "interpretation": interpretation,
+        "repetition_count": len(runs),
+    }
+
+
+def _synthetic_risk_summary(runs: Sequence[Any]) -> Mapping[str, Any]:
+    """Expose risk indicators as named diagnostics, never as probabilities."""
+
+    if not runs:
+        return {"indicators": {}, "evidence_status": "Synthetic-only"}
+    first = runs[0].report.risks
+    indicators: dict[str, Any] = {}
+    for index, risk in enumerate(first):
+        values = [float(run.report.risks[index].value) for run in runs]
+        indicators[risk.key] = {
+            "mean": fsum(values) / len(values),
+            "run_min": min(values),
+            "run_max": max(values),
+            "scale": "0-100 heuristic component",
+        }
+    return {
+        "indicators": indicators,
+        "evidence_status": "Synthetic-only",
+        "interpretation": (
+            "Named deterministic risk indicators describe synthetic diagnostics; they are not "
+            "backlash probabilities or population rates."
+        ),
+        "repetition_count": len(runs),
+    }
+
+
+def _synthetic_variant_component_evidence(
+    result: CampaignLabSimulationResult,
+) -> Mapping[str, Mapping[str, Any]]:
+    behavioral_by_variant = {
+        item.variant_key: item
+        for item in (
+            result.behavioral_diagnostics.variants if result.behavioral_diagnostics else ()
+        )
+    }
+    rows: dict[str, Mapping[str, Any]] = {}
+    for variant in result.variants:
+        repeated = variant.repeated_result
+        runs = repeated.runs
+        metrics = {
+            summary.key: {
+                **summary.model_dump(mode="json"),
+                "evidence_status": "Synthetic-only",
+            }
+            for summary in repeated.metric_summaries
+        }
+        behavioral = behavioral_by_variant.get(variant.variant_key)
+        share_and_ignore: dict[str, Any] = {
+            "positive_reaction_share": repeated.positive_share.model_dump(mode="json"),
+            "evidence_status": "Synthetic-only",
+            "limitations": (
+                "Positive reaction share is not reach, engagement, vote share, or a sharing "
+                "probability.",
+            ),
+        }
+        if behavioral is not None:
+            share_and_ignore["action_shares"] = dict(behavioral.action_shares)
+            share_and_ignore["behavioral_diagnostic"] = {
+                "provider_calls": behavioral.provider_calls,
+                "input_tokens": behavioral.input_tokens,
+                "output_tokens": behavioral.output_tokens,
+                "cost_microusd": behavioral.cost_microusd,
+            }
+        rows[variant.variant_key] = {
+            "evidence_status": "Synthetic-only",
+            "sentiment_distribution": _synthetic_category_summary(
+                runs,
+                field="distribution",
+                interpretation=(
+                    "Synthetic reaction categories averaged across repeated runs; they are not "
+                    "observed sentiment shares."
+                ),
+            ),
+            "emotional_response": _synthetic_category_summary(
+                runs,
+                field="emotions",
+                interpretation=(
+                    "Synthetic emotion categories averaged across repeated runs; they are not "
+                    "human emotional measurements."
+                ),
+            ),
+            "metrics": metrics,
+            "credibility": metrics.get("trust", {}),
+            "clarity": metrics.get("clarity", {}),
+            "share_and_ignore_propensity": share_and_ignore,
+            "risk_indicators": _synthetic_risk_summary(runs),
+            "stability": {
+                "label": repeated.stability_label,
+                "max_interval_half_width": repeated.max_interval_half_width,
+                "repetition_count": repeated.repetition_count,
+            },
+        }
+    return rows
+
+
 def _behavioral_key(value: str, *, prefix: str) -> str:
     normalized = re.sub(r"[^a-z0-9_]", "_", value.casefold()).strip("_")
     candidate = f"{prefix}_{normalized}" if normalized else prefix
@@ -843,6 +1012,63 @@ def _behavioral_context_graph(
                     transformation=source.transformation,
                     validation_status=(
                         "benchmarked" if source.validation_status == "validated" else "experimental"
+                    ),
+                ),
+            )
+        )
+    source_by_id = {source.source_id: source for source in sources}
+    for raw_graph in request.research_knowledge:
+        graph_source_id = raw_graph.get("source_id")
+        if not isinstance(graph_source_id, str):
+            raise ValueError("research knowledge source id is missing")
+        knowledge_source = source_by_id.get(graph_source_id)
+        if knowledge_source is None:
+            raise ValueError("research knowledge source is not declared")
+        entities = raw_graph.get("entities", ())
+        assertions = raw_graph.get("assertions", ())
+        relationships = raw_graph.get("relationships", ())
+        conflicts = raw_graph.get("conflicts", ())
+        if not all(
+            isinstance(value, Sequence)
+            for value in (entities, assertions, relationships, conflicts)
+        ):
+            raise ValueError("research knowledge collections are invalid")
+        entity_labels = [
+            str(item.get("label"))
+            for item in entities
+            if isinstance(item, Mapping) and isinstance(item.get("label"), str)
+        ][:40]
+        assertion_labels = [
+            f"{item.get('subject_label')}: {item.get('value')}"
+            for item in assertions
+            if isinstance(item, Mapping)
+            and isinstance(item.get("subject_label"), str)
+            and isinstance(item.get("value"), str)
+        ][:20]
+        knowledge_node_id = _behavioral_key(graph_source_id, prefix="knowledge")
+        nodes.append(
+            behavioral.ContextNode(
+                node_id=knowledge_node_id,
+                kind="audience_evidence",
+                title=f"Extracted knowledge: {knowledge_source.title}",
+                content=(
+                    "Bounded source-derived research knowledge; extracted assertions are "
+                    "not independently verified. "
+                    f"Entities={entity_labels}; assertions={assertion_labels}; "
+                    f"relationships={len(relationships)}; conflicts={len(conflicts)}."
+                )[:2000],
+                provenance=behavioral.EvidenceProvenance(
+                    source_id=graph_source_id,
+                    source_version=knowledge_source.dataset_version,
+                    owner=knowledge_source.source_organization,
+                    license=knowledge_source.license_or_usage_rights,
+                    allowed_use="Aggregate research context only",
+                    collected_at=knowledge_source.processing_date.isoformat(),
+                    transformation="Deterministic citation-first knowledge extraction",
+                    validation_status=(
+                        "benchmarked"
+                        if knowledge_source.validation_status == "validated"
+                        else "experimental"
                     ),
                 ),
             )
@@ -949,6 +1175,7 @@ def _behavioral_agent_evidence(
                     for action in actions
                 ),
                 action_history=tuple(action.action for action in actions),
+                action_timestamps_ms=tuple(action.action_timestamp_ms for action in actions),
                 memory_entries=tuple(entry.model_dump(mode="json") for entry in memory.entries),
                 evidence_event_ids=tuple(action.event_id for action in actions),
             )
@@ -1047,6 +1274,10 @@ def _run_behavioral_diagnostics(
                 mean_attention=sum(run.report.mean_attention for run in runs) / len(runs),
                 mean_resonance=sum(run.report.mean_resonance for run in runs) / len(runs),
                 mean_trust=sum(run.report.mean_trust for run in runs) / len(runs),
+                provider_calls=sum(run.receipt.provider_calls for run in runs),
+                input_tokens=sum(run.receipt.usage.input_tokens for run in runs),
+                output_tokens=sum(run.receipt.usage.output_tokens for run in runs),
+                cost_microusd=sum(run.receipt.usage.cost_microusd for run in runs),
                 interviewable_agents=_behavioral_agent_evidence(
                     runs[0], variant_key=variant.key, repetition_index=0
                 ),
@@ -1229,6 +1460,7 @@ def build_campaign_lab_report(
             "Attach a human-reviewed language suite before making cultural-fit claims."
         ],
     }
+    variant_component_evidence = _synthetic_variant_component_evidence(result)
     return CampaignLabReport(
         executive_summary=(
             "This report compares aggregate, population-weighted synthetic runs across "
@@ -1246,25 +1478,56 @@ def build_campaign_lab_report(
         number_of_agents=result.sample_size,
         number_of_repetitions=result.repetitions,
         model_and_prompt_versions=model_versions,
-        overall_findings=findings,
+        overall_findings={
+            **findings,
+            "variant_component_evidence": variant_component_evidence,
+            "evidence_status": "Synthetic-only",
+        },
         cohort_level_findings=cohort_findings,
         emotional_response={
-            "status": "not_scored_as_a_single_dimension",
-            "evidence": "Synthetic-only",
+            "variants": {
+                key: value["emotional_response"]
+                for key, value in variant_component_evidence.items()
+            },
+            "evidence_status": "Synthetic-only",
         },
-        credibility={"metric": "trust", "evidence": "Synthetic-only"},
-        clarity={"metric": "clarity", "evidence": "Synthetic-only"},
+        credibility={
+            "metric": "trust",
+            "variants": {
+                key: value["credibility"] for key, value in variant_component_evidence.items()
+            },
+            "evidence_status": "Synthetic-only",
+        },
+        clarity={
+            "metric": "clarity",
+            "variants": {
+                key: value["clarity"] for key, value in variant_component_evidence.items()
+            },
+            "evidence_status": "Synthetic-only",
+        },
         share_and_ignore_propensity={
-            "metrics": ["positive_share", "share_intent"],
-            "evidence": "Synthetic-only",
+            "variants": {
+                key: value["share_and_ignore_propensity"]
+                for key, value in variant_component_evidence.items()
+            },
+            "evidence_status": "Synthetic-only",
         },
         cultural_risks=(
             "Cultural interpretation requires Filipino human review and held-out validation.",
         ),
         language_cultural_evaluation=cultural,
-        backlash_risks=("Synthetic reactions cannot establish real-world backlash probability.",),
-        common_objections=("Collect and code observed objections before external decisions.",),
-        confusion_points=("Review low-clarity cohorts with human participants.",),
+        backlash_risks=(
+            "Synthetic risk indicators cannot establish real-world backlash probability; "
+            "review the per-variant risk indicators with human researchers.",
+        ),
+        common_objections=(
+            "No observed objection corpus is attached; synthetic narrative objections are not "
+            "generated as if they were participant findings.",
+        ),
+        confusion_points=(
+            "No observed comprehension coding is attached; validate low-clarity cohorts with "
+            "human participants.",
+        ),
         survey_calibration=calibration,
         historical_backtest_results=backtest,
         confidence_and_uncertainty={
@@ -1274,6 +1537,8 @@ def build_campaign_lab_report(
         },
         limitations=result.limitations,
         recommended_revisions=(
+            "Review variant component metrics, sentiment categories, and risk indicators with "
+            "a human researcher; do not collapse them into one score.",
             "Validate leading component findings with consented survey evidence.",
             "Run a blind historical backtest before making consequential decisions.",
         ),
@@ -1303,6 +1568,8 @@ def create_synthetic_interview(
     action_history: Sequence[str] = (),
     memory_evidence: Sequence[Mapping[str, Any]] = (),
     evidence_event_ids: Sequence[UUID] = (),
+    research_source_ids: Sequence[str] = (),
+    research_citation_ids: Sequence[str] = (),
 ) -> SyntheticPersonaInterview:
     """Create a clearly disclosed interview artifact from a structured persona."""
 
@@ -1312,7 +1579,11 @@ def create_synthetic_interview(
         f"Synthetic persona {persona.persona_id} reviewed variant {variant_key}. "
         f"Question: {question} "
         f"The structured aggregate profile indicates {len(persona.behavioral_vector)} "
-        f"versioned behavioral dimensions. Prompt {prompt_version} rendered this "
+        f"versioned behavioral dimensions. The synthetic action history contains "
+        f"{len(action_history)} actions and {len(memory_evidence)} memory entries. "
+        f"The explanation is bounded by {len(research_source_ids)} admitted research "
+        f"sources and {len(research_citation_ids)} source citations. Prompt {prompt_version} "
+        f"rendered this "
         "illustrative explanation; it is not testimony from a real " + "respondent."
     )
     return SyntheticPersonaInterview(
@@ -1331,6 +1602,8 @@ def create_synthetic_interview(
         action_history=tuple(action_history),
         memory_evidence=tuple(memory_evidence),
         evidence_event_ids=tuple(evidence_event_ids),
+        research_source_ids=tuple(research_source_ids),
+        research_citation_ids=tuple(research_citation_ids),
     )
 
 

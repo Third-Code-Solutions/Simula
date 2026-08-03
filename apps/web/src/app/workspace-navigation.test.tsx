@@ -103,6 +103,10 @@ describe("workspace navigation", () => {
       "href",
       "/projects/project-1/evidence#surveys",
     );
+    expect(screen.getByRole("link", { name: "Research" })).toHaveAttribute(
+      "href",
+      "/projects/project-1/campaign-lab#research-upload",
+    );
     expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute(
       "href",
       "/projects/project-1#settings",

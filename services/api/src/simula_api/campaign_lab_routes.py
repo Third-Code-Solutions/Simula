@@ -174,6 +174,10 @@ class CalibrationCreate(_LabModel):
     synthetic_observations: list[dict[str, Any]] = Field(min_length=1, max_length=100_000)
     survey: dict[str, Any] | None = None
     survey_import: dict[str, Any] | None = None
+    calibration_version: str = Field(default="calibration_v1", min_length=1, max_length=120)
+    model_version: str = Field(default="unspecified", min_length=1, max_length=120)
+    baseline_calibration: dict[str, Any] | None = None
+    calibration_history: list[dict[str, Any]] = Field(default_factory=list, max_length=100)
     secret_payload: dict[str, Any] | None = Field(default=None, exclude=True)
 
     @model_validator(mode="after")

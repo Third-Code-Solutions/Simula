@@ -7,10 +7,13 @@ import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 import {
   ApiProblem,
   type CampaignLabCampaign,
+  type CampaignLabResearchRun,
   type CampaignLabSimulationResult,
   type CampaignLabRunStatus,
   createCampaignLabCampaign,
+  createCampaignLabResearch,
   createCampaignLabSimulation,
+  getCampaignLabResearchRun,
   getCampaignLabSimulationResults,
   getCampaignLabSimulationStatus,
   listCampaignLabCampaigns,
@@ -197,6 +200,87 @@ function starterRequest(campaignId: string): Record<string, unknown> {
   };
 }
 
+type ResearchMediaType =
+  | "text/plain"
+  | "text/markdown"
+  | "text/csv"
+  | "application/json"
+  | "application/pdf"
+  | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+const researchSourceExample = JSON.stringify(
+  {
+    source_id: "research_upload_source",
+    title: "Uploaded research source",
+    source_type: "client_provided",
+    source_organization: "Research owner",
+    publication_date: null,
+    dataset_version: "v1",
+    geography: "Philippines",
+    sample_size: null,
+    collection_methodology: "Describe how this source was collected.",
+    license_or_usage_rights: "Declare the rights and permitted use.",
+    processing_date: "2026-08-03T00:00:00Z",
+    transformation: "Bounded text extraction with source-chunk citations.",
+    confidence_level: 0.2,
+    known_limitations: ["Replace this fixture metadata before external use."],
+    checksum_sha256:
+      "0000000000000000000000000000000000000000000000000000000000000000",
+  },
+  null,
+  2,
+);
+
+function researchMediaType(file: File): ResearchMediaType {
+  const known: ReadonlySet<string> = new Set([
+    "text/plain",
+    "text/markdown",
+    "text/csv",
+    "application/json",
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ]);
+  if (known.has(file.type)) return file.type as ResearchMediaType;
+  const extension = file.name.toLowerCase().split(".").pop();
+  if (extension === "md" || extension === "markdown") return "text/markdown";
+  if (extension === "csv") return "text/csv";
+  if (extension === "json") return "application/json";
+  if (extension === "pdf") return "application/pdf";
+  if (extension === "docx") {
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+  if (extension === "txt") return "text/plain";
+  throw new Error("Choose a UTF-8 text, Markdown, CSV, JSON, PDF, or DOCX file.");
+}
+
+async function readResearchPayload(
+  file: File,
+  mediaType: ResearchMediaType,
+): Promise<Readonly<{ content: string; content_encoding: "utf8" | "base64" }>> {
+  if (
+    mediaType === "text/plain" ||
+    mediaType === "text/markdown" ||
+    mediaType === "text/csv" ||
+    mediaType === "application/json"
+  ) {
+    return { content: await file.text(), content_encoding: "utf8" };
+  }
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("The selected research file could not be read."));
+    reader.onload = () => resolve(String(reader.result));
+    reader.readAsDataURL(file);
+  });
+  const separator = dataUrl.indexOf(",");
+  if (separator < 0 || !dataUrl.slice(separator + 1)) {
+    throw new Error("The selected research file has no readable content.");
+  }
+  return {
+    content: dataUrl.slice(separator + 1),
+    content_encoding: "base64",
+  };
+}
+
 function problemMessage(error: unknown): string {
   if (error instanceof ApiProblem) {
     return error.correlationId
@@ -214,6 +298,10 @@ function percent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === "object" && !Array.isArray(value);
+}
+
 export function CampaignLabWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
@@ -228,6 +316,12 @@ export function CampaignLabWorkspace({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
+  const [researchFile, setResearchFile] = useState<File | null>(null);
+  const [researchSourceJson, setResearchSourceJson] = useState(
+    researchSourceExample,
+  );
+  const [researchRun, setResearchRun] = useState<CampaignLabResearchRun>();
+  const [researchBusy, setResearchBusy] = useState(false);
 
   const selectedCampaign = useMemo(
     () =>
@@ -290,6 +384,70 @@ export function CampaignLabWorkspace({
       window.clearInterval(timer);
     };
   }, [run]);
+
+  useEffect(() => {
+    if (
+      !researchRun ||
+      !["queued", "running", "retrying"].includes(researchRun.status)
+    ) {
+      return;
+    }
+    let stale = false;
+    const timer = window.setInterval(() => {
+      void getCampaignLabResearchRun(researchRun.id)
+        .then((nextRun) => {
+          if (stale) return;
+          setResearchRun(nextRun);
+          const graph = nextRun.result?.knowledge_graph;
+          const source = nextRun.result?.source;
+          if (nextRun.status !== "succeeded" || !isRecord(graph) || !isRecord(source)) {
+            return;
+          }
+          setRequestText((current) => {
+            try {
+              const parsed = JSON.parse(current) as Record<string, unknown>;
+              const existingSources = Array.isArray(parsed.research_sources)
+                ? parsed.research_sources.filter(isRecord)
+                : [];
+              const existingKnowledge = Array.isArray(parsed.research_knowledge)
+                ? parsed.research_knowledge.filter(isRecord)
+                : [];
+              const sourceId = typeof source.source_id === "string" ? source.source_id : null;
+              const nextSources = sourceId
+                ? [
+                    ...existingSources.filter((item) => item.source_id !== sourceId),
+                    source,
+                  ]
+                : existingSources;
+              const nextKnowledge = sourceId
+                ? [
+                    ...existingKnowledge.filter((item) => item.source_id !== sourceId),
+                    graph,
+                  ]
+                : existingKnowledge;
+              return JSON.stringify(
+                {
+                  ...parsed,
+                  research_sources: nextSources,
+                  research_knowledge: nextKnowledge,
+                },
+                null,
+                2,
+              );
+            } catch {
+              return current;
+            }
+          });
+        })
+        .catch((pollError: unknown) => {
+          if (!stale) setError(problemMessage(pollError));
+        });
+    }, 2000);
+    return () => {
+      stale = true;
+      window.clearInterval(timer);
+    };
+  }, [researchRun]);
 
   async function createCampaign(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -376,6 +534,58 @@ export function CampaignLabWorkspace({
       );
     } finally {
       setRunning(false);
+    }
+  }
+
+  async function uploadResearch(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCampaignId || !researchFile) {
+      setError("Select a Campaign Lab and a research file first.");
+      return;
+    }
+    setResearchBusy(true);
+    setError(undefined);
+    try {
+      const mediaType = researchMediaType(researchFile);
+      const source = JSON.parse(researchSourceJson) as Record<string, unknown>;
+      const secretPayload = await readResearchPayload(researchFile, mediaType);
+      const created = await createCampaignLabResearch(selectedCampaignId, {
+        title: researchFile.name,
+        payload: {},
+        provenance: source,
+        source,
+        filename: researchFile.name,
+        media_type: mediaType,
+        chunk_size: 1200,
+        overlap: 120,
+        secret_payload: secretPayload,
+      });
+      if (!created.run_id) {
+        throw new Error("Research ingestion did not return a run id.");
+      }
+      setResearchRun({
+        id: created.run_id,
+        campaign_id: selectedCampaignId,
+        run_type: "research_ingestion",
+        status: created.status,
+        stage: created.stage ?? "queued",
+        progress: created.progress ?? 0,
+        attempt_count: 0,
+        created_at: created.created_at ?? new Date().toISOString(),
+        started_at: null,
+        completed_at: null,
+        last_error_code: null,
+      });
+      setResearchFile(null);
+      event.currentTarget.reset();
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof SyntaxError
+          ? "Research source JSON is not valid."
+          : problemMessage(uploadError),
+      );
+    } finally {
+      setResearchBusy(false);
     }
   }
 
@@ -498,6 +708,51 @@ export function CampaignLabWorkspace({
           not a synthesized campaign verdict.
         </p>
       </section>
+      {selectedCampaignId ? (
+        <section
+          aria-labelledby="research-upload-title"
+          className="panel"
+          id="research-upload"
+        >
+          <p className="eyebrow">02A / Research ingestion</p>
+          <h2 id="research-upload-title">Upload source-grounded research</h2>
+          <p className="field-note">
+            Files are sent to the worker-only ingestion envelope. SIMULA stores
+            bounded source metadata and extracted citations, not respondent rows
+            or an ungrounded knowledge claim.
+          </p>
+          <form className="form-stack" onSubmit={uploadResearch}>
+            <label htmlFor="campaign-lab-research-file">Research file</label>
+            <input
+              accept=".txt,.md,.markdown,.csv,.json,.pdf,.docx"
+              id="campaign-lab-research-file"
+              onChange={(event) =>
+                setResearchFile(event.target.files?.[0] ?? null)
+              }
+              required
+              type="file"
+            />
+            <label htmlFor="campaign-lab-research-source">
+              Source provenance JSON
+            </label>
+            <textarea
+              id="campaign-lab-research-source"
+              onChange={(event) => setResearchSourceJson(event.target.value)}
+              rows={12}
+              value={researchSourceJson}
+            />
+            <button disabled={researchBusy} type="submit">
+              {researchBusy ? "Queueing research…" : "Queue research ingestion"}
+            </button>
+          </form>
+          {researchRun ? (
+            <p aria-live="polite" className="field-note">
+              Research ingestion: <strong>{researchRun.status}</strong> ·{" "}
+              {researchRun.progress}% · run <code>{researchRun.id}</code>
+            </p>
+          ) : null}
+        </section>
+      ) : null}
       {selectedCampaignId ? (
         <section className="workspace-grid" aria-label="Simulation request">
           <form className="panel form-stack" onSubmit={launchSimulation}>

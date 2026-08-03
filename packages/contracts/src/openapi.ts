@@ -1430,6 +1430,24 @@ export interface components {
         };
         /** CalibrationCreate */
         CalibrationCreate: {
+            /** Baseline Calibration */
+            baseline_calibration?: {
+                [key: string]: unknown;
+            } | null;
+            /** Calibration History */
+            calibration_history?: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Calibration Version
+             * @default calibration_v1
+             */
+            calibration_version: string;
+            /**
+             * Model Version
+             * @default unspecified
+             */
+            model_version: string;
             /** Secret Payload */
             secret_payload?: {
                 [key: string]: unknown;
@@ -1623,6 +1641,13 @@ export interface components {
              * @enum {string}
              */
             ranking_metric: "clarity" | "relevance" | "trust" | "persuasiveness" | "consideration";
+            /**
+             * Research Knowledge
+             * @default []
+             */
+            research_knowledge: {
+                [key: string]: unknown;
+            }[];
             /** Research Sources */
             research_sources: components["schemas"]["CampaignLabResearchSource"][];
             /** Variants */

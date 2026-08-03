@@ -9,11 +9,17 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Mapping
+from datetime import UTC, datetime
 from typing import cast
 from uuid import UUID
 
 import structlog
 from pydantic import ValidationError
+from simula_core.calibration_monitoring import (
+    build_calibration_version_history,
+    monitor_calibration_drift,
+    snapshot_from_calibration,
+)
 from simula_core.campaign_lab import (
     CampaignLabResearchSource,
     CampaignLabSimulationRequest,
@@ -35,6 +41,7 @@ from simula_core.research_ingestion import (
     ingest_research_document,
 )
 from simula_core.survey_calibration import (
+    SurveyCalibrationResult,
     SurveyDataset,
     SyntheticVariantObservation,
     calibrate_synthetic_panel,
@@ -105,9 +112,64 @@ def _evaluate_calibration(
         survey = imported.dataset
     else:
         survey = SurveyDataset.model_validate(request.get("survey"))
-    return calibrate_synthetic_panel(synthetic_observations=synthetic, survey=survey).model_dump(
-        mode="json"
+    calibration = calibrate_synthetic_panel(
+        synthetic_observations=synthetic,
+        survey=survey,
+        calibration_version=str(request.get("calibration_version", "calibration_v1")),
+        model_version=str(request.get("model_version", "unspecified")),
     )
+    now = datetime.now(UTC)
+    current_snapshot = snapshot_from_calibration(calibration, observed_at=now)
+    history_snapshots = [current_snapshot]
+    history_raw = request.get("calibration_history", [])
+    if not isinstance(history_raw, list):
+        raise ValueError("calibration history must be a list")
+    for item in history_raw:
+        if not isinstance(item, Mapping):
+            raise ValueError("calibration history entries must be objects")
+        history_result = SurveyCalibrationResult.model_validate(item)
+        history_snapshots.append(
+            snapshot_from_calibration(
+                history_result,
+                observed_at=datetime(1970, 1, 1, tzinfo=UTC),
+            )
+        )
+    history = build_calibration_version_history(
+        history_snapshots,
+        current_calibration_version=calibration.calibration_version,
+    )
+    baseline_raw = request.get("baseline_calibration")
+    if baseline_raw is not None:
+        if not isinstance(baseline_raw, Mapping):
+            raise ValueError("baseline calibration must be an object")
+        baseline_result = SurveyCalibrationResult.model_validate(baseline_raw)
+        baseline_snapshot = snapshot_from_calibration(
+            baseline_result,
+            observed_at=datetime(1970, 1, 1, tzinfo=UTC),
+        )
+        drift = monitor_calibration_drift(
+            baseline=baseline_snapshot,
+            current=current_snapshot,
+        ).model_dump(mode="json")
+    else:
+        drift = {
+            "monitor_type": "calibration_model_drift",
+            "threshold_version": "calibration_drift_thresholds_v1",
+            "status": "unavailable",
+            "drift_detected": False,
+            "baseline_calibration_version": None,
+            "current_calibration_version": calibration.calibration_version,
+            "metrics": [],
+            "limitations": [
+                "Provide an authorized prior calibration result to run adjacent-version "
+                "drift monitoring."
+            ],
+        }
+    return {
+        **calibration.model_dump(mode="json"),
+        "drift_monitoring": drift,
+        "calibration_version_history": history.model_dump(mode="json"),
+    }
 
 
 def _evaluate_survey_import(
@@ -217,6 +279,15 @@ def _evaluate_interview(request: Mapping[str, object]) -> Mapping[str, object]:
         action_history=evidence.action_history,
         memory_evidence=evidence.memory_entries,
         evidence_event_ids=evidence.evidence_event_ids,
+        research_source_ids=tuple(
+            source.source_id for source in simulation_request.research_sources
+        ),
+        research_citation_ids=tuple(
+            str(citation.get("citation_id"))
+            for graph in simulation_request.research_knowledge
+            for citation in graph.get("citations", ())
+            if isinstance(citation, Mapping) and isinstance(citation.get("citation_id"), str)
+        ),
     )
     return interview.model_dump(mode="json")
 

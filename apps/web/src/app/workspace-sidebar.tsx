@@ -8,7 +8,7 @@ const CAMPAIGN_LAB_NAVIGATION = [
   {
     label: "Research",
     href: (projectId: string) =>
-      `/projects/${projectId}/campaign-lab#stage-research_validated`,
+      `/projects/${projectId}/campaign-lab#research-upload`,
   },
   {
     label: "Audience Cohorts",

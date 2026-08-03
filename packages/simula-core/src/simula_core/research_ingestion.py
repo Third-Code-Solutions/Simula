@@ -25,6 +25,10 @@ from pydantic import Field
 
 from simula_core.campaign_lab import CampaignLabResearchSource
 from simula_core.methodology import FrozenModel, Key
+from simula_core.research_knowledge import (
+    ResearchKnowledgeGraph,
+    build_research_knowledge_graph,
+)
 
 ResearchMediaType = Literal[
     "text/plain",
@@ -64,6 +68,7 @@ class ResearchIngestionResult(FrozenModel):
     document_checksum_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     byte_size: int = Field(gt=0, le=MAX_RESEARCH_DOCUMENT_BYTES)
     chunks: tuple[ResearchChunk, ...] = Field(min_length=1, max_length=MAX_RESEARCH_CHUNKS)
+    knowledge_graph: ResearchKnowledgeGraph
     limitations: tuple[str, ...] = Field(min_length=1, max_length=10)
 
 
@@ -227,6 +232,11 @@ def ingest_research_document(
         chunk_size=chunk_size,
         overlap=overlap,
     )
+    knowledge_graph = build_research_knowledge_graph(
+        source=source,
+        document_checksum_sha256=sha256(data).hexdigest(),
+        chunks=tuple((chunk.chunk_id, chunk.text) for chunk in chunks),
+    )
     return ResearchIngestionResult(
         source=source,
         filename=filename,
@@ -235,6 +245,7 @@ def ingest_research_document(
         document_checksum_sha256=sha256(data).hexdigest(),
         byte_size=len(data),
         chunks=chunks,
+        knowledge_graph=knowledge_graph,
         limitations=(
             "The corpus is source text extracted from the submitted document; it is not a "
             "survey row store.",

@@ -596,6 +596,41 @@
       "CalibrationCreate": {
         "additionalProperties": false,
         "properties": {
+          "baseline_calibration": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Baseline Calibration"
+          },
+          "calibration_history": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 100,
+            "title": "Calibration History",
+            "type": "array"
+          },
+          "calibration_version": {
+            "default": "calibration_v1",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Calibration Version",
+            "type": "string"
+          },
+          "model_version": {
+            "default": "unspecified",
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Model Version",
+            "type": "string"
+          },
           "secret_payload": {
             "anyOf": [
               {
@@ -1144,6 +1179,16 @@
             ],
             "title": "Ranking Metric",
             "type": "string"
+          },
+          "research_knowledge": {
+            "default": [],
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "maxItems": 20,
+            "title": "Research Knowledge",
+            "type": "array"
           },
           "research_sources": {
             "items": {

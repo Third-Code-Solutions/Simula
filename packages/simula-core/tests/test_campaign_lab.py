@@ -22,6 +22,7 @@ from simula_core.campaign_lab import (
     validate_persona_narrative,
 )
 from simula_core.methodology import DimensionValue
+from simula_core.research_ingestion import ingest_research_document
 from test_methodology import _audience, _population
 
 CAMPAIGN_ID = UUID("30000000-0000-4000-8000-000000000101")
@@ -151,6 +152,24 @@ def test_campaign_lab_repeated_result_has_population_weights_and_no_standalone_s
     assert "viral_score" not in result.model_dump(mode="json")
 
 
+def test_campaign_lab_binds_admitted_research_knowledge_to_behavioral_context() -> None:
+    source = _source()
+    knowledge = ingest_research_document(
+        source=source,
+        filename="fixture.md",
+        media_type="text/markdown",
+        secret_payload={"content": "# Transport\nTrust: high"},
+    ).knowledge_graph
+    request = _request().model_copy(
+        update={"research_knowledge": (knowledge.model_dump(mode="json"),)}
+    )
+
+    result = run_campaign_lab_simulation(request)
+
+    assert result.behavioral_diagnostics is not None
+    assert result.behavioral_diagnostics.variants
+
+
 def test_structured_persona_has_explicit_labels_and_disclosed_interview() -> None:
     persona = build_structured_persona(
         _cohort(), sampled_cell_key="metro_early", sample_index=184, seed=17
@@ -168,8 +187,10 @@ def test_structured_persona_has_explicit_labels_and_disclosed_interview() -> Non
     )
     assert interview.disclosure == "Synthetic Persona / Not a real respondent"
     assert "not testimony" in interview.transcript.casefold()
+    assert "action history" in interview.transcript.casefold()
     assert tuple(persona.behavioral_vector) == BEHAVIORAL_DIMENSIONS
     assert len(persona.behavioral_vector) == 19
+    assert {attribute.label for attribute in persona.behavioral_vector.values()} == {"Synthetic"}
 
 
 def test_policy_rejects_individual_persuasion_and_compliance_fails_closed() -> None:
@@ -223,6 +244,9 @@ def test_campaign_lab_report_keeps_cultural_evaluation_separate_from_component_m
     assert report.language_cultural_evaluation["status"] == "Human-reviewed"
     assert report.cohort_level_findings[0]["cohort_key"] == "metro_early"
     assert "component_rankings" in report.cohort_level_findings[0]
+    assert report.emotional_response["evidence_status"] == "Synthetic-only"
+    assert set(report.clarity["variants"]) == {"variant_a", "variant_b"}
+    assert "risk_indicators" in report.overall_findings["variant_component_evidence"]["variant_a"]
     assert "viral_score" not in report.model_dump(mode="json")
 
 

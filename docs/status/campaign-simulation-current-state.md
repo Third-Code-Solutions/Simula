@@ -1,7 +1,7 @@
 ---
 title: Campaign Simulation Lab current state
 status: active
-updated: 2026-08-02
+updated: 2026-08-03
 classification: OBSERVED
 ---
 
@@ -88,7 +88,21 @@ classification: OBSERVED
 - Persona interviews, compliance reviews, and report generation now use the same
   durable leased run queue, with run-status endpoints and aggregate evidence
   binding. Behavioral diagnostics persist repetition, round, topology, exposure,
-  action, memory, and event evidence for synthetic-agent disclosure.
+  action, logical action timestamps, memory, event evidence, provider usage,
+  token/cost receipts, and synthetic-agent disclosure.
+- Research ingestion now produces a bounded, deterministic knowledge graph with
+  entities, relationships, source-chunk citations, claim grounding,
+  conflicting-source detection, source-freshness metadata, and bounded lexical
+  source-excerpt retrieval. Knowledge graph records are source-bound and reject
+  raw documents or respondent rows when attached to a simulation request.
+- Structured persona behavioral dimensions now carry the same explicit
+  `Synthetic` provenance label as demographic, language, media, and issue
+  attributes. Synthetic interviews record admitted research source/citation IDs
+  alongside action and memory evidence.
+- Survey calibration results now carry calibration/model versions and aggregate
+  survey sample size. Version history and deterministic calibration drift
+  monitoring use the documented `calibration_drift_thresholds_v1` contract;
+  missing comparison history remains `unavailable` rather than being inferred.
 - Supabase migrations `20260802060315_campaign_simulation_lab` and
   `20260802063625_campaign_lab_api_wrappers` plus
   `20260802090954_campaign_lab_cultural_evaluation` are applied to project
@@ -112,21 +126,21 @@ classification: OBSERVED
   and held-out outcomes in the worker-only secret envelope.
 - The web project workspace now exposes Campaign Simulation Lab as a primary
   navigation destination with a permanently visible 14-item Campaign Lab
-  sidebar, end-to-end campaign setup, aggregate request editor, durable run
-  polling, evidence-stage disclosure, and report boundary. Evidence results
-  expose survey/backtest component metrics and cohort slices in the UI.
-- Verification completed locally: non-integration Python suite 465 passed and 2
-  skipped, targeted Campaign Lab/API/worker tests 8/8, mypy 137/137 files, full
-  Ruff, generated-contract drift, web workspace navigation tests 4/4, admin
-  tests 2/2, web/admin/API production builds, TypeScript lint/typecheck tasks,
-  and contract tests 7/7. Two pre-existing Windows descendant-process timing
-  tests were excluded because their child PID files were not created before the
-  timeout assertion. Integration-inclusive pytest exceeded the five-minute
-  bounded run without a failure report; it is not counted as passing. Full
-  API/web Jest/Vitest runs also exceeded their bounded timeout without a failure
-  report and are not counted. The repository `uv run --frozen` wrapper remains
-  environment-blocked by installed UV `0.12.0` versus required `0.11.19`; direct
-  project-interpreter Ruff and mypy checks pass.
+  sidebar, end-to-end campaign setup, research-file upload with provenance
+  metadata, worker-backed ingestion status polling, aggregate request editor,
+  durable run polling, evidence-stage disclosure, and report boundary. Evidence
+  results expose survey/backtest component metrics and cohort slices in the UI.
+- Verification completed locally: the bounded non-integration Python suite is
+  470 passed and 2 skipped, with 31 integration tests deselected; focused
+  Campaign Lab/knowledge/calibration/worker tests pass; mypy passes across 140
+  Python files; full Ruff, generated-contract drift, web workspace navigation
+  tests 4/4, admin tests 2/2, web/admin/API production builds, TypeScript
+  lint/typecheck tasks, and contract tests 7/7 pass. The two skipped tests are
+  expected POSIX-only runtime checks. Integration-inclusive pytest and full
+  API/web Jest/Vitest runs remain separate bounded gates and are not counted as
+  passing. The repository `uv run --frozen` wrapper remains environment-blocked
+  by installed UV `0.12.0` versus required `0.11.19`; direct project-interpreter
+  Ruff and mypy checks pass.
 
 ## Implemented before this turn
 

@@ -93,6 +93,8 @@ export type CampaignLabRunStatus = Readonly<{
   completed_at: string | null;
   last_error_code: string | null;
 }>;
+export type CampaignLabResearchRun = CampaignLabRunStatus &
+  Readonly<{ result?: Readonly<Record<string, unknown>> }>;
 export type CampaignLabRanking = Readonly<{
   metric_key: string;
   repetition_count: number;
@@ -531,6 +533,44 @@ export function createCampaignLabCampaign(input: {
     headers: idempotencyHeaders(),
     method: "POST",
   });
+}
+
+export function createCampaignLabResearch(
+  campaignId: string,
+  input: Readonly<{
+    title: string;
+    payload: Readonly<Record<string, unknown>>;
+    provenance?: Readonly<Record<string, unknown>>;
+    source: Readonly<Record<string, unknown>>;
+    filename: string;
+    media_type:
+      | "text/plain"
+      | "text/markdown"
+      | "text/csv"
+      | "application/json"
+      | "application/pdf"
+      | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    chunk_size?: number;
+    overlap?: number;
+    secret_payload: Readonly<Record<string, unknown>>;
+  }>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/research`),
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export function getCampaignLabResearchRun(
+  runId: string,
+): Promise<CampaignLabResearchRun> {
+  return request<CampaignLabResearchRun>(
+    domainPath(`/campaign-lab/research/runs/${runId}`),
+  );
 }
 
 export function createCampaignLabSimulation(

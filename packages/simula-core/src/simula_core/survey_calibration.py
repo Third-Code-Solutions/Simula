@@ -126,8 +126,11 @@ class SurveyCalibrationComparison(FrozenModel):
 class SurveyCalibrationResult(FrozenModel):
     schema_version: Literal[1] = 1
     status: CalibrationStatus
+    calibration_version: Label = "calibration_v1"
+    model_version: Label = "unspecified"
     survey_source_id: Key
     survey_source_version: Label
+    survey_sample_size: int = Field(ge=0, default=0)
     matched_observations: int = Field(ge=0)
     matched_variants: int = Field(ge=0)
     comparisons: tuple[SurveyCalibrationComparison, ...]
@@ -323,6 +326,8 @@ def calibrate_synthetic_panel(
     *,
     synthetic_observations: Sequence[SyntheticVariantObservation],
     survey: SurveyDataset,
+    calibration_version: Label = "calibration_v1",
+    model_version: Label = "unspecified",
 ) -> SurveyCalibrationResult:
     """Compare synthetic weighted variants with consented aggregate survey data."""
 
@@ -392,8 +397,11 @@ def calibrate_synthetic_panel(
     survey_rank_values = {item.variant_key: item.survey_positive_share for item in comparisons}
     result = SurveyCalibrationResult(
         status=status,
+        calibration_version=calibration_version,
+        model_version=model_version,
         survey_source_id=survey.provenance.source_id,
         survey_source_version=survey.provenance.source_version,
+        survey_sample_size=survey.provenance.sample_size,
         matched_observations=matched_observations,
         matched_variants=len(comparisons),
         comparisons=tuple(comparisons),

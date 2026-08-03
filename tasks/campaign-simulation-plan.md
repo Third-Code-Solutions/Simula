@@ -95,6 +95,13 @@ universal prediction.
 - [x] Add audit events, retries, cancellation, progress, retention, and deletion
       behavior.
 - [x] Regenerate/check OpenAPI and database contracts.
+- [x] Add bounded research knowledge extraction with citations, claim grounding,
+      conflict detection, freshness metadata, and source-excerpt retrieval.
+- [x] Add calibration version history and fixed-threshold drift monitoring.
+- [x] Retain logical action timestamps and provider/token/cost execution
+      receipts without changing deterministic replay checksums.
+- [x] Label every structured persona attribute, including behavioral vectors,
+      with an explicit evidence-origin class.
 
 ### Phase 5: Product/reporting and release
 
@@ -106,8 +113,10 @@ universal prediction.
 
 ## Verification checkpoints
 
-- Phase 1-3 core slice: 175 tests passed; Ruff and mypy passed for the new
-  contracts.
+- Current bounded non-integration gate: 470 tests passed, 2 expected POSIX-only
+  tests skipped, and 31 integration tests deselected; full Ruff and mypy across
+  140 Python files pass. Focused knowledge, calibration, interview, behavioral,
+  survey-import, navigation, and contract gates also pass.
 
 - After Phase 1: focused core tests, Ruff, mypy, claim scanner.
 - After Phase 3: focused core + integration tests, contract checks, leakage and

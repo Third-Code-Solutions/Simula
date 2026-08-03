@@ -592,6 +592,7 @@ class DeterministicTieredProvider(BehavioralDecisionProvider):
 class AgentActionEvent(FrozenModel):
     event_id: UUID
     sequence: int = Field(ge=1)
+    action_timestamp_ms: int = Field(ge=0)
     run_id: UUID
     round_index: int = Field(ge=1, le=50)
     agent_id: UUID
@@ -1084,6 +1085,9 @@ class BehavioralEngine:
                 event = AgentActionEvent(
                     event_id=uuid5(run_id, f"action:{round_index}:{agent.agent_id}"),
                     sequence=sequence,
+                    # Logical timestamps preserve byte-reproducible replay. Wall-clock
+                    # execution timestamps live on the durable run and attempt records.
+                    action_timestamp_ms=(round_index - 1) * 1000 + sequence,
                     run_id=run_id,
                     round_index=round_index,
                     agent_id=agent.agent_id,
