@@ -12,7 +12,7 @@ def test_restore_drill_tracks_the_exact_repository_migration_head() -> None:
     )
 
     assert _repository_migration_head() == expected
-    assert expected == "20260802150000"
+    assert expected == "20260803100000"
 
 
 def test_restore_drill_counts_every_current_application_table() -> None:
@@ -22,3 +22,4 @@ def test_restore_drill_counts_every_current_application_table() -> None:
     assert "schemaname in ('api', 'private')" in source
     assert "for table in tables" in source
     assert "_APP_COUNT_QUERY" not in source
+
