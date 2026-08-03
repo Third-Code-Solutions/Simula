@@ -161,11 +161,7 @@ def _metric_delta(
         )
     delta = abs(current_value - baseline_value)
     status: DriftMetricStatus = (
-        "review"
-        if delta >= threshold
-        else "monitor"
-        if delta >= threshold / 2
-        else "stable"
+        "review" if delta >= threshold else "monitor" if delta >= threshold / 2 else "stable"
     )
     return CalibrationDriftMetric(
         metric=metric,

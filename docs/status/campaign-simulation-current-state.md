@@ -128,14 +128,18 @@ classification: OBSERVED
   navigation destination with a permanently visible 14-item Campaign Lab
   sidebar, end-to-end campaign setup, research-file upload with provenance
   metadata, worker-backed ingestion status polling, aggregate request editor,
-  durable run polling, evidence-stage disclosure, and report boundary. Evidence
-  results expose survey/backtest component metrics and cohort slices in the UI.
+  durable run polling, evidence-stage disclosure, and report boundary. The
+  sidebar destinations now land on campaign-scoped cohort, message, simulation,
+  interview, survey import, calibration, backtest, compliance, report, and audit
+  surfaces; report approval is bound to a succeeded compliance review and named
+  human reviewer. Evidence results expose survey/backtest component metrics and
+  cohort slices in the UI.
 - Verification completed locally: the bounded non-integration Python suite is
-  470 passed and 2 skipped, with 31 integration tests deselected; focused
-  Campaign Lab/knowledge/calibration/worker tests pass; mypy passes across 140
-  Python files; full Ruff, generated-contract drift, web workspace navigation
-  tests 4/4, admin tests 2/2, web/admin/API production builds, TypeScript
-  lint/typecheck tasks, and contract tests 7/7 pass. The two skipped tests are
+  472 passed and 2 skipped, with 31 integration tests deselected; focused
+  Campaign Lab/knowledge/calibration/worker tests pass; mypy passes across 156
+  Python files; Ruff check/format, generated-contract drift, web workspace
+  navigation tests 4/4, web/admin/API production builds, TypeScript
+  lint/typecheck tasks, and contract tests pass. The two skipped tests are
   expected POSIX-only runtime checks. Integration-inclusive pytest and full
   API/web Jest/Vitest runs remain separate bounded gates and are not counted as
   passing. The repository `uv run --frozen` wrapper remains environment-blocked
@@ -159,7 +163,8 @@ classification: OBSERVED
 - The non-deterministic provider adapters are contract-level only; the first
   deployable worker release intentionally admits the deterministic provider.
 - End-to-end hosted authenticated browser/API/worker evidence for the new routes
-  after the GitHub release is promoted.
+  after the GitHub release is promoted; protected Vercel previews have not been
+  browser-verified from this task.
 - Railway project authorization and an observed GitHub-to-Railway deployment
   event; the currently logged-in Railway account is not authorized for the
   requested project.

@@ -2742,6 +2742,8 @@ export interface components {
             approval_status: "draft" | "needs_human_review" | "approved_experimental";
             /** Calibration Run Id */
             calibration_run_id?: string | null;
+            /** Compliance Review Run Id */
+            compliance_review_run_id?: string | null;
             /** Cultural Evaluation Artifact Id */
             cultural_evaluation_artifact_id?: string | null;
             /** Historical Backtest Run Id */

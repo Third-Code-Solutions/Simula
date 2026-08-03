@@ -206,15 +206,9 @@ def _freshness(source: CampaignLabResearchSource) -> ResearchFreshnessMetadata:
     computed_age_days = max(0, floor((processing - publication).total_seconds() / 86_400))
     age_days: int | None = computed_age_days
     status: FreshnessStatus = (
-        "fresh"
-        if computed_age_days <= 365
-        else "aging"
-        if computed_age_days <= 1095
-        else "stale"
+        "fresh" if computed_age_days <= 365 else "aging" if computed_age_days <= 1095 else "stale"
     )
-    limitations = (
-        "Freshness is a source-age flag, not a measure of source quality or truth.",
-    )
+    limitations = ("Freshness is a source-age flag, not a measure of source quality or truth.",)
     if publication > processing:
         status = "undated"
         age_days = None
@@ -420,9 +414,7 @@ def build_research_knowledge_graph(
             if left is None or right is None or left.entity_id == right.entity_id:
                 continue
             predicate = (
-                "supports"
-                if match.group("predicate").casefold() == "supports"
-                else "contradicts"
+                "supports" if match.group("predicate").casefold() == "supports" else "contradicts"
             )
             relationship = ResearchRelationship(
                 relationship_id=_key(
@@ -536,9 +528,7 @@ def ground_campaign_claim(
         )
     )
     conflict_ids = tuple(
-        conflict.conflict_id
-        for conflict in graph.conflicts
-        if conflict.assertion_key in entity_ids
+        conflict.conflict_id for conflict in graph.conflicts if conflict.assertion_key in entity_ids
     )
     return ResearchClaimGrounding(
         claim=claim,

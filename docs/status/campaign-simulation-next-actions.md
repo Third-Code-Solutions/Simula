@@ -1,18 +1,18 @@
 ---
 title: Campaign Simulation Lab next actions
 status: active
-updated: 2026-08-02
+updated: 2026-08-03
 classification: PROPOSED
 ---
 
 # Next actions
 
-1. Promote the reviewed GitHub release to the connected Vercel web/admin
-   projects and verify authenticated Campaign Lab browser/API/worker behavior on
-   live hosts.
-2. Obtain access to Railway project `f25b8598-d3cc-4e9d-a63d-0413a4035d22`,
-   configure the GitHub service watch path, and capture one automatic deploy
-   event after a verified push.
+1. Push the reviewed Campaign Lab/sidebar release, then verify the exact SHA in
+   both connected Vercel projects and capture authenticated browser/API evidence
+   for the protected Campaign Lab route before production promotion.
+2. Reconnect Railway access for project `f25b8598-d3cc-4e9d-a63d-0413a4035d22`,
+   confirm each service watch path, and capture one automatic deploy event after
+   the GitHub push.
 3. Schedule and monitor the retention cleanup function; verify private holdout
    deletion after completion, failure, cancellation, expiry, and restore drills.
 4. Admit only lawfully governed Philippine survey and historical datasets after
@@ -24,8 +24,9 @@ classification: PROPOSED
    retention, deletion, and project-scoped outcome references; the new route
    contract tests cover read-stage endpoints and mutation idempotency, while the
    cross-tenant/database integration suite remains open.
-7. Re-run the project release/readiness gates before making any deployment or
-   validity claim.
+7. Re-run the project release/readiness gates after the new SHA; current GitHub
+   Windows/Foundation/History checks fail before producing runner steps, so do
+   not call the hosted release green until that external CI condition is fixed.
 8. Start Docker and run the local Supabase lint/pgtap suite; hosted Campaign Lab
    migration/function/grant checks and the durable-workflow pgTAP checks are
    complete. The hosted foundation suite is 30/35 because five checks

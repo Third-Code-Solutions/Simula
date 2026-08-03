@@ -144,11 +144,15 @@ def test_campaign_lab_repeated_result_has_population_weights_and_no_standalone_s
         "consideration",
     }
     assert all(
-        {variant.variant_key for variant in ranking.variants}
-        == {"variant_a", "variant_b"}
+        {variant.variant_key for variant in ranking.variants} == {"variant_a", "variant_b"}
         for ranking in result.cohort_findings[0].component_rankings.values()
     )
     assert result.reproducibility_checksum_sha256 != "0" * 64
+    assert {item.variant_key for item in result.synthetic_observations} == {
+        "variant_a",
+        "variant_b",
+    }
+    assert all(item.cohort_key == "aggregate" for item in result.synthetic_observations)
     assert "viral_score" not in result.model_dump(mode="json")
 
 
@@ -261,3 +265,22 @@ def test_campaign_lab_report_labels_mixed_evidence_without_collapsing_metrics() 
 
     assert report.evidence_status == "Mixed evidence"
     assert report.confidence_and_uncertainty["evidence_status"] == "Mixed evidence"
+
+
+def test_campaign_lab_report_can_carry_durable_compliance_evidence() -> None:
+    result = run_campaign_lab_simulation(_request())
+    report = build_campaign_lab_report(
+        _request(),
+        result,
+        compliance_review={
+            "status": "approved_experimental",
+            "aggregate_only": True,
+            "reviewed_by": "research-lead",
+        },
+        human_reviewer="research-lead",
+        approval_status="approved_experimental",
+    )
+
+    assert report.approval_status == "approved_experimental"
+    assert report.compliance_review is not None
+    assert report.compliance_review["aggregate_only"] is True

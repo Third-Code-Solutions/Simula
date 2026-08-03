@@ -1,7 +1,7 @@
 ---
 title: Campaign Simulation Lab decisions
 status: active
-updated: 2026-08-02
+updated: 2026-08-03
 classification: PROPOSED
 ---
 

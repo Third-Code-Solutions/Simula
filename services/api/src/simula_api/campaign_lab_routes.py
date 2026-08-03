@@ -210,9 +210,21 @@ class ReportCreate(_LabModel):
     run_id: UUID
     calibration_run_id: UUID | None = None
     historical_backtest_run_id: UUID | None = None
+    compliance_review_run_id: UUID | None = None
     cultural_evaluation_artifact_id: UUID | None = None
     human_reviewer: str | None = Field(default=None, min_length=1, max_length=160)
     approval_status: Literal["draft", "needs_human_review", "approved_experimental"] = "draft"
+
+    @model_validator(mode="after")
+    def require_approval_evidence(self) -> ReportCreate:
+        if self.approval_status == "approved_experimental":
+            if self.compliance_review_run_id is None:
+                raise ValueError(
+                    "approved_experimental reports require a succeeded compliance review"
+                )
+            if self.human_reviewer is None:
+                raise ValueError("approved_experimental reports require a named human reviewer")
+        return self
 
 
 def _invalid(detail: str, *, field: str = "request") -> AppProblem:
@@ -1363,7 +1375,7 @@ async def create_report(
 
     async def evidence_result(
         run_id: UUID | None,
-        expected_type: Literal["survey_calibration", "historical_backtest"],
+        expected_type: Literal["survey_calibration", "historical_backtest", "compliance_review"],
     ) -> Mapping[str, Any] | None:
         if run_id is None:
             return None
@@ -1396,6 +1408,20 @@ async def create_report(
     historical_backtest_result = await evidence_result(
         body.historical_backtest_run_id, "historical_backtest"
     )
+    compliance_result = await evidence_result(body.compliance_review_run_id, "compliance_review")
+    if body.approval_status == "approved_experimental" and (
+        not isinstance(compliance_result, Mapping)
+        or compliance_result.get("status") != "approved_experimental"
+    ):
+        raise AppProblem(
+            status=409,
+            code="version_conflict",
+            title="Approved report requires compliance evidence",
+            detail=(
+                "Only a succeeded compliance review with approved_experimental status "
+                "can authorize this report state."
+            ),
+        )
     cultural_evaluation: Mapping[str, Any] | None = None
     if body.cultural_evaluation_artifact_id is not None:
         cultural_rows = await _services(request).database.read_product_rows(
@@ -1435,6 +1461,7 @@ async def create_report(
         "simulation_result": source["result"],
         "survey_calibration": calibration_result,
         "historical_backtest": historical_backtest_result,
+        "compliance_review": compliance_result,
         "cultural_evaluation": cultural_evaluation,
         "human_reviewer": body.human_reviewer,
         "approval_status": body.approval_status,

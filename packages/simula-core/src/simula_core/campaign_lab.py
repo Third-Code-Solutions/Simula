@@ -27,7 +27,10 @@ from simula_core.methodology import (
     FrozenModel,
     Key,
     MethodologyEngine,
+    MetricScore,
     PopulationFrameVersion,
+    ReactionDistribution,
+    ReactionShare,
     SamplingConfiguration,
     sample_population,
 )
@@ -39,6 +42,7 @@ from simula_core.repeated_simulation import (
     run_repeated_methodology,
     summarize_variant_ranking,
 )
+from simula_core.survey_calibration import SyntheticVariantObservation
 
 CampaignStage = Literal[
     "campaign_created",
@@ -423,9 +427,7 @@ class CampaignLabSimulationRequest(FrozenModel):
         for raw_graph in self.research_knowledge:
             if not isinstance(raw_graph, Mapping):
                 raise ValueError("research knowledge entries must be objects")
-            if any(
-                key in raw_graph for key in ("raw", "chunks", "respondents", "responses")
-            ):
+            if any(key in raw_graph for key in ("raw", "chunks", "respondents", "responses")):
                 raise ValueError(
                     "research knowledge must not contain raw document or respondent rows"
                 )
@@ -528,6 +530,9 @@ class CampaignLabSimulationResult(FrozenModel):
     reproducibility_checksum_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     cohort_findings: tuple[CampaignLabCohortFinding, ...] = ()
     behavioral_diagnostics: CampaignLabBehavioralDiagnostics | None = None
+    synthetic_observations: tuple[SyntheticVariantObservation, ...] = Field(
+        default=(), max_length=1000
+    )
 
 
 class SyntheticPersonaInterview(FrozenModel):
@@ -597,6 +602,7 @@ class CampaignLabReport(FrozenModel):
     approval_status: Literal["draft", "needs_human_review", "approved_experimental"]
     report_timestamp: datetime
     evidence_status: CampaignEvidenceStatus = "Synthetic-only"
+    compliance_review: Mapping[str, Any] | None = None
 
 
 def _walk_policy(value: object, *, path: str = "root") -> list[str]:
@@ -651,9 +657,7 @@ def build_structured_persona(
     vector = {
         dimension: PersonaAttribute(
             value=str(
-                int.from_bytes(
-                    sha256(f"{seed_material}:{dimension}".encode()).digest()[:8], "big"
-                )
+                int.from_bytes(sha256(f"{seed_material}:{dimension}".encode()).digest()[:8], "big")
                 / ((2**64) - 1)
             ),
             label="Synthetic",
@@ -1305,6 +1309,55 @@ def _run_behavioral_diagnostics(
     )
 
 
+def _synthetic_observations(
+    repeated_by_variant: Mapping[str, RepeatedMethodologyResult],
+) -> tuple[SyntheticVariantObservation, ...]:
+    """Expose bounded aggregate observations for the separate calibration stage."""
+
+    observations: list[SyntheticVariantObservation] = []
+    for variant_key, repeated in sorted(repeated_by_variant.items()):
+        reports = [run.report for run in repeated.runs]
+        distribution_values = [
+            fsum(report.distribution.values()[index] for report in reports) / len(reports)
+            for index in range(4)
+        ]
+        distribution_values[-1] = 1.0 - fsum(distribution_values[:-1])
+        metrics = tuple(
+            MetricScore(
+                key=metric_key,
+                value=fsum(
+                    next(metric.value for metric in report.metrics if metric.key == metric_key)
+                    for report in reports
+                )
+                / len(reports),
+            )
+            for metric_key in ("clarity", "relevance", "trust", "persuasiveness", "consideration")
+        )
+        reaction_keys: tuple[Literal["positive", "neutral", "negative", "mixed"], ...] = (
+            "positive",
+            "neutral",
+            "negative",
+            "mixed",
+        )
+        observations.append(
+            SyntheticVariantObservation(
+                variant_key=variant_key,
+                cohort_key="aggregate",
+                population_weight=1.0,
+                effective_sample_size=fsum(report.effective_sample_size for report in reports)
+                / len(reports),
+                distribution=ReactionDistribution(
+                    categories=tuple(  # type: ignore[arg-type]
+                        ReactionShare(key=key, value=distribution_values[index])
+                        for index, key in enumerate(reaction_keys)
+                    )
+                ),
+                metrics=metrics,  # type: ignore[arg-type]
+            )
+        )
+    return tuple(observations)
+
+
 def run_campaign_lab_simulation(
     request: CampaignLabSimulationRequest,
     *,
@@ -1341,6 +1394,7 @@ def run_campaign_lab_simulation(
     rankings = _rankings(repeated_by_variant)
     cohort_findings = _cohort_findings(request, repeated_by_variant)
     behavioral_diagnostics = _run_behavioral_diagnostics(request)
+    synthetic_observations = _synthetic_observations(repeated_by_variant)
     variant_results = tuple(
         CampaignLabVariantResult(
             variant_key=variant.key,
@@ -1359,6 +1413,7 @@ def run_campaign_lab_simulation(
         "rankings": {key: value.model_dump(mode="json") for key, value in rankings.items()},
         "cohort_findings": [item.model_dump(mode="json") for item in cohort_findings],
         "behavioral_diagnostics": behavioral_diagnostics.model_dump(mode="json"),
+        "synthetic_observations": [item.model_dump(mode="json") for item in synthetic_observations],
     }
     checksum = sha256(canonical_json_dumps(payload)).hexdigest()
     return CampaignLabSimulationResult(
@@ -1380,6 +1435,7 @@ def run_campaign_lab_simulation(
         reproducibility_checksum_sha256=checksum,
         cohort_findings=cohort_findings,
         behavioral_diagnostics=behavioral_diagnostics,
+        synthetic_observations=synthetic_observations,
     )
 
 
@@ -1390,6 +1446,7 @@ def build_campaign_lab_report(
     survey_calibration: Mapping[str, Any] | None = None,
     historical_backtest: Mapping[str, Any] | None = None,
     cultural_evaluation: Mapping[str, Any] | None = None,
+    compliance_review: Mapping[str, Any] | None = None,
     human_reviewer: str | None = None,
     approval_status: Literal["draft", "needs_human_review", "approved_experimental"] = "draft",
 ) -> CampaignLabReport:
@@ -1552,6 +1609,7 @@ def build_campaign_lab_report(
         approval_status=approval_status,
         report_timestamp=datetime.now(UTC),
         evidence_status=evidence_status,
+        compliance_review=compliance_review,
     )
 
 

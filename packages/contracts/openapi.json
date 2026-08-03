@@ -4644,6 +4644,18 @@
             ],
             "title": "Calibration Run Id"
           },
+          "compliance_review_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Compliance Review Run Id"
+          },
           "cultural_evaluation_artifact_id": {
             "anyOf": [
               {

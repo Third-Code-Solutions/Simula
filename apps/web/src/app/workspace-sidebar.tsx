@@ -13,17 +13,17 @@ const CAMPAIGN_LAB_NAVIGATION = [
   {
     label: "Audience Cohorts",
     href: (projectId: string) =>
-      `/projects/${projectId}/campaign-lab#stage-cohort_defined`,
+      `/projects/${projectId}/campaign-lab#audience-cohorts`,
   },
   {
     label: "Message Lab",
     href: (projectId: string) =>
-      `/projects/${projectId}/campaign-lab#stage-variants_added`,
+      `/projects/${projectId}/campaign-lab#message-lab`,
   },
   {
     label: "Simulations",
     href: (projectId: string) =>
-      `/projects/${projectId}/campaign-lab#stage-simulated`,
+      `/projects/${projectId}/campaign-lab#simulation-config`,
   },
   {
     label: "Agent Activity",
@@ -33,31 +33,34 @@ const CAMPAIGN_LAB_NAVIGATION = [
   {
     label: "Persona Interviews",
     href: (projectId: string) =>
-      `/projects/${projectId}/campaign-lab#stage-interviewed`,
+      `/projects/${projectId}/campaign-lab#persona-interviews`,
   },
   {
     label: "Surveys",
-    href: (projectId: string) => `/projects/${projectId}/evidence#surveys`,
+    href: (projectId: string) => `/projects/${projectId}/campaign-lab#surveys`,
   },
   {
     label: "Calibration",
-    href: (projectId: string) => `/projects/${projectId}/evidence#calibration`,
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#calibration`,
   },
   {
     label: "Backtesting",
-    href: (projectId: string) => `/projects/${projectId}/evidence#backtesting`,
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#backtesting`,
   },
   {
     label: "Compliance",
-    href: (projectId: string) => `/projects/${projectId}/evidence#compliance`,
+    href: (projectId: string) =>
+      `/projects/${projectId}/campaign-lab#compliance`,
   },
   {
     label: "Reports",
-    href: (projectId: string) => `/projects/${projectId}/evidence#reports`,
+    href: (projectId: string) => `/projects/${projectId}/campaign-lab#reports`,
   },
   {
     label: "Audit",
-    href: (projectId: string) => `/projects/${projectId}/evidence#audit`,
+    href: (projectId: string) => `/projects/${projectId}/campaign-lab#audit`,
   },
   {
     label: "Settings",

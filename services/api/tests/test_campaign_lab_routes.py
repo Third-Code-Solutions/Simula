@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 from uuid import UUID
 
+import pytest
 from fastapi.routing import APIRoute
 from simula_api.campaign_lab_routes import ReportCreate, router
 
@@ -29,6 +30,22 @@ def test_report_can_bind_calibration_and_backtest_evidence_runs() -> None:
 
     assert body.calibration_run_id is not None
     assert body.historical_backtest_run_id is not None
+
+
+def test_approved_report_requires_compliance_run_and_human_reviewer() -> None:
+    with pytest.raises(ValueError):
+        ReportCreate(
+            run_id=UUID("30000000-0000-0000-0000-000000000001"),
+            approval_status="approved_experimental",
+        )
+
+    body = ReportCreate(
+        run_id=UUID("30000000-0000-0000-0000-000000000001"),
+        compliance_review_run_id=UUID("30000000-0000-0000-0000-000000000002"),
+        human_reviewer="research-lead",
+        approval_status="approved_experimental",
+    )
+    assert body.compliance_review_run_id is not None
 
 
 def test_mutating_campaign_lab_commands_require_idempotency_keys() -> None:

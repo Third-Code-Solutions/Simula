@@ -307,6 +307,7 @@ def _evaluate_report(request: Mapping[str, object]) -> Mapping[str, object]:
     survey_calibration = request.get("survey_calibration")
     historical_backtest = request.get("historical_backtest")
     cultural_evaluation = request.get("cultural_evaluation")
+    compliance_review = request.get("compliance_review")
     human_reviewer = request.get("human_reviewer")
     report = build_campaign_lab_report(
         lab_request,
@@ -319,6 +320,9 @@ def _evaluate_report(request: Mapping[str, object]) -> Mapping[str, object]:
         else None,
         cultural_evaluation=cast(Mapping[str, object], cultural_evaluation)
         if isinstance(cultural_evaluation, Mapping)
+        else None,
+        compliance_review=cast(Mapping[str, object], compliance_review)
+        if isinstance(compliance_review, Mapping)
         else None,
         human_reviewer=human_reviewer if isinstance(human_reviewer, str) else None,
         approval_status=request.get("approval_status", "draft"),  # type: ignore[arg-type]
