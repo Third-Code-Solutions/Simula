@@ -531,7 +531,579 @@ select extensions.ok(
         pg_catalog.has_table_privilege(
           'simula_api',
           relations.oid,
-          'INSERT,DELETE,TRUNCA…7591 tokens truncated…   'get_run_failure_context',
+          'INSERT,DELETE,TRUNCATE'
+        )
+        or (
+          pg_catalog.has_table_privilege('simula_api', relations.oid, 'UPDATE')
+          and relations.oid <> 'api.stimulus_assets'::pg_catalog.regclass
+        )
+      )
+  ),
+  'API role has no direct application-table mutation privilege beyond the FK lock shim'
+);
+
+-- 18
+select extensions.ok(
+  not exists (
+    select 1
+    from pg_catalog.pg_class as relations
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
+    where namespaces.nspname in ('api', 'private')
+      and relations.relkind = 'r'
+      and pg_catalog.has_table_privilege(
+        'simula_worker',
+        relations.oid,
+        'SELECT,INSERT,UPDATE,DELETE,TRUNCATE'
+      )
+  ),
+  'worker role has no direct application-table privilege'
+);
+
+-- 19
+select extensions.is(
+  (
+    select pg_catalog.array_agg(
+      grants.grantee || '|' || grants.table_schema || '.' || grants.table_name
+        || '|' || grants.privilege_type
+      order by grants.grantee, grants.table_schema, grants.table_name, grants.privilege_type
+    )
+    from information_schema.role_table_grants as grants
+    where grants.table_schema in ('api', 'private')
+      and grants.grantee like 'simula\_%' escape '\'
+  ),
+  array[
+    'simula_api|api.audience_versions|SELECT',
+    'simula_api|api.audiences|SELECT',
+    'simula_api|api.behavioral_agent_public_summaries|SELECT',
+    'simula_api|api.behavioral_evaluation_members|SELECT',
+    'simula_api|api.behavioral_evaluation_protocol_versions|SELECT',
+    'simula_api|api.behavioral_evaluation_protocols|SELECT',
+    'simula_api|api.behavioral_evaluation_runs|SELECT',
+    'simula_api|api.behavioral_fleet_summaries|SELECT',
+    'simula_api|api.behavioral_report_evidence|SELECT',
+    'simula_api|api.behavioral_round_summaries|SELECT',
+    'simula_api|api.behavioral_run_results|SELECT',
+    'simula_api|api.campaign_evidence_events|SELECT',
+    'simula_api|api.campaign_evidence_runs|SELECT',
+    'simula_api|api.campaign_lab_artifacts|SELECT',
+    'simula_api|api.campaign_lab_campaigns|SELECT',
+    'simula_api|api.campaign_lab_events|SELECT',
+    'simula_api|api.campaign_lab_runs|SELECT',
+    'simula_api|api.context_graph_versions|SELECT',
+    'simula_api|api.evaluation_runs|SELECT',
+    'simula_api|api.evidence_source_versions|SELECT',
+    'simula_api|api.evidence_sources|SELECT',
+    'simula_api|api.feature_flags|SELECT',
+    'simula_api|api.feedback_records|SELECT',
+    'simula_api|api.methodology_versions|SELECT',
+    'simula_api|api.observed_outcome_sets|SELECT',
+    'simula_api|api.observed_outcome_values|SELECT',
+    'simula_api|api.organization_invitations|SELECT',
+    'simula_api|api.organization_memberships|SELECT',
+    'simula_api|api.organizations|SELECT',
+    'simula_api|api.population_frame_versions|SELECT',
+    'simula_api|api.population_frames|SELECT',
+    'simula_api|api.projects|SELECT',
+    'simula_api|api.provider_configuration_versions|SELECT',
+    'simula_api|api.report_artifacts|SELECT',
+    'simula_api|api.report_exports|SELECT',
+    'simula_api|api.report_share_grants|SELECT',
+    'simula_api|api.simulation_configuration_versions|SELECT',
+    'simula_api|api.simulation_configurations|SELECT',
+    'simula_api|api.simulation_results|SELECT',
+    'simula_api|api.simulation_runs|SELECT',
+    'simula_api|api.stimuli|SELECT',
+    'simula_api|api.stimulus_assets|REFERENCES',
+    'simula_api|api.stimulus_assets|SELECT',
+    'simula_api|api.stimulus_assets|UPDATE',
+    'simula_api|api.stimulus_versions|SELECT',
+    'simula_api|api.stimulus_visual_profiles|SELECT',
+    'simula_api|api.variant_groups|SELECT',
+    'simula_api|api.variant_members|SELECT',
+    'simula_command_owner|api.audience_versions|INSERT',
+    'simula_command_owner|api.audience_versions|SELECT',
+    'simula_command_owner|api.audiences|INSERT',
+    'simula_command_owner|api.audiences|SELECT',
+    'simula_command_owner|api.behavioral_evaluation_members|INSERT',
+    'simula_command_owner|api.behavioral_evaluation_members|SELECT',
+    'simula_command_owner|api.behavioral_evaluation_protocol_versions|INSERT',
+    'simula_command_owner|api.behavioral_evaluation_protocol_versions|SELECT',
+    'simula_command_owner|api.behavioral_evaluation_protocols|INSERT',
+    'simula_command_owner|api.behavioral_evaluation_protocols|SELECT',
+    'simula_command_owner|api.behavioral_evaluation_runs|INSERT',
+    'simula_command_owner|api.behavioral_evaluation_runs|SELECT',
+    'simula_command_owner|api.behavioral_run_results|SELECT',
+    'simula_command_owner|api.campaign_evidence_events|INSERT',
+    'simula_command_owner|api.campaign_evidence_events|SELECT',
+    'simula_command_owner|api.campaign_evidence_runs|INSERT',
+    'simula_command_owner|api.campaign_evidence_runs|SELECT',
+    'simula_command_owner|api.campaign_evidence_runs|UPDATE',
+    'simula_command_owner|api.campaign_lab_artifacts|INSERT',
+    'simula_command_owner|api.campaign_lab_artifacts|SELECT',
+    'simula_command_owner|api.campaign_lab_artifacts|UPDATE',
+    'simula_command_owner|api.campaign_lab_campaigns|INSERT',
+    'simula_command_owner|api.campaign_lab_campaigns|SELECT',
+    'simula_command_owner|api.campaign_lab_campaigns|UPDATE',
+    'simula_command_owner|api.campaign_lab_events|INSERT',
+    'simula_command_owner|api.campaign_lab_events|SELECT',
+    'simula_command_owner|api.campaign_lab_runs|INSERT',
+    'simula_command_owner|api.campaign_lab_runs|SELECT',
+    'simula_command_owner|api.campaign_lab_runs|UPDATE',
+    'simula_command_owner|api.context_graph_versions|SELECT',
+    'simula_command_owner|api.evaluation_runs|SELECT',
+    'simula_command_owner|api.evidence_source_versions|INSERT',
+    'simula_command_owner|api.evidence_source_versions|SELECT',
+    'simula_command_owner|api.evidence_sources|INSERT',
+    'simula_command_owner|api.evidence_sources|SELECT',
+    'simula_command_owner|api.feature_flags|INSERT',
+    'simula_command_owner|api.feature_flags|SELECT',
+    'simula_command_owner|api.feature_flags|UPDATE',
+    'simula_command_owner|api.feedback_records|INSERT',
+    'simula_command_owner|api.feedback_records|SELECT',
+    'simula_command_owner|api.methodology_versions|SELECT',
+    'simula_command_owner|api.observed_outcome_sets|INSERT',
+    'simula_command_owner|api.observed_outcome_sets|SELECT',
+    'simula_command_owner|api.observed_outcome_values|INSERT',
+    'simula_command_owner|api.observed_outcome_values|SELECT',
+    'simula_command_owner|api.organization_invitations|INSERT',
+    'simula_command_owner|api.organization_invitations|SELECT',
+    'simula_command_owner|api.organization_invitations|UPDATE',
+    'simula_command_owner|api.organization_memberships|INSERT',
+    'simula_command_owner|api.organization_memberships|SELECT',
+    'simula_command_owner|api.organizations|DELETE',
+    'simula_command_owner|api.organizations|INSERT',
+    'simula_command_owner|api.organizations|SELECT',
+    'simula_command_owner|api.organizations|UPDATE',
+    'simula_command_owner|api.population_frame_versions|SELECT',
+    'simula_command_owner|api.projects|INSERT',
+    'simula_command_owner|api.projects|SELECT',
+    'simula_command_owner|api.projects|UPDATE',
+    'simula_command_owner|api.provider_configuration_versions|SELECT',
+    'simula_command_owner|api.report_artifacts|INSERT',
+    'simula_command_owner|api.report_artifacts|SELECT',
+    'simula_command_owner|api.report_exports|INSERT',
+    'simula_command_owner|api.report_exports|SELECT',
+    'simula_command_owner|api.report_share_grants|INSERT',
+    'simula_command_owner|api.report_share_grants|SELECT',
+    'simula_command_owner|api.report_share_grants|UPDATE',
+    'simula_command_owner|api.simulation_configuration_versions|INSERT',
+    'simula_command_owner|api.simulation_configuration_versions|SELECT',
+    'simula_command_owner|api.simulation_configurations|INSERT',
+    'simula_command_owner|api.simulation_configurations|SELECT',
+    'simula_command_owner|api.simulation_results|SELECT',
+    'simula_command_owner|api.simulation_runs|INSERT',
+    'simula_command_owner|api.simulation_runs|SELECT',
+    'simula_command_owner|api.simulation_runs|UPDATE',
+    'simula_command_owner|api.stimuli|INSERT',
+    'simula_command_owner|api.stimuli|SELECT',
+    'simula_command_owner|api.stimulus_assets|INSERT',
+    'simula_command_owner|api.stimulus_assets|REFERENCES',
+    'simula_command_owner|api.stimulus_assets|SELECT',
+    'simula_command_owner|api.stimulus_assets|UPDATE',
+    'simula_command_owner|api.stimulus_versions|INSERT',
+    'simula_command_owner|api.stimulus_versions|SELECT',
+    'simula_command_owner|api.stimulus_visual_profiles|DELETE',
+    'simula_command_owner|api.stimulus_visual_profiles|INSERT',
+    'simula_command_owner|api.stimulus_visual_profiles|SELECT',
+    'simula_command_owner|api.variant_groups|INSERT',
+    'simula_command_owner|api.variant_groups|SELECT',
+    'simula_command_owner|api.variant_members|INSERT',
+    'simula_command_owner|api.variant_members|SELECT',
+    'simula_command_owner|private.audit_events|INSERT',
+    'simula_command_owner|private.audit_events|SELECT',
+    'simula_command_owner|private.campaign_evidence_secrets|INSERT',
+    'simula_command_owner|private.campaign_lab_secrets|INSERT',
+    'simula_command_owner|private.context_node_embeddings|SELECT',
+    'simula_command_owner|private.embedding_model_versions|SELECT',
+    'simula_command_owner|private.idempotency_keys|INSERT',
+    'simula_command_owner|private.idempotency_keys|SELECT',
+    'simula_command_owner|private.idempotency_keys|UPDATE',
+    'simula_command_owner|private.organization_deletion_requests|INSERT',
+    'simula_command_owner|private.organization_deletion_requests|SELECT',
+    'simula_command_owner|private.organization_deletion_requests|UPDATE',
+    'simula_command_owner|private.organization_deletion_resources|DELETE',
+    'simula_command_owner|private.organization_deletion_resources|INSERT',
+    'simula_command_owner|private.organization_deletion_resources|SELECT',
+    'simula_command_owner|private.organization_deletion_resources|UPDATE',
+    'simula_command_owner|private.phase4_command_receipts|INSERT',
+    'simula_command_owner|private.phase4_command_receipts|SELECT',
+    'simula_command_owner|private.phase4_command_receipts|UPDATE',
+    'simula_command_owner|private.platform_administrators|SELECT',
+    'simula_command_owner|private.provider_success_receipts|SELECT',
+    'simula_command_owner|private.run_events|INSERT',
+    'simula_command_owner|private.run_events|SELECT',
+    'simula_command_owner|private.run_outbox|INSERT',
+    'simula_worker_owner|api.behavioral_agent_public_summaries|INSERT',
+    'simula_worker_owner|api.behavioral_agent_public_summaries|SELECT',
+    'simula_worker_owner|api.behavioral_fleet_summaries|INSERT',
+    'simula_worker_owner|api.behavioral_fleet_summaries|SELECT',
+    'simula_worker_owner|api.behavioral_report_evidence|INSERT',
+    'simula_worker_owner|api.behavioral_report_evidence|SELECT',
+    'simula_worker_owner|api.behavioral_round_summaries|INSERT',
+    'simula_worker_owner|api.behavioral_round_summaries|SELECT',
+    'simula_worker_owner|api.behavioral_run_results|DELETE',
+    'simula_worker_owner|api.behavioral_run_results|INSERT',
+    'simula_worker_owner|api.behavioral_run_results|SELECT',
+    'simula_worker_owner|api.campaign_evidence_events|INSERT',
+    'simula_worker_owner|api.campaign_evidence_runs|DELETE',
+    'simula_worker_owner|api.campaign_evidence_runs|SELECT',
+    'simula_worker_owner|api.campaign_evidence_runs|UPDATE',
+    'simula_worker_owner|api.campaign_lab_events|INSERT',
+    'simula_worker_owner|api.campaign_lab_runs|SELECT',
+    'simula_worker_owner|api.campaign_lab_runs|UPDATE',
+    'simula_worker_owner|api.context_graph_versions|INSERT',
+    'simula_worker_owner|api.context_graph_versions|SELECT',
+    'simula_worker_owner|api.organizations|SELECT',
+    'simula_worker_owner|api.simulation_results|INSERT',
+    'simula_worker_owner|api.simulation_results|SELECT',
+    'simula_worker_owner|api.simulation_runs|SELECT',
+    'simula_worker_owner|api.simulation_runs|UPDATE',
+    'simula_worker_owner|private.audit_events|INSERT',
+    'simula_worker_owner|private.behavioral_action_events|INSERT',
+    'simula_worker_owner|private.behavioral_action_events|SELECT',
+    'simula_worker_owner|private.behavioral_agent_fleets|INSERT',
+    'simula_worker_owner|private.behavioral_agent_fleets|SELECT',
+    'simula_worker_owner|private.behavioral_agent_memories|INSERT',
+    'simula_worker_owner|private.behavioral_agent_memories|SELECT',
+    'simula_worker_owner|private.behavioral_provider_receipts|DELETE',
+    'simula_worker_owner|private.behavioral_provider_receipts|INSERT',
+    'simula_worker_owner|private.behavioral_provider_receipts|REFERENCES',
+    'simula_worker_owner|private.behavioral_provider_receipts|SELECT',
+    'simula_worker_owner|private.behavioral_provider_receipts|TRIGGER',
+    'simula_worker_owner|private.behavioral_provider_receipts|TRUNCATE',
+    'simula_worker_owner|private.behavioral_provider_receipts|UPDATE',
+    'simula_worker_owner|private.behavioral_result_payloads|DELETE',
+    'simula_worker_owner|private.behavioral_result_payloads|INSERT',
+    'simula_worker_owner|private.behavioral_result_payloads|REFERENCES',
+    'simula_worker_owner|private.behavioral_result_payloads|SELECT',
+    'simula_worker_owner|private.behavioral_result_payloads|TRIGGER',
+    'simula_worker_owner|private.behavioral_result_payloads|TRUNCATE',
+    'simula_worker_owner|private.behavioral_result_payloads|UPDATE',
+    'simula_worker_owner|private.campaign_evidence_secrets|DELETE',
+    'simula_worker_owner|private.campaign_evidence_secrets|SELECT',
+    'simula_worker_owner|private.campaign_lab_secrets|DELETE',
+    'simula_worker_owner|private.campaign_lab_secrets|SELECT',
+    'simula_worker_owner|private.context_node_embeddings|INSERT',
+    'simula_worker_owner|private.context_node_embeddings|SELECT',
+    'simula_worker_owner|private.embedding_model_versions|SELECT',
+    'simula_worker_owner|private.provider_success_receipts|DELETE',
+    'simula_worker_owner|private.provider_success_receipts|INSERT',
+    'simula_worker_owner|private.provider_success_receipts|REFERENCES',
+    'simula_worker_owner|private.provider_success_receipts|SELECT',
+    'simula_worker_owner|private.provider_success_receipts|TRIGGER',
+    'simula_worker_owner|private.provider_success_receipts|TRUNCATE',
+    'simula_worker_owner|private.provider_success_receipts|UPDATE',
+    'simula_worker_owner|private.queue_transport_control|SELECT',
+    'simula_worker_owner|private.run_attempts|INSERT',
+    'simula_worker_owner|private.run_attempts|SELECT',
+    'simula_worker_owner|private.run_attempts|UPDATE',
+    'simula_worker_owner|private.run_events|INSERT',
+    'simula_worker_owner|private.run_outbox|INSERT',
+    'simula_worker_owner|private.run_outbox|SELECT',
+    'simula_worker_owner|private.run_outbox|UPDATE',
+    'simula_worker_owner|private.runtime_controls|SELECT',
+    'simula_worker_owner|private.runtime_controls|UPDATE'
+  ]::text[],
+  'application table grant inventory is exact'
+);
+
+-- 20
+select extensions.ok(
+  not exists (
+    select 1
+    from pg_catalog.pg_proc as functions
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
+    cross join lateral pg_catalog.aclexplode(
+      coalesce(
+        functions.proacl,
+        pg_catalog.acldefault('f', functions.proowner)
+      )
+    ) as grants
+    where namespaces.nspname in ('api', 'private')
+      and grants.grantee = 0
+      and grants.privilege_type = 'EXECUTE'
+  ),
+  'PUBLIC cannot execute any application function'
+);
+
+-- 21
+select extensions.ok(
+  not exists (
+    select 1
+    from (values ('anon'), ('authenticated')) as browser_roles(role_name)
+    cross join pg_catalog.pg_proc as functions
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
+    where namespaces.nspname in ('api', 'private')
+      and pg_catalog.has_function_privilege(browser_roles.role_name, functions.oid, 'EXECUTE')
+  )
+  and (
+    select pg_catalog.array_agg(
+      functions.oid::pg_catalog.regprocedure::text
+      order by functions.oid::pg_catalog.regprocedure::text
+    )
+    from pg_catalog.pg_proc as functions
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
+    where namespaces.nspname in ('api', 'private')
+      and pg_catalog.has_function_privilege('simula_worker', functions.oid, 'EXECUTE')
+  ) = array[
+    'private.claim_campaign_evidence_runs(integer)',
+    'private.claim_campaign_lab_runs(integer)',
+    'private.claim_due_run_outbox_v2(integer)',
+    'private.claim_due_run_outbox(integer)',
+    'private.claim_organization_deletion_resources(integer)',
+    'private.claim_run_execution_traced(uuid,smallint,text)',
+    'private.claim_run_execution_v2_traced(uuid,smallint,text)',
+    'private.claim_run_execution(uuid,smallint,text)',
+    'private.complete_behavioral_run_execution(uuid,uuid,uuid,bytea,jsonb)',
+    'private.complete_campaign_evidence_run(uuid,uuid,jsonb)',
+    'private.complete_campaign_lab_run_v2(uuid,uuid,jsonb)',
+    'private.complete_campaign_lab_run_v3(uuid,uuid,jsonb)',
+    'private.complete_campaign_lab_run(uuid,uuid,jsonb)',
+    'private.complete_organization_deletion_resource(uuid,uuid)',
+    'private.complete_run_execution(uuid,uuid,uuid,jsonb,jsonb)',
+    'private.confirm_run_dispatch(uuid,uuid)',
+    'private.evaluate_run_creation_control(numeric,integer)',
+    'private.expire_campaign_evidence_runs(integer)',
+    'private.expire_campaign_lab_runs(integer)',
+    'private.fail_campaign_evidence_run(uuid,uuid,text,text,boolean)',
+    'private.fail_campaign_lab_run(uuid,uuid,text,text,boolean)',
+    'private.fail_run_dispatch(uuid,uuid,text)',
+    'private.fail_run_execution(uuid,uuid,uuid,text,boolean)',
+    'private.finalize_canceled_campaign_evidence_run(uuid,uuid)',
+    'private.finalize_canceled_campaign_lab_run(uuid,uuid)',
+    'private.finalize_poisoned_dispatches(integer)',
+    'private.finalize_ready_organization_deletions(integer)',
+    'private.finalize_requested_cancellations(integer)',
+    'private.heartbeat_run_execution(uuid,uuid,uuid)',
+    'private.reconcile_run_dispatch(integer,boolean)',
+    'private.release_organization_deletion_resource(uuid,uuid,text)',
+    'private.require_queue_transport(text)',
+    'private.runtime_observability_snapshot_v2()',
+    'private.runtime_observability_snapshot_v3()',
+    'private.runtime_observability_snapshot()',
+    'private.runtime_schema_readiness_v2()',
+    'private.runtime_schema_readiness_v3()',
+    'private.runtime_schema_readiness()',
+    'private.update_bullmq_run_pressure(integer,numeric,numeric)',
+    'private.update_campaign_evidence_progress(uuid,uuid,text,smallint,text)',
+    'private.update_campaign_lab_run_progress(uuid,uuid,text,smallint,text)',
+    'private.upsert_context_node_embedding(uuid,text,text,text,vector)'
+  ]::text[],
+  'browser roles execute no application functions; worker has the exact helper allowlist'
+);
+
+-- 22
+select extensions.is(
+  (
+    select pg_catalog.array_agg(
+      functions.oid::pg_catalog.regprocedure::text
+      order by functions.oid::pg_catalog.regprocedure::text
+    )
+    from pg_catalog.pg_proc as functions
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
+    where namespaces.nspname in ('api', 'private')
+      and pg_catalog.has_function_privilege('simula_api', functions.oid, 'EXECUTE')
+  ),
+  array[
+    'api.accept_organization_invitation(text,text,text,uuid)',
+    'api.access_shared_report(text,uuid)',
+    'api.append_stimulus_version(uuid,text,text,text,text,uuid)',
+    'api.cancel_campaign_evidence_run(uuid,uuid)',
+    'api.cancel_campaign_lab_run(uuid,text,text,uuid)',
+    'api.confirm_organization_deletion(uuid,uuid)',
+    'api.confirm_stimulus_asset_deletion(uuid,uuid)',
+    'api.confirm_stimulus_asset_upload(uuid,integer,text,uuid)',
+    'api.create_audience_definition(uuid,text,jsonb,text,text,text,uuid)',
+    'api.create_behavioral_demo_run(uuid,uuid,text,text,text,uuid,text)',
+    'api.create_campaign_evidence_run(uuid,uuid,text,jsonb,jsonb,uuid,uuid,text,text,uuid)',
+    'api.create_campaign_lab_artifact(uuid,uuid,text,text,jsonb,jsonb,text,jsonb,text,text,uuid)',
+    'api.create_campaign_lab_campaign(uuid,uuid,text,text,text,jsonb,text,text,uuid)',
+    'api.create_campaign_lab_run_v2(uuid,uuid,text,jsonb,jsonb,text,text,uuid)',
+    'api.create_campaign_lab_run_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)',
+    'api.create_campaign_lab_run(uuid,uuid,text,jsonb,jsonb,text,text,uuid)',
+    'api.create_feedback_record(uuid,uuid,api.feedback_kind,timestamp with time zone,jsonb,jsonb,text,text,text,uuid)',
+    'api.create_organization_invitation(uuid,text,api.organization_role,text,timestamp with time zone,text,text,uuid)',
+    'api.create_organization(text,text,text,uuid)',
+    'api.create_project(uuid,text,text,text,text,text,text,text,uuid)',
+    'api.create_report_artifact(uuid,jsonb,text,text,uuid)',
+    'api.create_report_export(uuid,api.export_format,text,bytea,timestamp with time zone,text,text,uuid)',
+    'api.create_report_share_grant(uuid,uuid,api.share_permission,text,timestamp with time zone,text,text,uuid)',
+    'api.create_simulation_configuration(uuid,text,uuid,uuid,uuid,uuid,jsonb,bigint,text,text,uuid)',
+    'api.create_simulation_run(uuid,uuid,text,text,uuid,text)',
+    'api.create_simulation_run(uuid,uuid,text,text,uuid)',
+    'api.create_stimulus_asset(uuid,text,text,integer,text,timestamp with time zone,text,text,uuid)',
+    'api.create_stimulus_visual_profile(uuid,uuid,jsonb,text,text,uuid)',
+    'api.create_stimulus(uuid,text,text,text,text,text,uuid)',
+    'api.create_variant_group(uuid,text,jsonb,text,text,uuid)',
+    'api.get_organization_admin_summary(uuid)',
+    'api.get_organization_audit_feed(uuid,integer)',
+    'api.get_run_audit_history(uuid,integer)',
+    'api.get_run_failure_context(uuid)',
+    'api.get_simulation_run_replay(uuid,text,text)',
+    'api.list_organizations()',
+    'api.record_privileged_denial(uuid,text,text,uuid,uuid)',
+    'api.record_sign_in_success(uuid,uuid)',
+    'api.request_organization_deletion(uuid,text,text,text,uuid)',
+    'api.request_run_cancel(uuid,uuid)',
+    'api.request_stimulus_asset_deletion(uuid,text,text,uuid)',
+    'api.revoke_report_share_grant(uuid,text,text,uuid)',
+    'api.search_context_nodes(uuid,text,text,vector,integer,double precision)',
+    'api.set_feature_flag(uuid,text,boolean,text,text,text,uuid)',
+    'api.update_campaign_lab_campaign(uuid,integer,text,text,jsonb,text,text,uuid)',
+    'api.update_project(uuid,integer,text,text,text,text,text,uuid)',
+    'private.accept_organization_invitation_atomic(text,text,text,uuid)',
+    'private.access_shared_report_atomic(text,uuid)',
+    'private.append_stimulus_version_atomic(uuid,text,text,text,text,uuid)',
+    'private.cancel_campaign_evidence_run_atomic(uuid,uuid)',
+    'private.cancel_campaign_lab_run_atomic(uuid,text,text,uuid)',
+    'private.confirm_organization_deletion_atomic(uuid,uuid)',
+    'private.confirm_stimulus_asset_deletion_atomic(uuid,uuid)',
+    'private.confirm_stimulus_asset_upload_atomic(uuid,integer,text,uuid)',
+    'private.create_audience_definition_atomic(uuid,text,jsonb,text,text,text,uuid)',
+    'private.create_behavioral_demo_run_atomic(uuid,uuid,text,text,text,uuid,text)',
+    'private.create_campaign_evidence_run_atomic(uuid,uuid,text,jsonb,jsonb,uuid,uuid,text,text,uuid)',
+    'private.create_campaign_lab_artifact_atomic(uuid,uuid,text,text,jsonb,jsonb,text,jsonb,text,text,uuid)',
+    'private.create_campaign_lab_campaign_atomic(uuid,uuid,text,text,text,jsonb,text,text,uuid)',
+    'private.create_campaign_lab_run_atomic_v2(uuid,uuid,text,jsonb,jsonb,text,text,uuid)',
+    'private.create_campaign_lab_run_atomic_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)',
+    'private.create_campaign_lab_run_atomic(uuid,uuid,text,jsonb,jsonb,text,text,uuid)',
+    'private.create_feedback_record_atomic(uuid,uuid,api.feedback_kind,timestamp with time zone,jsonb,jsonb,text,text,text,uuid)',
+    'private.create_organization_atomic(text,text,text,uuid)',
+    'private.create_organization_invitation_atomic(uuid,text,api.organization_role,text,timestamp with time zone,text,text,uuid)',
+    'private.create_project_atomic(uuid,text,text,text,text,text,text,text,uuid)',
+    'private.create_report_artifact_atomic(uuid,jsonb,text,text,uuid)',
+    'private.create_report_export_atomic(uuid,api.export_format,text,bytea,timestamp with time zone,text,text,uuid)',
+    'private.create_report_share_grant_atomic(uuid,uuid,api.share_permission,text,timestamp with time zone,text,text,uuid)',
+    'private.create_simulation_configuration_atomic(uuid,text,uuid,uuid,uuid,uuid,jsonb,bigint,text,text,uuid)',
+    'private.create_simulation_run_atomic(uuid,uuid,text,text,uuid)',
+    'private.create_simulation_run_traced(uuid,uuid,text,text,uuid,text)',
+    'private.create_stimulus_asset_atomic(uuid,text,text,integer,text,timestamp with time zone,text,text,uuid)',
+    'private.create_stimulus_atomic(uuid,text,text,text,text,text,uuid)',
+    'private.create_stimulus_visual_profile_atomic(uuid,uuid,jsonb,text,text,uuid)',
+    'private.create_variant_group_atomic(uuid,text,jsonb,text,text,uuid)',
+    'private.get_run_audit_history(uuid,integer)',
+    'private.get_run_failure_context(uuid)',
+    'private.get_simulation_run_replay(uuid,text,text)',
+    'private.has_org_role(uuid,uuid,api.organization_role[])',
+    'private.is_org_member(uuid,uuid)',
+    'private.is_platform_superadmin(uuid)',
+    'private.is_verified_api_subject(uuid)',
+    'private.organization_admin_summary(uuid)',
+    'private.organization_audit_feed(uuid,integer)',
+    'private.platform_user_count(uuid)',
+    'private.provider_success_receipt_for_run(uuid)',
+    'private.record_privileged_denial_atomic(uuid,text,text,uuid,uuid)',
+    'private.record_sign_in_success(uuid,uuid)',
+    'private.request_organization_deletion_atomic(uuid,text,text,text,uuid)',
+    'private.request_run_cancel_atomic(uuid,uuid)',
+    'private.request_stimulus_asset_deletion_atomic(uuid,text,text,uuid)',
+    'private.revoke_report_share_grant_atomic(uuid,text,text,uuid)',
+    'private.runtime_observability_snapshot_v2()',
+    'private.runtime_observability_snapshot_v3()',
+    'private.runtime_observability_snapshot()',
+    'private.runtime_schema_readiness_v2()',
+    'private.runtime_schema_readiness_v3()',
+    'private.runtime_schema_readiness()',
+    'private.search_context_nodes(uuid,text,text,vector,integer,double precision)',
+    'private.set_feature_flag_atomic(uuid,text,boolean,text,text,text,uuid)',
+    'private.update_campaign_lab_campaign_atomic(uuid,integer,text,text,jsonb,text,text,uuid)',
+    'private.update_project_atomic(uuid,integer,text,text,text,text,text,uuid)',
+    'private.verified_subject()'
+  ]::text[],
+  'API role function allowlist is exact'
+);
+
+-- 23
+select extensions.ok(
+  (
+    select pg_catalog.bool_and(
+      (
+        functions.proname in (
+          'claim_due_run_outbox',
+          'claim_run_execution',
+          'claim_run_execution_traced',
+          'complete_behavioral_run_execution',
+          'complete_run_execution',
+          'confirm_run_dispatch',
+          'evaluate_run_creation_control',
+          'fail_run_dispatch',
+          'fail_run_execution',
+          'enforce_global_run_backpressure',
+          'finalize_poisoned_dispatches',
+          'finalize_requested_cancellations',
+          'heartbeat_run_execution',
+          'reconcile_run_dispatch',
+          'runtime_observability_snapshot',
+          'runtime_schema_readiness',
+          'upsert_context_node_embedding'
+        )
+        and owner_roles.rolname = 'simula_worker_owner'
+        and functions.prosecdef
+      )
+      or (
+        functions.proname in (
+          'behavioral_result_artifact_is_valid',
+          'normalize_behavioral_public_summaries',
+          'normalize_behavioral_public_summaries_trigger',
+          'normalize_behavioral_result_payload',
+          'normalize_behavioral_result_payload_trigger'
+        )
+        and owner_roles.rolname = 'simula_worker_owner'
+        and not functions.prosecdef
+      )
+      or (
+        functions.proname in (
+          'platform_user_count'
+        )
+        and owner_roles.rolname = 'postgres'
+        and functions.prosecdef
+      )
+      or (
+        functions.proname not in (
+          'claim_due_run_outbox',
+          'claim_run_execution',
+          'claim_run_execution_traced',
+          'complete_behavioral_run_execution',
+          'complete_run_execution',
+          'confirm_run_dispatch',
+          'evaluate_run_creation_control',
+          'fail_run_dispatch',
+          'fail_run_execution',
+          'enforce_global_run_backpressure',
+          'finalize_poisoned_dispatches',
+          'finalize_requested_cancellations',
+          'heartbeat_run_execution',
+          'platform_user_count',
+          'reconcile_run_dispatch',
+          'runtime_observability_snapshot',
+          'runtime_schema_readiness',
+          'upsert_context_node_embedding',
+          'behavioral_result_artifact_is_valid',
+          'normalize_behavioral_public_summaries',
+          'normalize_behavioral_public_summaries_trigger',
+          'normalize_behavioral_result_payload',
+          'normalize_behavioral_result_payload_trigger'
+        )
+        and owner_roles.rolname = 'simula_command_owner'
+        and functions.prosecdef = (
+          functions.proname in (
+             'append_stimulus_version_atomic',
+             'claim_organization_deletion_resources',
+             'complete_organization_deletion_resource',
+             'confirm_organization_deletion_atomic',
+             'confirm_stimulus_asset_deletion_atomic',
+             'confirm_stimulus_asset_upload_atomic',
+             'create_behavioral_demo_run_atomic',
+            'create_organization_atomic',
+            'create_project_atomic',
+             'create_simulation_run_atomic',
+             'create_simulation_run_traced',
+             'create_stimulus_atomic',
+             'create_stimulus_asset_atomic',
+             'create_stimulus_visual_profile_atomic',
+             'finalize_ready_organization_deletions',
+            'get_run_audit_history',
+            'get_run_failure_context',
             'get_simulation_run_replay',
             'has_org_role',
             'is_org_member',
@@ -1072,4 +1644,3 @@ select extensions.is(
 
 select * from extensions.finish();
 rollback;
-
