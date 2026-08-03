@@ -140,6 +140,8 @@ class CampaignEvidenceDatabase(Protocol):
 
 
 class CampaignLabDatabase(Protocol):
+    async def expire_campaign_lab_runs(self, requested_batch_size: int = 50) -> int: ...
+
     async def claim_campaign_lab_runs(
         self, requested_batch_size: int = 5
     ) -> list[CampaignLabClaim]: ...
@@ -488,6 +490,13 @@ class WorkerDatabase(WorkerExecutionGateway):
             )
         return claims
 
+    async def expire_campaign_lab_runs(self, requested_batch_size: int = 50) -> int:
+        row = await self._fetchone(
+            "select private.expire_campaign_lab_runs(%s) as deleted",
+            (requested_batch_size,),
+        )
+        return int(row["deleted"])
+
     async def update_campaign_lab_progress(
         self, run_id: UUID, lease_token: UUID, stage: str, progress: int, message: str
     ) -> bool:
@@ -674,6 +683,7 @@ class WorkerDatabase(WorkerExecutionGateway):
             "confirm_run_dispatch": "confirm_dispatch",
             "evaluate_run_creation_control": "evaluate_run_control",
             "expire_campaign_evidence_runs": "expire_campaign_evidence",
+            "expire_campaign_lab_runs": "expire_campaign_lab",
             "fail_run_dispatch": "fail_dispatch",
             "fail_campaign_evidence_run": "fail_campaign_evidence",
             "fail_campaign_lab_run": "fail_campaign_lab",
@@ -721,3 +731,4 @@ class WorkerDatabase(WorkerExecutionGateway):
                     """
                 )
                 yield cast(AsyncConnection[DatabaseRow], connection)
+
