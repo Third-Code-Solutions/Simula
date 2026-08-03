@@ -14,8 +14,9 @@ classification: PROPOSED
 2. Reconnect Railway access for project `f25b8598-d3cc-4e9d-a63d-0413a4035d22`,
    confirm each service watch path, and capture one automatic deploy event after
    the GitHub push.
-3. Schedule and monitor the retention cleanup function; verify private holdout
-   deletion after completion, failure, cancellation, expiry, and restore drills.
+3. Deploy the retention-aware worker and observe one hosted cleanup invocation;
+   verify private holdout deletion after completion, failure, cancellation,
+   expiry, and restore drills.
 4. Admit only lawfully governed Philippine survey and historical datasets after
    owner, consent, purpose, license, and current legal review.
 5. Admit a human-reviewed English/Filipino/Taglish evaluation dataset and attach
@@ -29,7 +30,8 @@ classification: PROPOSED
    Windows/Foundation/History checks fail before producing runner steps, so do
    not call the hosted release green until that external CI condition is fixed.
 8. Start Docker and run the local Supabase lint/pgtap suite; hosted Campaign Lab
-   migration/function/grant checks and the durable-workflow pgTAP checks are
-   complete. The hosted foundation suite is 30/35 because five checks
+   migration/function/grant checks, retention pgTAP 10/10, and durable-workflow
+   pgTAP 9/9 checks are complete. The hosted foundation suite is 30/35 because five checks
    intentionally expect local role/Auth/seed fixtures and must not seed those
    fixtures into production.
+
