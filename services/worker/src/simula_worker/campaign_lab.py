@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from time import monotonic
 from typing import cast
 from uuid import UUID
 
@@ -439,11 +440,28 @@ async def process_campaign_lab_claim(database: CampaignLabDatabase, claim: Campa
 
 
 async def campaign_lab_loop(
-    stop: asyncio.Event, database: CampaignLabDatabase, *, poll_seconds: float = 1.0
+    stop: asyncio.Event,
+    database: CampaignLabDatabase,
+    *,
+    poll_seconds: float = 1.0,
+    retention_cleanup_seconds: float = 60.0,
 ) -> None:
     """Poll the database-backed Campaign Lab queue; leases permit multiple workers."""
 
+    last_retention_cleanup_at = 0.0
     while not stop.is_set():
+        now = monotonic()
+        if now - last_retention_cleanup_at >= retention_cleanup_seconds:
+            try:
+                deleted = await database.expire_campaign_lab_runs(50)
+                if deleted:
+                    logger.info("campaign_lab_retention_deleted", deleted=deleted)
+            except Exception as error:
+                logger.warning(
+                    "campaign_lab_retention_cleanup_failed",
+                    error_type=type(error).__name__,
+                )
+            last_retention_cleanup_at = now
         try:
             claims = await database.claim_campaign_lab_runs(5)
         except Exception as error:
@@ -463,3 +481,4 @@ async def campaign_lab_loop(
             if stop.is_set():
                 return
             await process_campaign_lab_claim(database, claim)
+
