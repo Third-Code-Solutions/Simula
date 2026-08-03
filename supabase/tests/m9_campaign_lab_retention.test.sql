@@ -134,4 +134,3 @@ select extensions.ok(
 
 select * from extensions.finish();
 rollback;
-

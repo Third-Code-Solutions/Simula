@@ -255,5 +255,3 @@ grant execute on function private.runtime_observability_snapshot_v3()
   to simula_api, simula_worker;
 
 set role postgres;
-
-
