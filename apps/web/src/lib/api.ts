@@ -422,8 +422,7 @@ async function assetFetch(
     method: "GET" | "PUT";
   }>,
 ): Promise<Response> {
-  const headers = n
-ew Headers();
+  const headers = new Headers();
   headers.set("Accept", init.accept);
   headers.set("Authorization", `Bearer ${await accessToken()}`);
   if (init.contentType) {
@@ -716,7 +715,199 @@ export function createCampaignLabComplianceReview(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
-  return re…1347 tokens truncated…e = response.headers.get("content-type")?.toLowerCase();
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/compliance/reviews`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabComplianceRun(
+  campaignId: string,
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(
+      `/campaign-lab/campaigns/${campaignId}/compliance/runs/${runId}`,
+    ),
+  );
+}
+
+export function createCampaignLabReport(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/reports`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabReportRun(
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(`/campaign-lab/reports/runs/${runId}`),
+  );
+}
+
+export function getCampaignLabAudit(
+  campaignId: string,
+): Promise<CampaignLabAuditPage> {
+  return request<CampaignLabAuditPage>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/audit`),
+  );
+}
+
+export function getDemoAudience(): Promise<AudienceDisclosure> {
+  return request<AudienceDisclosure>(domainPath("/audiences/demo"));
+}
+
+export function updateProject(
+  projectId: string,
+  version: number,
+  input: Partial<
+    Pick<Project, "category" | "language" | "market" | "name" | "objective">
+  >,
+): Promise<Project> {
+  return request<Project>(domainPath(`/projects/${projectId}`), {
+    body: input,
+    headers: { "If-Match": `"${version}"` },
+    method: "PATCH",
+  });
+}
+
+export function createStimulus(
+  projectId: string,
+  input: Pick<Stimulus, "name"> & { content: string },
+): Promise<Stimulus> {
+  return request<Stimulus>(domainPath(`/projects/${projectId}/stimuli`), {
+    body: input,
+    headers: idempotencyHeaders(),
+    method: "POST",
+  });
+}
+
+export function appendStimulusVersion(
+  stimulusId: string,
+  content: string,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<StimulusVersion> {
+  return request<StimulusVersion>(
+    domainPath(`/stimuli/${stimulusId}/versions`),
+    {
+      body: { content },
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
+  );
+}
+
+export function listStimulusAssets(
+  stimulusId: string,
+): Promise<readonly StimulusAsset[]> {
+  return request<unknown>(`/api/v2/stimuli/${stimulusId}/assets`).then(
+    (value) =>
+      parsedResponse((response) => {
+        const assets = parseStimulusAssetCollection(response);
+        for (const asset of assets) {
+          assetIdentity(asset, { stimulusId });
+        }
+        return assets;
+      }, value),
+  );
+}
+
+export function reserveStimulusAsset(
+  stimulusId: string,
+  input: StimulusAssetReserveInput,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<StimulusAsset> {
+  return request<unknown>(`/api/v2/stimuli/${stimulusId}/assets`, {
+    body: input,
+    headers: idempotencyHeaders(idempotencyKey),
+    method: "POST",
+  }).then((value) =>
+    parsedResponse(
+      (response) =>
+        assetIdentity(parseStimulusAssetCommand(response), { stimulusId }),
+      value,
+    ),
+  );
+}
+
+export async function uploadStimulusAsset(
+  asset: StimulusAsset,
+  bytes: ArrayBuffer,
+  idempotencyKey = crypto.randomUUID(),
+): Promise<StimulusAsset> {
+  const expected = parseStimulusAsset(asset);
+  const actualSha256 = Array.from(
+    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+    (value) => value.toString(16).padStart(2, "0"),
+  ).join("");
+  if (
+    expected.status !== "pending_upload" ||
+    bytes.byteLength !== expected.expected_byte_size ||
+    actualSha256 !== expected.expected_content_sha256 ||
+    Date.parse(expected.retention_until) <= Date.now()
+  ) {
+    throw new ApiProblem(
+      409,
+      "asset_mismatch",
+      "The selected file does not match its active upload reservation.",
+    );
+  }
+  const response = await assetFetch(
+    `/api/v2/stimulus-assets/${expected.asset_id}/content`,
+    {
+      accept: "application/json, application/problem+json",
+      body: bytes,
+      contentType: expected.media_type,
+      idempotencyKey,
+      method: "PUT",
+    },
+  );
+  const payload = await responsePayload(response);
+  if (!response.ok) {
+    throw responseProblem(response, payload);
+  }
+  return parsedResponse(
+    (value) =>
+      assetIdentity(parseStimulusAssetCommand(value), {
+        assetId: expected.asset_id,
+        stimulusId: expected.stimulus_id,
+      }),
+    payload,
+  );
+}
+
+export async function downloadStimulusAsset(
+  asset: StimulusAsset,
+): Promise<StimulusAssetDownload> {
+  const expected = parseStimulusAsset(asset);
+  if (
+    expected.status !== "available" ||
+    expected.byte_size !== expected.expected_byte_size ||
+    expected.content_sha256 !== expected.expected_content_sha256 ||
+    Date.parse(expected.retention_until) <= Date.now()
+  ) {
+    throw new ApiProblem(
+      409,
+      "asset_unavailable",
+      "The private campaign asset is not available for verified access.",
+    );
+  }
+  const response = await assetFetch(
+    `/api/v2/stimulus-assets/${expected.asset_id}/content`,
+    {
+      accept: STIMULUS_ASSET_MEDIA_TYPES.join(", "),
+      method: "GET",
+    },
+  );
+  if (!response.ok) {
+    throw responseProblem(response, await responsePayload(response));
+  }
+  const contentType = response.headers.get("content-type")?.toLowerCase();
   const rawLength = response.headers.get("content-length");
   const expectedSha256 = /^"([0-9a-f]{64})"$/.exec(
     response.headers.get("etag") ?? "",
@@ -1399,4 +1590,3 @@ export function getOrganizationAudit(
     `/api/v1/organizations/${organizationId}/audit`,
   );
 }
-
