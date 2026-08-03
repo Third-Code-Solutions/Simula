@@ -422,7 +422,8 @@ async function assetFetch(
     method: "GET" | "PUT";
   }>,
 ): Promise<Response> {
-  const headers = new Headers();
+  const headers = n
+ew Headers();
   headers.set("Accept", init.accept);
   headers.set("Authorization", `Bearer ${await accessToken()}`);
   if (init.contentType) {
