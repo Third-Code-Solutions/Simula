@@ -83,8 +83,8 @@ classification: OBSERVED
   CSV/Formbricks/ODK/generic JSON payloads stay in the worker-only secret
   envelope, are normalized in memory, and are deleted after aggregate output
   completion. The hosted registry recorded this forward-only migration as
-  `20260802150729` under `campaign_lab_survey_import_workflow` while the
-  compiled runtime head is `20260802150000`.
+  `20260802150729` under `campaign_lab_survey_import_workflow`; the later
+  retention migration advances the compiled runtime head to `20260803100000`.
 - Persona interviews, compliance reviews, and report generation now use the same
   durable leased run queue, with run-status endpoints and aggregate evidence
   binding. Behavioral diagnostics persist repetition, round, topology, exposure,
@@ -119,8 +119,13 @@ classification: OBSERVED
   `20260802150000_campaign_lab_survey_import_workflow.sql` is applied to the
   same project; its hosted registry version is `20260802150729`. The v3
   entrypoints are least-privilege replacements for the survey-import-capable run
-  admission/completion/readiness path, bound to the compiled `20260802150000`
-  head.
+  admission/completion/readiness path, bound to the then-current compiled
+  `20260802150000` head. The forward-only retention migration
+  `20260803100000_campaign_lab_retention_cleanup.sql` is also applied; the
+  hosted registry assigned `20260803020312`, while the logical runtime head is
+  `20260803100000`. Campaign Lab artifacts and runs now require 90-day retention
+  deadlines, terminal rows have indexed worker cleanup policies, and cleanup
+  audits before deletion.
 - The worker now claims Campaign Lab runs from PostgreSQL, persists progress,
   retries bounded failures, finalizes cancellation, and keeps raw survey rows
   and held-out outcomes in the worker-only secret envelope.
@@ -188,3 +193,4 @@ estimate nobody. Survey calibration and historical backtesting are now durable
 evaluation jobs, but no real Philippine survey or historical outcome dataset is
 attached here; hosted verification and lawful data admission remain required
 before any validity claim.
+
