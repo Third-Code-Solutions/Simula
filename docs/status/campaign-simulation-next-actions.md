@@ -7,9 +7,10 @@ classification: PROPOSED
 
 # Next actions
 
-1. Push the reviewed Campaign Lab/sidebar release, then verify the exact SHA in
-   both connected Vercel projects and capture authenticated browser/API evidence
-   for the protected Campaign Lab route before production promotion.
+1. The reviewed Campaign Lab/sidebar release is pushed at `f3b3e2c`. Preview
+   Supabase configuration is now provisioned in both connected Vercel projects;
+   verify the fresh exact-SHA previews and capture authenticated browser/API
+   evidence for the protected Campaign Lab route before production promotion.
 2. Reconnect Railway access for project `f25b8598-d3cc-4e9d-a63d-0413a4035d22`,
    confirm each service watch path, and capture one automatic deploy event after
    the GitHub push.

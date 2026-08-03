@@ -134,6 +134,10 @@ classification: OBSERVED
   surfaces; report approval is bound to a succeeded compliance review and named
   human reviewer. Evidence results expose survey/backtest component metrics and
   cohort slices in the UI.
+- The connected Vercel `simula` and `simula-admin` projects now have the hosted
+  Supabase URL and publishable key provisioned for Preview. Their existing
+  `f3b3e2c` artifacts require a fresh deployment before those settings can be
+  runtime-verified.
 - Verification completed locally: the bounded non-integration Python suite is
   472 passed and 2 skipped, with 31 integration tests deselected; focused
   Campaign Lab/knowledge/calibration/worker tests pass; mypy passes across 156
