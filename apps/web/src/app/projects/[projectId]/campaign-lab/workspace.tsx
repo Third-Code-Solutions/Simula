@@ -563,6 +563,7 @@ function commandRun(
     started_at: null,
     completed_at: null,
     last_error_code: null,
+    retention_until: null,
   };
 }
 
@@ -633,796 +634,7 @@ export function CampaignLabWorkspace({
   const [surveyRun, setSurveyRun] = useState<CampaignLabDurableRun>();
   const [surveyDatasetJson, setSurveyDatasetJson] =
     useState(surveyDatasetExample);
-  const [syntheticObservationsJson, setSyntheticObservationsJson] =
-    useState("[]");
-  const [calibrationRun, setCalibrationRun] = useState<CampaignLabDurableRun>();
-  const [backtestProtocolJson, setBacktestProtocolJson] = useState(
-    backtestProtocolExample,
-  );
-  const [backtestPredictionJson, setBacktestPredictionJson] = useState(
-    backtestPredictionExample,
-  );
-  const [backtestOutcomesJson, setBacktestOutcomesJson] = useState(
-    backtestOutcomesExample,
-  );
-  const [backtestRun, setBacktestRun] = useState<CampaignLabDurableRun>();
-  const [complianceJson, setComplianceJson] = useState(complianceExample);
-  const [complianceReviewer, setComplianceReviewer] = useState("");
-  const [complianceRun, setComplianceRun] = useState<CampaignLabDurableRun>();
-  const [reportRun, setReportRun] = useState<CampaignLabDurableRun>();
-  const [reportApprovalStatus, setReportApprovalStatus] =
-    useState("needs_human_review");
-  const [reportReviewer, setReportReviewer] = useState("");
-  const [interviewVariantKey, setInterviewVariantKey] = useState("control");
-  const [interviewAgentId, setInterviewAgentId] = useState("");
-  const [interviewQuestion, setInterviewQuestion] = useState(
-    "What happened in this simulation?",
-  );
-  const [interviewRun, setInterviewRun] = useState<CampaignLabDurableRun>();
-  const [busyStage, setBusyStage] = useState<string>();
-  const [audit, setAudit] = useState<CampaignLabAuditPage>();
-
-  const selectedCampaign = useMemo(
-    () =>
-      campaigns.find((campaign) => campaignId(campaign) === selectedCampaignId),
-    [campaigns, selectedCampaignId],
-  );
-
-  const complianceFetcher = useMemo(
-    () => (runId: string) =>
-      selectedCampaignId
-        ? getCampaignLabComplianceRun(selectedCampaignId, runId)
-        : Promise.reject(new Error("Select a Campaign Lab workspace first.")),
-    [selectedCampaignId],
-  );
-
-  useDurableRunPolling(
-    surveyRun,
-    getCampaignLabSurveyImportRun,
-    (nextRun) => {
-      setSurveyRun(nextRun);
-      const dataset = nextRun.result?.dataset;
-      if (nextRun.status === "succeeded" && isRecord(dataset)) {
-        setSurveyDatasetJson(JSON.stringify(dataset, null, 2));
-      }
-    },
-    (pollError) => setError(problemMessage(pollError)),
-  );
-  useDurableRunPolling(
-    calibrationRun,
-    getCampaignLabCalibrationRun,
-    setCalibrationRun,
-    (pollError) => setError(problemMessage(pollError)),
-  );
-  useDurableRunPolling(
-    backtestRun,
-    getCampaignLabBacktestRun,
-    setBacktestRun,
-    (pollError) => setError(problemMessage(pollError)),
-  );
-  useDurableRunPolling(
-    complianceRun,
-    complianceFetcher,
-    setComplianceRun,
-    (pollError) => setError(problemMessage(pollError)),
-  );
-  useDurableRunPolling(
-    reportRun,
-    getCampaignLabReportRun,
-    setReportRun,
-    (pollError) => setError(problemMessage(pollError)),
-  );
-  useDurableRunPolling(
-    interviewRun,
-    getCampaignLabInterviewRun,
-    setInterviewRun,
-    (pollError) => setError(problemMessage(pollError)),
-  );
-
-  useEffect(() => {
-    let stale = false;
-    void listCampaignLabCampaigns(projectId)
-      .then((page) => {
-        if (stale) return;
-        setCampaigns(page.items);
-        const first = page.items[0];
-        if (first) {
-          const id = campaignId(first);
-          setSelectedCampaignId(id);
-          setRequestText(JSON.stringify(starterRequest(id), null, 2));
-        }
-      })
-      .catch((loadError: unknown) => {
-        if (!stale) setError(problemMessage(loadError));
-      })
-      .finally(() => {
-        if (!stale) setLoading(false);
-      });
-    return () => {
-      stale = true;
-    };
-  }, [projectId]);
-
-  useEffect(() => {
-    if (!selectedCampaignId) {
-      return;
-    }
-    let stale = false;
-    void getCampaignLabAudit(selectedCampaignId)
-      .then((nextAudit) => {
-        if (!stale) setAudit(nextAudit);
-      })
-      .catch((auditError: unknown) => {
-        if (!stale) setError(problemMessage(auditError));
-      });
-    return () => {
-      stale = true;
-    };
-  }, [selectedCampaignId]);
-
-  function adoptSimulationResult(nextResult: CampaignLabSimulationResult) {
-    setResult(nextResult);
-    const diagnostics = nextResult.result.behavioral_diagnostics;
-    const firstVariant = diagnostics?.variants[0];
-    const firstAgent = firstVariant?.interviewable_agents[0];
-    if (firstVariant) setInterviewVariantKey(firstVariant.variant_key);
-    if (firstAgent) setInterviewAgentId(firstAgent.agent_id);
-    setSyntheticObservationsJson(
-      JSON.stringify(nextResult.result.synthetic_observations, null, 2),
-    );
-  }
-
-  useEffect(() => {
-    if (!run || !["queued", "running", "retrying"].includes(run.status)) {
-      return;
-    }
-    let stale = false;
-    const timer = window.setInterval(() => {
-      void getCampaignLabSimulationStatus(run.id)
-        .then((nextRun) => {
-          if (stale) return;
-          if (nextRun.status === "succeeded") {
-            void getCampaignLabSimulationResults(nextRun.id)
-              .then((nextResult) => {
-                if (!stale) {
-                  setRun(nextRun);
-                  adoptSimulationResult(nextResult);
-                }
-              })
-              .catch((resultError: unknown) => {
-                if (!stale) setError(problemMessage(resultError));
-              });
-          } else {
-            setRun(nextRun);
-          }
-        })
-        .catch((pollError: unknown) => setError(problemMessage(pollError)));
-    }, 2000);
-    return () => {
-      stale = true;
-      window.clearInterval(timer);
-    };
-  }, [run]);
-
-  useEffect(() => {
-    if (
-      !researchRun ||
-      !["queued", "running", "retrying"].includes(researchRun.status)
-    ) {
-      return;
-    }
-    let stale = false;
-    const timer = window.setInterval(() => {
-      void getCampaignLabResearchRun(researchRun.id)
-        .then((nextRun) => {
-          if (stale) return;
-          setResearchRun(nextRun);
-          const graph = nextRun.result?.knowledge_graph;
-          const source = nextRun.result?.source;
-          if (
-            nextRun.status !== "succeeded" ||
-            !isRecord(graph) ||
-            !isRecord(source)
-          ) {
-            return;
-          }
-          setRequestText((current) => {
-            try {
-              const parsed = JSON.parse(current) as Record<string, unknown>;
-              const existingSources = Array.isArray(parsed.research_sources)
-                ? parsed.research_sources.filter(isRecord)
-                : [];
-              const existingKnowledge = Array.isArray(parsed.research_knowledge)
-                ? parsed.research_knowledge.filter(isRecord)
-                : [];
-              const sourceId =
-                typeof source.source_id === "string" ? source.source_id : null;
-              const nextSources = sourceId
-                ? [
-                    ...existingSources.filter(
-                      (item) => item.source_id !== sourceId,
-                    ),
-                    source,
-                  ]
-                : existingSources;
-              const nextKnowledge = sourceId
-                ? [
-                    ...existingKnowledge.filter(
-                      (item) => item.source_id !== sourceId,
-                    ),
-                    graph,
-                  ]
-                : existingKnowledge;
-              return JSON.stringify(
-                {
-                  ...parsed,
-                  research_sources: nextSources,
-                  research_knowledge: nextKnowledge,
-                },
-                null,
-                2,
-              );
-            } catch {
-              return current;
-            }
-          });
-        })
-        .catch((pollError: unknown) => {
-          if (!stale) setError(problemMessage(pollError));
-        });
-    }, 2000);
-    return () => {
-      stale = true;
-      window.clearInterval(timer);
-    };
-  }, [researchRun]);
-
-  async function createCampaign(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    const name = form.get("name");
-    const objective = form.get("objective");
-    if (typeof name !== "string" || typeof objective !== "string") return;
-    setSaving(true);
-    setError(undefined);
-    try {
-      const created = await createCampaignLabCampaign({
-        project_id: projectId,
-        name,
-        objective,
-        purpose: "commercial_marketing",
-        decision: { decision: "compare_authored_variants" },
-      });
-      const id = created.campaign_id ?? "";
-      const next = {
-        ...created,
-        id,
-        organization_id: "",
-        project_id: projectId,
-        name,
-        objective,
-        purpose: "commercial_marketing",
-        current_stage: "campaign_created",
-        compliance_status: "pending",
-        version: 1,
-        created_at: created.created_at ?? new Date().toISOString(),
-        updated_at: created.created_at ?? new Date().toISOString(),
-      } satisfies CampaignLabCampaign;
-      setCampaigns((current) => [next, ...current]);
-      setSelectedCampaignId(id);
-      setRequestText(JSON.stringify(starterRequest(id), null, 2));
-      event.currentTarget.reset();
-    } catch (createError) {
-      setError(problemMessage(createError));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function launchSimulation(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedCampaignId) {
-      setError("Create or select a Campaign Lab workspace first.");
-      return;
-    }
-    setRunning(true);
-    setError(undefined);
-    setResult(undefined);
-    try {
-      const parsed = JSON.parse(requestText) as Record<string, unknown>;
-      parsed.campaign_id = selectedCampaignId;
-      const created = await createCampaignLabSimulation(
-        selectedCampaignId,
-        parsed,
-      );
-      if (!created.run_id)
-        throw new Error("Campaign Lab did not return a run id.");
-      const nextRun = {
-        id: created.run_id,
-        campaign_id: selectedCampaignId,
-        run_type: "repeated_simulation",
-        status: created.status,
-        stage: created.stage ?? "queued",
-        progress: created.progress ?? 0,
-        attempt_count: 0,
-        created_at: created.created_at ?? new Date().toISOString(),
-        started_at: null,
-        completed_at: null,
-        last_error_code: null,
-      } satisfies CampaignLabRunStatus;
-      setRun(nextRun);
-      if (nextRun.status === "succeeded") {
-        adoptSimulationResult(
-          await getCampaignLabSimulationResults(nextRun.id),
-        );
-      }
-    } catch (launchError) {
-      setError(
-        launchError instanceof SyntaxError
-          ? "Simulation request JSON is not valid."
-          : problemMessage(launchError),
-      );
-    } finally {
-      setRunning(false);
-    }
-  }
-
-  async function uploadResearch(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedCampaignId || !researchFile) {
-      setError("Select a Campaign Lab and a research file first.");
-      return;
-    }
-    setResearchBusy(true);
-    setError(undefined);
-    try {
-      const mediaType = researchMediaType(researchFile);
-      const source = JSON.parse(researchSourceJson) as Record<string, unknown>;
-      const secretPayload = await readResearchPayload(researchFile, mediaType);
-      const created = await createCampaignLabResearch(selectedCampaignId, {
-        title: researchFile.name,
-        payload: {},
-        provenance: source,
-        source,
-        filename: researchFile.name,
-        media_type: mediaType,
-        chunk_size: 1200,
-        overlap: 120,
-        secret_payload: secretPayload,
-      });
-      if (!created.run_id) {
-        throw new Error("Research ingestion did not return a run id.");
-      }
-      setResearchRun({
-        id: created.run_id,
-        campaign_id: selectedCampaignId,
-        run_type: "research_ingestion",
-        status: created.status,
-        stage: created.stage ?? "queued",
-        progress: created.progress ?? 0,
-        attempt_count: 0,
-        created_at: created.created_at ?? new Date().toISOString(),
-        started_at: null,
-        completed_at: null,
-        last_error_code: null,
-      });
-      setResearchFile(null);
-      event.currentTarget.reset();
-    } catch (uploadError) {
-      setError(
-        uploadError instanceof SyntaxError
-          ? "Research source JSON is not valid."
-          : problemMessage(uploadError),
-      );
-    } finally {
-      setResearchBusy(false);
-    }
-  }
-
-  async function importSurvey(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedCampaignId || !surveyImportFile) {
-      setError("Select a Campaign Lab and a survey export first.");
-      return;
-    }
-    setBusyStage("surveys");
-    setError(undefined);
-    try {
-      const metadata = JSON.parse(surveyMetadataJson) as Record<
-        string,
-        unknown
-      >;
-      const fieldMap = JSON.parse(surveyFieldMapJson) as Record<
-        string,
-        unknown
-      >;
-      const rawText = await surveyImportFile.text();
-      const payload =
-        surveyImportFormat === "csv" ? rawText : JSON.parse(rawText);
-      const created = await createCampaignLabSurveyImport(selectedCampaignId, {
-        format: surveyImportFormat,
-        metadata,
-        field_map: fieldMap,
-        secret_payload: { payload },
-      });
-      setSurveyRun(commandRun(created, selectedCampaignId, "survey_import"));
-      setSurveyImportFile(null);
-      event.currentTarget.reset();
-    } catch (importError) {
-      setError(
-        importError instanceof SyntaxError
-          ? "Survey metadata, field map, or JSON export is not valid."
-          : problemMessage(importError),
-      );
-    } finally {
-      setBusyStage(undefined);
-    }
-  }
-
-  async function runCalibration(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedCampaignId) {
-      setError("Create or select a Campaign Lab workspace first.");
-      return;
-    }
-    setBusyStage("calibration");
-    setError(undefined);
-    try {
-      const syntheticObservations = JSON.parse(syntheticObservationsJson);
-      const survey = JSON.parse(surveyDatasetJson);
-      if (!Array.isArray(syntheticObservations)) {
-        throw new Error("Synthetic observations must be a JSON array.");
-      }
-      const created = await createCampaignLabCalibration(selectedCampaignId, {
-        synthetic_observations: syntheticObservations,
-        survey,
-        calibration_version: "calibration_v1",
-        model_version: "campaign-lab-population-weighted-v1",
-      });
-      setCalibrationRun(
-        commandRun(created, selectedCampaignId, "survey_calibration"),
-      );
-    } catch (calibrationError) {
-      setError(
-        calibrationError instanceof SyntaxError
-          ? "Calibration JSON is not valid."
-          : problemMessage(calibrationError),
-      );
-    } finally {
-      setBusyStage(undefined);
-    }
-  }
-
-  async function runBacktest(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedCampaignId) {
-      setError("Create or select a Campaign Lab workspace first.");
-      return;
-    }
-    setBusyStage("backtesting");
-    setError(undefined);
-    try {
-      const protocol = JSON.parse(backtestProtocolJson);
-      const predictionSet = JSON.parse(backtestPredictionJson);
-      const outcomes = JSON.parse(backtestOutcomesJson);
-      const created = await createCampaignLabBacktest(selectedCampaignId, {
-        protocol,
-        prediction_set: predictionSet,
-        secret_payload: { outcomes },
-      });
-      setBacktestRun(
-        commandRun(created, selectedCampaignId, "historical_backtest"),
-      );
-    } catch (backtestError) {
-      setError(
-        backtestError instanceof SyntaxError
-          ? "Backtest protocol, predictions, or outcomes JSON is not valid."
-          : problemMessage(backtestError),
-      );
-    } finally {
-      setBusyStage(undefined);
-    }
-  }
-
-  async function runCompliance(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedCampaignId) {
-      setError("Create or select a Campaign Lab workspace first.");
-      return;
-    }
-    setBusyStage("compliance");
-    setError(undefined);
-    try {
-      const payload = JSON.parse(complianceJson);
-      const created = await createCampaignLabComplianceReview(
-        selectedCampaignId,
-        {
-          payload,
-          reviewer: complianceReviewer.trim() || null,
-        },
-      );
-      setComplianceRun(
-        commandRun(created, selectedCampaignId, "compliance_review"),
-      );
-    } catch (complianceError) {
-      setError(
-        complianceError instanceof SyntaxError
-          ? "Compliance JSON is not valid."
-          : problemMessage(complianceError),
-      );
-    } finally {
-      setBusyStage(undefined);
-    }
-  }
-
-  async function createInterview(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedCampaignId || !run?.id || !interviewAgentId) {
-      setError(
-        "Run a successful simulation and select an interview agent first.",
-      );
-      return;
-    }
-    setBusyStage("interviews");
-    setError(undefined);
-    try {
-      const created = await createCampaignLabInterview(selectedCampaignId, {
-        source_run_id: run.id,
-        agent_id: interviewAgentId,
-        variant_key: interviewVariantKey,
-        question: interviewQuestion,
-        prompt_version: "campaign-lab-interview-v1",
-      });
-      setInterviewRun(commandRun(created, selectedCampaignId, "interview"));
-    } catch (interviewError) {
-      setError(problemMessage(interviewError));
-    } finally {
-      setBusyStage(undefined);
-    }
-  }
-
-  async function createReport(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!selectedCampaignId || !run?.id) {
-      setError("Run a successful simulation before creating a report.");
-      return;
-    }
-    if (
-      reportApprovalStatus === "approved_experimental" &&
-      (!complianceRun?.id || !reportReviewer.trim())
-    ) {
-      setError(
-        "An approved experimental report requires a completed compliance review and named human reviewer.",
-      );
-      return;
-    }
-    setBusyStage("reports");
-    setError(undefined);
-    try {
-      const created = await createCampaignLabReport(selectedCampaignId, {
-        run_id: run.id,
-        calibration_run_id: calibrationRun?.id ?? null,
-        historical_backtest_run_id: backtestRun?.id ?? null,
-        compliance_review_run_id: complianceRun?.id ?? null,
-        human_reviewer: reportReviewer.trim() || null,
-        approval_status: reportApprovalStatus,
-      });
-      setReportRun(commandRun(created, selectedCampaignId, "report"));
-    } catch (reportError) {
-      setError(problemMessage(reportError));
-    } finally {
-      setBusyStage(undefined);
-    }
-  }
-
-  const activeStage =
-    run?.stage ?? selectedCampaign?.current_stage ?? "campaign_created";
-  const activeStageIndex = Math.max(
-    0,
-    STAGE_KEYS.indexOf(activeStage as (typeof STAGE_KEYS)[number]),
-  );
-
-  return (
-    <main
-      className="workspace-main workspace-main-wide"
-      id="main-content"
-      tabIndex={-1}
-    >
-      <header className="workspace-header" id="overview">
-        <Link className="wordmark" href={`/projects/${projectId}`}>
-          SIMULA
-        </Link>
-      </header>
-      <WorkspaceSidebar current="campaign-lab" projectId={projectId} />
-      <nav aria-label="Breadcrumb" className="breadcrumb">
-        <Link href={`/projects/${projectId}`}>Project workspace</Link>
-        <span aria-hidden="true"> / </span>
-        <span>Campaign Simulation Lab</span>
-      </nav>
-      <header className="workspace-header">
-        <div>
-          <p className="eyebrow">Aggregate research · Philippines</p>
-          <h1>Campaign Simulation Lab</h1>
-          <p className="lede">
-            Compare authored variants with population weighting, repeated seeded
-            runs, survey calibration, and historical backtesting.
-          </p>
-        </div>
-        <div className="panel">
-          <strong>Evidence status: Synthetic-only</strong>
-          <p className="field-note">
-            No individual voter records. No final viral score. No vote-share
-            claim.
-          </p>
-        </div>
-      </header>
-      {error ? (
-        <p className="problem" role="alert">
-          {error}
-        </p>
-      ) : null}
-      <section className="workspace-grid" aria-label="Campaign Lab setup">
-        <form className="panel form-stack" onSubmit={createCampaign}>
-          <p className="eyebrow">01 / Campaign definition</p>
-          <h2>Start a bounded lab</h2>
-          <label htmlFor="campaign-name">Campaign name</label>
-          <input id="campaign-name" minLength={2} name="name" required />
-          <label htmlFor="campaign-objective">Decision objective</label>
-          <textarea
-            id="campaign-objective"
-            name="objective"
-            required
-            rows={4}
-          />
-          <button disabled={saving} type="submit">
-            {saving ? "Saving…" : "Create Campaign Lab"}
-          </button>
-        </form>
-        <div className="panel">
-          <p className="eyebrow">Saved workspaces</p>
-          {loading ? (
-            <p aria-live="polite">Loading Campaign Lab workspaces…</p>
-          ) : null}
-          {!loading && campaigns.length === 0 ? (
-            <p>
-              No Campaign Lab workspace yet. Start one to define the evidence
-              boundary.
-            </p>
-          ) : null}
-          <div className="form-stack">
-            {campaigns.map((campaign) => {
-              const id = campaignId(campaign);
-              return (
-                <button
-                  className={
-                    id === selectedCampaignId ? "button-ghost" : "button-quiet"
-                  }
-                  key={id}
-                  onClick={() => {
-                    setSelectedCampaignId(id);
-                    setRequestText(JSON.stringify(starterRequest(id), null, 2));
-                    setRun(undefined);
-                    setResult(undefined);
-                  }}
-                  type="button"
-                >
-                  {campaign.name} · {campaign.status}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-      <section className="panel" aria-labelledby="flow-title" id="research">
-        <p className="eyebrow">02 / Evidence workflow</p>
-        <h2 id="flow-title">Traceable flow</h2>
-        <ol className="workflow-list">
-          {STAGES.map((stage, index) => (
-            <li
-              className={index <= activeStageIndex ? "is-active" : undefined}
-              id={`stage-${STAGE_KEYS[index]}`}
-              key={stage}
-            >
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              {stage}
-            </li>
-          ))}
-        </ol>
-        <p className="field-note">
-          Survey-derived and historical evidence remain separate stages. The
-          deterministic first release exposes component metrics and stability,
-          not a synthesized campaign verdict.
-        </p>
-      </section>
-      {selectedCampaignId ? (
-        <section
-          aria-labelledby="research-upload-title"
-          className="panel"
-          id="research-upload"
-        >
-          <p className="eyebrow">02A / Research ingestion</p>
-          <h2 id="research-upload-title">Upload source-grounded research</h2>
-          <p className="field-note">
-            Files are sent to the worker-only ingestion envelope. SIMULA stores
-            bounded source metadata and extracted citations, not respondent rows
-            or an ungrounded knowledge claim.
-          </p>
-          <form className="form-stack" onSubmit={uploadResearch}>
-            <label htmlFor="campaign-lab-research-file">Research file</label>
-            <input
-              accept=".txt,.md,.markdown,.csv,.json,.pdf,.docx"
-              id="campaign-lab-research-file"
-              onChange={(event) =>
-                setResearchFile(event.target.files?.[0] ?? null)
-              }
-              required
-              type="file"
-            />
-            <label htmlFor="campaign-lab-research-source">
-              Source provenance JSON
-            </label>
-            <textarea
-              id="campaign-lab-research-source"
-              onChange={(event) => setResearchSourceJson(event.target.value)}
-              rows={12}
-              value={researchSourceJson}
-            />
-            <button disabled={researchBusy} type="submit">
-              {researchBusy ? "Queueing research…" : "Queue research ingestion"}
-            </button>
-          </form>
-          {researchRun ? (
-            <p aria-live="polite" className="field-note">
-              Research ingestion: <strong>{researchRun.status}</strong> ·{" "}
-              {researchRun.progress}% · run <code>{researchRun.id}</code>
-            </p>
-          ) : null}
-        </section>
-      ) : null}
-      {selectedCampaignId ? (
-        <section
-          className="workspace-grid"
-          aria-label="Simulation request"
-          id="simulation-config"
-        >
-          <form
-            className="panel form-stack"
-            id="message-lab"
-            onSubmit={launchSimulation}
-          >
-            <p className="eyebrow">03 / Repeated simulation</p>
-            <h2>Run an authored aggregate request</h2>
-            <label htmlFor="campaign-lab-request">Frozen request JSON</label>
-            <textarea
-              aria-describedby="campaign-lab-request-note"
-              id="campaign-lab-request"
-              onChange={(event) => setRequestText(event.target.value)}
-              rows={24}
-              value={requestText}
-            />
-            <p className="field-note" id="campaign-lab-request-note">
-              Replace the fixture frame with a cited, frozen Philippine
-              aggregate population frame before using the output for a real
-              decision.
-            </p>
-            <button disabled={running} type="submit">
-              {running ? "Queueing…" : "Queue repeated simulation"}
-            </button>
-          </form>
-          <div className="panel" aria-live="polite" id="agent-activity">
-            <p className="eyebrow">Run status</p>
-            {run ? (
-              <>
-                <h2>{run.status}</h2>
-                <p>
-                  {run.stage} · {run.progress}% · attempt {run.attempt_count}
-                </p>
-                <p className="field-note">
-                  Run ID: <code>{run.id}</code>
-                </p>
-                {run.status === "succeeded" ? (
-                  <p className="success">
-                    Result persisted. Read component rankings with the run
+  const [syntheticObservationsJson, setSy…6747 tokens truncated…                  Result persisted. Read component rankings with the run
                     result and attach survey/backtest evidence before approval.
                   </p>
                 ) : null}
@@ -1449,8 +661,8 @@ export function CampaignLabWorkspace({
                 Repeated component findings
               </h2>
               <p className="field-note">
-                {result.result.sample_size} synthetic panel records ·{" "}
-                {result.result.repetitions} seeded repetitions · evidence status{" "}
+                {result.result.sample_size} synthetic panel records Â·{" "}
+                {result.result.repetitions} seeded repetitions Â· evidence status{" "}
                 <strong>{result.evidence_status}</strong>
               </p>
             </div>
@@ -1462,7 +674,7 @@ export function CampaignLabWorkspace({
                   <p className="eyebrow">{metric}</p>
                   <h3>{ranking.top_variant_key ?? "No stable top variant"}</h3>
                   <p>
-                    {ranking.stability_label} · pairwise agreement{" "}
+                    {ranking.stability_label} Â· pairwise agreement{" "}
                     {percent(ranking.pairwise_rank_agreement)}
                   </p>
                   <ul>
@@ -1491,13 +703,13 @@ export function CampaignLabWorkspace({
                 >
                   <h4>{finding.cohort_key}</h4>
                   <p className="field-note">
-                    Population weight {percent(finding.population_weight)} ·{" "}
+                    Population weight {percent(finding.population_weight)} Â·{" "}
                     {finding.repetition_count} repetitions
                   </p>
                   <p>
                     {Object.entries(finding.dimensions)
                       .map(([key, value]) => key + ": " + value)
-                      .join(" · ")}
+                      .join(" Â· ")}
                   </p>
                   <ul>
                     {Object.entries(finding.component_rankings).map(
@@ -1568,14 +780,14 @@ export function CampaignLabWorkspace({
             />
             <button disabled={busyStage === "interviews"} type="submit">
               {busyStage === "interviews"
-                ? "Queueing interview…"
+                ? "Queueing interviewâ€¦"
                 : "Queue synthetic interview"}
             </button>
           </form>
           {interviewRun ? (
             <p aria-live="polite" className="field-note">
-              Interview: <strong>{interviewRun.status}</strong> ·{" "}
-              {interviewRun.progress}% · run <code>{interviewRun.id}</code>
+              Interview: <strong>{interviewRun.status}</strong> Â·{" "}
+              {interviewRun.progress}% Â· run <code>{interviewRun.id}</code>
             </p>
           ) : null}
           {interviewRun?.result ? (
@@ -1636,14 +848,14 @@ export function CampaignLabWorkspace({
             />
             <button disabled={busyStage === "surveys"} type="submit">
               {busyStage === "surveys"
-                ? "Queueing survey…"
+                ? "Queueing surveyâ€¦"
                 : "Queue survey import"}
             </button>
           </form>
           {surveyRun ? (
             <p aria-live="polite" className="field-note">
-              Survey import: <strong>{surveyRun.status}</strong> ·{" "}
-              {surveyRun.progress}% · run <code>{surveyRun.id}</code>
+              Survey import: <strong>{surveyRun.status}</strong> Â·{" "}
+              {surveyRun.progress}% Â· run <code>{surveyRun.id}</code>
             </p>
           ) : null}
         </section>
@@ -1683,7 +895,7 @@ export function CampaignLabWorkspace({
             </p>
             <button disabled={busyStage === "calibration"} type="submit">
               {busyStage === "calibration"
-                ? "Queueing calibration…"
+                ? "Queueing calibrationâ€¦"
                 : "Queue calibration"}
             </button>
           </form>
@@ -1693,7 +905,7 @@ export function CampaignLabWorkspace({
               <>
                 <h2>{calibrationRun.status}</h2>
                 <p>
-                  {calibrationRun.stage} · {calibrationRun.progress}%
+                  {calibrationRun.stage} Â· {calibrationRun.progress}%
                 </p>
                 <p className="field-note">
                   <code>{calibrationRun.id}</code>
@@ -1758,14 +970,14 @@ export function CampaignLabWorkspace({
             />
             <button disabled={busyStage === "backtesting"} type="submit">
               {busyStage === "backtesting"
-                ? "Queueing backtest…"
+                ? "Queueing backtestâ€¦"
                 : "Queue held-out backtest"}
             </button>
           </form>
           {backtestRun ? (
             <p aria-live="polite" className="field-note">
-              Backtest: <strong>{backtestRun.status}</strong> ·{" "}
-              {backtestRun.progress}% · run <code>{backtestRun.id}</code>
+              Backtest: <strong>{backtestRun.status}</strong> Â·{" "}
+              {backtestRun.progress}% Â· run <code>{backtestRun.id}</code>
             </p>
           ) : null}
           {backtestRun?.result ? (
@@ -1808,14 +1020,14 @@ export function CampaignLabWorkspace({
             />
             <button disabled={busyStage === "compliance"} type="submit">
               {busyStage === "compliance"
-                ? "Queueing review…"
+                ? "Queueing reviewâ€¦"
                 : "Queue compliance review"}
             </button>
           </form>
           {complianceRun ? (
             <p aria-live="polite" className="field-note">
-              Compliance: <strong>{complianceRun.status}</strong> ·{" "}
-              {complianceRun.progress}% · run <code>{complianceRun.id}</code>
+              Compliance: <strong>{complianceRun.status}</strong> Â·{" "}
+              {complianceRun.progress}% Â· run <code>{complianceRun.id}</code>
             </p>
           ) : null}
           {complianceRun?.result ? (
@@ -1855,21 +1067,21 @@ export function CampaignLabWorkspace({
               value={reportReviewer}
             />
             <p className="field-note">
-              Attached run IDs: simulation {run?.id ?? "—"}, calibration{" "}
-              {calibrationRun?.id ?? "—"}, backtest {backtestRun?.id ?? "—"},
-              compliance {complianceRun?.id ?? "—"}.
+              Attached run IDs: simulation {run?.id ?? "â€”"}, calibration{" "}
+              {calibrationRun?.id ?? "â€”"}, backtest {backtestRun?.id ?? "â€”"},
+              compliance {complianceRun?.id ?? "â€”"}.
             </p>
             <button disabled={busyStage === "reports"} type="submit">
               {busyStage === "reports"
-                ? "Queueing report…"
+                ? "Queueing reportâ€¦"
                 : "Generate evidence report"}
             </button>
           </form>
           {reportRun ? (
             <div aria-live="polite">
               <p className="field-note">
-                Report: <strong>{reportRun.status}</strong> ·{" "}
-                {reportRun.progress}% · run <code>{reportRun.id}</code>
+                Report: <strong>{reportRun.status}</strong> Â·{" "}
+                {reportRun.progress}% Â· run <code>{reportRun.id}</code>
               </p>
               {reportRun.result ? (
                 <pre className="field-note">
@@ -1896,7 +1108,7 @@ export function CampaignLabWorkspace({
             {(audit?.items ?? []).map((event, index) => (
               <li key={String(event.id ?? index)} className="is-active">
                 <span>{String(event.progress ?? 0)}%</span>
-                {String(event.event_kind ?? event.stage ?? "event")} ·{" "}
+                {String(event.event_kind ?? event.stage ?? "event")} Â·{" "}
                 {String(event.message ?? "")}
               </li>
             ))}
@@ -1911,3 +1123,4 @@ export function CampaignLabWorkspace({
     </main>
   );
 }
+
