@@ -172,11 +172,11 @@ classification: OBSERVED
   web/admin build for unrelated worker changes. Production promotion and an
   account-level spend cap remain unverified because the connected billing
   session is not authorized for the `pavi` team.
-- Verification completed locally at `5e7d55c`: pinned `pnpm check` is green,
-  including 475 Python tests with 2 skips, API/web/admin JavaScript suites, type
-  checks, builds, contract generation/checks, formatting, lint, and the
-  secret/forbidden-claim gates. The two skips are expected POSIX-only runtime
-  checks. No manual Vercel deployment or retry was initiated for this audit.
+- Verification completed locally at `82c3d388e094369cd26cb3d790b35c3060668b6b`:
+  pinned `pnpm check` is green, including 479 Python tests with 2 expected
+  POSIX-only skips, API/web/admin JavaScript suites, type checks, builds,
+  contract generation/checks, formatting, lint, and the secret/forbidden-claim
+  gates. No manual Vercel deployment or retry was initiated for this audit.
 
 ## Implemented before this turn
 
@@ -205,7 +205,7 @@ classification: OBSERVED
   still serves release `4b37e1f8af7e4c377c8b44eca0c53e36345cb56c`, with
   `/health/live` 200 and `/health/ready` 503, because the release branch is not
   merged to `main`.
-- The latest GitHub Actions PR run (`30912512767`) failed all required gates
+- The latest GitHub Actions PR run (`30913108468`) failed all required gates
   before runner steps were created; GitHub returned no job logs. The external
   account payment/spending-limit gate must be repaired before CI can provide a
   green merge signal.
