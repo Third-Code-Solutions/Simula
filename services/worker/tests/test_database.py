@@ -223,4 +223,3 @@ async def test_worker_database_uses_the_separate_behavioral_completion_function(
         b'{"schema_version":1}',
     )
     assert database._database_operation(query) == "complete_behavioral_execution"
-

@@ -731,4 +731,3 @@ class WorkerDatabase(WorkerExecutionGateway):
                     """
                 )
                 yield cast(AsyncConnection[DatabaseRow], connection)
-

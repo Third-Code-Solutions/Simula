@@ -481,4 +481,3 @@ async def campaign_lab_loop(
             if stop.is_set():
                 return
             await process_campaign_lab_claim(database, claim)
-

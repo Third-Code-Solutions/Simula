@@ -112,4 +112,3 @@ def parse_deployment_admission(
             sigstore_bundle_sha256=sigstore_bundle_sha256,
         ),
     )
-
