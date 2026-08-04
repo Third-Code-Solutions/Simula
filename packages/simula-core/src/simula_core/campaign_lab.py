@@ -635,6 +635,44 @@ def validate_campaign_policy(value: object) -> None:
         )
 
 
+def validate_campaign_lab_population_admission(
+    request: CampaignLabSimulationRequest,
+    *,
+    environment: str,
+) -> None:
+    """Prevent authored population fixtures from becoming production evidence.
+
+    Local and test runs intentionally exercise authored fixtures. Deployed
+    production runs must use a verified audience, a non-retired population
+    frame with declared source rights, and validated request sources.
+    """
+
+    if environment.strip().lower() != "production":
+        return
+    cohort = request.cohort
+    frame = cohort.population_frame
+    if cohort.audience.provenance_status != "verified":
+        raise CampaignLabPolicyError(
+            "production Campaign Lab simulations require a verified aggregate audience; "
+            "authored demo fixtures are not admitted"
+        )
+    if frame.validation_status == "retired" or not frame.provenance:
+        raise CampaignLabPolicyError(
+            "production Campaign Lab simulations require a non-retired population frame "
+            "with source provenance"
+        )
+    if any(not provenance.allowed_uses for provenance in frame.provenance):
+        raise CampaignLabPolicyError("production population frames require declared permitted uses")
+    if not request.research_sources:
+        raise CampaignLabPolicyError(
+            "production Campaign Lab simulations require at least one validated source"
+        )
+    if any(source.validation_status != "validated" for source in request.research_sources):
+        raise CampaignLabPolicyError(
+            "production Campaign Lab simulations require validated request sources"
+        )
+
+
 def build_structured_persona(
     cohort: CampaignLabCohort,
     *,

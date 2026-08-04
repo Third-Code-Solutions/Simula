@@ -152,6 +152,10 @@ classification: OBSERVED
   still-synthetic behavioral evidence. Authored examples remain visible as
   empty-field placeholders only; simulation launch is blocked when the cited
   registry source is unavailable.
+- Production API admission and worker evaluation now reject authored demo
+  audiences, retired or undocumented population frames, and unvalidated request
+  sources. Local and test environments retain explicit fixture access for
+  engineering coverage.
 - The web project workspace now exposes Campaign Simulation Lab as a primary
   navigation destination with a permanently visible 14-item Campaign Lab
   sidebar, end-to-end campaign setup, research-file upload with provenance
@@ -201,7 +205,7 @@ classification: OBSERVED
   still serves release `4b37e1f8af7e4c377c8b44eca0c53e36345cb56c`, with
   `/health/live` 200 and `/health/ready` 503, because the release branch is not
   merged to `main`.
-- The latest GitHub Actions PR run (`30908915269`) failed all required gates
+- The latest GitHub Actions PR run (`30912512767`) failed all required gates
   before runner steps were created; GitHub returned no job logs. The external
   account payment/spending-limit gate must be repaired before CI can provide a
   green merge signal.

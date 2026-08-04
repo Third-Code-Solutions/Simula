@@ -8,8 +8,8 @@ classification: PROPOSED
 # Next actions
 
 1. Repair the GitHub account payment/spending-limit gate, then rerun the
-   required PR checks for `5e7d55c`; do not merge while the checks fail before
-   runner steps are created.
+   required PR checks for PR `#6` at `4ededcc`; do not merge while the checks
+   fail before runner steps are created.
 2. After a green merge to `main`, observe Railway API and worker auto-deploys,
    update the runtime migration-head variable only with the merged release, and
    require `/health/ready` 200 plus matching release SHA before admission.

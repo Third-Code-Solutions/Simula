@@ -8,6 +8,7 @@ results through lease-bound database functions.
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import Mapping
 from datetime import UTC, datetime
 from time import monotonic
@@ -30,6 +31,7 @@ from simula_core.campaign_lab import (
     build_structured_persona,
     create_synthetic_interview,
     run_campaign_lab_simulation,
+    validate_campaign_lab_population_admission,
 )
 from simula_core.historical_backtesting import (
     BlindBacktestPredictionSet,
@@ -232,6 +234,10 @@ def _evaluate_interview(request: Mapping[str, object]) -> Mapping[str, object]:
     simulation_request = CampaignLabSimulationRequest.model_validate(
         request.get("simulation_request")
     )
+    validate_campaign_lab_population_admission(
+        simulation_request,
+        environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
+    )
     simulation_result = CampaignLabSimulationResult.model_validate(request.get("simulation_result"))
     diagnostics = simulation_result.behavioral_diagnostics
     if diagnostics is None:
@@ -304,6 +310,10 @@ def _evaluate_compliance(request: Mapping[str, object]) -> Mapping[str, object]:
 
 def _evaluate_report(request: Mapping[str, object]) -> Mapping[str, object]:
     lab_request = CampaignLabSimulationRequest.model_validate(request.get("simulation_request"))
+    validate_campaign_lab_population_admission(
+        lab_request,
+        environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
+    )
     lab_result = CampaignLabSimulationResult.model_validate(request.get("simulation_result"))
     survey_calibration = request.get("survey_calibration")
     historical_backtest = request.get("historical_backtest")
@@ -334,6 +344,10 @@ def _evaluate_report(request: Mapping[str, object]) -> Mapping[str, object]:
 def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]:
     if claim.run_type == "repeated_simulation":
         request = CampaignLabSimulationRequest.model_validate(claim.request)
+        validate_campaign_lab_population_admission(
+            request,
+            environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
+        )
         if request.configuration.provider != "deterministic":
             raise ValueError("unsupported_campaign_lab_provider")
         return run_campaign_lab_simulation(request).model_dump(mode="json")

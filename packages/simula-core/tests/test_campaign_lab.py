@@ -18,10 +18,12 @@ from simula_core.campaign_lab import (
     build_structured_persona,
     create_synthetic_interview,
     run_campaign_lab_simulation,
+    validate_campaign_lab_population_admission,
     validate_campaign_policy,
     validate_persona_narrative,
 )
 from simula_core.methodology import DimensionValue
+from simula_core.population_sources import psa_2020_regional_population_frame
 from simula_core.research_ingestion import ingest_research_document
 from test_methodology import _audience, _population
 
@@ -154,6 +156,32 @@ def test_campaign_lab_repeated_result_has_population_weights_and_no_standalone_s
     }
     assert all(item.cohort_key == "aggregate" for item in result.synthetic_observations)
     assert "viral_score" not in result.model_dump(mode="json")
+
+
+def test_production_admission_rejects_authored_population_fixture() -> None:
+    with pytest.raises(CampaignLabPolicyError, match="verified aggregate audience"):
+        validate_campaign_lab_population_admission(_request(), environment="production")
+
+    validate_campaign_lab_population_admission(_request(), environment="test")
+
+
+def test_production_admission_accepts_verified_validated_population_frame() -> None:
+    request = _request()
+    validated_source = _source().model_copy(update={"validation_status": "validated"})
+    cohort = request.cohort.model_copy(
+        update={
+            "population_frame": psa_2020_regional_population_frame(),
+            "audience": request.cohort.audience.model_copy(
+                update={"criteria": (), "provenance_status": "verified"}
+            ),
+            "source_provenance": (validated_source,),
+        }
+    )
+    admitted = request.model_copy(
+        update={"cohort": cohort, "research_sources": (validated_source,)}
+    )
+
+    validate_campaign_lab_population_admission(admitted, environment="production")
 
 
 def test_campaign_lab_binds_admitted_research_knowledge_to_behavioral_context() -> None:

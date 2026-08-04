@@ -7,6 +7,7 @@ outcomes are accepted only in a worker secret envelope and are never returned.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from hashlib import sha256
 from typing import Annotated, Any, Literal, cast
@@ -22,6 +23,7 @@ from simula_core.campaign_lab import (
     CampaignLabSimulationRequest,
     CampaignLabVariant,
     CampaignPurpose,
+    validate_campaign_lab_population_admission,
     validate_campaign_policy,
 )
 from simula_core.cultural_evaluation import (
@@ -775,6 +777,13 @@ async def create_simulation(
         raise _invalid(
             "request.campaign_id must match the campaign path.", field="request.campaign_id"
         )
+    try:
+        validate_campaign_lab_population_admission(
+            body.request,
+            environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
+        )
+    except CampaignLabPolicyError as error:
+        raise _invalid(str(error), field="request.cohort") from error
     result = await _store_run(
         request,
         identity,
@@ -978,6 +987,14 @@ async def clone_simulation(
         )
     payload = cast(Mapping[str, Any], rows[0]["request"])
     campaign_id = cast(UUID, rows[0]["campaign_id"])
+    try:
+        clone_request = CampaignLabSimulationRequest.model_validate(payload)
+        validate_campaign_lab_population_admission(
+            clone_request,
+            environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
+        )
+    except (CampaignLabPolicyError, ValueError) as error:
+        raise _invalid(str(error), field="request.cohort") from error
     result = await _store_run(
         request,
         identity,
