@@ -769,34 +769,21 @@ export function CampaignLabWorkspace({
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [researchFile, setResearchFile] = useState<File | null>(null);
-  const [researchSourceJson, setResearchSourceJson] = useState(
-    researchSourceExample,
-  );
+  const [researchSourceJson, setResearchSourceJson] = useState("");
   const [researchRun, setResearchRun] = useState<CampaignLabResearchRun>();
   const [researchBusy, setResearchBusy] = useState(false);
   const [surveyImportFile, setSurveyImportFile] = useState<File | null>(null);
   const [surveyImportFormat, setSurveyImportFormat] = useState("csv");
-  const [surveyMetadataJson, setSurveyMetadataJson] = useState(
-    surveyMetadataExample,
-  );
-  const [surveyFieldMapJson, setSurveyFieldMapJson] = useState(
-    surveyFieldMapExample,
-  );
+  const [surveyMetadataJson, setSurveyMetadataJson] = useState("");
+  const [surveyFieldMapJson, setSurveyFieldMapJson] = useState("");
   const [surveyRun, setSurveyRun] = useState<CampaignLabDurableRun>();
-  const [surveyDatasetJson, setSurveyDatasetJson] =
-    useState(surveyDatasetExample);
+  const [surveyDatasetJson, setSurveyDatasetJson] = useState("");
   const [syntheticObservationsJson, setSyntheticObservationsJson] =
     useState("[]");
   const [calibrationRun, setCalibrationRun] = useState<CampaignLabDurableRun>();
-  const [backtestProtocolJson, setBacktestProtocolJson] = useState(
-    backtestProtocolExample,
-  );
-  const [backtestPredictionJson, setBacktestPredictionJson] = useState(
-    backtestPredictionExample,
-  );
-  const [backtestOutcomesJson, setBacktestOutcomesJson] = useState(
-    backtestOutcomesExample,
-  );
+  const [backtestProtocolJson, setBacktestProtocolJson] = useState("");
+  const [backtestPredictionJson, setBacktestPredictionJson] = useState("");
+  const [backtestOutcomesJson, setBacktestOutcomesJson] = useState("");
   const [backtestRun, setBacktestRun] = useState<CampaignLabDurableRun>();
   const [complianceJson, setComplianceJson] = useState(complianceExample);
   const [complianceReviewer, setComplianceReviewer] = useState("");
@@ -1084,6 +1071,12 @@ export function CampaignLabWorkspace({
     event.preventDefault();
     if (!selectedCampaignId) {
       setError("Create or select a Campaign Lab workspace first.");
+      return;
+    }
+    if (!selectedPopulationFrame) {
+      setError(
+        "The cited PSA 2020 population frame is unavailable; simulation launch is blocked.",
+      );
       return;
     }
     setRunning(true);
@@ -1535,6 +1528,7 @@ export function CampaignLabWorkspace({
             <textarea
               id="campaign-lab-research-source"
               onChange={(event) => setResearchSourceJson(event.target.value)}
+              placeholder={researchSourceExample}
               rows={12}
               value={researchSourceJson}
             />
@@ -1793,6 +1787,7 @@ export function CampaignLabWorkspace({
             <textarea
               id="campaign-lab-survey-metadata"
               onChange={(event) => setSurveyMetadataJson(event.target.value)}
+              placeholder={surveyMetadataExample}
               rows={12}
               value={surveyMetadataJson}
             />
@@ -1802,6 +1797,7 @@ export function CampaignLabWorkspace({
             <textarea
               id="campaign-lab-survey-field-map"
               onChange={(event) => setSurveyFieldMapJson(event.target.value)}
+              placeholder={surveyFieldMapExample}
               rows={10}
               value={surveyFieldMapJson}
             />
@@ -1845,6 +1841,7 @@ export function CampaignLabWorkspace({
             <textarea
               id="campaign-lab-survey-dataset"
               onChange={(event) => setSurveyDatasetJson(event.target.value)}
+              placeholder={surveyDatasetExample}
               rows={18}
               value={surveyDatasetJson}
             />
@@ -1904,6 +1901,7 @@ export function CampaignLabWorkspace({
             <textarea
               id="campaign-lab-backtest-protocol"
               onChange={(event) => setBacktestProtocolJson(event.target.value)}
+              placeholder={backtestProtocolExample}
               rows={12}
               value={backtestProtocolJson}
             />
@@ -1915,6 +1913,7 @@ export function CampaignLabWorkspace({
               onChange={(event) =>
                 setBacktestPredictionJson(event.target.value)
               }
+              placeholder={backtestPredictionExample}
               rows={16}
               value={backtestPredictionJson}
             />
@@ -1924,6 +1923,7 @@ export function CampaignLabWorkspace({
             <textarea
               id="campaign-lab-backtest-outcomes"
               onChange={(event) => setBacktestOutcomesJson(event.target.value)}
+              placeholder={backtestOutcomesExample}
               rows={18}
               value={backtestOutcomesJson}
             />

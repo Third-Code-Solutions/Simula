@@ -149,8 +149,9 @@ classification: OBSERVED
   `1.000000000000001`.
 - Campaign Lab now loads the hosted PSA frame from the methodology registry for
   its starter request. The UI labels the population frame separately from the
-  still-synthetic behavioral evidence and keeps the fixture as a fail-closed
-  fallback when the registry source is unavailable.
+  still-synthetic behavioral evidence. Authored examples remain visible as
+  empty-field placeholders only; simulation launch is blocked when the cited
+  registry source is unavailable.
 - The web project workspace now exposes Campaign Simulation Lab as a primary
   navigation destination with a permanently visible 14-item Campaign Lab
   sidebar, end-to-end campaign setup, research-file upload with provenance
