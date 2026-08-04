@@ -3,10 +3,18 @@ import { dirname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const appDirectory = dirname(fileURLToPath(import.meta.url));
-const repositoryRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
-  cwd: appDirectory,
-  encoding: "utf8",
-}).trim();
+let repositoryRoot;
+try {
+  repositoryRoot = execFileSync("git", ["rev-parse", "--show-toplevel"], {
+    cwd: appDirectory,
+    encoding: "utf8",
+  }).trim();
+} catch {
+  console.error(
+    "Vercel Git metadata is unavailable; continuing with the build.",
+  );
+  process.exit(1);
+}
 const appPath = relative(repositoryRoot, appDirectory).replaceAll("\\", "/");
 const relevantPaths = [
   appPath,
