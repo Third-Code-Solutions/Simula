@@ -399,7 +399,8 @@ async def process_campaign_lab_claim(database: CampaignLabDatabase, claim: Campa
             )
         changed = await database.complete_campaign_lab_run(claim.run_id, claim.lease_token, result)
         return "completed" if changed else "stale"
-    except ValidationError, TypeError, ValueError:
+    except (ValidationError, TypeError, ValueError) as campaign_lab_input_error:
+        del campaign_lab_input_error
         try:
             return await database.fail_campaign_lab_run(
                 claim.run_id,
