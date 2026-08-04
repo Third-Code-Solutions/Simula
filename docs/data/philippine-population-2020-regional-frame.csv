@@ -1,0 +1,18 @@
+region_key,source_region,age_group,gender,population_count,regional_weight
+barmm,BARMM,Total Population,Both Sexes,4944800,0.045351305466512
+bicol,V - Bicol Region,Total Population,Both Sexes,6082165,0.055782665186201
+cagayan_valley,II - Cagayan Valley,Total Population,Both Sexes,3685744,0.033803854961851
+calabarzon,IV-A CALABARZON,Total Population,Both Sexes,16195042,0.148533064387839
+car,Cordillera Administrative Region,Total Population,Both Sexes,1797660,0.016487264962168
+caraga,XIII - Caraga,Total Population,Both Sexes,2804788,0.025724154132989
+central_luzon,III - Central Luzon,Total Population,Both Sexes,12422172,0.113930132043672
+central_visayas,VII - Central Visayas,Total Population,Both Sexes,8081988,0.074124071057410
+davao,XI Davao Region,Total Population,Both Sexes,5243536,0.048091167056433
+eastern_visayas,VIII - Eastern Visayas,Total Population,Both Sexes,4547150,0.041704252679997
+ilocos,I - Ilocos Region,Total Population,Both Sexes,5301139,0.048619473812781
+mimaropa,MIMAROPA Region,Total Population,Both Sexes,3228558,0.029610766881239
+ncr,National Capital Region,Total Population,Both Sexes,13484462,0.123672940303666
+northern_mindanao,X - Northern Mindanao,Total Population,Both Sexes,5022768,0.046066390117987
+soccsksargen,XII SOCCSKSARGEN,Total Population,Both Sexes,4360974,0.039996736775100
+western_visayas,VI - Western Visayas,Total Population,Both Sexes,7954723,0.072956858249977
+zamboanga_peninsula,IX - Zamboanga Peninsula,Total Population,Both Sexes,3875576,0.035544901924179

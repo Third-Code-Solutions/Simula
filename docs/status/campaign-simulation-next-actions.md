@@ -20,8 +20,9 @@ classification: PROPOSED
    flow and verify report provenance, retention, cancellation, and private
    holdout deletion after the merged release.
 5. Admit only lawfully governed Philippine survey and historical datasets after
-   owner, consent, purpose, license, and current legal review. Keep the current
-   deterministic fixture explicitly experimental until that evidence exists.
+   owner, consent, purpose, license, and current legal review. The PSA 2020
+   aggregate frame is admitted for weighting; keep behavioral output explicitly
+   synthetic until survey calibration and historical backtesting evidence exist.
 6. Admit a human-reviewed English/Filipino/Taglish evaluation dataset and attach
    its artifact to a report; keep regional languages blocked until data rights
    and coverage exist.

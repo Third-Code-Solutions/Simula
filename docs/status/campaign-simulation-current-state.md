@@ -135,6 +135,22 @@ classification: OBSERVED
 - The worker now claims Campaign Lab runs from PostgreSQL, persists progress,
   retries bounded failures, finalizes cancellation, and keeps raw survey rows
   and held-out outcomes in the worker-only secret envelope.
+- PSA OpenSTAT Table 1.9 was queried through the documented API and admitted as
+  the first cited real aggregate population frame. The checked-in frame has 17
+  regional cells, a 109,033,245-person regional denominator, the raw CSV
+  response SHA-256, and an explicit 2,098-person difference from PSA's headline
+  national total. No individual records or behavioral dimensions are included.
+- The replayable Supabase operation
+  `supabase/operations/20260804100000_psa_2020_regional_population_frame.sql`
+  was applied to `ywiwmczccktwzqyhzhiz`; the hosted registry assigned apply-time
+  version `20260804124631`. This data-only seed does not advance the compiled
+  runtime head. The hosted registry query verified the PSA source ID, 17 cells,
+  matching export hash, experimental validation status, and decimal weight sum
+  `1.000000000000001`.
+- Campaign Lab now loads the hosted PSA frame from the methodology registry for
+  its starter request. The UI labels the population frame separately from the
+  still-synthetic behavioral evidence and keeps the fixture as a fail-closed
+  fallback when the registry source is unavailable.
 - The web project workspace now exposes Campaign Simulation Lab as a primary
   navigation destination with a permanently visible 14-item Campaign Lab
   sidebar, end-to-end campaign setup, research-file upload with provenance
@@ -170,7 +186,9 @@ classification: OBSERVED
 
 ## Not yet verified or supplied
 
-- Lawfully admitted Philippine survey and historical campaign datasets.
+- Lawfully admitted Philippine survey and historical campaign datasets; the PSA
+  aggregate population frame is now admitted, but it does not calibrate or
+  backtest behavioral output.
 - The non-deterministic provider adapters are contract-level only; the first
   deployable worker release intentionally admits the deterministic provider.
 - End-to-end hosted authenticated browser/API/worker evidence for the new routes

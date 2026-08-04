@@ -31,7 +31,9 @@ import {
   getCampaignLabSimulationResults,
   getCampaignLabSimulationStatus,
   getCampaignLabSurveyImportRun,
+  getMethodologyRegistry,
   listCampaignLabCampaigns,
+  type MethodologyRegistry,
 } from "@/lib/api";
 
 const STAGES = [
@@ -74,8 +76,134 @@ const STAGE_KEYS = [
   "reported",
 ] as const;
 
-function starterRequest(campaignId: string): Record<string, unknown> {
-  const source = {
+type PopulationFrameSelection = Readonly<{
+  frame: Record<string, unknown>;
+  source: Record<string, unknown>;
+}>;
+
+function officialPopulationFrame(
+  registry: MethodologyRegistry,
+): PopulationFrameSelection | undefined {
+  const row = registry.population_frames.find((candidate) => {
+    if (!isRecord(candidate.manifest)) return false;
+    const provenance = candidate.manifest.provenance;
+    return (
+      Array.isArray(provenance) &&
+      provenance.some(
+        (item) => isRecord(item) && item.source_id === "psa_openstat_cph_2020",
+      )
+    );
+  });
+  if (!row || !isRecord(row.manifest)) return undefined;
+
+  const manifest = row.manifest;
+  const provenance = Array.isArray(manifest.provenance)
+    ? manifest.provenance.filter(isRecord)
+    : [];
+  const firstProvenance = provenance[0];
+  const rawCells = Array.isArray(manifest.cells)
+    ? manifest.cells.filter(isRecord)
+    : [];
+  if (
+    typeof row.id !== "string" ||
+    typeof row.population_frame_id !== "string" ||
+    typeof row.version !== "number" ||
+    typeof manifest.geography !== "string" ||
+    typeof manifest.target_population !== "string" ||
+    !Array.isArray(manifest.inclusion) ||
+    !Array.isArray(manifest.exclusion) ||
+    provenance.length === 0 ||
+    rawCells.length === 0 ||
+    !firstProvenance ||
+    typeof firstProvenance.source_id !== "string" ||
+    typeof firstProvenance.source_version !== "string"
+  ) {
+    return undefined;
+  }
+
+  const cells = rawCells.map((cell) => {
+    if (!isRecord(cell.dimensions)) return cell;
+    return {
+      ...cell,
+      dimensions: Object.entries(cell.dimensions)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([dimension, value]) => ({ dimension, value })),
+    };
+  });
+  const limitations = [
+    "This is an official historical population frame, not a campaign outcome benchmark.",
+    "The engine uses only regional population weights; behavioral outputs remain synthetic until calibrated.",
+    "The 2,098-person national-versus-regional difference is excluded and disclosed.",
+  ];
+  const sourceLimitations = [
+    ...(Array.isArray(firstProvenance.coverage_limitations)
+      ? firstProvenance.coverage_limitations.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : []),
+    ...limitations,
+  ].slice(0, 20);
+  const sourceChecksum =
+    typeof manifest.source_export_sha256 === "string"
+      ? manifest.source_export_sha256
+      : "0000000000000000000000000000000000000000000000000000000000000000";
+
+  return {
+    frame: {
+      id: row.id,
+      frame_id: row.population_frame_id,
+      version: row.version,
+      name: "PSA 2020 regional population frame",
+      geography: manifest.geography,
+      target_population: manifest.target_population,
+      inclusion: manifest.inclusion,
+      exclusion: manifest.exclusion,
+      provenance,
+      cells,
+      validation_status: "experimental",
+      limitations,
+    },
+    source: {
+      source_id: firstProvenance.source_id,
+      title: "PSA 2020 regional population frame",
+      source_type: "public_dataset",
+      source_organization:
+        typeof firstProvenance.owner === "string"
+          ? firstProvenance.owner
+          : "Philippine Statistics Authority (PSA)",
+      publication_date: null,
+      dataset_version: firstProvenance.source_version,
+      geography: manifest.geography,
+      sample_size: null,
+      collection_methodology: [
+        firstProvenance.collection_period,
+        firstProvenance.sampling_frame,
+      ]
+        .filter((item): item is string => typeof item === "string")
+        .join(" "),
+      license_or_usage_rights:
+        typeof firstProvenance.license === "string"
+          ? firstProvenance.license
+          : "CC BY 4.0 for PSA/GOVPH content unless otherwise stated",
+      processing_date: "2026-08-04T00:00:00Z",
+      transformation: Array.isArray(firstProvenance.transformations)
+        ? firstProvenance.transformations
+            .filter((item): item is string => typeof item === "string")
+            .join(" ")
+        : "Normalized regional aggregate counts into population weights.",
+      confidence_level: null,
+      known_limitations: sourceLimitations,
+      checksum_sha256: sourceChecksum,
+      validation_status: "validated",
+    },
+  };
+}
+
+function starterRequest(
+  campaignId: string,
+  selectedPopulationFrame?: PopulationFrameSelection,
+): Record<string, unknown> {
+  const fixtureSource = {
     source_id: "philippine_population_frame",
     title: "Philippine aggregate population frame fixture",
     source_type: "public_dataset",
@@ -95,6 +223,60 @@ function starterRequest(campaignId: string): Record<string, unknown> {
     checksum_sha256:
       "0000000000000000000000000000000000000000000000000000000000000000",
   };
+  const fixturePopulationFrame = {
+    id: "30000000-0000-4000-8000-000000000203",
+    frame_id: "30000000-0000-4000-8000-000000000204",
+    version: 1,
+    name: "Philippine aggregate fixture",
+    geography: "Philippines",
+    target_population: "Aggregate adults in the declared Philippine frame",
+    inclusion: ["Declared aggregate cell only"],
+    exclusion: ["Individual voter or respondent records"],
+    provenance: [
+      {
+        source_id: "philippine_population_frame",
+        source_version: "fixture-v1",
+        owner: "SIMULA research fixture",
+        license: "Replace before external use",
+        allowed_uses: ["aggregate_campaign_research"],
+        collection_period: "2026",
+        sampling_frame: "Aggregate fixture",
+        transformations: ["No individual records"],
+        known_biases: ["Fixture is not representative evidence"],
+        coverage_limitations: ["One aggregate cell"],
+        validation_status: "experimental",
+      },
+    ],
+    cells: [
+      {
+        key: "national_aggregate",
+        weight: 1,
+        dimensions: [
+          { dimension: "age_bracket", value: "adult" },
+          { dimension: "primary_language", value: "fil" },
+          { dimension: "region", value: "national" },
+        ],
+      },
+    ],
+    validation_status: "experimental",
+    limitations: ["Fixture only; replace with a cited frozen frame."],
+  };
+  const source = selectedPopulationFrame?.source ?? fixtureSource;
+  const populationFrame =
+    selectedPopulationFrame?.frame ?? fixturePopulationFrame;
+  const usingOfficialPopulationFrame = Boolean(selectedPopulationFrame);
+  const cohortName = usingOfficialPopulationFrame
+    ? "Philippine 17-region aggregate cohort"
+    : "Philippine aggregate fixture cohort";
+  const cohortDimensions = usingOfficialPopulationFrame
+    ? [{ dimension: "region", value: "17_regions" }]
+    : [{ dimension: "region", value: "national" }];
+  const cohortLimitations = usingOfficialPopulationFrame
+    ? [
+        "Population weights use the cited PSA 2020 17-region frame.",
+        "Behavioral outputs remain synthetic until real survey calibration is admitted.",
+      ]
+    : ["Fixture only; synthetic output is not human evidence."];
   return {
     campaign_id: campaignId,
     objective:
@@ -102,56 +284,23 @@ function starterRequest(campaignId: string): Record<string, unknown> {
     purpose: "commercial_marketing",
     cohort: {
       cohort_id: "30000000-0000-4000-8000-000000000202",
-      name: "Philippine aggregate fixture cohort",
+      name: cohortName,
       geography: "Philippines",
-      dimensions: [{ dimension: "region", value: "national" }],
-      population_frame: {
-        id: "30000000-0000-4000-8000-000000000203",
-        frame_id: "30000000-0000-4000-8000-000000000204",
-        version: 1,
-        name: "Philippine aggregate fixture",
-        geography: "Philippines",
-        target_population: "Aggregate adults in the declared Philippine frame",
-        inclusion: ["Declared aggregate cell only"],
-        exclusion: ["Individual voter or respondent records"],
-        provenance: [
-          {
-            source_id: "philippine_population_frame",
-            source_version: "fixture-v1",
-            owner: "SIMULA research fixture",
-            license: "Replace before external use",
-            allowed_uses: ["aggregate_campaign_research"],
-            collection_period: "2026",
-            sampling_frame: "Aggregate fixture",
-            transformations: ["No individual records"],
-            known_biases: ["Fixture is not representative evidence"],
-            coverage_limitations: ["One aggregate cell"],
-            validation_status: "experimental",
-          },
-        ],
-        cells: [
-          {
-            key: "national_aggregate",
-            weight: 1,
-            dimensions: [
-              { dimension: "age_bracket", value: "adult" },
-              { dimension: "primary_language", value: "fil" },
-              { dimension: "region", value: "national" },
-            ],
-          },
-        ],
-        validation_status: "experimental",
-        limitations: ["Fixture only; replace with a cited frozen frame."],
-      },
+      dimensions: cohortDimensions,
+      population_frame: populationFrame,
       audience: {
         id: "30000000-0000-4000-8000-000000000205",
         audience_id: "30000000-0000-4000-8000-000000000206",
         version: 1,
-        name: "All declared aggregate cells",
+        name: usingOfficialPopulationFrame
+          ? "All PSA regional cells"
+          : "All declared aggregate cells",
         criteria: [],
         minimum_cell_weight: 0,
-        provenance_status: "demo",
-        limitations: ["Fixture audience only."],
+        provenance_status: usingOfficialPopulationFrame ? "verified" : "demo",
+        limitations: usingOfficialPopulationFrame
+          ? ["Empty criteria admits every cited PSA regional cell."]
+          : ["Fixture audience only."],
       },
       source_provenance: [source],
       weighting_method: "population_weighted",
@@ -170,9 +319,7 @@ function starterRequest(campaignId: string): Record<string, unknown> {
         },
       ],
       confidence: 0.2,
-      known_limitations: [
-        "Fixture only; synthetic output is not human evidence.",
-      ],
+      known_limitations: cohortLimitations,
     },
     variants: [
       {
@@ -200,7 +347,9 @@ function starterRequest(campaignId: string): Record<string, unknown> {
       model_name: "deterministic-methodology-engine",
       model_parameters: {},
       prompt_version: "none-deterministic-v1",
-      research_corpus_version: "fixture-v1",
+      research_corpus_version: usingOfficialPopulationFrame
+        ? "psa_openstat_cph_2020-table_1_9_2020"
+        : "fixture-v1",
       persona_generation_version: "structured-persona-v1",
       scoring_version: "component-metrics-v1",
       simulation_engine_version: "campaign-lab-population-weighted-v1",
@@ -613,6 +762,8 @@ export function CampaignLabWorkspace({
   const [run, setRun] = useState<CampaignLabRunStatus>();
   const [result, setResult] = useState<CampaignLabSimulationResult>();
   const [requestText, setRequestText] = useState("");
+  const [selectedPopulationFrame, setSelectedPopulationFrame] =
+    useState<PopulationFrameSelection>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -722,15 +873,22 @@ export function CampaignLabWorkspace({
 
   useEffect(() => {
     let stale = false;
-    void listCampaignLabCampaigns(projectId)
-      .then((page) => {
+    void Promise.all([
+      listCampaignLabCampaigns(projectId),
+      getMethodologyRegistry(),
+    ])
+      .then(([page, registry]) => {
         if (stale) return;
+        const nextPopulationFrame = officialPopulationFrame(registry);
         setCampaigns(page.items);
+        setSelectedPopulationFrame(nextPopulationFrame);
         const first = page.items[0];
         if (first) {
           const id = campaignId(first);
           setSelectedCampaignId(id);
-          setRequestText(JSON.stringify(starterRequest(id), null, 2));
+          setRequestText(
+            JSON.stringify(starterRequest(id, nextPopulationFrame), null, 2),
+          );
         }
       })
       .catch((loadError: unknown) => {
@@ -911,7 +1069,9 @@ export function CampaignLabWorkspace({
       } satisfies CampaignLabCampaign;
       setCampaigns((current) => [next, ...current]);
       setSelectedCampaignId(id);
-      setRequestText(JSON.stringify(starterRequest(id), null, 2));
+      setRequestText(
+        JSON.stringify(starterRequest(id, selectedPopulationFrame), null, 2),
+      );
       event.currentTarget.reset();
     } catch (createError) {
       setError(problemMessage(createError));
@@ -1252,10 +1412,12 @@ export function CampaignLabWorkspace({
           </p>
         </div>
         <div className="panel">
-          <strong>Evidence status: Synthetic-only</strong>
+          <strong>
+            Population frame: {selectedPopulationFrame ? "PSA 2020" : "fixture"}
+          </strong>
           <p className="field-note">
-            No individual voter records. No final viral score. No vote-share
-            claim.
+            No individual voter records. Behavioral output remains
+            synthetic-only. No final viral score. No vote-share claim.
           </p>
         </div>
       </header>
@@ -1303,7 +1465,13 @@ export function CampaignLabWorkspace({
                   key={id}
                   onClick={() => {
                     setSelectedCampaignId(id);
-                    setRequestText(JSON.stringify(starterRequest(id), null, 2));
+                    setRequestText(
+                      JSON.stringify(
+                        starterRequest(id, selectedPopulationFrame),
+                        null,
+                        2,
+                      ),
+                    );
                     setRun(undefined);
                     setResult(undefined);
                   }}
@@ -1404,9 +1572,9 @@ export function CampaignLabWorkspace({
               value={requestText}
             />
             <p className="field-note" id="campaign-lab-request-note">
-              Replace the fixture frame with a cited, frozen Philippine
-              aggregate population frame before using the output for a real
-              decision.
+              {selectedPopulationFrame
+                ? "Starter request uses the hosted, cited PSA 2020 17-region frame. Add separately authorized survey and historical outcome evidence before treating results as real-world evidence."
+                : "The hosted PSA frame was unavailable, so this request remains an authored fixture. Do not use it for a real decision until a cited population frame is loaded."}
             </p>
             <button disabled={running} type="submit">
               {running ? "Queueing…" : "Queue repeated simulation"}
