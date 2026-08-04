@@ -1,13 +1,19 @@
 ---
 title: Campaign Simulation Lab current state
 status: active
-updated: 2026-08-03
+updated: 2026-08-04
 classification: OBSERVED
 ---
 
 # Current state
 
 ## Completed in this turn
+
+- The release implementation was verified at
+  `5e7d55c8a22ef7cd4a7aca74270dd38f23a4dc69`
+  (`fix(worker): restore campaign lab startup`) before this status update. The
+  worker import/startup syntax defect was corrected without changing the
+  campaign methodology contract.
 
 - PhantomCrowd reference cloned at the stated upstream commit and inspected.
 - SIMULA architecture, data, worker, provider, auth/tenant, queue, deployment,
@@ -139,21 +145,17 @@ classification: OBSERVED
   surfaces; report approval is bound to a succeeded compliance review and named
   human reviewer. Evidence results expose survey/backtest component metrics and
   cohort slices in the UI.
-- The connected Vercel `simula` and `simula-admin` projects now have the hosted
-  Supabase URL, publishable key, and Railway API origin provisioned for Preview.
-  Their existing `f3b3e2c`/`9b15b64` artifacts require a fresh deployment
-  before those settings can be runtime-verified.
-- Verification completed locally: the bounded non-integration Python suite is
-  472 passed and 2 skipped, with 31 integration tests deselected; focused
-  Campaign Lab/knowledge/calibration/worker tests pass; mypy passes across 156
-  Python files; Ruff check/format, generated-contract drift, web workspace
-  navigation tests 4/4, web/admin/API production builds, TypeScript
-  lint/typecheck tasks, and contract tests pass. The two skipped tests are
-  expected POSIX-only runtime checks. Integration-inclusive pytest and full
-  API/web Jest/Vitest runs remain separate bounded gates and are not counted as
-  passing. The repository `uv run --frozen` wrapper remains environment-blocked
-  by installed UV `0.12.0` versus required `0.11.19`; direct project-interpreter
-  Ruff and mypy checks pass.
+- The connected Vercel `simula` and `simula-admin` projects use app-scoped
+  ignored-build commands. The latest worker-only commit was cloned and then
+  canceled at the ignored-build step before `vercel build`, preventing a full
+  web/admin build for unrelated worker changes. Production promotion and an
+  account-level spend cap remain unverified because the connected billing
+  session is not authorized for the `pavi` team.
+- Verification completed locally at `5e7d55c`: pinned `pnpm check` is green,
+  including 475 Python tests with 2 skips, API/web/admin JavaScript suites, type
+  checks, builds, contract generation/checks, formatting, lint, and the
+  secret/forbidden-claim gates. The two skips are expected POSIX-only runtime
+  checks. No manual Vercel deployment or retry was initiated for this audit.
 
 ## Implemented before this turn
 
@@ -174,9 +176,22 @@ classification: OBSERVED
 - End-to-end hosted authenticated browser/API/worker evidence for the new routes
   after the GitHub release is promoted; protected Vercel previews have not been
   browser-verified from this task.
-- Railway project authorization and an observed GitHub-to-Railway deployment
-  event; the currently logged-in Railway account is not authorized for the
-  requested project.
+- A current GitHub-to-Railway deployment event for this release branch. Railway
+  CLI access now resolves the requested project and shows the API/worker GitHub
+  source bound to `Third-Code-Solutions/Simula` on production `main`; production
+  still serves release `4b37e1f8af7e4c377c8b44eca0c53e36345cb56c`, with
+  `/health/live` 200 and `/health/ready` 503, because the release branch is not
+  merged to `main`.
+- The latest GitHub Actions PR run (`30908915269`) failed all required gates
+  before runner steps were created; GitHub returned no job logs. The external
+  account payment/spending-limit gate must be repaired before CI can provide a
+  green merge signal.
+- Hosted Campaign Lab retention/runtime objects and API/worker grants are
+  present. The hosted migration registry uses apply-time versions
+  `20260802131842`, `20260802150729`, and `20260803020312` for the equivalent
+  durable-workflow/survey/retention changes, while local files retain logical
+  names `20260802143000`, `20260802150000`, and `20260803100000`; no duplicate
+  DDL was applied during this audit.
 - The hosted `database_foundation.test.sql` transaction currently reports 30/35:
   the five remaining failures are environment-specific local bootstrap
   assumptions (provider-managed runtime-role passwords, hosted owner-role
@@ -193,4 +208,3 @@ estimate nobody. Survey calibration and historical backtesting are now durable
 evaluation jobs, but no real Philippine survey or historical outcome dataset is
 attached here; hosted verification and lawful data admission remain required
 before any validity claim.
-
