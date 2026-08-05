@@ -7,8 +7,8 @@ classification: PROPOSED
 
 # Next actions
 
-Current candidate: PR `#8`, merge candidate
-`3aa44378286ba2dd750a305ba2e46968dcc88a68`. The web preview for the code commit
+Current candidate: PR `#8`, code head
+`c061e8237d7ecfb7080bf4f4d19d1e0a032e1b5d`. The web preview for the code commit
 is READY; the docs-only follow-up was correctly canceled by Vercel's
 ignored-build guard. Railway production remains healthy on the prior merged
 `main` SHA `3bdb3f02`.

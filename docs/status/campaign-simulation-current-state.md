@@ -16,14 +16,14 @@ classification: OBSERVED
   whose allowed use names Campaign Lab research/simulation, calibration,
   backtesting, or population weighting; the hosted local-rehearsal fixture is
   therefore rejected for production evidence.
-- The permanent Campaign Lab sidebar now has stable pre-run anchors for
-  `Audience Cohorts` and `Simulations`; the cohort findings block uses a
+- The permanent Campaign Lab sidebar now has stable pre-run anchors for all
+  conditionally rendered workflow sections; the cohort findings block uses a
   separate `cohort-findings` anchor after results exist.
-- The branch is pushed to PR `#8`; Vercel web preview is READY at `e550b3e`,
+- The branch is pushed to PR `#8`; Vercel web preview is READY at `c061e82`,
   while Railway and Vercel production remain on the prior merged `main` release
   until the required GitHub checks are green.
-- Local `pnpm check` is green after this commit. GitHub Actions run
-  `31027267687` still fails all required jobs before runner steps, with no job
+- Local `pnpm check` is green after this commit. GitHub Actions PR `#8` run
+  `31028630814` still fails all required jobs before runner steps, with no job
   logs, so production promotion is not claimed.
 
 ## Completed in this turn
@@ -235,7 +235,7 @@ classification: OBSERVED
   Campaign Lab routes, report provenance, retention, cancellation, and private
   holdout deletion remains unverified because no authorized test session was
   supplied.
-- The latest GitHub Actions `main` run (`31019541395`) failed all required jobs
+- The latest GitHub Actions PR `#8` run (`31028630814`) failed all required jobs
   before runner steps were created; GitHub returned no job logs. The external
   account payment/spending-limit gate must be repaired before CI can provide a
   green verification signal. This is separate from the local green release check
