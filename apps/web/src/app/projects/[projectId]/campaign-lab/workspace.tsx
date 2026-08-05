@@ -76,6 +76,21 @@ const STAGE_KEYS = [
   "reported",
 ] as const;
 
+const CAMPAIGN_LAB_STAGE_ANCHORS = [
+  ["research-upload", "Research upload"],
+  ["audience-cohorts", "Audience cohorts"],
+  ["message-lab", "Message lab"],
+  ["simulation-config", "Simulation configuration"],
+  ["agent-activity", "Agent activity"],
+  ["persona-interviews", "Persona interviews"],
+  ["surveys", "Survey import"],
+  ["calibration", "Survey calibration"],
+  ["backtesting", "Historical backtesting"],
+  ["compliance", "Compliance review"],
+  ["reports", "Evidence reports"],
+  ["audit", "Audit trail"],
+] as const;
+
 type PopulationFrameSelection = Readonly<{
   frame: Record<string, unknown>;
   source: Record<string, unknown>;
@@ -750,6 +765,30 @@ function useDurableRunPolling(
       window.clearInterval(timer);
     };
   }, [fetchRun, run]);
+}
+
+export function CampaignLabSelectionNotice() {
+  return (
+    <section aria-labelledby="campaign-lab-selection-title" className="panel">
+      <p className="eyebrow">Campaign Lab stages</p>
+      <h2 id="campaign-lab-selection-title">
+        Select a workspace to open the workflow
+      </h2>
+      <p className="field-note">
+        The permanent sidebar remains available while you create or select a
+        Campaign Lab workspace. Each destination below is a stable landing point
+        for the corresponding stage.
+      </p>
+      <ol className="workflow-list">
+        {CAMPAIGN_LAB_STAGE_ANCHORS.map(([id, label], index) => (
+          <li id={id} key={id}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            {label}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
 }
 
 export function CampaignLabWorkspace({
@@ -1508,6 +1547,7 @@ export function CampaignLabWorkspace({
           not a synthesized campaign verdict.
         </p>
       </section>
+      {!selectedCampaignId ? <CampaignLabSelectionNotice /> : null}
       {selectedCampaignId ? (
         <section
           aria-labelledby="research-upload-title"
