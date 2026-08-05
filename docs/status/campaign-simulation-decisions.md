@@ -30,9 +30,10 @@ classification: PROPOSED
    held-out outcomes. They do not establish universal accuracy or causal lift.
 9. Political use is aggregate research only. No individual voter profiles,
    persuadability scores, vulnerability targeting, or autonomous publishing.
-10. Production admission remains blocked until the existing SIMULA release gates
-    plus rights-cleared data, held-out evaluation, subgroup/language checks, and
-    live hosted evidence pass.
+10. Scientific/evidence admission remains blocked until the existing SIMULA
+    release gates plus rights-cleared data, held-out evaluation, subgroup/
+    language checks, and live hosted evidence pass. This does not prevent the
+    deployed application from serving explicitly synthetic diagnostics.
 11. The first Campaign Lab deployable provider is deterministic and seeded.
     Provider-neutral configuration remains typed and allowlisted, but an
     external LLM provider cannot be selected until its adapter, privacy,
