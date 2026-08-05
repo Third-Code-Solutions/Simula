@@ -204,6 +204,7 @@ class AgentFleetConfiguration(FrozenModel):
     llm_agent_count: int = Field(ge=0, le=100)
     minimum_per_cohort: int = Field(default=1, ge=1, le=100)
     seed: int = Field(ge=-(2**63), le=2**63 - 1)
+    network_topology: Literal["ring", "independent", "small_world", "random_bounded"] = "ring"
 
     @model_validator(mode="after")
     def valid_counts(self) -> Self:
@@ -365,9 +366,28 @@ def build_agent_fleet(
         )
     agents.sort(key=lambda agent: str(agent.agent_id))
     relationships = []
-    if len(agents) > 1:
-        for index, agent in enumerate(agents):
-            target = agents[(index + 1) % len(agents)]
+    if len(agents) > 1 and configuration.network_topology != "independent":
+        edge_pairs: set[tuple[int, int]] = set()
+        if configuration.network_topology in {"ring", "small_world"}:
+            for index in range(len(agents)):
+                edge_pairs.add((index, (index + 1) % len(agents)))
+                if configuration.network_topology == "small_world":
+                    edge_pairs.add((index, (index + 2) % len(agents)))
+        else:
+            for index, agent in enumerate(agents):
+                ranked_targets = sorted(
+                    (
+                        _rank(configuration.seed, f"{agent.agent_id}:{candidate.agent_id}"),
+                        candidate_index,
+                    )
+                    for candidate_index, candidate in enumerate(agents)
+                    if candidate_index != index
+                )
+                for _rank_value, candidate_index in ranked_targets[:2]:
+                    edge_pairs.add((index, candidate_index))
+        for source_index, target_index in sorted(edge_pairs):
+            agent = agents[source_index]
+            target = agents[target_index]
             strength = (
                 0.25
                 + (
@@ -415,7 +435,7 @@ class BehavioralProviderDescriptor(FrozenModel):
 
 class MemoryEntry(FrozenModel):
     sequence: int = Field(ge=1)
-    round_index: int = Field(ge=1, le=10)
+    round_index: int = Field(ge=1, le=50)
     actor_agent_id: UUID
     target_agent_id: UUID | None
     action: ActionKind
@@ -429,7 +449,7 @@ class AgentMemory(FrozenModel):
 
 
 class CrowdPulse(FrozenModel):
-    round_index: int = Field(ge=1, le=10)
+    round_index: int = Field(ge=1, le=50)
     action_shares: tuple[tuple[ActionKind, float], ...]
     mean_valence: float = Field(ge=-1.0, le=1.0)
     mean_attention: float = Field(ge=0.0, le=100.0)
@@ -462,7 +482,7 @@ class CrowdPulse(FrozenModel):
 
 class AgentDecisionRequest(FrozenModel):
     run_id: UUID
-    round_index: int = Field(ge=1, le=10)
+    round_index: int = Field(ge=1, le=50)
     stimulus: Annotated[str, StringConstraints(min_length=1, max_length=5000)]
     engine_seed: int = Field(ge=-(2**63), le=2**63 - 1)
     context_graph_checksum_sha256: Sha256
@@ -483,7 +503,7 @@ class AgentDecisionRequest(FrozenModel):
 
 class AgentDecisionResponse(FrozenModel):
     agent_id: UUID
-    round_index: int = Field(ge=1, le=10)
+    round_index: int = Field(ge=1, le=50)
     action: ActionKind
     target_agent_id: UUID | None
     valence: float = Field(ge=-1.0, le=1.0)
@@ -537,6 +557,8 @@ class DeterministicTieredProvider(BehavioralDecisionProvider):
             )
         ).digest()
         action = ACTION_KINDS[digest[0] % len(ACTION_KINDS)]
+        if action == "discuss" and not request.related_agent_ids:
+            action = "question"
         target = (
             request.related_agent_ids[0]
             if action == "discuss" and request.related_agent_ids
@@ -570,8 +592,9 @@ class DeterministicTieredProvider(BehavioralDecisionProvider):
 class AgentActionEvent(FrozenModel):
     event_id: UUID
     sequence: int = Field(ge=1)
+    action_timestamp_ms: int = Field(ge=0)
     run_id: UUID
-    round_index: int = Field(ge=1, le=10)
+    round_index: int = Field(ge=1, le=50)
     agent_id: UUID
     cohort_key: Key
     segment_key: Key
@@ -624,7 +647,7 @@ def replay_crowd_pulse(
 
 
 class InteractionRound(FrozenModel):
-    round_index: int = Field(ge=1, le=10)
+    round_index: int = Field(ge=1, le=50)
     actions: tuple[AgentActionEvent, ...]
     pulse: CrowdPulse
     checksum_sha256: Sha256 = "0" * 64
@@ -648,9 +671,9 @@ class InteractionRound(FrozenModel):
 
 class BehavioralEngineConfiguration(FrozenModel):
     methodology_version: Key
-    round_count: int = Field(ge=1, le=5)
+    round_count: int = Field(ge=1, le=50)
     maximum_memory_entries_per_agent: int = Field(ge=0, le=32)
-    maximum_provider_calls: int = Field(ge=1, le=10_000)
+    maximum_provider_calls: int = Field(ge=1, le=100_000)
     cost_ceiling_microusd: int = Field(ge=0, le=100_000_000)
     deadline_seconds: float = Field(gt=0.0, le=300.0)
     seed: int = Field(ge=-(2**63), le=2**63 - 1)
@@ -1062,6 +1085,9 @@ class BehavioralEngine:
                 event = AgentActionEvent(
                     event_id=uuid5(run_id, f"action:{round_index}:{agent.agent_id}"),
                     sequence=sequence,
+                    # Logical timestamps preserve byte-reproducible replay. Wall-clock
+                    # execution timestamps live on the durable run and attempt records.
+                    action_timestamp_ms=(round_index - 1) * 1000 + sequence,
                     run_id=run_id,
                     round_index=round_index,
                     agent_id=agent.agent_id,

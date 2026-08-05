@@ -1,13 +1,19 @@
 ---
 title: Campaign Simulation Lab current state
 status: active
-updated: 2026-08-02
+updated: 2026-08-04
 classification: OBSERVED
 ---
 
 # Current state
 
 ## Completed in this turn
+
+- The release implementation was verified at
+  `5e7d55c8a22ef7cd4a7aca74270dd38f23a4dc69`
+  (`fix(worker): restore campaign lab startup`) before this status update. The
+  worker import/startup syntax defect was corrected without changing the
+  campaign methodology contract.
 
 - PhantomCrowd reference cloned at the stated upstream commit and inspected.
 - SIMULA architecture, data, worker, provider, auth/tenant, queue, deployment,
@@ -35,8 +41,9 @@ classification: OBSERVED
   `ywiwmczccktwzqyhzhiz`.
 - The visual-profile command now has the required asset foreign-key privilege
   through `20260801150000_m6_visual_profile_fk_privilege`; runtime admission is
-  bound to `20260802063625_campaign_lab_api_wrappers` after the Campaign Lab API
-  security-wrapper correction.
+  bound to the then-current `20260802063625_campaign_lab_api_wrappers` after the
+  Campaign Lab API security-wrapper correction; the durable-workflow head below
+  supersedes that runtime binding.
 - Authenticated NestJS v2 survey-calibration and historical-backtest commands,
   idempotency, status/events/cancel reads, OpenAPI, and a native Evidence Lab UI
   were added. The worker now claims and evaluates these durable jobs with the
@@ -52,6 +59,10 @@ classification: OBSERVED
   deterministic weighted sampling, repeated seeded runs, structured synthetic
   personas, disclosed interviews, compliance review, and a 30-section report
   contract. No `viral_score` field or LLM final score exists.
+- Repeated Campaign Lab results now include per-cell component rankings bound to
+  each sampled cohort's frozen dimensions and population weight, so aggregate
+  results do not hide cohort differences. These findings remain explicitly
+  synthetic diagnostics, not survey estimates or vote-share forecasts.
 - Historical backtests now persist a version-2 result with explicit
   campaign/cohort/variant keys, declared cohort weights, weighted campaign
   aggregates, and per-cohort component slices. The durable outcome schema's
@@ -60,28 +71,112 @@ classification: OBSERVED
   have a versioned core contract, focused tests, a durable Campaign Lab artifact
   route, and an optional report attachment field. Regional languages remain
   disabled until an admitted evaluation dataset exists.
+- Campaign update and simulation-cancellation commands now persist replay-safe
+  idempotency receipts. Explicit `Idempotency-Key` headers are supported, with a
+  deterministic request-derived fallback for legacy callers. The change is in
+  `20260802105930_campaign_lab_mutation_idempotency`, applied to
+  `ywiwmczccktwzqyhzhiz`; its compatibility entrypoints remain available while
+  the current runtime binding is the durable-workflow head below.
 - FastAPI `/api/v1/campaign-lab/...` routes now cover campaign state, typed
   research/cohort/variant/interview artifacts, durable simulations, status,
   progress events, cancellation, cloning, survey intake, calibration, historical
   backtest intake, compliance review, audit, and reports.
+- Research ingestion now runs as a bounded, provenance-first worker job for
+  text, Markdown, CSV, JSON, DOCX, and text-bearing PDF inputs; scanned PDFs
+  fail closed with an OCR-required state instead of inventing extracted text.
+- Survey imports now run through the same durable worker queue as calibration
+  and backtesting. Public requests retain only format/field-map metadata; raw
+  CSV/Formbricks/ODK/generic JSON payloads stay in the worker-only secret
+  envelope, are normalized in memory, and are deleted after aggregate output
+  completion. The hosted registry recorded this forward-only migration as
+  `20260802150729` under `campaign_lab_survey_import_workflow`; the later
+  retention migration advances the compiled runtime head to `20260803100000`.
+- Persona interviews, compliance reviews, and report generation now use the same
+  durable leased run queue, with run-status endpoints and aggregate evidence
+  binding. Behavioral diagnostics persist repetition, round, topology, exposure,
+  action, logical action timestamps, memory, event evidence, provider usage,
+  token/cost receipts, and synthetic-agent disclosure.
+- Research ingestion now produces a bounded, deterministic knowledge graph with
+  entities, relationships, source-chunk citations, claim grounding,
+  conflicting-source detection, source-freshness metadata, and bounded lexical
+  source-excerpt retrieval. Knowledge graph records are source-bound and reject
+  raw documents or respondent rows when attached to a simulation request.
+- Structured persona behavioral dimensions now carry the same explicit
+  `Synthetic` provenance label as demographic, language, media, and issue
+  attributes. Synthetic interviews record admitted research source/citation IDs
+  alongside action and memory evidence.
+- Survey calibration results now carry calibration/model versions and aggregate
+  survey sample size. Version history and deterministic calibration drift
+  monitoring use the documented `calibration_drift_thresholds_v1` contract;
+  missing comparison history remains `unavailable` rather than being inferred.
 - Supabase migrations `20260802060315_campaign_simulation_lab` and
   `20260802063625_campaign_lab_api_wrappers` plus
   `20260802090954_campaign_lab_cultural_evaluation` are applied to project
   `ywiwmczccktwzqyhzhiz`. Campaign Lab campaign, artifact, run, event, and
   worker-secret relations have forced RLS; command and worker functions are
   least-privilege and lease-bound.
+- Supabase migration SQL `20260802143000_campaign_lab_durable_workflows.sql` is
+  applied to `ywiwmczccktwzqyhzhiz`; the hosted migration registry assigned
+  apply-time version `20260802131842` under the name
+  `campaign_lab_durable_workflows`. Because the hosted command/worker functions
+  are owned by dedicated database roles, the migration adds owned v2 entrypoints
+  and preserves the published API contract.
+- Supabase migration SQL
+  `20260802150000_campaign_lab_survey_import_workflow.sql` is applied to the
+  same project; its hosted registry version is `20260802150729`. The v3
+  entrypoints are least-privilege replacements for the survey-import-capable run
+  admission/completion/readiness path, bound to the then-current compiled
+  `20260802150000` head. The forward-only retention migration
+  `20260803100000_campaign_lab_retention_cleanup.sql` is also applied; the
+  hosted registry assigned `20260803020312`, while the logical runtime head is
+  `20260803100000`. Campaign Lab artifacts and runs now require 90-day retention
+  deadlines, terminal rows have indexed worker cleanup policies, and cleanup
+  audits before deletion.
 - The worker now claims Campaign Lab runs from PostgreSQL, persists progress,
   retries bounded failures, finalizes cancellation, and keeps raw survey rows
   and held-out outcomes in the worker-only secret envelope.
+- PSA OpenSTAT Table 1.9 was queried through the documented API and admitted as
+  the first cited real aggregate population frame. The checked-in frame has 17
+  regional cells, a 109,033,245-person regional denominator, the raw CSV
+  response SHA-256, and an explicit 2,098-person difference from PSA's headline
+  national total. No individual records or behavioral dimensions are included.
+- The replayable Supabase operation
+  `supabase/operations/20260804100000_psa_2020_regional_population_frame.sql`
+  was applied to `ywiwmczccktwzqyhzhiz`; the hosted registry assigned apply-time
+  version `20260804124631`. This data-only seed does not advance the compiled
+  runtime head. The hosted registry query verified the PSA source ID, 17 cells,
+  matching export hash, experimental validation status, and decimal weight sum
+  `1.000000000000001`.
+- Campaign Lab now loads the hosted PSA frame from the methodology registry for
+  its starter request. The UI labels the population frame separately from the
+  still-synthetic behavioral evidence. Authored examples remain visible as
+  empty-field placeholders only; simulation launch is blocked when the cited
+  registry source is unavailable.
+- Production API admission and worker evaluation now reject authored demo
+  audiences, retired or undocumented population frames, and unvalidated request
+  sources. Local and test environments retain explicit fixture access for
+  engineering coverage.
 - The web project workspace now exposes Campaign Simulation Lab as a primary
   navigation destination with a permanently visible 14-item Campaign Lab
-  sidebar, end-to-end campaign setup, aggregate request editor, durable run
-  polling, evidence-stage disclosure, and report boundary. Evidence results
-  expose survey/backtest component metrics and cohort slices in the UI.
-- Verification completed locally: core/worker suites 277/277, API tests
-  77/77, web tests 142/142, web production build, web typecheck/lint, Python
-  compile, and focused Ruff checks. Hosted Supabase migration/RLS/function
-  checks and security advisor review also completed.
+  sidebar, end-to-end campaign setup, research-file upload with provenance
+  metadata, worker-backed ingestion status polling, aggregate request editor,
+  durable run polling, evidence-stage disclosure, and report boundary. The
+  sidebar destinations now land on campaign-scoped cohort, message, simulation,
+  interview, survey import, calibration, backtest, compliance, report, and audit
+  surfaces; report approval is bound to a succeeded compliance review and named
+  human reviewer. Evidence results expose survey/backtest component metrics and
+  cohort slices in the UI.
+- The connected Vercel `simula` and `simula-admin` projects use app-scoped
+  ignored-build commands. The latest worker-only commit was cloned and then
+  canceled at the ignored-build step before `vercel build`, preventing a full
+  web/admin build for unrelated worker changes. Production promotion and an
+  account-level spend cap remain unverified because the connected billing
+  session is not authorized for the `pavi` team.
+- Verification completed locally at `82c3d388e094369cd26cb3d790b35c3060668b6b`:
+  pinned `pnpm check` is green, including 479 Python tests with 2 expected
+  POSIX-only skips, API/web/admin JavaScript suites, type checks, builds,
+  contract generation/checks, formatting, lint, and the secret/forbidden-claim
+  gates. No manual Vercel deployment or retry was initiated for this audit.
 
 ## Implemented before this turn
 
@@ -96,14 +191,36 @@ classification: OBSERVED
 
 ## Not yet verified or supplied
 
-- Lawfully admitted Philippine survey and historical campaign datasets.
+- Lawfully admitted Philippine survey and historical campaign datasets; the PSA
+  aggregate population frame is now admitted, but it does not calibrate or
+  backtest behavioral output.
 - The non-deterministic provider adapters are contract-level only; the first
   deployable worker release intentionally admits the deterministic provider.
 - End-to-end hosted authenticated browser/API/worker evidence for the new routes
-  after the GitHub release is promoted.
-- Railway project authorization and an observed GitHub-to-Railway deployment
-  event; the currently logged-in Railway account is not authorized for the
-  requested project.
+  after the GitHub release is promoted; protected Vercel previews have not been
+  browser-verified from this task.
+- A current GitHub-to-Railway deployment event for this release branch. Railway
+  CLI access now resolves the requested project and shows the API/worker GitHub
+  source bound to `Third-Code-Solutions/Simula` on production `main`; production
+  still serves release `4b37e1f8af7e4c377c8b44eca0c53e36345cb56c`, with
+  `/health/live` 200 and `/health/ready` 503, because the release branch is not
+  merged to `main`.
+- The latest GitHub Actions PR run (`30913108468`) failed all required gates
+  before runner steps were created; GitHub returned no job logs. The external
+  account payment/spending-limit gate must be repaired before CI can provide a
+  green merge signal.
+- Hosted Campaign Lab retention/runtime objects and API/worker grants are
+  present. The hosted migration registry uses apply-time versions
+  `20260802131842`, `20260802150729`, and `20260803020312` for the equivalent
+  durable-workflow/survey/retention changes, while local files retain logical
+  names `20260802143000`, `20260802150000`, and `20260803100000`; no duplicate
+  DDL was applied during this audit.
+- The hosted `database_foundation.test.sql` transaction currently reports 30/35:
+  the five remaining failures are environment-specific local bootstrap
+  assumptions (provider-managed runtime-role passwords, hosted owner-role
+  membership shape, absent authored Auth fixtures, and absent local seed
+  fixtures). Hosted Campaign Lab migration/function/grant checks remain
+  separately verified; these fixtures must not be copied into production.
 
 ## Truth boundary
 

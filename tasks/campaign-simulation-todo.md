@@ -17,7 +17,12 @@
       schema and evaluation report.
 - [x] Add durable API/worker integration for survey calibration and historical
       backtesting.
+- [x] Add durable worker-queued survey import with worker-only raw payload
+      handling and aggregate-only completion output.
 - [x] Add repeated-run UI/report fields without a standalone prediction score.
 - [x] Add survey/backtest UI/report fields without a standalone prediction
       score.
+- [x] Add source-citation knowledge graph, claim grounding, conflict detection,
+      and freshness metadata.
+- [x] Add calibration version history, drift monitoring, and execution receipts.
 - [ ] Re-run full release gates and independent review.

@@ -80,6 +80,10 @@ export type CampaignLabCommand = Readonly<{
   replayed?: boolean;
   created_at?: string;
 }>;
+export type CampaignLabAuditPage = Readonly<{
+  items: ReadonlyArray<Readonly<Record<string, unknown>>>;
+  pagination: Readonly<{ limit: number; offset: number }>;
+}>;
 export type CampaignLabRunStatus = Readonly<{
   id: string;
   campaign_id: string;
@@ -92,6 +96,55 @@ export type CampaignLabRunStatus = Readonly<{
   started_at: string | null;
   completed_at: string | null;
   last_error_code: string | null;
+  retention_until: string | null;
+}>;
+export type CampaignLabDurableRun = CampaignLabRunStatus &
+  Readonly<{
+    result?: Readonly<Record<string, unknown>> | null;
+  }>;
+export type CampaignLabResearchRun = CampaignLabRunStatus &
+  Readonly<{ result?: Readonly<Record<string, unknown>> }>;
+export type CampaignLabRanking = Readonly<{
+  metric_key: string;
+  repetition_count: number;
+  pairwise_rank_agreement: number;
+  top_variant_key: string | null;
+  stability_label: string;
+  variants: ReadonlyArray<
+    Readonly<{
+      variant_key: string;
+      mean_rank: number;
+      top_rank_probability: number;
+    }>
+  >;
+}>;
+export type CampaignLabSimulationResult = Readonly<{
+  run_id: string;
+  evidence_status: "Synthetic-only";
+  result: Readonly<{
+    sample_size: number;
+    repetitions: number;
+    overall_component_rankings: Readonly<Record<string, CampaignLabRanking>>;
+    cohort_findings: ReadonlyArray<
+      Readonly<{
+        cohort_key: string;
+        dimensions: Readonly<Record<string, string>>;
+        population_weight: number;
+        repetition_count: number;
+        evidence_status: "Synthetic-only";
+        component_rankings: Readonly<Record<string, CampaignLabRanking>>;
+      }>
+    >;
+    synthetic_observations: ReadonlyArray<Readonly<Record<string, unknown>>>;
+    behavioral_diagnostics?: Readonly<{
+      variants: ReadonlyArray<
+        Readonly<{
+          variant_key: string;
+          interviewable_agents: ReadonlyArray<Readonly<{ agent_id: string }>>;
+        }>
+      >;
+    }>;
+  }>;
 }>;
 export type Stimulus = Schemas["StimulusResponse"];
 export type StimulusVersion = Schemas["StimulusVersionResponse"];
@@ -504,6 +557,44 @@ export function createCampaignLabCampaign(input: {
   });
 }
 
+export function createCampaignLabResearch(
+  campaignId: string,
+  input: Readonly<{
+    title: string;
+    payload: Readonly<Record<string, unknown>>;
+    provenance?: Readonly<Record<string, unknown>>;
+    source: Readonly<Record<string, unknown>>;
+    filename: string;
+    media_type:
+      | "text/plain"
+      | "text/markdown"
+      | "text/csv"
+      | "application/json"
+      | "application/pdf"
+      | "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    chunk_size?: number;
+    overlap?: number;
+    secret_payload: Readonly<Record<string, unknown>>;
+  }>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/research`),
+    {
+      body: input,
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export function getCampaignLabResearchRun(
+  runId: string,
+): Promise<CampaignLabResearchRun> {
+  return request<CampaignLabResearchRun>(
+    domainPath(`/campaign-lab/research/runs/${runId}`),
+  );
+}
+
 export function createCampaignLabSimulation(
   campaignId: string,
   requestBody: Record<string, unknown>,
@@ -537,6 +628,133 @@ export function getCampaignLabSimulationStatus(
 ): Promise<CampaignLabRunStatus> {
   return request<CampaignLabRunStatus>(
     domainPath(`/campaign-lab/simulations/${runId}/status`),
+  );
+}
+
+export function getCampaignLabSimulationResults(
+  runId: string,
+): Promise<CampaignLabSimulationResult> {
+  return request<CampaignLabSimulationResult>(
+    domainPath(`/campaign-lab/simulations/${runId}/results`),
+  );
+}
+
+export function createCampaignLabInterview(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/interviews`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabInterviewRun(
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(`/campaign-lab/interviews/runs/${runId}`),
+  );
+}
+
+export function createCampaignLabSurveyImport(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/surveys/import`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabSurveyImportRun(
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(`/campaign-lab/surveys/runs/${runId}`),
+  );
+}
+
+export function createCampaignLabCalibration(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/calibrations`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabCalibrationRun(
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(`/campaign-lab/calibrations/${runId}`),
+  );
+}
+
+export function createCampaignLabBacktest(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/backtests`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabBacktestRun(
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(`/campaign-lab/backtests/${runId}`),
+  );
+}
+
+export function createCampaignLabComplianceReview(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/compliance/reviews`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabComplianceRun(
+  campaignId: string,
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(
+      `/campaign-lab/campaigns/${campaignId}/compliance/runs/${runId}`,
+    ),
+  );
+}
+
+export function createCampaignLabReport(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/reports`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabReportRun(
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(`/campaign-lab/reports/runs/${runId}`),
+  );
+}
+
+export function getCampaignLabAudit(
+  campaignId: string,
+): Promise<CampaignLabAuditPage> {
+  return request<CampaignLabAuditPage>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/audit`),
   );
 }
 

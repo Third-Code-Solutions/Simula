@@ -92,8 +92,11 @@ class CampaignLabClaim:
     run_type: Literal[
         "repeated_simulation",
         "survey_calibration",
+        "survey_import",
         "historical_backtest",
+        "research_ingestion",
         "interview",
+        "compliance_review",
         "report",
     ]
     request: Mapping[str, object]
@@ -137,6 +140,8 @@ class CampaignEvidenceDatabase(Protocol):
 
 
 class CampaignLabDatabase(Protocol):
+    async def expire_campaign_lab_runs(self, requested_batch_size: int = 50) -> int: ...
+
     async def claim_campaign_lab_runs(
         self, requested_batch_size: int = 5
     ) -> list[CampaignLabClaim]: ...
@@ -236,7 +241,7 @@ class WorkerDatabase(WorkerExecutionGateway):
                     )
                     row = await cursor.fetchone()
                     schema_cursor = await connection.execute(
-                        "select * from private.runtime_schema_readiness()"
+                        "select * from private.runtime_schema_readiness_v3()"
                     )
                     schema = await schema_cursor.fetchone()
             ready = (
@@ -263,7 +268,7 @@ class WorkerDatabase(WorkerExecutionGateway):
 
     async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
         row = await self._fetchone(
-            "select * from private.runtime_observability_snapshot()",
+            "select * from private.runtime_observability_snapshot_v3()",
             (),
         )
         states = (
@@ -446,8 +451,11 @@ class WorkerDatabase(WorkerExecutionGateway):
             allowed_types = {
                 "repeated_simulation",
                 "survey_calibration",
+                "survey_import",
                 "historical_backtest",
+                "research_ingestion",
                 "interview",
+                "compliance_review",
                 "report",
             }
             if run_type not in allowed_types:
@@ -465,8 +473,11 @@ class WorkerDatabase(WorkerExecutionGateway):
                         Literal[
                             "repeated_simulation",
                             "survey_calibration",
+                            "survey_import",
                             "historical_backtest",
+                            "research_ingestion",
                             "interview",
+                            "compliance_review",
                             "report",
                         ],
                         run_type,
@@ -478,6 +489,13 @@ class WorkerDatabase(WorkerExecutionGateway):
                 )
             )
         return claims
+
+    async def expire_campaign_lab_runs(self, requested_batch_size: int = 50) -> int:
+        row = await self._fetchone(
+            "select private.expire_campaign_lab_runs(%s) as deleted",
+            (requested_batch_size,),
+        )
+        return int(row["deleted"])
 
     async def update_campaign_lab_progress(
         self, run_id: UUID, lease_token: UUID, stage: str, progress: int, message: str
@@ -497,7 +515,7 @@ class WorkerDatabase(WorkerExecutionGateway):
         self, run_id: UUID, lease_token: UUID, result: Mapping[str, object]
     ) -> bool:
         return await self._boolean_function(
-            "select private.complete_campaign_lab_run(%s, %s, %s) as changed",
+            "select private.complete_campaign_lab_run_v3(%s, %s, %s) as changed",
             (run_id, lease_token, Jsonb(dict(result))),
         )
 
@@ -655,18 +673,23 @@ class WorkerDatabase(WorkerExecutionGateway):
         operations = {
             "claim_due_run_outbox": "claim_dispatch",
             "claim_campaign_evidence_runs": "claim_campaign_evidence",
+            "claim_campaign_lab_runs": "claim_campaign_lab",
             "claim_run_execution_traced": "claim_execution",
             "claim_run_execution_v2_traced": "claim_execution",
             "complete_behavioral_run_execution": "complete_behavioral_execution",
             "complete_campaign_evidence_run": "complete_campaign_evidence",
+            "complete_campaign_lab_run_v3": "complete_campaign_lab",
             "complete_run_execution": "complete_execution",
             "confirm_run_dispatch": "confirm_dispatch",
             "evaluate_run_creation_control": "evaluate_run_control",
             "expire_campaign_evidence_runs": "expire_campaign_evidence",
+            "expire_campaign_lab_runs": "expire_campaign_lab",
             "fail_run_dispatch": "fail_dispatch",
             "fail_campaign_evidence_run": "fail_campaign_evidence",
+            "fail_campaign_lab_run": "fail_campaign_lab",
             "fail_run_execution": "fail_execution",
             "finalize_canceled_campaign_evidence_run": "finalize_canceled_campaign_evidence",
+            "finalize_canceled_campaign_lab_run": "finalize_canceled_campaign_lab",
             "finalize_requested_cancellations": "finalize_cancellations",
             "finalize_poisoned_dispatches": "finalize_poison",
             "heartbeat_run_execution": "heartbeat_execution",
@@ -674,6 +697,7 @@ class WorkerDatabase(WorkerExecutionGateway):
             "require_queue_transport": "require_queue_transport",
             "runtime_observability_snapshot": "runtime_snapshot",
             "update_campaign_evidence_progress": "update_campaign_evidence",
+            "update_campaign_lab_run_progress": "update_campaign_lab",
         }
         matches = [operation for marker, operation in operations.items() if marker in query]
         if len(matches) != 1:

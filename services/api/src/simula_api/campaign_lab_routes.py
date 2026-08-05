@@ -7,6 +7,7 @@ outcomes are accepted only in a worker secret envelope and are never returned.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Mapping
 from hashlib import sha256
 from typing import Annotated, Any, Literal, cast
@@ -20,13 +21,9 @@ from simula_core.campaign_lab import (
     CampaignLabPolicyError,
     CampaignLabResearchSource,
     CampaignLabSimulationRequest,
-    CampaignLabSimulationResult,
     CampaignLabVariant,
     CampaignPurpose,
-    StructuredSyntheticPersona,
-    build_campaign_lab_report,
-    build_compliance_review,
-    create_synthetic_interview,
+    validate_campaign_lab_population_admission,
     validate_campaign_policy,
 )
 from simula_core.cultural_evaluation import (
@@ -40,6 +37,7 @@ from simula_api.database import canonical_request_sha256
 from simula_api.problems import AppProblem, ProblemError
 from simula_api.routes import (
     IdempotencyKey,
+    OptionalIdempotencyKey,
     PageSize,
     _correlation_id,
     _problem_response,
@@ -112,9 +110,45 @@ class SimulationCreate(_LabModel):
         return self
 
 
+class ResearchIngestionCreate(_LabModel):
+    # Keep the original artifact-shaped fields in the public contract while
+    # adding the worker-backed document metadata as optional rollout fields.
+    title: str = Field(min_length=2, max_length=200)
+    payload: dict[str, Any]
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    checksum_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    source: dict[str, Any] | None = None
+    filename: str | None = Field(default=None, min_length=1, max_length=240)
+    media_type: (
+        Literal[
+            "text/plain",
+            "text/markdown",
+            "text/csv",
+            "application/json",
+            "application/pdf",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ]
+        | None
+    ) = None
+    chunk_size: int = Field(default=1200, ge=200, le=4000)
+    overlap: int = Field(default=120, ge=0, le=3999)
+    secret_payload: dict[str, Any] | None = Field(default=None, exclude=True)
+
+    @model_validator(mode="after")
+    def require_worker_document(self) -> ResearchIngestionCreate:
+        if self.source is not None:
+            CampaignLabResearchSource.model_validate(self.source)
+        if self.overlap >= self.chunk_size:
+            raise ValueError("research overlap must be smaller than chunk_size")
+        return self
+
+
 class InterviewCreate(_LabModel):
     persona: dict[str, Any]
+    source_run_id: UUID | None = None
+    agent_id: UUID | None = None
     variant_key: str = Field(min_length=1, max_length=64)
+    question: str = Field(default="What happened in this simulation?", min_length=1, max_length=500)
     prompt_version: str = Field(min_length=1, max_length=120)
 
 
@@ -142,6 +176,10 @@ class CalibrationCreate(_LabModel):
     synthetic_observations: list[dict[str, Any]] = Field(min_length=1, max_length=100_000)
     survey: dict[str, Any] | None = None
     survey_import: dict[str, Any] | None = None
+    calibration_version: str = Field(default="calibration_v1", min_length=1, max_length=120)
+    model_version: str = Field(default="unspecified", min_length=1, max_length=120)
+    baseline_calibration: dict[str, Any] | None = None
+    calibration_history: list[dict[str, Any]] = Field(default_factory=list, max_length=100)
     secret_payload: dict[str, Any] | None = Field(default=None, exclude=True)
 
     @model_validator(mode="after")
@@ -172,9 +210,23 @@ class ComplianceCreate(_LabModel):
 
 class ReportCreate(_LabModel):
     run_id: UUID
+    calibration_run_id: UUID | None = None
+    historical_backtest_run_id: UUID | None = None
+    compliance_review_run_id: UUID | None = None
     cultural_evaluation_artifact_id: UUID | None = None
     human_reviewer: str | None = Field(default=None, min_length=1, max_length=160)
     approval_status: Literal["draft", "needs_human_review", "approved_experimental"] = "draft"
+
+    @model_validator(mode="after")
+    def require_approval_evidence(self) -> ReportCreate:
+        if self.approval_status == "approved_experimental":
+            if self.compliance_review_run_id is None:
+                raise ValueError(
+                    "approved_experimental reports require a succeeded compliance review"
+                )
+            if self.human_reviewer is None:
+                raise ValueError("approved_experimental reports require a named human reviewer")
+        return self
 
 
 def _invalid(detail: str, *, field: str = "request") -> AppProblem:
@@ -317,8 +369,10 @@ async def _store_run(
     secret_payload: Mapping[str, Any] | None,
     idempotency_key: str,
     correlation_id: UUID,
+    validate: bool = True,
 ) -> dict[str, Any]:
-    _validate_policy(payload)
+    if validate:
+        _validate_policy(payload)
     organization_id = await _campaign_organization(request, identity, campaign_id)
     request_payload = {**payload, "run_type": run_type, "campaign_id": str(campaign_id)}
     if isinstance(secret_payload, Mapping):
@@ -327,7 +381,7 @@ async def _store_run(
         identity,
         operation=f"create_campaign_lab_{run_type}_run",
         query="""
-          select api.create_campaign_lab_run(
+          select api.create_campaign_lab_run_v3(
             %s, %s, %s, %s, %s, %s, %s, %s
           ) as payload
         """,
@@ -448,13 +502,19 @@ async def update_campaign(
     request: Request,
     response: Response,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: OptionalIdempotencyKey = None,
 ) -> dict[str, Any]:
     await _campaign_organization(request, identity, campaign_id)
+    payload = {
+        "campaign_id": str(campaign_id),
+        **body.model_dump(mode="json"),
+    }
+    effective_idempotency_key = idempotency_key or f"campaign-lab-{_request_sha(payload)}"
     result = await _services(request).database.execute_product_command(
         identity,
         operation="update_campaign_lab_campaign",
         query="""
-          select api.update_campaign_lab_campaign(%s, %s, %s, %s, %s, %s) as payload
+          select api.update_campaign_lab_campaign(%s, %s, %s, %s, %s, %s, %s, %s) as payload
         """,
         parameters=(
             campaign_id,
@@ -462,6 +522,8 @@ async def update_campaign(
             body.name,
             body.objective,
             _json(body.decision),
+            effective_idempotency_key,
+            _request_sha(payload),
             _correlation_id(request),
         ),
     )
@@ -506,6 +568,80 @@ async def list_artifacts(
     return {"items": items, "pagination": {"limit": limit, "offset": offset}}
 
 
+async def _list_artifacts_by_kind(
+    campaign_id: UUID,
+    kind: Literal["research_source", "cohort", "variant"],
+    request: Request,
+    identity: VerifiedIdentity,
+    *,
+    limit: int,
+    offset: int,
+) -> dict[str, Any]:
+    await _campaign_row(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation=f"list_campaign_lab_{kind}",
+        query="""
+          select id, organization_id, campaign_id, kind, status, title, payload,
+                 provenance, checksum_sha256, retention_until, created_by, created_at, updated_at
+          from api.campaign_lab_artifacts
+          where campaign_id = %s and kind = %s
+          order by created_at desc, id desc
+          limit %s offset %s
+        """,
+        parameters=(campaign_id, kind, limit, offset),
+    )
+    return {"items": rows, "pagination": {"limit": limit, "offset": offset}}
+
+
+@router.get(
+    "/campaigns/{campaign_id}/research",
+    operation_id="list_campaign_lab_research",
+)
+async def list_research(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 50,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    return await _list_artifacts_by_kind(
+        campaign_id, "research_source", request, identity, limit=limit, offset=offset
+    )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/cohorts",
+    operation_id="list_campaign_lab_cohorts",
+)
+async def list_cohorts(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 50,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    return await _list_artifacts_by_kind(
+        campaign_id, "cohort", request, identity, limit=limit, offset=offset
+    )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/variants",
+    operation_id="list_campaign_lab_variants",
+)
+async def list_variants(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 50,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    return await _list_artifacts_by_kind(
+        campaign_id, "variant", request, identity, limit=limit, offset=offset
+    )
+
+
 @router.post(
     "/campaigns/{campaign_id}/research",
     status_code=201,
@@ -513,29 +649,47 @@ async def list_artifacts(
 )
 async def create_research(
     campaign_id: UUID,
-    body: ArtifactCreate,
+    body: ResearchIngestionCreate,
     request: Request,
     response: Response,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     idempotency_key: IdempotencyKey,
 ) -> dict[str, Any]:
-    try:
-        CampaignLabResearchSource.model_validate(body.payload)
-    except ValueError as error:
+    if (
+        body.source is None
+        or body.filename is None
+        or body.media_type is None
+        or body.secret_payload is None
+        or not isinstance(body.secret_payload.get("content"), str)
+    ):
         raise _invalid(
-            "Research provenance does not match the declared source contract.", field="payload"
-        ) from error
-    result = await _store_artifact(
+            "Research ingestion requires source provenance, filename, media type, and "
+            "worker-only document content.",
+            field="source",
+        )
+    payload = body.model_dump(mode="json", exclude={"secret_payload"})
+    payload["source"] = body.source
+    result = await _store_run(
         request,
         identity,
         campaign_id=campaign_id,
-        kind="research_source",
-        body=body,
+        run_type="research_ingestion",
+        payload=payload,
+        secret_payload=body.secret_payload,
         idempotency_key=idempotency_key,
         correlation_id=_correlation_id(request),
     )
     _replay_header(response, result)
     return result
+
+
+@router.get("/research/runs/{run_id}", operation_id="get_campaign_lab_research_run")
+async def get_research_run(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    return await _get_campaign_lab_run(run_id, "research_ingestion", request, identity)
 
 
 @router.post(
@@ -623,6 +777,13 @@ async def create_simulation(
         raise _invalid(
             "request.campaign_id must match the campaign path.", field="request.campaign_id"
         )
+    try:
+        validate_campaign_lab_population_admission(
+            body.request,
+            environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
+        )
+    except CampaignLabPolicyError as error:
+        raise _invalid(str(error), field="request.cohort") from error
     result = await _store_run(
         request,
         identity,
@@ -649,7 +810,7 @@ async def get_simulation(
         query="""
           select id, organization_id, campaign_id, run_type, status, stage, progress,
                  result, created_by, created_at, started_at, completed_at, attempt_count,
-                 last_error_code, last_error_detail
+                 last_error_code, last_error_detail, retention_until
           from api.campaign_lab_runs
           where id = %s
         """,
@@ -663,6 +824,29 @@ async def get_simulation(
             detail="The run is absent or not visible.",
         )
     return rows[0]
+
+
+async def _get_campaign_lab_run(
+    run_id: UUID,
+    expected_run_type: Literal[
+        "research_ingestion",
+        "survey_import",
+        "interview",
+        "compliance_review",
+        "report",
+    ],
+    request: Request,
+    identity: VerifiedIdentity,
+) -> dict[str, Any]:
+    run = await get_simulation(run_id, request, identity)
+    if run.get("run_type") != expected_run_type:
+        raise AppProblem(
+            status=404,
+            code="not_found",
+            title="Campaign Lab durable run not found",
+            detail="The requested run is absent or has a different type.",
+        )
+    return run
 
 
 async def _get_evidence_run(
@@ -703,6 +887,7 @@ async def simulation_status(
             "started_at",
             "completed_at",
             "last_error_code",
+            "retention_until",
         )
     }
 
@@ -754,12 +939,20 @@ async def cancel_simulation(
     request: Request,
     response: Response,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: OptionalIdempotencyKey = None,
 ) -> dict[str, Any]:
+    payload = {"run_id": str(run_id)}
+    effective_idempotency_key = idempotency_key or f"campaign-lab-{_request_sha(payload)}"
     result = await _services(request).database.execute_product_command(
         identity,
         operation="cancel_campaign_lab_simulation",
-        query="select api.cancel_campaign_lab_run(%s, %s) as payload",
-        parameters=(run_id, _correlation_id(request)),
+        query="select api.cancel_campaign_lab_run(%s, %s, %s, %s) as payload",
+        parameters=(
+            run_id,
+            effective_idempotency_key,
+            _request_sha(payload),
+            _correlation_id(request),
+        ),
     )
     _replay_header(response, result)
     return result
@@ -794,6 +987,14 @@ async def clone_simulation(
         )
     payload = cast(Mapping[str, Any], rows[0]["request"])
     campaign_id = cast(UUID, rows[0]["campaign_id"])
+    try:
+        clone_request = CampaignLabSimulationRequest.model_validate(payload)
+        validate_campaign_lab_population_admission(
+            clone_request,
+            environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
+        )
+    except (CampaignLabPolicyError, ValueError) as error:
+        raise _invalid(str(error), field="request.cohort") from error
     result = await _store_run(
         request,
         identity,
@@ -821,35 +1022,64 @@ async def create_interview(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     idempotency_key: IdempotencyKey,
 ) -> dict[str, Any]:
-    try:
-        persona = StructuredSyntheticPersona.model_validate(body.persona)
-        interview = create_synthetic_interview(
-            persona,
-            variant_key=body.variant_key,
-            prompt_version=body.prompt_version,
-            interview_id=uuid4(),
-        )
-    except ValueError as error:
+    if body.source_run_id is None or body.agent_id is None:
         raise _invalid(
-            "The interview requires a structured, provenance-labelled synthetic persona.",
-            field="persona",
-        ) from error
-    artifact = ArtifactCreate(
-        title=f"Synthetic interview {interview.interview_id}",
-        payload=interview.model_dump(mode="json"),
-        provenance={"evidence_status": "Synthetic-only", "disclosure": interview.disclosure},
+            "The interview must reference a succeeded simulation run and agent evidence.",
+            field="source_run_id",
+        )
+    source_rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_interview_source_run",
+        query="""
+          select id, campaign_id, run_type, status, request, result
+          from api.campaign_lab_runs
+          where id = %s and campaign_id = %s
+        """,
+        parameters=(body.source_run_id, campaign_id),
     )
-    result = await _store_artifact(
+    if (
+        not source_rows
+        or source_rows[0].get("run_type") != "repeated_simulation"
+        or source_rows[0].get("status") != "succeeded"
+        or not isinstance(source_rows[0].get("request"), Mapping)
+        or not isinstance(source_rows[0].get("result"), Mapping)
+    ):
+        raise AppProblem(
+            status=409,
+            code="version_conflict",
+            title="Interview source is not ready",
+            detail="A persona interview requires a succeeded repeated simulation run.",
+        )
+    payload = {
+        "source_run_id": str(body.source_run_id),
+        "agent_id": str(body.agent_id),
+        "variant_key": body.variant_key,
+        "question": body.question,
+        "prompt_version": body.prompt_version,
+        "simulation_request": source_rows[0]["request"],
+        "simulation_result": source_rows[0]["result"],
+    }
+    result = await _store_run(
         request,
         identity,
         campaign_id=campaign_id,
-        kind="interview",
-        body=artifact,
+        run_type="interview",
+        payload=payload,
+        secret_payload=None,
         idempotency_key=idempotency_key,
         correlation_id=_correlation_id(request),
     )
     _replay_header(response, result)
     return result
+
+
+@router.get("/interviews/runs/{run_id}", operation_id="get_campaign_lab_interview_run")
+async def get_interview_run(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    return await _get_campaign_lab_run(run_id, "interview", request, identity)
 
 
 @router.get("/interviews/{artifact_id}", operation_id="get_campaign_lab_interview")
@@ -941,31 +1171,35 @@ async def import_survey(
 ) -> dict[str, Any]:
     metadata = {**body.metadata, "format": body.format, "field_map": body.field_map}
     _validate_policy(metadata)
-    artifact = ArtifactCreate(
-        title=f"Survey import {body.metadata.get('source_id', 'unattributed')}",
+    # Survey rows must pass through the same durable lease/retry path as every
+    # other long-running Campaign Lab operation. The public request contains
+    # only schema/provenance metadata; the raw export remains in the worker
+    # secret envelope and is consumed in memory.
+    result = await _store_run(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        run_type="survey_import",
         payload={
             "format": body.format,
             "metadata": body.metadata,
             "field_map": body.field_map,
-            "raw_payload_stored_worker_only": True,
-        },
-        provenance={
-            "evidence_status": "Survey-derived",
-            "consent_recorded": body.metadata.get("consent_recorded", False),
         },
         secret_payload=body.secret_payload,
-    )
-    result = await _store_artifact(
-        request,
-        identity,
-        campaign_id=campaign_id,
-        kind="survey_import",
-        body=artifact,
         idempotency_key=idempotency_key,
         correlation_id=_correlation_id(request),
     )
     _replay_header(response, result)
     return result
+
+
+@router.get("/surveys/runs/{run_id}", operation_id="get_campaign_lab_survey_import_run")
+async def get_survey_import_run(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    return await _get_campaign_lab_run(run_id, "survey_import", request, identity)
 
 
 @router.post(
@@ -1055,26 +1289,46 @@ async def create_compliance_review(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     idempotency_key: IdempotencyKey,
 ) -> dict[str, Any]:
-    review = build_compliance_review(
-        review_id=uuid4(), payload=body.payload, reviewer=body.reviewer
-    )
-    artifact = ArtifactCreate(
-        title=f"Compliance review {review.review_id}",
-        payload=review.model_dump(mode="json"),
-        provenance={"evidence_status": "Observed", "aggregate_only": review.aggregate_only},
-    )
-    result = await _store_artifact(
+    review_id = uuid4()
+    payload = {
+        "review_id": str(review_id),
+        "payload": body.payload,
+        "reviewer": body.reviewer,
+    }
+    result = await _store_run(
         request,
         identity,
         campaign_id=campaign_id,
-        kind="compliance_review",
-        body=artifact,
+        run_type="compliance_review",
+        payload=payload,
+        secret_payload=None,
         idempotency_key=idempotency_key,
         correlation_id=_correlation_id(request),
         validate=False,
     )
     _replay_header(response, result)
-    return {**result, "review": review.model_dump(mode="json")}
+    return result
+
+
+@router.get(
+    "/campaigns/{campaign_id}/compliance/runs/{run_id}",
+    operation_id="get_campaign_lab_compliance_run",
+)
+async def get_compliance_run(
+    campaign_id: UUID,
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    run = await _get_campaign_lab_run(run_id, "compliance_review", request, identity)
+    if run.get("campaign_id") != campaign_id:
+        raise AppProblem(
+            status=404,
+            code="not_found",
+            title="Campaign Lab durable run not found",
+            detail="The requested run is absent or not visible to the campaign.",
+        )
+    return run
 
 
 @router.get("/campaigns/{campaign_id}/audit", operation_id="list_campaign_lab_audit_events")
@@ -1118,13 +1372,17 @@ async def create_report(
         identity,
         operation="campaign_lab_report_source_run",
         query="""
-          select id, campaign_id, request, result, status
+          select id, campaign_id, run_type, request, result, status
           from api.campaign_lab_runs
           where id = %s and campaign_id = %s
         """,
         parameters=(body.run_id, campaign_id),
     )
-    if not rows or rows[0].get("status") != "succeeded":
+    if (
+        not rows
+        or rows[0].get("run_type") != "repeated_simulation"
+        or rows[0].get("status") != "succeeded"
+    ):
         raise AppProblem(
             status=409,
             code="version_conflict",
@@ -1132,6 +1390,56 @@ async def create_report(
             detail="A report can only be created from a succeeded durable run.",
         )
     source = rows[0]
+
+    async def evidence_result(
+        run_id: UUID | None,
+        expected_type: Literal["survey_calibration", "historical_backtest", "compliance_review"],
+    ) -> Mapping[str, Any] | None:
+        if run_id is None:
+            return None
+        evidence_rows = await _services(request).database.read_product_rows(
+            identity,
+            operation=f"campaign_lab_report_{expected_type}",
+            query="""
+              select id, campaign_id, run_type, status, result
+              from api.campaign_lab_runs
+              where id = %s and campaign_id = %s and run_type = %s
+            """,
+            parameters=(run_id, campaign_id, expected_type),
+        )
+        if (
+            not evidence_rows
+            or evidence_rows[0].get("status") != "succeeded"
+            or not isinstance(evidence_rows[0].get("result"), Mapping)
+        ):
+            raise AppProblem(
+                status=409,
+                code="version_conflict",
+                title="Report evidence is not ready",
+                detail=(
+                    "Attach a succeeded calibration or backtest run before generating the report."
+                ),
+            )
+        return cast(Mapping[str, Any], evidence_rows[0]["result"])
+
+    calibration_result = await evidence_result(body.calibration_run_id, "survey_calibration")
+    historical_backtest_result = await evidence_result(
+        body.historical_backtest_run_id, "historical_backtest"
+    )
+    compliance_result = await evidence_result(body.compliance_review_run_id, "compliance_review")
+    if body.approval_status == "approved_experimental" and (
+        not isinstance(compliance_result, Mapping)
+        or compliance_result.get("status") != "approved_experimental"
+    ):
+        raise AppProblem(
+            status=409,
+            code="version_conflict",
+            title="Approved report requires compliance evidence",
+            detail=(
+                "Only a succeeded compliance review with approved_experimental status "
+                "can authorize this report state."
+            ),
+        )
     cultural_evaluation: Mapping[str, Any] | None = None
     if body.cultural_evaluation_artifact_id is not None:
         cultural_rows = await _services(request).database.read_product_rows(
@@ -1159,41 +1467,44 @@ async def create_report(
                 field="cultural_evaluation_artifact_id",
             )
         cultural_evaluation = raw_result
-    try:
-        lab_request = CampaignLabSimulationRequest.model_validate(source["request"])
-        lab_result = CampaignLabSimulationResult.model_validate(source["result"])
-        report = build_campaign_lab_report(
-            lab_request,
-            lab_result,
-            cultural_evaluation=cultural_evaluation,
-            human_reviewer=body.human_reviewer,
-            approval_status=body.approval_status,
-        )
-    except ValueError as error:
+    if not isinstance(source.get("request"), Mapping) or not isinstance(
+        source.get("result"), Mapping
+    ):
         raise _invalid(
             "The durable run does not contain a valid Campaign Lab report source.", field="run_id"
-        ) from error
-    artifact = ArtifactCreate(
-        title=f"Campaign Lab report {body.run_id}",
-        payload=report.model_dump(mode="json"),
-        provenance={
-            "evidence_status": lab_result.evidence_status,
-            "run_id": str(body.run_id),
-            "report_schema": "campaign_lab_report_v1",
-        },
-    )
-    result = await _store_artifact(
+        )
+    payload = {
+        "source_run_id": str(body.run_id),
+        "simulation_request": source["request"],
+        "simulation_result": source["result"],
+        "survey_calibration": calibration_result,
+        "historical_backtest": historical_backtest_result,
+        "compliance_review": compliance_result,
+        "cultural_evaluation": cultural_evaluation,
+        "human_reviewer": body.human_reviewer,
+        "approval_status": body.approval_status,
+    }
+    result = await _store_run(
         request,
         identity,
         campaign_id=campaign_id,
-        kind="report",
-        body=artifact,
+        run_type="report",
+        payload=payload,
+        secret_payload=None,
         idempotency_key=idempotency_key,
         correlation_id=_correlation_id(request),
-        validate=False,
     )
     _replay_header(response, result)
-    return {**result, "report": report.model_dump(mode="json")}
+    return result
+
+
+@router.get("/reports/runs/{run_id}", operation_id="get_campaign_lab_report_run")
+async def get_report_run(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    return await _get_campaign_lab_run(run_id, "report", request, identity)
 
 
 @router.get("/reports/{artifact_id}", operation_id="get_campaign_lab_report")

@@ -95,6 +95,10 @@ changing the above architecture decision:
 - `supabase/migrations/20260802063625_campaign_lab_api_wrappers.sql` moves the
   command implementations behind private security-definer functions and restores
   invoker-only `api.*` wrappers; hosted readiness now binds to `20260802063625`.
+- `supabase/migrations/20260802105930_campaign_lab_mutation_idempotency.sql`
+  adds tenant-scoped replay receipts to campaign updates and simulation
+  cancellation, removes the old callable signatures, and binds hosted runtime
+  readiness/observability to `20260802105930`.
 
 The remaining gaps are evidence and release gates, not permission to treat
 synthetic output as measured public opinion: no real Philippine survey or

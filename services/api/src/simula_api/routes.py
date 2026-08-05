@@ -92,6 +92,15 @@ IdempotencyKey = Annotated[
     str,
     Header(alias="Idempotency-Key", min_length=16, max_length=128, pattern=IDEMPOTENCY_PATTERN),
 ]
+OptionalIdempotencyKey = Annotated[
+    str | None,
+    Header(
+        alias="Idempotency-Key",
+        min_length=16,
+        max_length=128,
+        pattern=IDEMPOTENCY_PATTERN,
+    ),
+]
 PageSize = Annotated[int, Query(ge=1, le=100)]
 
 

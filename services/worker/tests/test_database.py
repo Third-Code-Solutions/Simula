@@ -32,7 +32,7 @@ class _Transaction:
 
 
 class _Connection:
-    def __init__(self, *, migration_version: str = "20260802063625") -> None:
+    def __init__(self, *, migration_version: str = "20260802150000") -> None:
         self.queries: list[tuple[str, tuple[object, ...] | None]] = []
         self.migration_version = migration_version
 
@@ -52,6 +52,8 @@ class _Connection:
                     }
                 ]
             )
+        if "expire_campaign_lab_runs" in query:
+            return _Cursor([{"deleted": 3}])
         return _Cursor([{"changed": True}])
 
 
@@ -109,13 +111,26 @@ async def test_worker_database_readiness_requires_the_exact_schema_head() -> Non
     database._pool = cast(Any, _Pool(connection))
     database._telemetry = None
     database._queue_transport = "bullmq"
-    database._migration_head = "20260802063625"
+    database._migration_head = "20260802150000"
 
     assert await database.ready() is True
 
     connection.migration_version = "20260730220000"
 
     assert await database.ready() is False
+
+
+async def test_worker_database_expires_campaign_lab_runs_through_function_boundary() -> None:
+    connection = _Connection()
+    database = WorkerDatabase.__new__(WorkerDatabase)
+    database._pool = cast(Any, _Pool(connection))
+    database._telemetry = None
+
+    assert await database.expire_campaign_lab_runs(25) == 3
+    assert connection.queries[-1] == (
+        "select private.expire_campaign_lab_runs(%s) as deleted",
+        (25,),
+    )
 
 
 async def test_worker_database_uses_only_the_v2_bullmq_claim_function() -> None:
