@@ -479,6 +479,18 @@
             ],
             "title": "Baseline Prediction Set"
           },
+          "outcome_set_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcome Set Id"
+          },
           "prediction_set": {
             "additionalProperties": true,
             "title": "Prediction Set",
@@ -642,6 +654,18 @@
               }
             ],
             "title": "Secret Payload"
+          },
+          "source_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Version Id"
           },
           "survey": {
             "anyOf": [
@@ -903,6 +927,18 @@
               }
             ],
             "title": "Publication Date"
+          },
+          "registry_source_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registry Source Version Id"
           },
           "sample_size": {
             "anyOf": [
@@ -4504,6 +4540,18 @@
               }
             ],
             "title": "Secret Payload"
+          },
+          "source_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Version Id"
           }
         },
         "required": [

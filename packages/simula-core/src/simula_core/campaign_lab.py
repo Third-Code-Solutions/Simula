@@ -230,6 +230,7 @@ class CampaignLabPolicyError(ValueError):
 
 class CampaignLabResearchSource(FrozenModel):
     source_id: Key
+    registry_source_version_id: UUID | None = None
     title: str = Field(min_length=2, max_length=200)
     source_type: Literal["public_report", "public_dataset", "client_provided", "survey", "asset"]
     source_organization: str = Field(min_length=2, max_length=160)

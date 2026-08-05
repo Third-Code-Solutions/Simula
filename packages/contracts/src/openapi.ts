@@ -1388,6 +1388,8 @@ export interface components {
             baseline_prediction_set?: {
                 [key: string]: unknown;
             } | null;
+            /** Outcome Set Id */
+            outcome_set_id?: string | null;
             /** Prediction Set */
             prediction_set: {
                 [key: string]: unknown;
@@ -1452,6 +1454,8 @@ export interface components {
             secret_payload?: {
                 [key: string]: unknown;
             } | null;
+            /** Source Version Id */
+            source_version_id?: string | null;
             /** Survey */
             survey?: {
                 [key: string]: unknown;
@@ -1540,6 +1544,8 @@ export interface components {
             processing_date: string;
             /** Publication Date */
             publication_date?: string | null;
+            /** Registry Source Version Id */
+            registry_source_version_id?: string | null;
             /** Sample Size */
             sample_size?: number | null;
             /** Source Id */
@@ -3149,6 +3155,8 @@ export interface components {
             secret_payload?: {
                 [key: string]: unknown;
             } | null;
+            /** Source Version Id */
+            source_version_id?: string | null;
         };
         /**
          * UnavailableResultOutput

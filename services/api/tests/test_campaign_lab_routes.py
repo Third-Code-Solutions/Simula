@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 import inspect
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
 from fastapi.routing import APIRoute
-from simula_api.campaign_lab_routes import BacktestCreate, CalibrationCreate, ReportCreate, router
+from simula_api.campaign_lab_routes import (
+    BacktestCreate,
+    CalibrationCreate,
+    ReportCreate,
+    _registry_population_frame,
+    _source_matches_population_frame,
+    router,
+)
+from simula_core.campaign_lab import CampaignLabResearchSource
+from simula_core.methodology import PopulationFrameVersion
+from simula_core.population_sources import psa_2020_regional_population_frame
 
 
 def test_campaign_lab_exposes_stage_read_endpoints() -> None:
@@ -82,6 +93,76 @@ def test_backtest_requires_an_object_outcome_envelope() -> None:
             prediction_set={},
             secret_payload={"outcomes": []},
         )
+
+
+def test_population_registry_projection_matches_the_cited_psa_frame() -> None:
+    cited = psa_2020_regional_population_frame()
+    cited_payload = cited.model_dump(mode="json", exclude={"checksum_sha256"})
+    cited_payload["id"] = "7d279ac6-d8fb-4be9-890b-a41395cfd7d8"
+    cited_payload["frame_id"] = "695719b1-bdc4-4ff4-9cfc-291bbf4fc190"
+    expected = PopulationFrameVersion.model_validate(cited_payload)
+    manifest = expected.model_dump(mode="json", exclude={"checksum_sha256"})
+    manifest["cells"] = [
+        {
+            **cell,
+            "dimensions": {item["dimension"]: item["value"] for item in cell["dimensions"]},
+        }
+        for cell in manifest["cells"]
+    ]
+    manifest["source_export_sha256"] = (
+        "31bba5110897c5f60b907cfa7b53a7e7ea33bae701f7413e825a5b90ff5159d1"
+    )
+    projected = _registry_population_frame(
+        {
+            "id": "7d279ac6-d8fb-4be9-890b-a41395cfd7d8",
+            "population_frame_id": "695719b1-bdc4-4ff4-9cfc-291bbf4fc190",
+            "version": 1,
+            "validation_status": "experimental",
+            "manifest": manifest,
+            "limitations": list(expected.limitations),
+            "frame_name": expected.name,
+        }
+    )
+
+    assert projected.model_dump(mode="json", exclude={"checksum_sha256"}) == expected.model_dump(
+        mode="json", exclude={"checksum_sha256"}
+    )
+
+
+def test_population_registry_source_match_requires_the_cited_export_checksum() -> None:
+    source = CampaignLabResearchSource(
+        source_id="psa_openstat_cph_2020",
+        title="PSA 2020 regional population frame",
+        source_type="public_dataset",
+        source_organization="Philippine Statistics Authority (PSA)",
+        dataset_version="table_1_9_2020",
+        geography="Philippines (17 regions)",
+        collection_methodology="2020 Census enumeration.",
+        license_or_usage_rights="CC BY 4.0 for PSA/GOVPH content unless otherwise stated",
+        processing_date=datetime(2026, 8, 4, tzinfo=UTC),
+        transformation="Normalized regional counts into population weights.",
+        known_limitations=("Historical frame.",),
+        checksum_sha256="31bba5110897c5f60b907cfa7b53a7e7ea33bae701f7413e825a5b90ff5159d1",
+        validation_status="validated",
+    )
+    row = {
+        "manifest": {
+            "source_export_sha256": source.checksum_sha256,
+            "provenance": [
+                {
+                    "source_id": source.source_id,
+                    "source_version": source.dataset_version,
+                    "owner": source.source_organization,
+                    "license": source.license_or_usage_rights,
+                }
+            ],
+        }
+    }
+
+    assert _source_matches_population_frame(source, row)
+    assert not _source_matches_population_frame(
+        source.model_copy(update={"checksum_sha256": "f" * 64}), row
+    )
 
 
 def test_mutating_campaign_lab_commands_require_idempotency_keys() -> None:

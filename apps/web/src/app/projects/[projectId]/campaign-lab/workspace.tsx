@@ -776,14 +776,18 @@ export function CampaignLabWorkspace({
   const [surveyImportFormat, setSurveyImportFormat] = useState("csv");
   const [surveyMetadataJson, setSurveyMetadataJson] = useState("");
   const [surveyFieldMapJson, setSurveyFieldMapJson] = useState("");
+  const [surveySourceVersionId, setSurveySourceVersionId] = useState("");
   const [surveyRun, setSurveyRun] = useState<CampaignLabDurableRun>();
   const [surveyDatasetJson, setSurveyDatasetJson] = useState("");
   const [syntheticObservationsJson, setSyntheticObservationsJson] =
     useState("[]");
   const [calibrationRun, setCalibrationRun] = useState<CampaignLabDurableRun>();
+  const [calibrationSourceVersionId, setCalibrationSourceVersionId] =
+    useState("");
   const [backtestProtocolJson, setBacktestProtocolJson] = useState("");
   const [backtestPredictionJson, setBacktestPredictionJson] = useState("");
   const [backtestOutcomesJson, setBacktestOutcomesJson] = useState("");
+  const [backtestOutcomeSetId, setBacktestOutcomeSetId] = useState("");
   const [backtestRun, setBacktestRun] = useState<CampaignLabDurableRun>();
   const [complianceJson, setComplianceJson] = useState(complianceExample);
   const [complianceReviewer, setComplianceReviewer] = useState("");
@@ -1199,6 +1203,7 @@ export function CampaignLabWorkspace({
         format: surveyImportFormat,
         metadata,
         field_map: fieldMap,
+        source_version_id: surveySourceVersionId.trim() || undefined,
         secret_payload: { payload },
       });
       setSurveyRun(commandRun(created, selectedCampaignId, "survey_import"));
@@ -1232,6 +1237,10 @@ export function CampaignLabWorkspace({
       const created = await createCampaignLabCalibration(selectedCampaignId, {
         synthetic_observations: syntheticObservations,
         survey,
+        source_version_id:
+          calibrationSourceVersionId.trim() ||
+          surveySourceVersionId.trim() ||
+          undefined,
         calibration_version: "calibration_v1",
         model_version: "campaign-lab-population-weighted-v1",
       });
@@ -1264,6 +1273,7 @@ export function CampaignLabWorkspace({
       const created = await createCampaignLabBacktest(selectedCampaignId, {
         protocol,
         prediction_set: predictionSet,
+        outcome_set_id: backtestOutcomeSetId.trim() || undefined,
         secret_payload: { outcomes },
       });
       setBacktestRun(
@@ -1791,6 +1801,15 @@ export function CampaignLabWorkspace({
               rows={12}
               value={surveyMetadataJson}
             />
+            <label htmlFor="campaign-lab-survey-source-version">
+              Approved survey source version ID (production)
+            </label>
+            <input
+              id="campaign-lab-survey-source-version"
+              onChange={(event) => setSurveySourceVersionId(event.target.value)}
+              placeholder="UUID from the evidence source registry"
+              value={surveySourceVersionId}
+            />
             <label htmlFor="campaign-lab-survey-field-map">
               Field map JSON
             </label>
@@ -1849,6 +1868,17 @@ export function CampaignLabWorkspace({
               After a successful import, SIMULA fills this field with the
               normalized aggregate dataset. No respondent rows are returned.
             </p>
+            <label htmlFor="campaign-lab-calibration-source-version">
+              Approved survey source version ID (production)
+            </label>
+            <input
+              id="campaign-lab-calibration-source-version"
+              onChange={(event) =>
+                setCalibrationSourceVersionId(event.target.value)
+              }
+              placeholder="UUID from the evidence source registry"
+              value={calibrationSourceVersionId}
+            />
             <button disabled={busyStage === "calibration"} type="submit">
               {busyStage === "calibration"
                 ? "Queueing calibration…"
@@ -1926,6 +1956,15 @@ export function CampaignLabWorkspace({
               placeholder={backtestOutcomesExample}
               rows={18}
               value={backtestOutcomesJson}
+            />
+            <label htmlFor="campaign-lab-backtest-outcome-set">
+              Admitted outcome set ID (production)
+            </label>
+            <input
+              id="campaign-lab-backtest-outcome-set"
+              onChange={(event) => setBacktestOutcomeSetId(event.target.value)}
+              placeholder="UUID from the admitted outcome registry"
+              value={backtestOutcomeSetId}
             />
             <button disabled={busyStage === "backtesting"} type="submit">
               {busyStage === "backtesting"

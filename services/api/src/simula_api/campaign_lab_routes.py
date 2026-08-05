@@ -31,6 +31,7 @@ from simula_core.cultural_evaluation import (
     evaluate_cultural_suite,
 )
 from simula_core.json_codec import canonical_json_dumps
+from simula_core.methodology import PopulationFrameVersion
 
 from simula_api.auth import VerifiedIdentity
 from simula_api.database import canonical_request_sha256
@@ -160,6 +161,7 @@ class SurveyImportCreate(_LabModel):
     format: Literal["csv", "formbricks", "odk", "generic_json"]
     metadata: dict[str, Any]
     field_map: dict[str, Any] = Field(default_factory=dict)
+    source_version_id: UUID | None = None
     secret_payload: dict[str, Any] | None = Field(default=None, exclude=True)
     payload: Any | None = Field(default=None, exclude=True)
 
@@ -176,6 +178,7 @@ class CalibrationCreate(_LabModel):
     synthetic_observations: list[dict[str, Any]] = Field(min_length=1, max_length=100_000)
     survey: dict[str, Any] | None = None
     survey_import: dict[str, Any] | None = None
+    source_version_id: UUID | None = None
     calibration_version: str = Field(default="calibration_v1", min_length=1, max_length=120)
     model_version: str = Field(default="unspecified", min_length=1, max_length=120)
     baseline_calibration: dict[str, Any] | None = None
@@ -210,6 +213,7 @@ class BacktestCreate(_LabModel):
     protocol: dict[str, Any]
     prediction_set: dict[str, Any]
     baseline_prediction_set: dict[str, Any] | None = None
+    outcome_set_id: UUID | None = None
     secret_payload: dict[str, Any] | None = Field(default=None, exclude=True)
 
     @model_validator(mode="after")
@@ -262,6 +266,334 @@ def _validate_policy(value: object) -> None:
         validate_campaign_policy(value)
     except CampaignLabPolicyError as error:
         raise _invalid("The request crosses the aggregate research boundary.") from error
+
+
+def _is_production() -> bool:
+    return os.getenv("SIMULA_ENVIRONMENT", "local").strip().lower() == "production"
+
+
+def _registry_population_frame(row: Mapping[str, Any]) -> PopulationFrameVersion:
+    manifest = row.get("manifest")
+    if not isinstance(manifest, Mapping):
+        raise ValueError("population frame registry manifest is not an object")
+    raw_cells = manifest.get("cells")
+    if not isinstance(raw_cells, list) or not raw_cells:
+        raise ValueError("population frame registry cells are missing")
+    normalized_cells: list[dict[str, Any]] = []
+    for raw_cell in raw_cells:
+        if not isinstance(raw_cell, Mapping):
+            raise ValueError("population frame registry cell is not an object")
+        raw_dimensions = raw_cell.get("dimensions")
+        if isinstance(raw_dimensions, Mapping):
+            dimensions = [
+                {"dimension": str(key), "value": str(value)}
+                for key, value in sorted(raw_dimensions.items(), key=lambda item: str(item[0]))
+            ]
+        elif isinstance(raw_dimensions, list):
+            dimensions = raw_dimensions
+        else:
+            raise ValueError("population frame registry cell dimensions are missing")
+        normalized_cells.append({**raw_cell, "dimensions": dimensions})
+
+    validation_status = str(row.get("validation_status", ""))
+    if validation_status not in {"experimental", "benchmarked"}:
+        raise ValueError("population frame registry version is not admissible")
+    limitations = row.get("limitations")
+    if not isinstance(limitations, list) or not limitations:
+        raise ValueError("population frame registry limitations are missing")
+    return PopulationFrameVersion.model_validate(
+        {
+            "id": row.get("id"),
+            "frame_id": row.get("population_frame_id"),
+            "version": row.get("version"),
+            "name": row.get("frame_name"),
+            "geography": manifest.get("geography"),
+            "target_population": manifest.get("target_population"),
+            "inclusion": manifest.get("inclusion"),
+            "exclusion": manifest.get("exclusion"),
+            "provenance": manifest.get("provenance"),
+            "cells": normalized_cells,
+            "validation_status": validation_status,
+            "limitations": limitations,
+        }
+    )
+
+
+def _source_matches_population_frame(
+    source: CampaignLabResearchSource, row: Mapping[str, Any]
+) -> bool:
+    manifest = row.get("manifest")
+    if not isinstance(manifest, Mapping):
+        return False
+    export_checksum = manifest.get("source_export_sha256")
+    raw_provenance = manifest.get("provenance")
+    if not isinstance(export_checksum, str) or not isinstance(raw_provenance, list):
+        return False
+    if source.validation_status != "validated":
+        return False
+    return any(
+        isinstance(provenance, Mapping)
+        and source.source_id == provenance.get("source_id")
+        and source.dataset_version == provenance.get("source_version")
+        and source.source_organization == provenance.get("owner")
+        and source.license_or_usage_rights == provenance.get("license")
+        and source.checksum_sha256 == export_checksum
+        for provenance in raw_provenance
+    )
+
+
+def _registry_source_matches(source: CampaignLabResearchSource, row: Mapping[str, Any]) -> bool:
+    allowed_uses = row.get("allowed_uses")
+    return (
+        source.registry_source_version_id is not None
+        and str(row.get("id")) == str(source.registry_source_version_id)
+        and source.validation_status == "validated"
+        and source.source_id == row.get("source_key")
+        and source.dataset_version == row.get("source_version")
+        and source.source_organization == row.get("owner_name")
+        and source.license_or_usage_rights == row.get("license_name")
+        and source.checksum_sha256 == row.get("checksum_sha256")
+        and isinstance(allowed_uses, list)
+        and len(allowed_uses) > 0
+    )
+
+
+async def _validate_population_registry(
+    request: Request,
+    identity: VerifiedIdentity,
+    campaign_id: UUID,
+    simulation_request: CampaignLabSimulationRequest,
+) -> None:
+    """Bind production simulations to the exact global frame registry row.
+
+    The public request still carries a frozen frame for reproducibility, but
+    production admission must prove that the payload matches the hosted row.
+    This prevents a caller from changing cells or provenance while retaining a
+    forged ``validated`` status.
+    """
+
+    if not _is_production():
+        return
+    frame = simulation_request.cohort.population_frame
+    organization_id = await _campaign_organization(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_population_registry_admission",
+        query="""
+          select versions.id, versions.population_frame_id, versions.version,
+                 versions.validation_status, versions.manifest, versions.limitations,
+                 frames.name as frame_name
+          from api.population_frame_versions as versions
+          join api.population_frames as frames
+            on frames.id = versions.population_frame_id
+           and frames.organization_id is null
+          where versions.id = %s
+            and versions.organization_id is null
+            and versions.validation_status <> 'retired'
+          limit 1
+        """,
+        parameters=(frame.id,),
+    )
+    if not rows:
+        raise CampaignLabPolicyError(
+            "production Campaign Lab simulations require a hosted, non-retired population frame"
+        )
+    row = rows[0]
+    try:
+        registry_frame = _registry_population_frame(row)
+    except (KeyError, TypeError, ValueError) as error:
+        raise CampaignLabPolicyError(
+            "the hosted population frame registry contains an invalid admission record"
+        ) from error
+    if registry_frame.model_dump(mode="json", exclude={"checksum_sha256"}) != frame.model_dump(
+        mode="json", exclude={"checksum_sha256"}
+    ):
+        raise CampaignLabPolicyError(
+            "the submitted population frame does not exactly match the hosted registry version"
+        )
+
+    sources = (*simulation_request.cohort.source_provenance, *simulation_request.research_sources)
+    registry_ids = [
+        source.registry_source_version_id
+        for source in sources
+        if source.registry_source_version_id is not None
+    ]
+    registry_rows: list[dict[str, Any]] = []
+    if registry_ids:
+        registry_rows = await _services(request).database.read_product_rows(
+            identity,
+            operation="campaign_lab_evidence_source_registry_admission",
+            query="""
+              select versions.id, sources.source_key, versions.source_version,
+                     versions.owner_name, versions.license_name,
+                     versions.checksum_sha256, versions.allowed_uses
+              from api.evidence_source_versions as versions
+              join api.evidence_sources as sources
+                on sources.id = versions.evidence_source_id
+              where versions.id = any(%s::uuid[])
+                and (versions.organization_id is null or versions.organization_id = %s)
+                and versions.rights_status = 'approved'
+                and (
+                  versions.rights_expires_at is null
+                  or versions.rights_expires_at > pg_catalog.statement_timestamp()
+                )
+            """,
+            parameters=(registry_ids, organization_id),
+        )
+    for source in sources:
+        matching_registry_row = next(
+            (
+                candidate
+                for candidate in registry_rows
+                if str(candidate.get("id")) == str(source.registry_source_version_id)
+            ),
+            None,
+        )
+        if matching_registry_row is not None:
+            if not _registry_source_matches(source, matching_registry_row):
+                raise CampaignLabPolicyError(
+                    "a submitted research source does not match its approved evidence "
+                    "registry version"
+                )
+            continue
+        if source.registry_source_version_id is not None or not _source_matches_population_frame(
+            source, row
+        ):
+            raise CampaignLabPolicyError(
+                "production Campaign Lab research sources must be hosted registry sources "
+                "or exact provenance for the admitted population frame"
+            )
+
+
+async def _admitted_evidence_source(
+    request: Request,
+    identity: VerifiedIdentity,
+    campaign_id: UUID,
+    source_version_id: UUID | None,
+    *,
+    allowed_use: str,
+) -> dict[str, Any]:
+    if source_version_id is None:
+        raise CampaignLabPolicyError(
+            f"production Campaign Lab {allowed_use} requires an approved source_version_id"
+        )
+    organization_id = await _campaign_organization(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation=f"campaign_lab_{allowed_use}_source_registry_admission",
+        query="""
+          select versions.id, sources.source_key, versions.source_version,
+                 versions.owner_name, versions.license_name, versions.checksum_sha256,
+                 versions.allowed_uses
+          from api.evidence_source_versions as versions
+          join api.evidence_sources as sources
+            on sources.id = versions.evidence_source_id
+          where versions.id = %s
+            and (versions.organization_id is null or versions.organization_id = %s)
+            and versions.rights_status = 'approved'
+            and (
+              versions.rights_expires_at is null
+              or versions.rights_expires_at > pg_catalog.statement_timestamp()
+            )
+          limit 1
+        """,
+        parameters=(source_version_id, organization_id),
+    )
+    if not rows:
+        raise CampaignLabPolicyError(
+            f"production Campaign Lab {allowed_use} source is absent or not approved"
+        )
+    row = rows[0]
+    allowed_uses = row.get("allowed_uses")
+    if not isinstance(allowed_uses, list) or not any(
+        allowed_use.replace("_", " ") in str(item).casefold() or allowed_use in str(item).casefold()
+        for item in allowed_uses
+    ):
+        raise CampaignLabPolicyError(
+            f"the evidence source is not approved for Campaign Lab {allowed_use}"
+        )
+    return row
+
+
+async def _admitted_outcome_set(
+    request: Request,
+    identity: VerifiedIdentity,
+    campaign_id: UUID,
+    outcome_set_id: UUID | None,
+) -> dict[str, Any]:
+    if outcome_set_id is None:
+        raise CampaignLabPolicyError(
+            "production historical backtests require an admitted outcome_set_id"
+        )
+    organization_id = await _campaign_organization(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_backtesting_outcome_registry_admission",
+        query="""
+          select outcomes.id, outcomes.outcome_kind,
+                 sources.source_key, versions.source_version,
+                 versions.checksum_sha256, versions.allowed_uses
+          from api.observed_outcome_sets as outcomes
+          join api.evidence_source_versions as versions
+            on versions.id = outcomes.evidence_source_version_id
+          join api.evidence_sources as sources
+            on sources.id = versions.evidence_source_id
+          where outcomes.id = %s
+            and outcomes.organization_id = %s
+            and outcomes.status = 'admitted'
+            and outcomes.outcome_kind = 'historical_backtest'
+            and versions.rights_status = 'approved'
+            and (
+              versions.rights_expires_at is null
+              or versions.rights_expires_at > pg_catalog.statement_timestamp()
+            )
+          limit 1
+        """,
+        parameters=(outcome_set_id, organization_id),
+    )
+    if not rows:
+        raise CampaignLabPolicyError(
+            "production historical backtest outcomes are absent or not admitted"
+        )
+    row = rows[0]
+    allowed_uses = row.get("allowed_uses")
+    if not isinstance(allowed_uses, list) or not any(
+        "backtest" in str(item).casefold() for item in allowed_uses
+    ):
+        raise CampaignLabPolicyError(
+            "the historical outcome source is not approved for backtesting"
+        )
+    return row
+
+
+def _source_metadata(value: object) -> Mapping[str, Any] | None:
+    if not isinstance(value, Mapping):
+        return None
+    candidate = value.get("provenance", value)
+    return candidate if isinstance(candidate, Mapping) else None
+
+
+def _assert_source_metadata(
+    metadata: Mapping[str, Any] | None,
+    source_row: Mapping[str, Any],
+    *,
+    require_checksum: bool = False,
+) -> None:
+    if metadata is None:
+        raise CampaignLabPolicyError(
+            "production Campaign Lab evidence must declare source_id and source_version"
+        )
+    if metadata.get("source_id") != source_row.get("source_key") or metadata.get(
+        "source_version"
+    ) != source_row.get("source_version"):
+        raise CampaignLabPolicyError(
+            "submitted evidence provenance does not match the approved source registry version"
+        )
+    if require_checksum and metadata.get("checksum_sha256") != source_row.get("checksum_sha256"):
+        raise CampaignLabPolicyError(
+            "submitted held-out evidence checksum does not match the approved source "
+            "registry version"
+        )
 
 
 def _payload_sha(value: Mapping[str, Any]) -> str:
@@ -800,6 +1132,7 @@ async def create_simulation(
             body.request,
             environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
         )
+        await _validate_population_registry(request, identity, campaign_id, body.request)
     except CampaignLabPolicyError as error:
         raise _invalid(str(error), field="request.cohort") from error
     result = await _store_run(
@@ -1011,6 +1344,7 @@ async def clone_simulation(
             clone_request,
             environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
         )
+        await _validate_population_registry(request, identity, campaign_id, clone_request)
     except (CampaignLabPolicyError, ValueError) as error:
         raise _invalid(str(error), field="request.cohort") from error
     result = await _store_run(
@@ -1189,6 +1523,18 @@ async def import_survey(
 ) -> dict[str, Any]:
     metadata = {**body.metadata, "format": body.format, "field_map": body.field_map}
     _validate_policy(metadata)
+    if _is_production():
+        try:
+            source_row = await _admitted_evidence_source(
+                request,
+                identity,
+                campaign_id,
+                body.source_version_id,
+                allowed_use="calibration",
+            )
+            _assert_source_metadata(body.metadata, source_row)
+        except CampaignLabPolicyError as error:
+            raise _invalid(str(error), field="source_version_id") from error
     # Survey rows must pass through the same durable lease/retry path as every
     # other long-running Campaign Lab operation. The public request contains
     # only schema/provenance metadata; the raw export remains in the worker
@@ -1233,6 +1579,22 @@ async def create_calibration(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     idempotency_key: IdempotencyKey,
 ) -> dict[str, Any]:
+    if _is_production():
+        try:
+            source_row = await _admitted_evidence_source(
+                request,
+                identity,
+                campaign_id,
+                body.source_version_id,
+                allowed_use="calibration",
+            )
+            _assert_source_metadata(
+                _source_metadata(body.survey if body.survey is not None else body.survey_import),
+                source_row,
+                require_checksum=body.survey is not None,
+            )
+        except CampaignLabPolicyError as error:
+            raise _invalid(str(error), field="source_version_id") from error
     payload = body.model_dump(mode="json", exclude={"secret_payload"})
     result = await _store_run(
         request,
@@ -1270,6 +1632,32 @@ async def create_backtest(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     idempotency_key: IdempotencyKey,
 ) -> dict[str, Any]:
+    if _is_production():
+        try:
+            outcome_row = await _admitted_outcome_set(
+                request,
+                identity,
+                campaign_id,
+                body.outcome_set_id,
+            )
+            secret_outcomes = (
+                body.secret_payload.get("outcomes")
+                if isinstance(body.secret_payload, Mapping)
+                else None
+            )
+            metadata = _source_metadata(secret_outcomes)
+            _assert_source_metadata(metadata, outcome_row, require_checksum=True)
+            if metadata is None or metadata.get("held_out") is not True:
+                raise CampaignLabPolicyError(
+                    "production historical backtests require an explicitly held-out "
+                    "outcome envelope"
+                )
+            if metadata.get("authorized_for_evaluation") is not True:
+                raise CampaignLabPolicyError(
+                    "production historical backtests require authorized outcome evaluation"
+                )
+        except CampaignLabPolicyError as error:
+            raise _invalid(str(error), field="outcome_set_id") from error
     payload = body.model_dump(mode="json", exclude={"secret_payload"})
     result = await _store_run(
         request,
