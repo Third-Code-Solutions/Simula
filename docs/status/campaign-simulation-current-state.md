@@ -1,7 +1,7 @@
 ---
 title: Campaign Simulation Lab current state
 status: active
-updated: 2026-08-04
+updated: 2026-08-05
 classification: OBSERVED
 ---
 
@@ -169,14 +169,30 @@ classification: OBSERVED
 - The connected Vercel `simula` and `simula-admin` projects use app-scoped
   ignored-build commands. The latest worker-only commit was cloned and then
   canceled at the ignored-build step before `vercel build`, preventing a full
-  web/admin build for unrelated worker changes. Production promotion and an
-  account-level spend cap remain unverified because the connected billing
-  session is not authorized for the `pavi` team.
+  web/admin build for unrelated worker changes. After merge commit
+  `3bdb3f02c0bdcbec04b8fd09ef1fd61cbc573c07`, both production projects
+  independently report `READY` at that exact SHA. The account-level spend cap
+  remains unverified because the connected billing session is not authorized for
+  the `pavi` team.
 - Verification completed locally at `82c3d388e094369cd26cb3d790b35c3060668b6b`:
   pinned `pnpm check` is green, including 479 Python tests with 2 expected
   POSIX-only skips, API/web/admin JavaScript suites, type checks, builds,
   contract generation/checks, formatting, lint, and the secret/forbidden-claim
   gates. No manual Vercel deployment or retry was initiated for this audit.
+- GitHub PR `#6` merged to `main` at `3bdb3f02c0bdcbec04b8fd09ef1fd61cbc573c07`.
+  Railway auto-deployed the API, worker, and web services from the connected
+  `Third-Code-Solutions/Simula` `main` source. API `/health/live` and
+  `/health/ready` both return `200` with the merged SHA; worker startup logs
+  report `service_started` with the same SHA; Railway web `/api/health` reports
+  `production` and the same SHA.
+- The hosted production migration-head and release variables are now aligned to
+  `20260803100000` and the merged SHA on API/worker; the web service also
+  reports the same production metadata. The hosted PSA frame remains verified at
+  migration registry version `20260804124631`.
+- Browser verification after promotion covered the Vercel landing and sign-in
+  surfaces for web/admin and the admin health route. Landing/sign-in pages had
+  no console errors; authenticated workspace execution remains unverified
+  because no authorized test session was supplied.
 
 ## Implemented before this turn
 
@@ -196,19 +212,15 @@ classification: OBSERVED
   backtest behavioral output.
 - The non-deterministic provider adapters are contract-level only; the first
   deployable worker release intentionally admits the deterministic provider.
-- End-to-end hosted authenticated browser/API/worker evidence for the new routes
-  after the GitHub release is promoted; protected Vercel previews have not been
-  browser-verified from this task.
-- A current GitHub-to-Railway deployment event for this release branch. Railway
-  CLI access now resolves the requested project and shows the API/worker GitHub
-  source bound to `Third-Code-Solutions/Simula` on production `main`; production
-  still serves release `4b37e1f8af7e4c377c8b44eca0c53e36345cb56c`, with
-  `/health/live` 200 and `/health/ready` 503, because the release branch is not
-  merged to `main`.
-- The latest GitHub Actions PR run (`30913108468`) failed all required gates
+- End-to-end hosted authenticated browser/API/worker evidence for the new
+  Campaign Lab routes, report provenance, retention, cancellation, and private
+  holdout deletion remains unverified because no authorized test session was
+  supplied.
+- The latest GitHub Actions `main` run (`31019541395`) failed all required jobs
   before runner steps were created; GitHub returned no job logs. The external
   account payment/spending-limit gate must be repaired before CI can provide a
-  green merge signal.
+  green verification signal. This is separate from the local green release check
+  and the live provider readiness checks.
 - Hosted Campaign Lab retention/runtime objects and API/worker grants are
   present. The hosted migration registry uses apply-time versions
   `20260802131842`, `20260802150729`, and `20260803020312` for the equivalent
@@ -229,5 +241,5 @@ vote-share prediction, universal accuracy, or Predikta-equivalent capability.
 The current deterministic fixture and authored tests remain experimental and
 estimate nobody. Survey calibration and historical backtesting are now durable
 evaluation jobs, but no real Philippine survey or historical outcome dataset is
-attached here; hosted verification and lawful data admission remain required
-before any validity claim.
+attached here; hosted wiring is verified, but lawful data admission and actual
+calibration/backtest evidence remain required before any validity claim.
