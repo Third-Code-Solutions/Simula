@@ -184,9 +184,25 @@ class CalibrationCreate(_LabModel):
 
     @model_validator(mode="after")
     def keep_import_private(self) -> CalibrationCreate:
+        if self.survey is None and self.survey_import is None:
+            raise ValueError(
+                "survey calibration requires an observed survey dataset or survey import"
+            )
+        if self.survey is not None and self.survey_import is not None:
+            raise ValueError("survey calibration accepts exactly one observed survey input")
         public_import = self.survey_import
         if isinstance(public_import, Mapping) and "payload" in public_import:
             raise ValueError("survey import payload must remain worker-only")
+        if public_import is not None:
+            if not isinstance(self.secret_payload, Mapping):
+                raise ValueError(
+                    "survey import calibration requires a worker-only secret_payload.survey_import"
+                )
+            secret_import = self.secret_payload.get("survey_import")
+            if not isinstance(secret_import, Mapping) or "payload" not in secret_import:
+                raise ValueError(
+                    "survey import calibration requires a worker-only survey import payload"
+                )
         return self
 
 
@@ -200,6 +216,8 @@ class BacktestCreate(_LabModel):
     def require_held_out_secret(self) -> BacktestCreate:
         if self.secret_payload is None or "outcomes" not in self.secret_payload:
             raise ValueError("historical backtest requires worker-only secret_payload.outcomes")
+        if not isinstance(self.secret_payload["outcomes"], Mapping):
+            raise ValueError("historical backtest outcomes must be an object")
         return self
 
 

@@ -5,7 +5,7 @@ from uuid import UUID
 
 import pytest
 from fastapi.routing import APIRoute
-from simula_api.campaign_lab_routes import ReportCreate, router
+from simula_api.campaign_lab_routes import BacktestCreate, CalibrationCreate, ReportCreate, router
 
 
 def test_campaign_lab_exposes_stage_read_endpoints() -> None:
@@ -46,6 +46,42 @@ def test_approved_report_requires_compliance_run_and_human_reviewer() -> None:
         approval_status="approved_experimental",
     )
     assert body.compliance_review_run_id is not None
+
+
+def test_calibration_requires_one_observed_survey_input() -> None:
+    with pytest.raises(ValueError, match="observed survey"):
+        CalibrationCreate(synthetic_observations=[{"variant_key": "control"}])
+
+    with pytest.raises(ValueError, match="exactly one"):
+        CalibrationCreate(
+            synthetic_observations=[{"variant_key": "control"}],
+            survey={},
+            survey_import={},
+        )
+
+
+def test_calibration_import_keeps_raw_payload_in_worker_secret() -> None:
+    with pytest.raises(ValueError, match="worker-only"):
+        CalibrationCreate(
+            synthetic_observations=[{"variant_key": "control"}],
+            survey_import={"format": "csv", "metadata": {}},
+        )
+
+    body = CalibrationCreate(
+        synthetic_observations=[{"variant_key": "control"}],
+        survey_import={"format": "csv", "metadata": {}},
+        secret_payload={"survey_import": {"payload": "csv"}},
+    )
+    assert body.survey_import is not None
+
+
+def test_backtest_requires_an_object_outcome_envelope() -> None:
+    with pytest.raises(ValueError, match="outcomes must be an object"):
+        BacktestCreate(
+            protocol={},
+            prediction_set={},
+            secret_payload={"outcomes": []},
+        )
 
 
 def test_mutating_campaign_lab_commands_require_idempotency_keys() -> None:
