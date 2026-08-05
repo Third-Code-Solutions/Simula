@@ -1,11 +1,30 @@
 ---
 title: Campaign Simulation Lab current state
 status: active
-updated: 2026-08-05
+updated: 2026-08-06
 classification: OBSERVED
 ---
 
 # Current state
+
+## Current branch audit (2026-08-06)
+
+- Commit `e550b3e7722452c046c1c33ee1e6713bfd852dfd` replaces the non-spec
+  `Mixed evidence` report label with the required evidence statuses, while
+  retaining separate survey-calibration and historical-backtest artifacts.
+- Production evidence-source admission now requires an approved registry row
+  whose allowed use names Campaign Lab research/simulation, calibration,
+  backtesting, or population weighting; the hosted local-rehearsal fixture is
+  therefore rejected for production evidence.
+- The permanent Campaign Lab sidebar now has stable pre-run anchors for
+  `Audience Cohorts` and `Simulations`; the cohort findings block uses a
+  separate `cohort-findings` anchor after results exist.
+- The branch is pushed to PR `#8`; Vercel web preview is READY at `e550b3e`,
+  while Railway and Vercel production remain on the prior merged `main` release
+  until the required GitHub checks are green.
+- Local `pnpm check` is green after this commit. GitHub Actions run
+  `31027267687` still fails all required jobs before runner steps, with no job
+  logs, so production promotion is not claimed.
 
 ## Completed in this turn
 
