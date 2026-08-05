@@ -19,12 +19,12 @@ classification: OBSERVED
 - The permanent Campaign Lab sidebar now has stable pre-run anchors for all
   conditionally rendered workflow sections; the cohort findings block uses a
   separate `cohort-findings` anchor after results exist.
-- PR `#8` now points to docs commit `d988052`, following code commit `c061e82`;
+- PR `#8` now points to docs commit `81c0bd1`, following code commit `c061e82`;
   the Vercel web preview remains READY at the code commit while Railway and
   Vercel production remain on the prior merged `main` release until the required
   GitHub checks are green.
 - Local `pnpm check` is green for the code commit. GitHub Actions PR `#8` run
-  `31028968118` still fails all required jobs before runner steps, with no job
+  `31029192403` still fails all required jobs before runner steps, with no job
   logs, so production promotion is not claimed.
 
 ## Completed in this turn
@@ -236,7 +236,7 @@ classification: OBSERVED
   Campaign Lab routes, report provenance, retention, cancellation, and private
   holdout deletion remains unverified because no authorized test session was
   supplied.
-- The latest GitHub Actions PR `#8` run (`31028968118`) failed all required jobs
+- The latest GitHub Actions PR `#8` run (`31029192403`) failed all required jobs
   before runner steps were created; GitHub returned no job logs. The external
   account payment/spending-limit gate must be repaired before CI can provide a
   green verification signal. This is separate from the local green release check
@@ -253,6 +253,9 @@ classification: OBSERVED
   membership shape, absent authored Auth fixtures, and absent local seed
   fixtures). Hosted Campaign Lab migration/function/grant checks remain
   separately verified; these fixtures must not be copied into production.
+- The broader local `pnpm verify` gate could not start because Docker Desktop
+  reports `hasNoVirtualization: true` and the Linux engine is stopped. This is a
+  host-runtime limitation, not a SIMULA test result.
 
 ## Truth boundary
 
