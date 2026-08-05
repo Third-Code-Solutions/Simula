@@ -1,15 +1,20 @@
 ---
 title: Campaign Simulation Lab next actions
 status: active
-updated: 2026-08-05
+updated: 2026-08-06
 classification: PROPOSED
 ---
 
 # Next actions
 
+Current candidate: PR `#8`, head `5566b2c3761201df45f661b137eae51209d547f7`. The
+web preview for the code commit is READY; the docs-only follow-up was correctly
+canceled by Vercel's ignored-build guard. Railway production remains healthy on
+the prior merged `main` SHA `3bdb3f02`.
+
 1. Repair the GitHub account payment/spending-limit gate, then rerun the
-   required `main` checks for merge commit `3bdb3f0`; do not claim CI-green
-   release evidence while jobs fail before runner steps are created.
+   required checks for PR `#8`; do not claim CI-green release evidence while
+   jobs fail before runner steps are created.
 2. Reconnect authorized Vercel billing access and set a team spend/on-demand
    limit. Keep the ignored-build guards for unrelated backend/worker commits;
    the current web/admin production deployments are already verified.

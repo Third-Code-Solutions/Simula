@@ -103,7 +103,8 @@ changing the above architecture decision:
 The remaining gaps are evidence and release gates, not permission to treat
 synthetic output as measured public opinion: no real Philippine survey or
 historical dataset is bundled, external provider adapters remain disabled for
-the first deployable slice, and Railway access still needs correction.
+the first deployable slice, and the current candidate still requires green
+GitHub checks before Railway can auto-promote it from `main`.
 
 ## 2. PhantomCrowd architecture discovered
 
