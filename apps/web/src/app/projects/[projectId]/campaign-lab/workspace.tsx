@@ -1557,8 +1557,8 @@ export function CampaignLabWorkspace({
       {selectedCampaignId ? (
         <section
           className="workspace-grid"
-          aria-label="Simulation request"
-          id="simulation-config"
+          aria-label="Audience cohorts and simulation request"
+          id="audience-cohorts"
         >
           <form
             className="panel form-stack"
@@ -1566,7 +1566,7 @@ export function CampaignLabWorkspace({
             onSubmit={launchSimulation}
           >
             <p className="eyebrow">03 / Repeated simulation</p>
-            <h2>Run an authored aggregate request</h2>
+            <h2 id="simulation-config">Run an authored aggregate request</h2>
             <label htmlFor="campaign-lab-request">Frozen request JSON</label>
             <textarea
               aria-describedby="campaign-lab-request-note"
@@ -1653,7 +1653,7 @@ export function CampaignLabWorkspace({
               ),
             )}
           </div>
-          <div className="campaign-lab-cohort-results" id="audience-cohorts">
+          <div className="campaign-lab-cohort-results" id="cohort-findings">
             <div>
               <p className="eyebrow">Cohort differences</p>
               <h3>Population-weighted cells, shown separately</h3>

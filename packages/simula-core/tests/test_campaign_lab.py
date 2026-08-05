@@ -282,7 +282,7 @@ def test_campaign_lab_report_keeps_cultural_evaluation_separate_from_component_m
     assert "viral_score" not in report.model_dump(mode="json")
 
 
-def test_campaign_lab_report_labels_mixed_evidence_without_collapsing_metrics() -> None:
+def test_campaign_lab_report_uses_required_evidence_statuses_without_collapsing_metrics() -> None:
     result = run_campaign_lab_simulation(_request())
     report = build_campaign_lab_report(
         _request(),
@@ -291,8 +291,20 @@ def test_campaign_lab_report_labels_mixed_evidence_without_collapsing_metrics() 
         historical_backtest={"status": "Historically backtested"},
     )
 
-    assert report.evidence_status == "Mixed evidence"
-    assert report.confidence_and_uncertainty["evidence_status"] == "Mixed evidence"
+    assert report.evidence_status == "Historically backtested"
+    assert report.confidence_and_uncertainty["evidence_status"] == "Historically backtested"
+
+
+def test_campaign_lab_report_accepts_partial_calibration_status() -> None:
+    result = run_campaign_lab_simulation(_request())
+    report = build_campaign_lab_report(
+        _request(),
+        result,
+        survey_calibration={"status": "Partially calibrated"},
+    )
+
+    assert report.evidence_status == "Partially calibrated"
+    assert report.confidence_and_uncertainty["evidence_status"] == "Partially calibrated"
 
 
 def test_campaign_lab_report_can_carry_durable_compliance_evidence() -> None:

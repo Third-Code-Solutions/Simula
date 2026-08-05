@@ -11,6 +11,7 @@ from simula_api.campaign_lab_routes import (
     CalibrationCreate,
     ReportCreate,
     _registry_population_frame,
+    _registry_source_matches,
     _source_matches_population_frame,
     router,
 )
@@ -162,6 +163,44 @@ def test_population_registry_source_match_requires_the_cited_export_checksum() -
     assert _source_matches_population_frame(source, row)
     assert not _source_matches_population_frame(
         source.model_copy(update={"checksum_sha256": "f" * 64}), row
+    )
+
+
+def test_registry_source_match_rejects_local_rehearsal_use_for_production_research() -> None:
+    source = CampaignLabResearchSource(
+        registry_source_version_id=UUID("00000000-0000-4000-8000-0000000005e1"),
+        source_id="authored_fixture",
+        title="Authored fixture",
+        source_type="public_report",
+        source_organization="SIMULA repository",
+        dataset_version="1",
+        geography="Philippines",
+        collection_methodology="Repository-authored fixture.",
+        license_or_usage_rights="Repository fixture",
+        processing_date=datetime(2026, 8, 4, tzinfo=UTC),
+        transformation="None.",
+        known_limitations=("Non-representative.",),
+        checksum_sha256="a" * 64,
+        validation_status="validated",
+    )
+    row = {
+        "id": str(source.registry_source_version_id),
+        "source_key": source.source_id,
+        "source_version": source.dataset_version,
+        "owner_name": source.source_organization,
+        "license_name": source.license_or_usage_rights,
+        "checksum_sha256": source.checksum_sha256,
+        "allowed_uses": ["Local deterministic engineering rehearsal."],
+    }
+
+    assert not _registry_source_matches(source, row)
+    assert _registry_source_matches(
+        source,
+        {**row, "allowed_uses": ["Campaign research and message testing"]},
+    )
+    assert _registry_source_matches(
+        source,
+        {**row, "allowed_uses": ["Survey calibration"]},
     )
 
 

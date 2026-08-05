@@ -73,7 +73,7 @@ EvidenceLabel = Literal[
 ]
 CampaignEvidenceStatus = Literal[
     "Synthetic-only",
-    "Mixed evidence",
+    "Partially calibrated",
     "Survey-calibrated",
     "Historically backtested",
     "Insufficient evidence",
@@ -1534,12 +1534,8 @@ def build_campaign_lab_report(
     )
     calibration_status = str(calibration.get("evidence_status") or calibration.get("status"))
     backtest_status = str(backtest.get("evidence_status") or backtest.get("status"))
-    if backtest_status == "Historically backtested" and calibration_status in {
-        "Partially calibrated",
-        "Survey-calibrated",
-    }:
-        evidence_status: CampaignEvidenceStatus = "Mixed evidence"
-    elif backtest_status == "Historically backtested":
+    evidence_status: CampaignEvidenceStatus
+    if backtest_status == "Historically backtested":
         evidence_status = "Historically backtested"
     elif calibration_status in {"Partially calibrated", "Survey-calibrated"}:
         evidence_status = cast(CampaignEvidenceStatus, calibration_status)

@@ -353,8 +353,26 @@ def _registry_source_matches(source: CampaignLabResearchSource, row: Mapping[str
         and source.source_organization == row.get("owner_name")
         and source.license_or_usage_rights == row.get("license_name")
         and source.checksum_sha256 == row.get("checksum_sha256")
-        and isinstance(allowed_uses, list)
-        and len(allowed_uses) > 0
+        and _allowed_use_contains(
+            allowed_uses,
+            "campaign lab",
+            "campaign research",
+            "campaign simulation",
+            "population weighting",
+            "research",
+            "calibration",
+            "backtest",
+        )
+    )
+
+
+def _allowed_use_contains(allowed_uses: object, *markers: str) -> bool:
+    if not isinstance(allowed_uses, list) or not allowed_uses:
+        return False
+    normalized_markers = tuple(marker.casefold() for marker in markers)
+    return any(
+        any(marker in str(allowed_use).casefold() for marker in normalized_markers)
+        for allowed_use in allowed_uses
     )
 
 
@@ -505,10 +523,7 @@ async def _admitted_evidence_source(
         )
     row = rows[0]
     allowed_uses = row.get("allowed_uses")
-    if not isinstance(allowed_uses, list) or not any(
-        allowed_use.replace("_", " ") in str(item).casefold() or allowed_use in str(item).casefold()
-        for item in allowed_uses
-    ):
+    if not _allowed_use_contains(allowed_uses, allowed_use.replace("_", " "), allowed_use):
         raise CampaignLabPolicyError(
             f"the evidence source is not approved for Campaign Lab {allowed_use}"
         )
@@ -557,9 +572,7 @@ async def _admitted_outcome_set(
         )
     row = rows[0]
     allowed_uses = row.get("allowed_uses")
-    if not isinstance(allowed_uses, list) or not any(
-        "backtest" in str(item).casefold() for item in allowed_uses
-    ):
+    if not _allowed_use_contains(allowed_uses, "backtest"):
         raise CampaignLabPolicyError(
             "the historical outcome source is not approved for backtesting"
         )
