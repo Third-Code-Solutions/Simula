@@ -23,13 +23,13 @@ classification: OBSERVED
 - The permanent Campaign Lab sidebar now has stable pre-run anchors for all
   conditionally rendered workflow sections; the cohort findings block uses a
   separate `cohort-findings` anchor after results exist.
-- PR `#8` carries the current branch change; its existing Vercel web preview
-  remains READY at the prior code commit while Railway and Vercel production
-  remain on the prior merged `main` release until the required GitHub checks
-  are green.
+- PR `#8` carries the current branch change. Vercel web and admin previews are
+  READY for code commit `395e29b9f302ceabd0d06d40339b4021b404eb0b`, while
+  Railway and Vercel production remain on the prior merged `main` release until
+  the required GitHub checks are green.
 - Local `pnpm check` is green for the current code commit. The latest observed
-  GitHub Actions PR `#8` run still fails all required jobs before runner steps,
-  with no job logs, so production promotion is not claimed.
+  GitHub Actions PR `#8` run `31089986896` still fails all required jobs before
+  runner steps, with no job logs, so production promotion is not claimed.
 
 ## Provider recheck (2026-08-06)
 
@@ -42,14 +42,16 @@ classification: OBSERVED
   variables; the API and worker retain their separate least-privilege database
   variables.
 - Supabase project `ywiwmczccktwzqyhzhiz` contains the Campaign Lab tables with
-  RLS enabled and one admitted PSA population frame. No Campaign Lab rows or
+  RLS enabled and one admitted PSA population frame. The native survey-form
+  migration is applied as hosted version `20260806093913`; its kind constraint
+  is verified, no public response table exists, and no Campaign Lab rows or
   worker-only secrets are currently present.
 - Supabase security advisory state is unchanged: leaked-password protection is
   disabled and requires an owner-authenticated dashboard setting change; no
   password or billing mutation was attempted.
 - No Vercel manual deployment or CI rerun was initiated during this recheck;
-  docs-only preview deployments were canceled by the existing ignored-build
-  guards.
+  the code preview was connected and READY, and the next docs-only preview is
+  expected to be canceled by the existing ignored-build guards.
 
 ## Completed in this turn
 
@@ -106,6 +108,10 @@ classification: OBSERVED
   the worker-only survey-import envelope, reduced to aggregate observations,
   and deleted after terminal completion. This is implemented, not yet
   survey-calibrated against a real Philippine dataset.
+- The committed native survey migration
+  `20260806100000_campaign_lab_native_survey_forms.sql` was applied to
+  `ywiwmczccktwzqyhzhiz` as hosted version `20260806093913` and verified with
+  forced-RLS, constraint, empty-row, and no-public-response-table queries.
 - Native bounded Campaign Simulation Lab core now composes the population frame,
   deterministic weighted sampling, repeated seeded runs, structured synthetic
   personas, disclosed interviews, compliance review, and a 30-section report
