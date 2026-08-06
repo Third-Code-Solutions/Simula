@@ -9,6 +9,8 @@ from fastapi.routing import APIRoute
 from simula_api.campaign_lab_routes import (
     BacktestCreate,
     CalibrationCreate,
+    NativeSurveyFormCreate,
+    NativeSurveyResponsesCreate,
     ReportCreate,
     _registry_population_frame,
     _registry_source_matches,
@@ -29,6 +31,8 @@ def test_campaign_lab_exposes_stage_read_endpoints() -> None:
     assert "/api/v1/campaign-lab/research/runs/{run_id}" in paths
     assert "/api/v1/campaign-lab/interviews/runs/{run_id}" in paths
     assert "/api/v1/campaign-lab/surveys/runs/{run_id}" in paths
+    assert "/api/v1/campaign-lab/campaigns/{campaign_id}/surveys/forms" in paths
+    assert "/api/v1/campaign-lab/campaigns/{campaign_id}/surveys/forms/{form_id}/responses" in paths
     assert "/api/v1/campaign-lab/campaigns/{campaign_id}/compliance/runs/{run_id}" in paths
     assert "/api/v1/campaign-lab/reports/runs/{run_id}" in paths
 
@@ -94,6 +98,14 @@ def test_backtest_requires_an_object_outcome_envelope() -> None:
             prediction_set={},
             secret_payload={"outcomes": []},
         )
+
+
+def test_native_survey_contract_requires_bounded_form_and_responses() -> None:
+    with pytest.raises(ValueError):
+        NativeSurveyFormCreate(form={})
+
+    with pytest.raises(ValueError):
+        NativeSurveyResponsesCreate(responses=[])
 
 
 def test_population_registry_projection_matches_the_cited_psa_frame() -> None:

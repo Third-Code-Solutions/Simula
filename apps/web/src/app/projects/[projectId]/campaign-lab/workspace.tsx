@@ -17,6 +17,7 @@ import {
   createCampaignLabCalibration,
   createCampaignLabComplianceReview,
   createCampaignLabInterview,
+  createCampaignLabNativeSurveyForm,
   createCampaignLabReport,
   createCampaignLabResearch,
   createCampaignLabSimulation,
@@ -33,6 +34,7 @@ import {
   getCampaignLabSurveyImportRun,
   getMethodologyRegistry,
   listCampaignLabCampaigns,
+  submitCampaignLabNativeSurveyResponses,
   type MethodologyRegistry,
 } from "@/lib/api";
 
@@ -453,6 +455,98 @@ const surveyFieldMapExample = JSON.stringify(
   2,
 );
 
+const nativeSurveyFormExample = JSON.stringify(
+  {
+    version: 1,
+    title: "Native message calibration",
+    description: "Consented aggregate message-testing survey.",
+    language: "taglish",
+    consent_text: "I agree to aggregate research use.",
+    privacy_notice:
+      "No identity, contact, political-affiliation, or free-text fields.",
+    provenance: {
+      source_id: "simula_native_survey",
+      source_version: "v1",
+      owner: "Research owner",
+      license: "Consented internal research",
+      allowed_uses: ["survey calibration"],
+      collection_period: "2026-Q3",
+      geography: "Philippines",
+      methodology: "Describe the consented aggregate message-test method.",
+      consent_recorded: true,
+      authorized_for_calibration: true,
+      quality_filter_version: "native_response_quality_v1",
+      known_biases: ["Document sample bias."],
+      coverage_limitations: ["Not a population estimate."],
+    },
+    questions: [
+      {
+        key: "variant_key",
+        kind: "variant",
+        label: "Which message did you see?",
+        options: ["control", "variant_a"],
+      },
+      {
+        key: "cohort_key",
+        kind: "cohort",
+        label: "Aggregate cohort",
+        options: ["metro", "visayas"],
+      },
+      {
+        key: "reaction",
+        kind: "reaction",
+        label: "Initial reaction",
+        options: ["positive", "neutral", "negative", "mixed"],
+      },
+      { key: "clarity", kind: "metric", label: "Clarity (0-100)" },
+      { key: "relevance", kind: "metric", label: "Relevance (0-100)" },
+      { key: "trust", kind: "metric", label: "Trust (0-100)" },
+      {
+        key: "persuasiveness",
+        kind: "metric",
+        label: "Persuasiveness (0-100)",
+      },
+      {
+        key: "consideration",
+        kind: "metric",
+        label: "Consideration (0-100)",
+      },
+      {
+        key: "share_intent",
+        kind: "share_intent",
+        label: "Share intent (0-1 or 0-100)",
+        required: false,
+      },
+      { key: "consent", kind: "consent", label: "Consent" },
+    ],
+    max_batch_size: 100,
+  },
+  null,
+  2,
+);
+
+const nativeSurveyResponsesExample = JSON.stringify(
+  [
+    {
+      response_id: "opaque-response-1",
+      answers: {
+        variant_key: "variant_a",
+        cohort_key: "metro",
+        reaction: "positive",
+        clarity: 80,
+        relevance: 78,
+        trust: 74,
+        persuasiveness: 71,
+        consideration: 69,
+        share_intent: 0.62,
+        consent: true,
+      },
+    },
+  ],
+  null,
+  2,
+);
+
 const surveyDatasetExample = JSON.stringify(
   {
     provenance: {
@@ -818,6 +912,13 @@ export function CampaignLabWorkspace({
   const [surveySourceVersionId, setSurveySourceVersionId] = useState("");
   const [surveyRun, setSurveyRun] = useState<CampaignLabDurableRun>();
   const [surveyDatasetJson, setSurveyDatasetJson] = useState("");
+  const [nativeSurveyFormJson, setNativeSurveyFormJson] = useState(
+    nativeSurveyFormExample,
+  );
+  const [nativeSurveyFormId, setNativeSurveyFormId] = useState("");
+  const [nativeSurveyResponsesJson, setNativeSurveyResponsesJson] = useState(
+    nativeSurveyResponsesExample,
+  );
   const [syntheticObservationsJson, setSyntheticObservationsJson] =
     useState("[]");
   const [calibrationRun, setCalibrationRun] = useState<CampaignLabDurableRun>();
@@ -1253,6 +1354,72 @@ export function CampaignLabWorkspace({
         importError instanceof SyntaxError
           ? "Survey metadata, field map, or JSON export is not valid."
           : problemMessage(importError),
+      );
+    } finally {
+      setBusyStage(undefined);
+    }
+  }
+
+  async function createNativeSurveyForm(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (!selectedCampaignId) {
+      setError("Create or select a Campaign Lab workspace first.");
+      return;
+    }
+    setBusyStage("native-survey-form");
+    setError(undefined);
+    try {
+      const form = JSON.parse(nativeSurveyFormJson);
+      if (!isRecord(form)) {
+        throw new Error("Native survey form must be a JSON object.");
+      }
+      const created = await createCampaignLabNativeSurveyForm(
+        selectedCampaignId,
+        form,
+      );
+      if (!created.artifact_id) {
+        throw new Error("Native survey form did not return a form id.");
+      }
+      setNativeSurveyFormId(created.artifact_id);
+    } catch (formError) {
+      setError(
+        formError instanceof SyntaxError
+          ? "Native survey form JSON is not valid."
+          : problemMessage(formError),
+      );
+    } finally {
+      setBusyStage(undefined);
+    }
+  }
+
+  async function submitNativeSurveyResponses(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (!selectedCampaignId || !nativeSurveyFormId.trim()) {
+      setError("Create or enter a native survey form id first.");
+      return;
+    }
+    setBusyStage("native-survey-responses");
+    setError(undefined);
+    try {
+      const responses = JSON.parse(nativeSurveyResponsesJson);
+      if (!Array.isArray(responses)) {
+        throw new Error("Native survey responses must be a JSON array.");
+      }
+      const created = await submitCampaignLabNativeSurveyResponses(
+        selectedCampaignId,
+        nativeSurveyFormId.trim(),
+        responses,
+      );
+      setSurveyRun(commandRun(created, selectedCampaignId, "survey_import"));
+    } catch (responseError) {
+      setError(
+        responseError instanceof SyntaxError
+          ? "Native survey response JSON is not valid."
+          : problemMessage(responseError),
       );
     } finally {
       setBusyStage(undefined);
@@ -1866,6 +2033,78 @@ export function CampaignLabWorkspace({
                 : "Queue survey import"}
             </button>
           </form>
+          <div className="workspace-grid">
+            <form
+              className="panel form-stack"
+              onSubmit={createNativeSurveyForm}
+            >
+              <p className="eyebrow">Native form</p>
+              <h3>Create a SIMULA-native calibration form</h3>
+              <p className="field-note">
+                The schema accepts only aggregate message-testing fields and
+                required consent. It rejects identity, political-affiliation,
+                vulnerability, and free-text questions.
+              </p>
+              <label htmlFor="campaign-lab-native-survey-form">
+                Native form JSON
+              </label>
+              <textarea
+                id="campaign-lab-native-survey-form"
+                onChange={(event) =>
+                  setNativeSurveyFormJson(event.target.value)
+                }
+                rows={18}
+                value={nativeSurveyFormJson}
+              />
+              <button
+                disabled={busyStage === "native-survey-form"}
+                type="submit"
+              >
+                {busyStage === "native-survey-form"
+                  ? "Saving form…"
+                  : "Save native form"}
+              </button>
+            </form>
+            <form
+              className="panel form-stack"
+              onSubmit={submitNativeSurveyResponses}
+            >
+              <p className="eyebrow">Native collection</p>
+              <h3>Queue consented aggregate responses</h3>
+              <p className="field-note">
+                Responses are sent to the worker-only import envelope, then
+                reduced to aggregate survey observations and deleted.
+              </p>
+              <label htmlFor="campaign-lab-native-survey-form-id">
+                Native form id
+              </label>
+              <input
+                id="campaign-lab-native-survey-form-id"
+                onChange={(event) => setNativeSurveyFormId(event.target.value)}
+                placeholder="Filled after saving a form"
+                value={nativeSurveyFormId}
+              />
+              <label htmlFor="campaign-lab-native-survey-responses">
+                Response batch JSON
+              </label>
+              <textarea
+                id="campaign-lab-native-survey-responses"
+                onChange={(event) =>
+                  setNativeSurveyResponsesJson(event.target.value)
+                }
+                rows={18}
+                value={nativeSurveyResponsesJson}
+              />
+              <button
+                disabled={busyStage === "native-survey-responses"}
+                type="submit"
+              >
+                {busyStage === "native-survey-responses"
+                  ? "Queueing responses…"
+                  : "Queue response batch"}
+              </button>
+            </form>
+          </div>
           {surveyRun ? (
             <p aria-live="polite" className="field-note">
               Survey import: <strong>{surveyRun.status}</strong> ·{" "}

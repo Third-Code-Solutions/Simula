@@ -9,9 +9,10 @@ classification: OBSERVED
 
 ## Current branch audit (2026-08-06)
 
-- Code commit `c061e8237d7ecfb7080bf4f4d19d1e0a032e1b5d` contains the latest
-  functional Campaign Lab change; the branch head is the docs-only commit
-  `ed485e4d5e9e83701064accffa1e51d8fe99a56d`.
+- The current branch contains the latest functional Campaign Lab change: a
+  bounded SIMULA-native survey form and response workflow. The implementation
+  is committed locally, while production promotion still waits for the
+  external GitHub Actions billing gate to become runnable.
 - The current branch retains the required evidence statuses, separate
   survey-calibration and historical-backtest artifacts, and no standalone
   `viral_score` output.
@@ -22,12 +23,13 @@ classification: OBSERVED
 - The permanent Campaign Lab sidebar now has stable pre-run anchors for all
   conditionally rendered workflow sections; the cohort findings block uses a
   separate `cohort-findings` anchor after results exist.
-- PR `#8` points to `ed485e4`; its Vercel web preview remains READY at the code
-  commit while Railway and Vercel production remain on the prior merged `main`
-  release until the required GitHub checks are green.
-- Local `pnpm check` is green for the code commit. GitHub Actions PR `#8` run
-  `31029822687` still fails all required jobs before runner steps, with no job
-  logs, so production promotion is not claimed.
+- PR `#8` carries the current branch change; its existing Vercel web preview
+  remains READY at the prior code commit while Railway and Vercel production
+  remain on the prior merged `main` release until the required GitHub checks
+  are green.
+- Local `pnpm check` is green for the current code commit. The latest observed
+  GitHub Actions PR `#8` run still fails all required jobs before runner steps,
+  with no job logs, so production promotion is not claimed.
 
 ## Provider recheck (2026-08-06)
 
@@ -97,6 +99,13 @@ classification: OBSERVED
   external response exports in memory with duplicate, bot, low-quality,
   malformed, consent, rights, and prohibited-field controls. Respondent rows are
   not persisted.
+- SIMULA-native survey forms now require versioned provenance, calibration
+  authorization, affirmative consent, bounded aggregate questions, and no
+  identity, political-affiliation, vulnerability, or free-text fields. Forms
+  are tenant-scoped artifacts; response batches are validated, queued through
+  the worker-only survey-import envelope, reduced to aggregate observations,
+  and deleted after terminal completion. This is implemented, not yet
+  survey-calibrated against a real Philippine dataset.
 - Native bounded Campaign Simulation Lab core now composes the population frame,
   deterministic weighted sampling, repeated seeded runs, structured synthetic
   personas, disclosed interviews, compliance review, and a 30-section report

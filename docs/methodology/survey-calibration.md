@@ -1,6 +1,6 @@
 # Survey calibration contract
 
-Status: aggregate evidence contract. Updated 2026-08-01.
+Status: aggregate evidence contract. Updated 2026-08-06.
 
 Survey calibration compares synthetic aggregate outputs with observed aggregate
 survey observations. It does not mutate the synthetic artifact or claim that a
@@ -23,6 +23,34 @@ Calibration fails closed when consent or authorization is absent, and rejects
 duplicate variant/cohort observations. Survey weight is:
 
 `respondent_count * quality_pass_rate * post_stratification_weight`.
+
+## SIMULA-native collection
+
+SIMULA-native forms use the `NativeSurveyForm` contract in
+`packages/simula-core/src/simula_core/survey_forms.py`. A form must declare
+versioned provenance, collection purpose, consent text, privacy notice, at
+least two message variants, aggregate cohort options, the canonical reaction
+categories, five named component metrics, and required affirmative consent.
+Share intent is optional. Free text, contact/identity fields, political
+affiliation, ideology, persuadability, and vulnerability fields are rejected.
+
+Native forms are stored as tenant-scoped `survey_form` artifacts. A bounded
+response batch is accepted only with an opaque response key; the API validates
+the form and sends the batch through the existing `survey_import` durable
+workflow. The worker compiles one-hot reaction shares and named metrics, runs
+the existing duplicate/quality/malformed-row checks, returns only the
+aggregate `SurveyDataset`, and deletes the worker secret envelope on terminal
+completion. Network identifiers and respondent profiles are not collected.
+
+Native endpoints:
+
+- `POST /api/v1/campaign-lab/campaigns/{campaign_id}/surveys/forms`;
+- `GET /api/v1/campaign-lab/campaigns/{campaign_id}/surveys/forms`;
+- `POST /api/v1/campaign-lab/campaigns/{campaign_id}/surveys/forms/{form_id}/responses`.
+
+The native collection path is authenticated and rate-limited. It is a
+consented aggregate research instrument, not a public voter registry or a
+persuasion/vulnerability profiler.
 
 ## Reported comparisons
 

@@ -49,6 +49,7 @@ from simula_core.survey_calibration import (
     SyntheticVariantObservation,
     calibrate_synthetic_panel,
 )
+from simula_core.survey_forms import NativeSurveyForm, native_survey_rows
 from simula_core.survey_imports import (
     SurveyImportFieldMap,
     SurveyImportFormat,
@@ -179,6 +180,51 @@ def _evaluate_survey_import(
     request: Mapping[str, object], secret_payload: Mapping[str, object] | None
 ) -> Mapping[str, object]:
     return _import_survey_payload(request, secret_payload)
+
+
+def _evaluate_native_survey_import(
+    request: Mapping[str, object], secret_payload: Mapping[str, object] | None
+) -> Mapping[str, object]:
+    """Normalize a SIMULA-native form without exposing respondent rows."""
+
+    if secret_payload is None:
+        raise ValueError("native survey responses are missing")
+    raw_form = secret_payload.get("native_form")
+    raw_responses = secret_payload.get("responses")
+    if not isinstance(raw_form, Mapping) or not isinstance(raw_responses, list):
+        raise ValueError("native survey worker envelope is invalid")
+    form = NativeSurveyForm.model_validate(raw_form)
+    rows = native_survey_rows(form, raw_responses)
+    metadata_raw = form.provenance.model_dump(mode="json")
+    metadata = SurveyImportMetadata.model_validate(metadata_raw)
+    field_map = SurveyImportFieldMap(
+        variant_key="variant_key",
+        cohort_key="cohort_key",
+        reaction_positive="positive",
+        reaction_neutral="neutral",
+        reaction_negative="negative",
+        reaction_mixed="mixed",
+        metric_clarity="clarity",
+        metric_relevance="relevance",
+        metric_trust="trust",
+        metric_persuasiveness="persuasiveness",
+        metric_consideration="consideration",
+        share_intent=(
+            "share_intent"
+            if any(question.key == "share_intent" for question in form.questions)
+            else None
+        ),
+        respondent_key="response_id",
+        quality_score="quality",
+        completed_flag="completed",
+    )
+    imported = import_survey(
+        rows,
+        import_format="generic_json",
+        metadata=metadata,
+        field_map=field_map,
+    )
+    return imported.model_dump(mode="json")
 
 
 def _evaluate_backtest(
@@ -354,6 +400,8 @@ def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]
     if claim.run_type == "survey_calibration":
         return _evaluate_calibration(claim.request, claim.secret_payload)
     if claim.run_type == "survey_import":
+        if claim.request.get("collection_mode") == "simula_native":
+            return _evaluate_native_survey_import(claim.request, claim.secret_payload)
         return _evaluate_survey_import(claim.request, claim.secret_payload)
     if claim.run_type == "historical_backtest":
         return _evaluate_backtest(claim.request, claim.secret_payload)

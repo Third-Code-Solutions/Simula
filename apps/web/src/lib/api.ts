@@ -667,6 +667,37 @@ export function createCampaignLabSurveyImport(
   );
 }
 
+export function createCampaignLabNativeSurveyForm(
+  campaignId: string,
+  form: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/surveys/forms`),
+    {
+      body: { form },
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
+export function submitCampaignLabNativeSurveyResponses(
+  campaignId: string,
+  formId: string,
+  responses: ReadonlyArray<Readonly<Record<string, unknown>>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(
+      `/campaign-lab/campaigns/${campaignId}/surveys/forms/${formId}/responses`,
+    ),
+    {
+      body: { responses },
+      headers: idempotencyHeaders(),
+      method: "POST",
+    },
+  );
+}
+
 export function getCampaignLabSurveyImportRun(
   runId: string,
 ): Promise<CampaignLabDurableRun> {

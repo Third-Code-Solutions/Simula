@@ -32,6 +32,11 @@ from simula_core.cultural_evaluation import (
 )
 from simula_core.json_codec import canonical_json_dumps
 from simula_core.methodology import PopulationFrameVersion
+from simula_core.survey_forms import (
+    NativeSurveyForm,
+    NativeSurveyResponse,
+    native_survey_rows,
+)
 
 from simula_api.auth import VerifiedIdentity
 from simula_api.database import canonical_request_sha256
@@ -155,6 +160,19 @@ class InterviewCreate(_LabModel):
 
 class CulturalEvaluationCreate(_LabModel):
     suite: dict[str, Any]
+
+
+class NativeSurveyFormCreate(_LabModel):
+    form: dict[str, Any]
+
+    @model_validator(mode="after")
+    def validate_native_form(self) -> NativeSurveyFormCreate:
+        NativeSurveyForm.model_validate(self.form)
+        return self
+
+
+class NativeSurveyResponsesCreate(_LabModel):
+    responses: list[dict[str, Any]] = Field(min_length=1, max_length=100)
 
 
 class SurveyImportCreate(_LabModel):
@@ -673,6 +691,53 @@ async def _campaign_row(
     return rows[0]
 
 
+async def _native_survey_form(
+    request: Request,
+    identity: VerifiedIdentity,
+    campaign_id: UUID,
+    form_id: UUID,
+) -> tuple[dict[str, Any], NativeSurveyForm]:
+    await _campaign_row(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_native_survey_form",
+        query="""
+          select id, organization_id, campaign_id, kind, status, title, payload,
+                 provenance, checksum_sha256, retention_until, created_by, created_at, updated_at
+          from api.campaign_lab_artifacts
+          where id = %s and campaign_id = %s and kind = 'survey_form'
+          limit 1
+        """,
+        parameters=(form_id, campaign_id),
+    )
+    if not rows:
+        raise AppProblem(
+            status=404,
+            code="not_found",
+            title="Native survey form not found",
+            detail="The survey form is absent or not visible to the current campaign.",
+        )
+    row = rows[0]
+    raw_payload = row.get("payload")
+    if not isinstance(raw_payload, Mapping) or not isinstance(raw_payload.get("form"), Mapping):
+        raise AppProblem(
+            status=500,
+            code="internal_error",
+            title="Native survey form is invalid",
+            detail="The stored survey form does not satisfy the Campaign Lab contract.",
+        )
+    try:
+        form = NativeSurveyForm.model_validate(raw_payload["form"])
+    except ValueError as error:
+        raise AppProblem(
+            status=500,
+            code="internal_error",
+            title="Native survey form is invalid",
+            detail="The stored survey form does not satisfy the Campaign Lab contract.",
+        ) from error
+    return row, form
+
+
 async def _store_artifact(
     request: Request,
     identity: VerifiedIdentity,
@@ -933,7 +998,7 @@ async def list_artifacts(
 
 async def _list_artifacts_by_kind(
     campaign_id: UUID,
-    kind: Literal["research_source", "cohort", "variant"],
+    kind: Literal["research_source", "cohort", "variant", "survey_form"],
     request: Request,
     identity: VerifiedIdentity,
     *,
@@ -1563,6 +1628,154 @@ async def import_survey(
             "field_map": body.field_map,
         },
         secret_payload=body.secret_payload,
+        idempotency_key=idempotency_key,
+        correlation_id=_correlation_id(request),
+    )
+    _replay_header(response, result)
+    return result
+
+
+@router.get(
+    "/campaigns/{campaign_id}/surveys/forms",
+    operation_id="list_campaign_lab_native_survey_forms",
+)
+async def list_native_survey_forms(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 50,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    return await _list_artifacts_by_kind(
+        campaign_id, "survey_form", request, identity, limit=limit, offset=offset
+    )
+
+
+@router.post(
+    "/campaigns/{campaign_id}/surveys/forms",
+    status_code=201,
+    operation_id="create_campaign_lab_native_survey_form",
+)
+async def create_native_survey_form(
+    campaign_id: UUID,
+    body: NativeSurveyFormCreate,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: IdempotencyKey,
+) -> dict[str, Any]:
+    try:
+        form = NativeSurveyForm.model_validate(body.form)
+    except ValueError as error:
+        raise _invalid(
+            "Native survey forms must use the bounded aggregate calibration schema.",
+            field="form",
+        ) from error
+    artifact = ArtifactCreate(
+        title=form.title,
+        payload={
+            "form": form.model_dump(mode="json"),
+            "collection_mode": "simula_native",
+            "disclosure": (
+                "Native SIMULA survey. Responses are consented aggregate research inputs; "
+                "no identity, contact, political-affiliation, or free-text fields are accepted."
+            ),
+        },
+        provenance={
+            **form.provenance.model_dump(mode="json"),
+            "evidence_status": "Survey-derived",
+            "form_checksum_sha256": form.checksum_sha256,
+        },
+        checksum_sha256=form.checksum_sha256,
+    )
+    _validate_policy({"payload": artifact.payload, "provenance": artifact.provenance})
+    result = await _store_artifact(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        kind="survey_form",
+        body=artifact,
+        idempotency_key=idempotency_key,
+        correlation_id=_correlation_id(request),
+    )
+    _replay_header(response, result)
+    return {**result, "form": form.model_dump(mode="json")}
+
+
+@router.get(
+    "/campaigns/{campaign_id}/surveys/forms/{form_id}",
+    operation_id="get_campaign_lab_native_survey_form",
+)
+async def get_native_survey_form(
+    campaign_id: UUID,
+    form_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    row, _ = await _native_survey_form(request, identity, campaign_id, form_id)
+    return row
+
+
+@router.post(
+    "/campaigns/{campaign_id}/surveys/forms/{form_id}/responses",
+    status_code=202,
+    operation_id="submit_campaign_lab_native_survey_responses",
+)
+async def submit_native_survey_responses(
+    campaign_id: UUID,
+    form_id: UUID,
+    body: NativeSurveyResponsesCreate,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: IdempotencyKey,
+) -> dict[str, Any]:
+    _, form = await _native_survey_form(request, identity, campaign_id, form_id)
+    try:
+        parsed_responses = tuple(
+            NativeSurveyResponse.model_validate(item) for item in body.responses
+        )
+        # Validate without persisting or returning the transient compiled rows.
+        native_survey_rows(form, parsed_responses)
+    except ValueError as error:
+        raise _invalid(
+            "Native survey responses must contain only consented aggregate answers.",
+            field="responses",
+        ) from error
+    provenance = form.provenance.model_dump(mode="json")
+    result = await _store_run(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        run_type="survey_import",
+        payload={
+            "format": "generic_json",
+            "collection_mode": "simula_native",
+            "form_id": str(form_id),
+            "form_version": form.version,
+            "metadata": provenance,
+            "field_map": {
+                "variant_key": "variant_key",
+                "cohort_key": "cohort_key",
+                "reaction_positive": "positive",
+                "reaction_neutral": "neutral",
+                "reaction_negative": "negative",
+                "reaction_mixed": "mixed",
+                "metric_clarity": "clarity",
+                "metric_relevance": "relevance",
+                "metric_trust": "trust",
+                "metric_persuasiveness": "persuasiveness",
+                "metric_consideration": "consideration",
+                "share_intent": "share_intent",
+                "respondent_key": "response_id",
+                "quality_score": "quality",
+                "completed_flag": "completed",
+            },
+        },
+        secret_payload={
+            "native_form": form.model_dump(mode="json"),
+            "responses": [item.model_dump(mode="json") for item in parsed_responses],
+        },
         idempotency_key=idempotency_key,
         correlation_id=_correlation_id(request),
     )
