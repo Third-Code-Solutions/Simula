@@ -9,9 +9,12 @@ classification: OBSERVED
 
 ## Current branch audit (2026-08-06)
 
-- Commit `e550b3e7722452c046c1c33ee1e6713bfd852dfd` replaces the non-spec
-  `Mixed evidence` report label with the required evidence statuses, while
-  retaining separate survey-calibration and historical-backtest artifacts.
+- Code commit `c061e8237d7ecfb7080bf4f4d19d1e0a032e1b5d` contains the latest
+  functional Campaign Lab change; the branch head is the docs-only commit
+  `ed485e4d5e9e83701064accffa1e51d8fe99a56d`.
+- The current branch retains the required evidence statuses, separate
+  survey-calibration and historical-backtest artifacts, and no standalone
+  `viral_score` output.
 - Production evidence-source admission now requires an approved registry row
   whose allowed use names Campaign Lab research/simulation, calibration,
   backtesting, or population weighting; the hosted local-rehearsal fixture is
@@ -19,13 +22,32 @@ classification: OBSERVED
 - The permanent Campaign Lab sidebar now has stable pre-run anchors for all
   conditionally rendered workflow sections; the cohort findings block uses a
   separate `cohort-findings` anchor after results exist.
-- PR `#8` now points to docs commit `81c0bd1`, following code commit `c061e82`;
-  the Vercel web preview remains READY at the code commit while Railway and
-  Vercel production remain on the prior merged `main` release until the required
-  GitHub checks are green.
+- PR `#8` points to `ed485e4`; its Vercel web preview remains READY at the code
+  commit while Railway and Vercel production remain on the prior merged `main`
+  release until the required GitHub checks are green.
 - Local `pnpm check` is green for the code commit. GitHub Actions PR `#8` run
-  `31029192403` still fails all required jobs before runner steps, with no job
+  `31029822687` still fails all required jobs before runner steps, with no job
   logs, so production promotion is not claimed.
+
+## Provider recheck (2026-08-06)
+
+- Railway source remains connected to `Third-Code-Solutions/Simula` on `main`
+  for API, worker, and web. Watch-pattern filtering skipped the last docs-only
+  web deployment; production health remains ready/ok on release SHA
+  `3bdb3f02c0bdcbec04b8fd09ef1fd61cbc573c07`.
+- The unused `SIMULA_DATABASE_URL` variable was removed from the Railway web
+  service with deploys suppressed. The web app reads only public Supabase
+  variables; the API and worker retain their separate least-privilege database
+  variables.
+- Supabase project `ywiwmczccktwzqyhzhiz` contains the Campaign Lab tables with
+  RLS enabled and one admitted PSA population frame. No Campaign Lab rows or
+  worker-only secrets are currently present.
+- Supabase security advisory state is unchanged: leaked-password protection is
+  disabled and requires an owner-authenticated dashboard setting change; no
+  password or billing mutation was attempted.
+- No Vercel manual deployment or CI rerun was initiated during this recheck;
+  docs-only preview deployments were canceled by the existing ignored-build
+  guards.
 
 ## Completed in this turn
 

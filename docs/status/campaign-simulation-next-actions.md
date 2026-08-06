@@ -8,15 +8,15 @@ classification: PROPOSED
 # Next actions
 
 Current candidate: PR `#8`, branch head
-`81c0bd1d93f51be199056e3430e6375e73118bbf` (docs-only follow-up to code commit
+`ed485e4d5e9e83701064accffa1e51d8fe99a56d` (docs-only follow-up to code commit
 `c061e8237d7ecfb7080bf4f4d19d1e0a032e1b5d`). The web preview for the code commit
-is READY; the docs-only follow-up was correctly canceled by Vercel's
-ignored-build guard. Railway production remains healthy on the prior merged
-`main` SHA `3bdb3f02`.
+is READY; docs-only commits are canceled by Vercel's ignored-build guard.
+Railway production remains healthy on the prior merged `main` SHA
+`3bdb3f02c0bdcbec04b8fd09ef1fd61cbc573c07`.
 
 1. Repair the GitHub account payment/spending-limit gate, then rerun the
-   required checks for PR `#8`; do not claim CI-green release evidence while
-   jobs fail before runner steps are created.
+   required checks for PR `#8`; the latest run `31029822687` fails before runner
+   steps are created, so do not claim CI-green release evidence.
 2. Reconnect authorized Vercel billing access and set a team spend/on-demand
    limit. Keep the ignored-build guards for unrelated backend/worker commits;
    the current web/admin production deployments are already verified.
