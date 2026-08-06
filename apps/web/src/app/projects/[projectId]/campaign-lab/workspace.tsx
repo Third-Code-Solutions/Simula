@@ -33,6 +33,7 @@ import {
   getCampaignLabSimulationStatus,
   getCampaignLabSurveyImportRun,
   getMethodologyRegistry,
+  getProject,
   listCampaignLabCampaigns,
   submitCampaignLabNativeSurveyResponses,
   type MethodologyRegistry,
@@ -888,6 +889,7 @@ export function CampaignLabSelectionNotice() {
 export function CampaignLabWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
+  const [organizationId, setOrganizationId] = useState<string>();
   const [campaigns, setCampaigns] = useState<
     ReadonlyArray<CampaignLabCampaign>
   >([]);
@@ -1004,14 +1006,19 @@ export function CampaignLabWorkspace({
 
   useEffect(() => {
     let stale = false;
+    const projectPromise = getProject(projectId).catch(() => undefined);
     void Promise.all([
       listCampaignLabCampaigns(projectId),
       getMethodologyRegistry(),
+      projectPromise,
     ])
-      .then(([page, registry]) => {
+      .then(([page, registry, project]) => {
         if (stale) return;
         const nextPopulationFrame = officialPopulationFrame(registry);
         setCampaigns(page.items);
+        setOrganizationId(
+          project?.organization_id ?? page.items[0]?.organization_id,
+        );
         setSelectedPopulationFrame(nextPopulationFrame);
         const first = page.items[0];
         if (first) {
@@ -1605,7 +1612,11 @@ export function CampaignLabWorkspace({
           SIMULA
         </Link>
       </header>
-      <WorkspaceSidebar current="campaign-lab" projectId={projectId} />
+      <WorkspaceSidebar
+        current="campaign-lab"
+        organizationId={organizationId}
+        projectId={projectId}
+      />
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href={`/projects/${projectId}`}>Project workspace</Link>
         <span aria-hidden="true"> / </span>

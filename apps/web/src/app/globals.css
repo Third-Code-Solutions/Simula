@@ -1430,7 +1430,7 @@ select {
   max-width: 100%;
   min-height: 100dvh;
   overflow-x: clip;
-  grid-template-columns: 13rem minmax(0, 1fr);
+  grid-template-columns: clamp(15rem, 18vw, 18rem) minmax(0, 1fr);
   grid-template-rows: 4rem auto;
   background: var(--paper);
 }
@@ -1458,10 +1458,17 @@ select {
   align-self: start;
   flex-direction: column;
   justify-content: space-between;
+  min-width: 0;
+  overflow-x: hidden;
   overflow-y: auto;
-  padding: 1.25rem 1rem;
+  padding: 1.25rem clamp(0.75rem, 1.5vw, 1.25rem);
   border-right: 1px solid var(--edge);
   background: #fafaf9;
+  scrollbar-gutter: stable;
+}
+
+.workspace-sidebar > div:first-child {
+  min-width: 0;
 }
 
 .workspace-sidebar-label {
@@ -1476,11 +1483,13 @@ select {
 
 .sidebar-nav {
   display: grid;
-  gap: 1rem;
+  min-width: 0;
+  gap: 0.875rem;
 }
 
 .sidebar-nav-section {
   display: grid;
+  min-width: 0;
   gap: 0.25rem;
 }
 
@@ -1500,22 +1509,35 @@ select {
 
 .sidebar-nav a,
 .sidebar-nav-link-disabled {
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem 0.625rem;
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 0.25rem minmax(0, 1fr);
+  gap: 0.125rem 0.625rem;
+  align-items: start;
+  padding: 0.625rem 0.75rem;
   border-radius: 0.5rem;
+  border: 1px solid transparent;
   color: var(--stone);
   font-size: 0.8125rem;
+  line-height: 1.25;
   text-decoration: none;
 }
 
 .sidebar-nav a::before,
 .sidebar-nav-link-disabled::before {
   width: 0.25rem;
-  height: 1rem;
+  min-height: 1rem;
+  align-self: stretch;
+  grid-column: 1;
+  grid-row: 1 / -1;
   background: var(--teal);
   content: "";
+}
+
+.sidebar-nav-link-label {
+  min-width: 0;
+  grid-column: 2;
+  overflow-wrap: anywhere;
 }
 
 .sidebar-nav-link-disabled {
@@ -1525,17 +1547,23 @@ select {
 }
 
 .sidebar-nav-link-disabled small {
-  margin-left: auto;
+  min-width: 0;
+  grid-column: 2;
+  margin-left: 0;
   color: var(--pebble);
   font-family: var(--font-ibm-plex-mono);
   font-size: 0.55rem;
   letter-spacing: 0.02em;
-  text-align: right;
+  line-height: 1.25;
+  text-align: left;
+  overflow-wrap: anywhere;
 }
 
 .sidebar-nav a:hover,
+.sidebar-nav a:focus-visible,
 .sidebar-nav a[aria-current="page"] {
   background: var(--paper);
+  border-color: var(--edge);
   color: var(--ink);
   font-weight: 600;
 }
@@ -2826,7 +2854,7 @@ code {
   }
 
   .workspace-main {
-    grid-template-columns: 11rem minmax(0, 1fr);
+    grid-template-columns: 15rem minmax(0, 1fr);
   }
 
   .methodology-steps {
@@ -2892,6 +2920,7 @@ code {
   .workspace-main {
     min-width: 0;
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 4rem auto auto;
   }
 
   .workspace-sidebar {
@@ -2902,45 +2931,50 @@ code {
     min-height: auto;
     grid-column: 1;
     grid-row: 2;
-    padding: 0.75rem 1rem;
+    padding: 1rem;
     border-right: 0;
     border-bottom: 1px solid var(--edge);
+    overflow: visible;
   }
 
-  .workspace-sidebar > div:first-child {
-    min-width: 0;
+  .workspace-sidebar-label {
+    margin-bottom: 0.875rem;
+    padding: 0 0.25rem;
   }
 
-  .workspace-sidebar-label,
   .sidebar-boundary {
-    display: none;
+    margin: 1rem 0 0;
   }
 
   .sidebar-nav {
-    display: flex;
+    display: grid;
     width: 100%;
     min-width: 0;
-    overflow-x: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.875rem;
   }
 
   .sidebar-nav-section {
-    display: flex;
+    min-width: 0;
   }
 
   .sidebar-nav-section-campaign {
-    padding-top: 0;
-    padding-left: 0.75rem;
-    border-top: 0;
-    border-left: 1px solid var(--edge);
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-top: 0.875rem;
+    padding-left: 0;
+    border-top: 1px solid var(--edge);
+    border-left: 0;
   }
 
   .sidebar-nav-section > span {
-    display: none;
+    display: block;
+    min-width: 0;
   }
 
   .sidebar-nav a,
   .sidebar-nav-link-disabled {
-    white-space: nowrap;
+    white-space: normal;
   }
 
   .workspace-main > :not(.workspace-header):not(.workspace-sidebar) {
@@ -2999,6 +3033,15 @@ code {
   .hero-actions a,
   .cta-actions a {
     width: 100%;
+  }
+
+  .sidebar-nav,
+  .sidebar-nav-section-campaign {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-nav-section-campaign {
+    grid-column: auto;
   }
 
   .product-window {
