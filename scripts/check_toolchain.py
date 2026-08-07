@@ -9,7 +9,7 @@ import subprocess
 import sys
 
 EXPECTED = {
-    "node": "v24.18.0",
+    "node": "v24.18.1",
     "pnpm": "11.13.1",
     "supabase": "2.109.1",
     "uv": "0.11.19",
@@ -17,7 +17,7 @@ EXPECTED = {
 EXPECTED_PNPM_CONFIG = {
     "autoInstallPeers": False,
     "engineStrict": True,
-    "nodeVersion": "24.18.0",
+    "nodeVersion": "24.18.1",
     "pmOnFail": "error",
     "resolutionMode": "highest",
     "savePrefix": "",

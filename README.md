@@ -12,7 +12,7 @@ The active execution plan is `plans/active/002-phase-2-walking-skeleton.md`.
 
 ## Exact local toolchain
 
-- Node.js `24.18.0`
+- Node.js `24.18.1`
 - pnpm `11.13.1` through Corepack
 - Python `3.14.6`, discovered and synchronized by uv
 - uv `0.11.19`

@@ -42,7 +42,7 @@ def tool_environment() -> dict[str, str]:
 
     environment = dict(os.environ)
     if os.name == "nt":
-        additions = (NODE_TOOLCHAIN / "node-v24.18.0-win-x64", NODE_TOOLCHAIN / "bin")
+        additions = (NODE_TOOLCHAIN / "node-v24.18.1-win-x64", NODE_TOOLCHAIN / "bin")
         environment["PATH"] = os.pathsep.join(
             [*(str(path) for path in additions), environment["PATH"]]
         )
@@ -75,7 +75,7 @@ def node_executable(*, environment: Mapping[str, str]) -> str:
     """Return the exact pinned Node executable for direct Next ownership."""
 
     if os.name == "nt":
-        candidate = NODE_TOOLCHAIN / "node-v24.18.0-win-x64" / "node.exe"
+        candidate = NODE_TOOLCHAIN / "node-v24.18.1-win-x64" / "node.exe"
         if not candidate.is_file():
             raise BrowserGateError("pinned Node executable is unavailable")
         return str(candidate)
