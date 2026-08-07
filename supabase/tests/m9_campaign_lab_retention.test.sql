@@ -98,10 +98,10 @@ select extensions.ok(
 select extensions.ok(
   pg_catalog.pg_get_functiondef(
     'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure
-  ) like '%20260803100000::bigint%'
+  ) like '%20260807104033::bigint%'
   and pg_catalog.pg_get_functiondef(
     'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure
-  ) like '%20260803100000::bigint%',
+  ) like '%20260807104033::bigint%',
   'runtime readiness and observability report the retention schema head'
 );
 

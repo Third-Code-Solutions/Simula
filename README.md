@@ -1,8 +1,11 @@
 # SIMULA
 
-SIMULA is an experimental synthetic-audience pressure-testing product. Phase 2
-uses authored, non-representative demo data and a deterministic mock. It
-estimates nobody and does not replace human research.
+SIMULA is an experimental evidence and synthetic-audience pressure-testing
+product. Synthetic message tests use authored, non-representative demo data and
+estimate nobody. A separate respondent-free path can produce an experimental
+national aggregate-turnout forecast from checksum-locked official history; it
+does not predict candidates, parties, individual voters, or causal persuasion,
+and it does not replace human research.
 
 The Obsidian vault in `brain/` is the product and architecture source of truth.
 The active execution plan is `plans/active/002-phase-2-walking-skeleton.md`.

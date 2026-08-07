@@ -9,6 +9,110 @@ export type Json =
 export type Database = {
   api: {
     Tables: {
+      aggregate_forecast_datasets: {
+        Row: {
+          admitted_at: string | null
+          allowed_uses: string[]
+          authorized_for_forecasting: boolean
+          created_at: string
+          geography: string
+          id: string
+          license_name: string
+          manifest: Json
+          normalized_checksum_sha256: string
+          observation_period: string
+          owner_name: string
+          source_checksum_sha256: string
+          source_key: string
+          source_version: string
+          status: string
+        }
+        Insert: {
+          admitted_at?: string | null
+          allowed_uses: string[]
+          authorized_for_forecasting?: boolean
+          created_at?: string
+          geography: string
+          id?: string
+          license_name: string
+          manifest: Json
+          normalized_checksum_sha256: string
+          observation_period: string
+          owner_name: string
+          source_checksum_sha256: string
+          source_key: string
+          source_version: string
+          status?: string
+        }
+        Update: {
+          admitted_at?: string | null
+          allowed_uses?: string[]
+          authorized_for_forecasting?: boolean
+          created_at?: string
+          geography?: string
+          id?: string
+          license_name?: string
+          manifest?: Json
+          normalized_checksum_sha256?: string
+          observation_period?: string
+          owner_name?: string
+          source_checksum_sha256?: string
+          source_key?: string
+          source_version?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      aggregate_forecast_observations: {
+        Row: {
+          contest_key: string
+          created_at: string
+          dataset_id: string
+          election_date: string
+          election_key: string
+          geography_key: string
+          id: string
+          option_group_key: string
+          option_key: string
+          valid_votes: number
+          votes: number
+        }
+        Insert: {
+          contest_key: string
+          created_at?: string
+          dataset_id: string
+          election_date: string
+          election_key: string
+          geography_key: string
+          id?: string
+          option_group_key: string
+          option_key: string
+          valid_votes: number
+          votes: number
+        }
+        Update: {
+          contest_key?: string
+          created_at?: string
+          dataset_id?: string
+          election_date?: string
+          election_key?: string
+          geography_key?: string
+          id?: string
+          option_group_key?: string
+          option_key?: string
+          valid_votes?: number
+          votes?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aggregate_forecast_observations_dataset_id_fkey"
+            columns: ["dataset_id"]
+            isOneToOne: false
+            referencedRelation: "aggregate_forecast_datasets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audience_versions: {
         Row: {
           admission_status: Database["api"]["Enums"]["audience_admission_status"]

@@ -7,6 +7,7 @@ from uuid import UUID
 import pytest
 from fastapi.routing import APIRoute
 from simula_api.campaign_lab_routes import (
+    AggregateForecastCreate,
     BacktestCreate,
     CalibrationCreate,
     NativeSurveyFormCreate,
@@ -35,6 +36,36 @@ def test_campaign_lab_exposes_stage_read_endpoints() -> None:
     assert "/api/v1/campaign-lab/campaigns/{campaign_id}/surveys/forms/{form_id}/responses" in paths
     assert "/api/v1/campaign-lab/campaigns/{campaign_id}/compliance/runs/{run_id}" in paths
     assert "/api/v1/campaign-lab/reports/runs/{run_id}" in paths
+    assert "/api/v1/campaign-lab/campaigns/{campaign_id}/forecasts" in paths
+    assert "/api/v1/campaign-lab/forecast-datasets" in paths
+    assert "/api/v1/campaign-lab/forecasts/{run_id}" in paths
+
+
+def test_aggregate_forecast_contract_accepts_only_dataset_reference_and_future_targets() -> None:
+    body = AggregateForecastCreate(
+        dataset_id=UUID("20000000-0000-4000-8000-000000000001"),
+        targets=[
+            {
+                "election_key": "election_2028",
+                "election_date": "2028-05-08",
+                "contest_key": "senate",
+                "geography_key": "national",
+                "option_key": option_key,
+                "option_group_key": option_key,
+            }
+            for option_key in ("party_a", "party_b")
+        ],
+    )
+
+    assert body.model_version == "aggregate_trend_v1"
+    assert len(body.targets) == 2
+    with pytest.raises(ValueError):
+        AggregateForecastCreate.model_validate(
+            {
+                **body.model_dump(mode="json"),
+                "observations": [{"respondent_id": "must-not-enter"}],
+            }
+        )
 
 
 def test_report_can_bind_calibration_and_backtest_evidence_runs() -> None:

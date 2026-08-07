@@ -27,6 +27,7 @@ describe("Campaign Lab navigation anchors", () => {
       "surveys",
       "calibration",
       "backtesting",
+      "forecasting",
       "compliance",
       "reports",
       "audit",

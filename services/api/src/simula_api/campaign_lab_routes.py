@@ -16,6 +16,10 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, Query, Request, Response
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from simula_core.aggregate_forecasting import (
+    AggregateForecastRequest,
+    AggregateForecastTarget,
+)
 from simula_core.campaign_lab import (
     CampaignLabCohort,
     CampaignLabPolicyError,
@@ -240,6 +244,18 @@ class BacktestCreate(_LabModel):
             raise ValueError("historical backtest requires worker-only secret_payload.outcomes")
         if not isinstance(self.secret_payload["outcomes"], Mapping):
             raise ValueError("historical backtest outcomes must be an object")
+        return self
+
+
+class AggregateForecastCreate(_LabModel):
+    dataset_id: UUID
+    model_version: Literal["aggregate_trend_v1"] = "aggregate_trend_v1"
+    targets: list[dict[str, Any]] = Field(min_length=2, max_length=10_000)
+
+    @model_validator(mode="after")
+    def aggregate_targets_only(self) -> AggregateForecastCreate:
+        for target in self.targets:
+            AggregateForecastTarget.model_validate(target)
         return self
 
 
@@ -595,6 +611,79 @@ async def _admitted_outcome_set(
             "the historical outcome source is not approved for backtesting"
         )
     return row
+
+
+async def _aggregate_forecast_secret(
+    request: Request,
+    identity: VerifiedIdentity,
+    body: AggregateForecastCreate,
+) -> dict[str, Any]:
+    dataset_rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_aggregate_forecast_dataset_admission",
+        query="""
+          select id, source_key, source_version, owner_name, license_name,
+                 allowed_uses, geography, observation_period,
+                 source_checksum_sha256 as checksum_sha256,
+                 authorized_for_forecasting, manifest
+          from api.aggregate_forecast_datasets
+          where id = %s and status = 'admitted'
+          limit 1
+        """,
+        parameters=(body.dataset_id,),
+    )
+    if not dataset_rows:
+        raise CampaignLabPolicyError(
+            "aggregate forecast dataset is absent, retired, or not admitted"
+        )
+    dataset = dataset_rows[0]
+    manifest = dataset.get("manifest")
+    admitted_targets = manifest.get("default_targets") if isinstance(manifest, Mapping) else None
+    if not isinstance(admitted_targets, list) or len(admitted_targets) < 2:
+        raise CampaignLabPolicyError("aggregate forecast dataset has no admitted target set")
+    observation_rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_aggregate_forecast_observations",
+        query="""
+          select election_key, election_date, contest_key, geography_key,
+                 option_key, option_group_key, votes, valid_votes
+          from api.aggregate_forecast_observations
+          where dataset_id = %s
+          order by election_date, election_key, contest_key, geography_key, option_key
+        """,
+        parameters=(body.dataset_id,),
+    )
+    secret = {
+        "source": {
+            "source_id": dataset.get("source_key"),
+            "source_version": dataset.get("source_version"),
+            "owner": dataset.get("owner_name"),
+            "license": dataset.get("license_name"),
+            "allowed_uses": dataset.get("allowed_uses"),
+            "geography": dataset.get("geography"),
+            "observation_period": dataset.get("observation_period"),
+            "checksum_sha256": dataset.get("checksum_sha256"),
+            "authorized_for_forecasting": dataset.get("authorized_for_forecasting"),
+        },
+        "observations": observation_rows,
+        "admitted_targets": admitted_targets,
+    }
+    validated = AggregateForecastRequest.model_validate(
+        {
+            "model_version": body.model_version,
+            **secret,
+            "targets": body.targets,
+        }
+    )
+    return {
+        "source": validated.source.model_dump(mode="json"),
+        "observations": [
+            observation.model_dump(mode="json") for observation in validated.observations
+        ],
+        "admitted_targets": [
+            target.model_dump(mode="json") for target in validated.admitted_targets
+        ],
+    }
 
 
 def _source_metadata(value: object) -> Mapping[str, Any] | None:
@@ -1280,7 +1369,7 @@ async def _get_campaign_lab_run(
 
 async def _get_evidence_run(
     run_id: UUID,
-    expected_run_type: Literal["survey_calibration", "historical_backtest"],
+    expected_run_type: Literal["survey_calibration", "historical_backtest", "aggregate_forecast"],
     request: Request,
     identity: VerifiedIdentity,
 ) -> dict[str, Any]:
@@ -1906,6 +1995,70 @@ async def get_backtest(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> dict[str, Any]:
     return await _get_evidence_run(run_id, "historical_backtest", request, identity)
+
+
+@router.post(
+    "/campaigns/{campaign_id}/forecasts",
+    status_code=202,
+    operation_id="create_campaign_lab_aggregate_forecast",
+)
+async def create_aggregate_forecast(
+    campaign_id: UUID,
+    body: AggregateForecastCreate,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: IdempotencyKey,
+) -> dict[str, Any]:
+    try:
+        secret = await _aggregate_forecast_secret(request, identity, body)
+    except (CampaignLabPolicyError, ValueError) as error:
+        raise _invalid(str(error), field="dataset_id") from error
+    result = await _store_run(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        run_type="aggregate_forecast",
+        payload=body.model_dump(mode="json"),
+        secret_payload=secret,
+        idempotency_key=idempotency_key,
+        correlation_id=_correlation_id(request),
+    )
+    _replay_header(response, result)
+    return result
+
+
+@router.get(
+    "/forecast-datasets",
+    operation_id="list_campaign_lab_aggregate_forecast_datasets",
+)
+async def list_aggregate_forecast_datasets(
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_aggregate_forecast_dataset_list",
+        query="""
+          select id, source_key, source_version, owner_name, license_name,
+                 geography, observation_period, source_checksum_sha256,
+                 normalized_checksum_sha256, manifest, admitted_at
+          from api.aggregate_forecast_datasets
+          where status = 'admitted' and authorized_for_forecasting
+          order by admitted_at desc, id
+        """,
+        parameters=(),
+    )
+    return {"items": rows}
+
+
+@router.get("/forecasts/{run_id}", operation_id="get_campaign_lab_aggregate_forecast")
+async def get_aggregate_forecast(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    return await _get_evidence_run(run_id, "aggregate_forecast", request, identity)
 
 
 @router.post(

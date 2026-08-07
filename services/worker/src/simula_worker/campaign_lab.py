@@ -17,6 +17,10 @@ from uuid import UUID
 
 import structlog
 from pydantic import ValidationError
+from simula_core.aggregate_forecasting import (
+    AggregateForecastRequest,
+    forecast_aggregate_election,
+)
 from simula_core.calibration_monitoring import (
     build_calibration_version_history,
     monitor_calibration_drift,
@@ -251,6 +255,34 @@ def _evaluate_backtest(
     ).model_dump(mode="json")
 
 
+def _evaluate_aggregate_forecast(
+    request: Mapping[str, object], secret_payload: Mapping[str, object] | None
+) -> Mapping[str, object]:
+    if "source" in request or "observations" in request:
+        raise ValueError("aggregate forecast history must remain worker-only")
+    if secret_payload is None:
+        raise ValueError("aggregate forecast official history is missing")
+    source = secret_payload.get("source")
+    observations = secret_payload.get("observations")
+    admitted_targets = secret_payload.get("admitted_targets")
+    if (
+        not isinstance(source, Mapping)
+        or not isinstance(observations, list)
+        or not isinstance(admitted_targets, list)
+    ):
+        raise ValueError("aggregate forecast official history is invalid")
+    forecast_request = AggregateForecastRequest.model_validate(
+        {
+            "model_version": request.get("model_version"),
+            "source": source,
+            "observations": observations,
+            "admitted_targets": admitted_targets,
+            "targets": request.get("targets"),
+        }
+    )
+    return forecast_aggregate_election(forecast_request).model_dump(mode="json")
+
+
 def _evaluate_research(
     request: Mapping[str, object], secret_payload: Mapping[str, object] | None
 ) -> Mapping[str, object]:
@@ -405,6 +437,8 @@ def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]
         return _evaluate_survey_import(claim.request, claim.secret_payload)
     if claim.run_type == "historical_backtest":
         return _evaluate_backtest(claim.request, claim.secret_payload)
+    if claim.run_type == "aggregate_forecast":
+        return _evaluate_aggregate_forecast(claim.request, claim.secret_payload)
     if claim.run_type == "research_ingestion":
         return _evaluate_research(claim.request, claim.secret_payload)
     if claim.run_type == "interview":

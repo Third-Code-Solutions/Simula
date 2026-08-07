@@ -102,6 +102,19 @@ export type CampaignLabDurableRun = CampaignLabRunStatus &
   Readonly<{
     result?: Readonly<Record<string, unknown>> | null;
   }>;
+export type CampaignLabForecastDataset = Readonly<{
+  id: string;
+  source_key: string;
+  source_version: string;
+  owner_name: string;
+  license_name: string;
+  geography: string;
+  observation_period: string;
+  source_checksum_sha256: string;
+  normalized_checksum_sha256: string;
+  manifest: Readonly<Record<string, unknown>>;
+  admitted_at: string;
+}>;
 export type CampaignLabResearchRun = CampaignLabRunStatus &
   Readonly<{ result?: Readonly<Record<string, unknown>> }>;
 export type CampaignLabRanking = Readonly<{
@@ -739,6 +752,32 @@ export function getCampaignLabBacktestRun(
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
     domainPath(`/campaign-lab/backtests/${runId}`),
+  );
+}
+
+export function listCampaignLabForecastDatasets(): Promise<
+  Readonly<{ items: ReadonlyArray<CampaignLabForecastDataset> }>
+> {
+  return request<
+    Readonly<{ items: ReadonlyArray<CampaignLabForecastDataset> }>
+  >(domainPath("/campaign-lab/forecast-datasets"));
+}
+
+export function createCampaignLabAggregateForecast(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<CampaignLabCommand> {
+  return request<CampaignLabCommand>(
+    domainPath(`/campaign-lab/campaigns/${campaignId}/forecasts`),
+    { body: input, headers: idempotencyHeaders(), method: "POST" },
+  );
+}
+
+export function getCampaignLabAggregateForecastRun(
+  runId: string,
+): Promise<CampaignLabDurableRun> {
+  return request<CampaignLabDurableRun>(
+    domainPath(`/campaign-lab/forecasts/${runId}`),
   );
 }
 
