@@ -39,3 +39,26 @@ def test_worker_foreign_log_content_is_redacted() -> None:
     )
 
     assert result == {"event": "foreign_log", "level": "error"}
+
+
+def test_campaign_lab_failure_log_keeps_only_safe_diagnostics() -> None:
+    result = _enforce_log_allowlist(
+        None,
+        "warning",
+        {
+            "event": "campaign_lab_evaluation_failed",
+            "level": "warning",
+            "run_id": "00000000-0000-4000-8000-000000000003",
+            "error_type": "OperationalError",
+            "request": {"secret": "sensitive"},
+            "error_detail": "sensitive database detail",
+        },
+    )
+
+    assert result == {
+        "event": "campaign_lab_evaluation_failed",
+        "level": "warning",
+        "run_id": "00000000-0000-4000-8000-000000000003",
+        "error_type": "OperationalError",
+    }
+    assert "sensitive" not in str(result)

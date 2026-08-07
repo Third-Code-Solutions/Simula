@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(9);
+select extensions.plan(10);
 
 select extensions.ok(
   'api.create_campaign_lab_run_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
@@ -108,7 +108,7 @@ select extensions.ok(
   )
   and pg_catalog.pg_get_functiondef(
     'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure
-  ) like '%20260807190000::bigint%'
+  ) like '%20260807200000::bigint%'
   and pg_catalog.has_function_privilege(
     'simula_api',
     'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure,
@@ -125,7 +125,7 @@ select extensions.ok(
 select extensions.ok(
   pg_catalog.pg_get_functiondef(
     'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure
-  ) like '%20260807190000::bigint%'
+  ) like '%20260807200000::bigint%'
   and pg_catalog.has_function_privilege(
     'simula_api',
     'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure,
@@ -159,6 +159,21 @@ select extensions.ok(
       and constraints.conname = 'campaign_lab_runs_type_valid'
   ),
   'Campaign Lab run types are enforced by the database constraint'
+);
+
+select extensions.ok(
+  (
+    select pg_catalog.pg_get_constraintdef(constraints.oid) like '%success%'
+      and pg_catalog.pg_get_constraintdef(constraints.oid) like '%denied%'
+      and pg_catalog.pg_get_constraintdef(constraints.oid) like '%failure%'
+    from pg_catalog.pg_constraint as constraints
+    join pg_catalog.pg_class as relations on relations.oid = constraints.conrelid
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
+    where namespaces.nspname = 'private'
+      and relations.relname = 'audit_events'
+      and constraints.conname = 'audit_events_outcome_valid'
+  ),
+  'worker failure audit rows are admitted by the table constraint'
 );
 
 select * from extensions.finish();

@@ -11,6 +11,14 @@ import structlog
 from simula_core.safe_logs import runtime_metadata_processor, sanitize_log_event
 
 _WORKER_LOG_FIELDS = {
+    "campaign_evidence_claim_failed": frozenset({"error_type"}),
+    "campaign_evidence_evaluation_failed": frozenset({"error_type", "evidence_id"}),
+    "campaign_evidence_failure_persist_failed": frozenset({"error_code", "evidence_id"}),
+    "campaign_lab_claim_failed": frozenset({"error_type"}),
+    "campaign_lab_evaluation_failed": frozenset({"error_type", "run_id"}),
+    "campaign_lab_failure_persist_failed": frozenset({"error_code", "run_id"}),
+    "campaign_lab_retention_cleanup_failed": frozenset({"error_type"}),
+    "campaign_lab_retention_deleted": frozenset({"deleted"}),
     "run_dispatch_ambiguous": frozenset({"outbox_id"}),
     "run_dispatch_confirmation_rejected": frozenset({"outbox_id"}),
     "run_dispatch_failed": frozenset({"error_class", "outbox_id"}),
