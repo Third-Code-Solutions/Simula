@@ -47,9 +47,7 @@ function provenanceUrl(
     value.protocol !== "https:" ||
     value.hostname !== "github.com" ||
     value.port !== "" ||
-    !/^\/kurtgav\/Simula\/actions\/runs\/[0-9]+$/.test(
-      value.pathname,
-    ) ||
+    !/^\/kurtgav\/Simula\/actions\/runs\/[0-9]+$/.test(value.pathname) ||
     value.username !== "" ||
     value.password !== "" ||
     value.search !== "" ||
