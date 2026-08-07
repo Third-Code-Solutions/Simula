@@ -96,7 +96,7 @@ Every deployed server runtime requires
 - the verified archive digest in `SIMULA_RELEASE_BUNDLE_SHA256`; and
 - the verified Sigstore bundle digest in
   `SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256`; and
-- the exact `github.com/Third-Code-Solutions/Simula/actions/runs/<id>` URL in
+- the exact `github.com/kurtgav/Simula/actions/runs/<id>` URL in
   `SIMULA_RELEASE_PROVENANCE_URL`.
 
 The database readiness function independently reports the applied head and

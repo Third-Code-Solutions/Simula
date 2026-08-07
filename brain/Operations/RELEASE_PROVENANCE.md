@@ -41,7 +41,7 @@ and disables the action's independent release and artifact upload behavior.
 The expected certificate identity is:
 
 ```text
-https://github.com/Third-Code-Solutions/Simula/.github/workflows/release.yml@refs/tags/<tag>
+https://github.com/kurtgav/Simula/.github/workflows/release.yml@refs/tags/<tag>
 ```
 
 The expected issuer is:
@@ -72,7 +72,7 @@ sha256sum --check SHA256SUMS
 sha256sum --check SIGSTORE_BUNDLE_SHA256
 python -m sigstore verify identity simula-<release-sha>.tar.gz \
   --cert-identity \
-  "https://github.com/Third-Code-Solutions/Simula/.github/workflows/release.yml@refs/tags/<tag>" \
+  "https://github.com/kurtgav/Simula/.github/workflows/release.yml@refs/tags/<tag>" \
   --cert-oidc-issuer "https://token.actions.githubusercontent.com"
 ```
 
@@ -85,7 +85,7 @@ signature/identity/transparency verification are insufficient.
 
 After verification, copy the archive digest from `SHA256SUMS`, the Sigstore
 bundle digest from `SIGSTORE_BUNDLE_SHA256`, and the exact
-`github.com/Third-Code-Solutions/Simula/actions/runs/<id>` URL into the
+`github.com/kurtgav/Simula/actions/runs/<id>` URL into the
 server-only production environment. Use one lowercase UUIDv4 rollout ID for the
 entire coordinated release. Every production server fails configuration
 admission unless those values, the exact Git SHA, and the compiled database
