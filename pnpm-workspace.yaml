@@ -18,11 +18,14 @@ auditConfig:
 
 overrides:
   # Security floors. Remove only after upstream ranges resolve to patched versions.
-  "brace-expansion@2": 2.1.3
-  "brace-expansion@5": 5.0.8
-  js-yaml: 4.3.0
-  next>postcss: 8.5.19
+  "brace-expansion@1": 1.1.18
+  "brace-expansion@2": 2.1.4
+  "brace-expansion@5": 5.0.9
+  fast-uri: 3.1.5
+  js-yaml: 4.3.1
+  postcss: 8.5.23
   sharp: 0.35.0
+  undici: 7.29.0
 
 allowBuilds:
   # Native installers required by the pinned Next.js, Vite, and resolver toolchains.
@@ -59,7 +62,13 @@ minimumReleaseAgeExclude:
   - "@tailwindcss/postcss@4.3.3"
   - tailwindcss@4.3.3
   - vite@8.1.5
-  - brace-expansion@2.1.3
+  - brace-expansion@1.1.18
+  - brace-expansion@2.1.4
+  - brace-expansion@5.0.9
+  - fast-uri@3.1.5
+  - js-yaml@4.3.1
+  - postcss@8.5.23
+  - undici@7.29.0
   - "@sentry/core@10.69.0"
   - "@sentry/node-core@10.69.0"
   - "@sentry/node@10.69.0"
