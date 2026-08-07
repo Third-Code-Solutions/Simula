@@ -856,7 +856,7 @@ export type Database = {
           payload: Json
           provenance: Json
           request_sha256: string
-          retention_until: string | null
+          retention_until: string
           status: string
           title: string
           updated_at: string
@@ -873,7 +873,7 @@ export type Database = {
           payload: Json
           provenance?: Json
           request_sha256: string
-          retention_until?: string | null
+          retention_until?: string
           status?: string
           title: string
           updated_at?: string
@@ -890,7 +890,7 @@ export type Database = {
           payload?: Json
           provenance?: Json
           request_sha256?: string
-          retention_until?: string | null
+          retention_until?: string
           status?: string
           title?: string
           updated_at?: string
@@ -1056,6 +1056,7 @@ export type Database = {
           request: Json
           request_sha256: string
           result: Json | null
+          retention_until: string
           run_type: string
           stage: string
           started_at: string | null
@@ -1079,6 +1080,7 @@ export type Database = {
           request: Json
           request_sha256: string
           result?: Json | null
+          retention_until?: string
           run_type?: string
           stage?: string
           started_at?: string | null
@@ -1102,6 +1104,7 @@ export type Database = {
           request?: Json
           request_sha256?: string
           result?: Json | null
+          retention_until?: string
           run_type?: string
           stage?: string
           started_at?: string | null
@@ -2660,7 +2663,12 @@ export type Database = {
         Returns: Json
       }
       cancel_campaign_lab_run: {
-        Args: { requested_correlation_id: string; requested_run_id: string }
+        Args: {
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_run_id: string
+          requested_sha256: string
+        }
         Returns: Json
       }
       confirm_organization_deletion: {
@@ -2766,6 +2774,32 @@ export type Database = {
         Returns: Json
       }
       create_campaign_lab_run: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_request: Json
+          requested_run_type: string
+          requested_secret: Json
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_run_v2: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_request: Json
+          requested_run_type: string
+          requested_secret: Json
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_run_v3: {
         Args: {
           requested_campaign_id: string
           requested_correlation_id: string
@@ -3160,8 +3194,10 @@ export type Database = {
           requested_correlation_id: string
           requested_decision: Json
           requested_expected_version: number
+          requested_idempotency_key: string
           requested_name: string
           requested_objective: string
+          requested_sha256: string
         }
         Returns: Json
       }
@@ -4160,6 +4196,10 @@ export type Database = {
         }
         Returns: Json
       }
+      aggregate_forecast_dataset_checksum: {
+        Args: { requested_dataset_id: string }
+        Returns: string
+      }
       append_stimulus_version_atomic: {
         Args: {
           requested_content: string
@@ -4207,10 +4247,20 @@ export type Database = {
         Args: { requested_correlation_id: string; requested_run_id: string }
         Returns: Json
       }
-      cancel_campaign_lab_run_atomic: {
-        Args: { requested_correlation_id: string; requested_run_id: string }
-        Returns: Json
-      }
+      cancel_campaign_lab_run_atomic:
+        | {
+            Args: { requested_correlation_id: string; requested_run_id: string }
+            Returns: Json
+          }
+        | {
+            Args: {
+              requested_correlation_id: string
+              requested_idempotency_key: string
+              requested_run_id: string
+              requested_sha256: string
+            }
+            Returns: Json
+          }
       claim_campaign_evidence_runs: {
         Args: { requested_batch_size: number }
         Returns: {
@@ -4391,6 +4441,22 @@ export type Database = {
         }
         Returns: boolean
       }
+      complete_campaign_lab_run_v2: {
+        Args: {
+          requested_lease_token: string
+          requested_result: Json
+          requested_run_id: string
+        }
+        Returns: boolean
+      }
+      complete_campaign_lab_run_v3: {
+        Args: {
+          requested_lease_token: string
+          requested_result: Json
+          requested_run_id: string
+        }
+        Returns: boolean
+      }
       complete_organization_deletion_resource: {
         Args: { requested_claim_token: string; requested_resource_id: string }
         Returns: boolean
@@ -4522,6 +4588,32 @@ export type Database = {
         Returns: Json
       }
       create_campaign_lab_run_atomic: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_request: Json
+          requested_run_type: string
+          requested_secret: Json
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_run_atomic_v2: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_request: Json
+          requested_run_type: string
+          requested_secret: Json
+          requested_sha256: string
+        }
+        Returns: Json
+      }
+      create_campaign_lab_run_atomic_v3: {
         Args: {
           requested_campaign_id: string
           requested_correlation_id: string
@@ -4775,6 +4867,10 @@ export type Database = {
         }[]
       }
       expire_campaign_evidence_runs: {
+        Args: { requested_batch_size: number }
+        Returns: number
+      }
+      expire_campaign_lab_runs: {
         Args: { requested_batch_size: number }
         Returns: number
       }
@@ -5089,7 +5185,53 @@ export type Database = {
           succeeded_count: number
         }[]
       }
+      runtime_observability_snapshot_v2: {
+        Args: never
+        Returns: {
+          cancel_requested_count: number
+          canceled_count: number
+          failed_count: number
+          migration_version: number
+          oldest_cancel_requested_age_seconds: number
+          queued_count: number
+          retrying_count: number
+          rls_force_enabled: boolean
+          running_count: number
+          stuck_lease_count: number
+          succeeded_count: number
+        }[]
+      }
+      runtime_observability_snapshot_v3: {
+        Args: never
+        Returns: {
+          cancel_requested_count: number
+          canceled_count: number
+          failed_count: number
+          migration_version: number
+          oldest_cancel_requested_age_seconds: number
+          queued_count: number
+          retrying_count: number
+          rls_force_enabled: boolean
+          running_count: number
+          stuck_lease_count: number
+          succeeded_count: number
+        }[]
+      }
       runtime_schema_readiness: {
+        Args: never
+        Returns: {
+          migration_version: number
+          rls_force_enabled: boolean
+        }[]
+      }
+      runtime_schema_readiness_v2: {
+        Args: never
+        Returns: {
+          migration_version: number
+          rls_force_enabled: boolean
+        }[]
+      }
+      runtime_schema_readiness_v3: {
         Args: never
         Returns: {
           migration_version: number
@@ -5159,17 +5301,31 @@ export type Database = {
         }
         Returns: boolean
       }
-      update_campaign_lab_campaign_atomic: {
-        Args: {
-          requested_campaign_id: string
-          requested_correlation_id: string
-          requested_decision: Json
-          requested_expected_version: number
-          requested_name: string
-          requested_objective: string
-        }
-        Returns: Json
-      }
+      update_campaign_lab_campaign_atomic:
+        | {
+            Args: {
+              requested_campaign_id: string
+              requested_correlation_id: string
+              requested_decision: Json
+              requested_expected_version: number
+              requested_name: string
+              requested_objective: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              requested_campaign_id: string
+              requested_correlation_id: string
+              requested_decision: Json
+              requested_expected_version: number
+              requested_idempotency_key: string
+              requested_name: string
+              requested_objective: string
+              requested_sha256: string
+            }
+            Returns: Json
+          }
       update_campaign_lab_run_progress: {
         Args: {
           requested_lease_token: string
