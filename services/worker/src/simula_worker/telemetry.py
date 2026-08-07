@@ -52,14 +52,24 @@ _RUN_STATES = frozenset(
 )
 _DATABASE_OPERATIONS = frozenset(
     {
+        "claim_campaign_evidence",
+        "claim_campaign_lab",
         "claim_dispatch",
         "claim_execution",
+        "complete_campaign_evidence",
+        "complete_campaign_lab",
         "complete_behavioral_execution",
         "complete_execution",
         "confirm_dispatch",
         "evaluate_run_control",
+        "expire_campaign_evidence",
+        "expire_campaign_lab",
+        "fail_campaign_evidence",
+        "fail_campaign_lab",
         "fail_dispatch",
         "fail_execution",
+        "finalize_canceled_campaign_evidence",
+        "finalize_canceled_campaign_lab",
         "finalize_cancellations",
         "finalize_poison",
         "heartbeat_execution",
@@ -67,6 +77,8 @@ _DATABASE_OPERATIONS = frozenset(
         "reconcile_dispatch",
         "require_queue_transport",
         "runtime_snapshot",
+        "update_campaign_evidence",
+        "update_campaign_lab",
     }
 )
 _DATABASE_OUTCOMES = frozenset({"error", "success"})

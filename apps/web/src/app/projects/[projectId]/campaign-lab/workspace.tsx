@@ -949,7 +949,11 @@ function AggregateForecastResult({
 
 export function CampaignLabSelectionNotice() {
   return (
-    <section aria-labelledby="campaign-lab-selection-title" className="panel">
+    <section
+      aria-labelledby="campaign-lab-selection-title"
+      className="panel"
+      id="research"
+    >
       <p className="eyebrow">Campaign Lab stages</p>
       <h2 id="campaign-lab-selection-title">
         Select a workspace to open the workflow
@@ -1780,10 +1784,13 @@ export function CampaignLabWorkspace({
         <span aria-hidden="true"> / </span>
         <span>Campaign Simulation Lab</span>
       </nav>
-      <header className="workspace-header">
+      <section
+        aria-labelledby="campaign-lab-title"
+        className="workspace-intro"
+      >
         <div>
           <p className="eyebrow">Aggregate research · Philippines</p>
-          <h1>Campaign Simulation Lab</h1>
+          <h1 id="campaign-lab-title">Campaign Simulation Lab</h1>
           <p className="lede">
             Compare authored variants with population weighting, repeated seeded
             runs, survey calibration, and historical backtesting.
@@ -1798,7 +1805,7 @@ export function CampaignLabWorkspace({
             synthetic-only. No final viral score. No vote-share claim.
           </p>
         </div>
-      </header>
+      </section>
       {error ? (
         <p className="problem" role="alert">
           {error}
@@ -1862,28 +1869,31 @@ export function CampaignLabWorkspace({
           </div>
         </div>
       </section>
-      <section className="panel" aria-labelledby="flow-title" id="research">
-        <p className="eyebrow">02 / Evidence workflow</p>
-        <h2 id="flow-title">Traceable flow</h2>
-        <ol className="workflow-list">
-          {STAGES.map((stage, index) => (
-            <li
-              className={index <= activeStageIndex ? "is-active" : undefined}
-              id={`stage-${STAGE_KEYS[index]}`}
-              key={stage}
-            >
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              {stage}
-            </li>
-          ))}
-        </ol>
-        <p className="field-note">
-          Survey-derived and historical evidence remain separate stages. The
-          deterministic first release exposes component metrics and stability,
-          not a synthesized campaign verdict.
-        </p>
-      </section>
-      {!selectedCampaignId ? <CampaignLabSelectionNotice /> : null}
+      {selectedCampaignId ? (
+        <section className="panel" aria-labelledby="flow-title" id="research">
+          <p className="eyebrow">02 / Evidence workflow</p>
+          <h2 id="flow-title">Traceable flow</h2>
+          <ol className="workflow-list">
+            {STAGES.map((stage, index) => (
+              <li
+                className={index <= activeStageIndex ? "is-active" : undefined}
+                id={`stage-${STAGE_KEYS[index]}`}
+                key={stage}
+              >
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                {stage}
+              </li>
+            ))}
+          </ol>
+          <p className="field-note">
+            Survey-derived and historical evidence remain separate stages. The
+            deterministic first release exposes component metrics and stability,
+            not a synthesized campaign verdict.
+          </p>
+        </section>
+      ) : (
+        <CampaignLabSelectionNotice />
+      )}
       {selectedCampaignId ? (
         <section
           aria-labelledby="research-upload-title"

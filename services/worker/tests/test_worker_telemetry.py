@@ -14,6 +14,21 @@ from simula_worker.main import (
 from simula_worker.telemetry import WorkerMetricsServer, WorkerTelemetry
 from structlog.testing import capture_logs
 
+CAMPAIGN_DATABASE_OPERATIONS = (
+    "claim_campaign_evidence",
+    "claim_campaign_lab",
+    "complete_campaign_evidence",
+    "complete_campaign_lab",
+    "expire_campaign_evidence",
+    "expire_campaign_lab",
+    "fail_campaign_evidence",
+    "fail_campaign_lab",
+    "finalize_canceled_campaign_evidence",
+    "finalize_canceled_campaign_lab",
+    "update_campaign_evidence",
+    "update_campaign_lab",
+)
+
 
 def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -> None:
     telemetry = WorkerTelemetry()
@@ -97,6 +112,25 @@ def test_worker_metrics_have_bounded_labels_and_explicit_zero_external_calls() -
     assert "run_id" not in rendered
     with pytest.raises(ValueError, match="not allowlisted"):
         telemetry.observe_job("sensitive-unbounded-status", duration_seconds=0)
+
+
+@pytest.mark.parametrize("operation", CAMPAIGN_DATABASE_OPERATIONS)
+def test_campaign_database_operations_are_allowlisted(operation: str) -> None:
+    telemetry = WorkerTelemetry()
+
+    telemetry.observe_database(
+        operation,
+        "success",
+        duration_seconds=0.01,
+        pool_size=2,
+        pool_available=1,
+    )
+
+    rendered = telemetry.render().decode()
+    assert (
+        f'simula_worker_database_queries_total{{operation="{operation}",outcome="success"}}'
+        " 1.0" in rendered
+    )
 
 
 async def _request(port: int, request: bytes) -> bytes:
