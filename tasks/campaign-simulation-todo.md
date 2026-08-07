@@ -25,4 +25,4 @@
 - [x] Add source-citation knowledge graph, claim grounding, conflict detection,
       and freshness metadata.
 - [x] Add calibration version history, drift monitoring, and execution receipts.
-- [ ] Re-run full release gates and independent review.
+- [x] Re-run full release gates and independent review.

@@ -1,11 +1,57 @@
 ---
 title: Campaign Simulation Lab current state
 status: active
-updated: 2026-08-05
+updated: 2026-08-06
 classification: OBSERVED
 ---
 
 # Current state
+
+## Current branch audit (2026-08-06)
+
+- The current branch contains the latest functional Campaign Lab change: a
+  bounded SIMULA-native survey form and response workflow. The implementation
+  is committed locally, while production promotion still waits for the
+  external GitHub Actions billing gate to become runnable.
+- The current branch retains the required evidence statuses, separate
+  survey-calibration and historical-backtest artifacts, and no standalone
+  `viral_score` output.
+- Production evidence-source admission now requires an approved registry row
+  whose allowed use names Campaign Lab research/simulation, calibration,
+  backtesting, or population weighting; the hosted local-rehearsal fixture is
+  therefore rejected for production evidence.
+- The permanent Campaign Lab sidebar now has stable pre-run anchors for all
+  conditionally rendered workflow sections; the cohort findings block uses a
+  separate `cohort-findings` anchor after results exist.
+- PR `#8` carries the current branch change. Vercel web and admin previews are
+  READY for code commit `395e29b9f302ceabd0d06d40339b4021b404eb0b`, while
+  Railway and Vercel production remain on the prior merged `main` release until
+  the required GitHub checks are green.
+- Local `pnpm check` is green for the current code commit. The latest observed
+  GitHub Actions PR `#8` run `31089986896` still fails all required jobs before
+  runner steps, with no job logs, so production promotion is not claimed.
+
+## Provider recheck (2026-08-06)
+
+- Railway source remains connected to `Third-Code-Solutions/Simula` on `main`
+  for API, worker, and web. Watch-pattern filtering skipped the last docs-only
+  web deployment; production health remains ready/ok on release SHA
+  `3bdb3f02c0bdcbec04b8fd09ef1fd61cbc573c07`.
+- The unused `SIMULA_DATABASE_URL` variable was removed from the Railway web
+  service with deploys suppressed. The web app reads only public Supabase
+  variables; the API and worker retain their separate least-privilege database
+  variables.
+- Supabase project `ywiwmczccktwzqyhzhiz` contains the Campaign Lab tables with
+  RLS enabled and one admitted PSA population frame. The native survey-form
+  migration is applied as hosted version `20260806093913`; its kind constraint
+  is verified, no public response table exists, and no Campaign Lab rows or
+  worker-only secrets are currently present.
+- Supabase security advisory state is unchanged: leaked-password protection is
+  disabled and requires an owner-authenticated dashboard setting change; no
+  password or billing mutation was attempted.
+- No Vercel manual deployment or CI rerun was initiated during this recheck;
+  the code preview was connected and READY, and the next docs-only preview is
+  expected to be canceled by the existing ignored-build guards.
 
 ## Completed in this turn
 
@@ -55,6 +101,17 @@ classification: OBSERVED
   external response exports in memory with duplicate, bot, low-quality,
   malformed, consent, rights, and prohibited-field controls. Respondent rows are
   not persisted.
+- SIMULA-native survey forms now require versioned provenance, calibration
+  authorization, affirmative consent, bounded aggregate questions, and no
+  identity, political-affiliation, vulnerability, or free-text fields. Forms
+  are tenant-scoped artifacts; response batches are validated, queued through
+  the worker-only survey-import envelope, reduced to aggregate observations,
+  and deleted after terminal completion. This is implemented, not yet
+  survey-calibrated against a real Philippine dataset.
+- The committed native survey migration
+  `20260806100000_campaign_lab_native_survey_forms.sql` was applied to
+  `ywiwmczccktwzqyhzhiz` as hosted version `20260806093913` and verified with
+  forced-RLS, constraint, empty-row, and no-public-response-table queries.
 - Native bounded Campaign Simulation Lab core now composes the population frame,
   deterministic weighted sampling, repeated seeded runs, structured synthetic
   personas, disclosed interviews, compliance review, and a 30-section report
@@ -216,7 +273,7 @@ classification: OBSERVED
   Campaign Lab routes, report provenance, retention, cancellation, and private
   holdout deletion remains unverified because no authorized test session was
   supplied.
-- The latest GitHub Actions `main` run (`31019541395`) failed all required jobs
+- The latest GitHub Actions PR `#8` run (`31029192403`) failed all required jobs
   before runner steps were created; GitHub returned no job logs. The external
   account payment/spending-limit gate must be repaired before CI can provide a
   green verification signal. This is separate from the local green release check
@@ -233,6 +290,9 @@ classification: OBSERVED
   membership shape, absent authored Auth fixtures, and absent local seed
   fixtures). Hosted Campaign Lab migration/function/grant checks remain
   separately verified; these fixtures must not be copied into production.
+- The broader local `pnpm verify` gate could not start because Docker Desktop
+  reports `hasNoVirtualization: true` and the Linux engine is stopped. This is a
+  host-runtime limitation, not a SIMULA test result.
 
 ## Truth boundary
 

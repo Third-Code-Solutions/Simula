@@ -86,8 +86,10 @@ function SidebarItem({
         className="sidebar-nav-link sidebar-nav-link-disabled"
         title={disabledReason}
       >
-        {label}
-        <small>{disabledReason}</small>
+        <span aria-disabled="true" className="sidebar-nav-link-label">
+          {label}
+        </span>
+        {disabledReason ? <small>{disabledReason}</small> : null}
       </span>
     );
   }
@@ -98,7 +100,7 @@ function SidebarItem({
       className="sidebar-nav-link"
       href={href}
     >
-      {label}
+      <span className="sidebar-nav-link-label">{label}</span>
     </Link>
   );
 }

@@ -73,7 +73,7 @@ EvidenceLabel = Literal[
 ]
 CampaignEvidenceStatus = Literal[
     "Synthetic-only",
-    "Mixed evidence",
+    "Partially calibrated",
     "Survey-calibrated",
     "Historically backtested",
     "Insufficient evidence",
@@ -230,6 +230,7 @@ class CampaignLabPolicyError(ValueError):
 
 class CampaignLabResearchSource(FrozenModel):
     source_id: Key
+    registry_source_version_id: UUID | None = None
     title: str = Field(min_length=2, max_length=200)
     source_type: Literal["public_report", "public_dataset", "client_provided", "survey", "asset"]
     source_organization: str = Field(min_length=2, max_length=160)
@@ -1533,12 +1534,8 @@ def build_campaign_lab_report(
     )
     calibration_status = str(calibration.get("evidence_status") or calibration.get("status"))
     backtest_status = str(backtest.get("evidence_status") or backtest.get("status"))
-    if backtest_status == "Historically backtested" and calibration_status in {
-        "Partially calibrated",
-        "Survey-calibrated",
-    }:
-        evidence_status: CampaignEvidenceStatus = "Mixed evidence"
-    elif backtest_status == "Historically backtested":
+    evidence_status: CampaignEvidenceStatus
+    if backtest_status == "Historically backtested":
         evidence_status = "Historically backtested"
     elif calibration_status in {"Partially calibrated", "Survey-calibrated"}:
         evidence_status = cast(CampaignEvidenceStatus, calibration_status)

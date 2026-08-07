@@ -7,11 +7,12 @@ classification: PROPOSED
 
 # Readiness boundary
 
-SIMULA is a research and message-testing system. It is not an election
-prediction service, voter file, political-affiliation inference system, or
-autonomous publishing system. Synthetic output must be labeled synthetic;
-calibration and backtesting results must retain their evidence status and
-limitations.
+SIMULA is a research and message-testing system. It is not a candidate/party or
+individual-voter election prediction service, voter file,
+political-affiliation inference system, or autonomous publishing system. Its
+separate national aggregate-turnout forecast is experimental and must retain
+its source, retrospective evidence status, scope-sensitivity bounds, and
+limitations. Synthetic output must remain labeled synthetic.
 
 ## Engineering controls
 

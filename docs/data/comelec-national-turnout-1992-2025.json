@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "dataset_key": "comelec_national_turnout",
+  "source": {
+    "source_id": "comelec_national_turnout",
+    "source_version": "retrieved_2026_08_07",
+    "owner": "Commission on Elections",
+    "license": "Public domain unless otherwise stated on the COMELEC website",
+    "allowed_uses": [
+      "Aggregate turnout forecasting, historical backtesting, and reproducibility auditing with attribution and stated limitations."
+    ],
+    "geography": "Philippines national",
+    "observation_period": "1992 through 2025 National and Local Elections"
+  },
+  "source_bundle_sha256": "8e590cfa9e29c6beb721ca0293b5be472e0eaccaa95d582dcf27df0c8172a7cb",
+  "source_bundle_formula": "sha256 of artifact_key|sha256|bytes lines sorted by artifact_key and joined with LF",
+  "normalized_sha256": "bec5d068c5380262077abe60edcfadd8ff0f5a95443927f45e580efd15a55486",
+  "normalized_formula": "Database canonical aggregate observation lines sorted by election_date, election_key, contest_key, geography_key, option_key and joined with LF",
+  "retrieved_at_utc": "2026-08-07T00:00:00Z",
+  "artifacts": [
+    {
+      "artifact_key": "comelec_comparative_turnout_1992_2022",
+      "filename": "Comperative_Stats_1992_2002_NLE.pdf",
+      "canonical_url": "https://www.comelec.gov.ph/php-tpls-attachments/2022NLE/Statistics/Comperative_Stats_1992_2002_NLE.pdf",
+      "final_url": "https://www.comelec.gov.ph/php-tpls-attachments/2022NLE/Statistics/Comperative_Stats_1992_2002_NLE.pdf",
+      "http_status": 200,
+      "content_type": "application/pdf",
+      "bytes": 139254,
+      "sha256": "c4421379e76f1cb9ff52fd6fc3d334ad262aada55b6d49360d2732685c573dce",
+      "http_last_modified": "2022-11-07T05:51:57Z",
+      "artifact_status": "final_statistics",
+      "extraction_method": "Source-derived extraction from checksum-locked PDF text streams, cross-checked against the two-page ERSD comparative charts"
+    },
+    {
+      "artifact_key": "comelec_2025_local_aes_turnout",
+      "filename": "2025_NLE_VotersTurnoutbyCityMun_OFOV_112525.xlsx",
+      "canonical_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/2025_NLE_VotersTurnoutbyCityMun_OFOV_112525.xlsx",
+      "final_url": "https://www.comelec.gov.ph/php-tpls-attachments/2025NLE/Statistics/2025_NLE_VotersTurnoutbyCityMun_OFOV_112525.xlsx",
+      "http_status": 200,
+      "content_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "bytes": 225209,
+      "sha256": "316647c5b417fedc2fa27a400fee4f705a48f9235cefa5127949cc58dbaa5d9d",
+      "http_last_modified": "2025-12-02T06:42:52Z",
+      "artifact_status": "final_statistics",
+      "extraction_method": "SUMMARY sheet, Local AES row"
+    }
+  ],
+  "observations": [
+    {
+      "election_year": 1992,
+      "election_date": "1992-05-11",
+      "registered_voters": 32141079,
+      "voters_who_actually_voted": 24254954,
+      "published_turnout_pct": 75.46,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 1995,
+      "election_date": "1995-05-08",
+      "registered_voters": 36415154,
+      "voters_who_actually_voted": 25736505,
+      "published_turnout_pct": 70.68,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 1998,
+      "election_date": "1998-05-11",
+      "registered_voters": 34117056,
+      "voters_who_actually_voted": 29474309,
+      "published_turnout_pct": 86.39,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 2001,
+      "election_date": "2001-05-14",
+      "registered_voters": 36354898,
+      "voters_who_actually_voted": 27737268,
+      "published_turnout_pct": 76.3,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 2004,
+      "election_date": "2004-05-10",
+      "registered_voters": 43522634,
+      "voters_who_actually_voted": 33510092,
+      "published_turnout_pct": 76.99,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 2007,
+      "election_date": "2007-05-14",
+      "registered_voters": 44881129,
+      "voters_who_actually_voted": 32808937,
+      "published_turnout_pct": 73.1,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 2010,
+      "election_date": "2010-05-10",
+      "registered_voters": 50977118,
+      "voters_who_actually_voted": 38179475,
+      "published_turnout_pct": 74.9,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 2013,
+      "election_date": "2013-05-13",
+      "registered_voters": 52014648,
+      "voters_who_actually_voted": 40214324,
+      "published_turnout_pct": 77.31,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 2016,
+      "election_date": "2016-05-09",
+      "registered_voters": 54363844,
+      "voters_who_actually_voted": 44549848,
+      "published_turnout_pct": 81.95,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 2019,
+      "election_date": "2019-05-13",
+      "registered_voters": 61843771,
+      "voters_who_actually_voted": 46937139,
+      "published_turnout_pct": 75.9,
+      "scope_code": "comelec_comparative_headline",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022"
+    },
+    {
+      "election_year": 2022,
+      "election_date": "2022-05-09",
+      "registered_voters": 65831806,
+      "voters_who_actually_voted": 55431939,
+      "published_turnout_pct": 84.2,
+      "scope_code": "comelec_comparative_headline_lav_and_63_barmm_barangays",
+      "source_artifact_key": "comelec_comparative_turnout_1992_2022",
+      "normalization_notes": "COMELEC states that this headline includes local absentee voting and 63 BARMM barangays."
+    },
+    {
+      "election_year": 2025,
+      "election_date": "2025-05-12",
+      "registered_voters": 68431965,
+      "voters_who_actually_voted": 57070411,
+      "published_turnout_pct": 83.39729978526847,
+      "scope_code": "local_aes",
+      "source_artifact_key": "comelec_2025_local_aes_turnout",
+      "normalization_notes": "Local AES only. The workbook reports overseas voting and local absentee-voting actual voters separately."
+    }
+  ],
+  "default_targets": [
+    {
+      "election_key": "nle_2028",
+      "election_date": "2028-05-08",
+      "contest_key": "voter_turnout",
+      "geography_key": "philippines",
+      "option_key": "did_not_vote",
+      "option_group_key": "did_not_vote"
+    },
+    {
+      "election_key": "nle_2028",
+      "election_date": "2028-05-08",
+      "contest_key": "voter_turnout",
+      "geography_key": "philippines",
+      "option_key": "voted",
+      "option_group_key": "voted"
+    }
+  ],
+  "known_limitations": [
+    "The national headline series has scope drift; 2022 includes local absentee voting and 63 BARMM barangays, while 2025 is the Local AES row.",
+    "The selected forecast is a transparent persistence benchmark because it outperformed linear trend during nested walk-forward selection.",
+    "This supports aggregate national turnout only. It does not predict candidates, parties, individuals, persuasion, or causal campaign effects.",
+    "Raw hashes identify retrieved bytes but are not agency digital signatures; stable-looking agency URLs can change."
+  ],
+  "validation": {
+    "protocol": "retrospective_walk_forward",
+    "sealed_out_of_time_holdout": false,
+    "retrospective_quality_gate_passed": true,
+    "evidence_status": "experimental",
+    "holdout_elections": 9,
+    "mae_percentage_points": 4.299509180109767,
+    "baseline_mae_percentage_points": 4.299509180109767,
+    "interval_coverage": 0.8888888888888888,
+    "scope_sensitivity_method": "Recompute after excluding the latest available training election.",
+    "reason_not_validated": "The 2025 outcome was not pre-registered as a sealed holdout before model development."
+  },
+  "attribution": "Derived from official aggregate statistics published by the Philippine Commission on Elections. SIMULA transformation is not an official COMELEC product or endorsement."
+}

@@ -12,6 +12,7 @@ import {
   createSurveyCalibration,
   getCampaignEvidenceEvents,
   getCampaignEvidenceRun,
+  getProject,
 } from "@/lib/api";
 
 import { SignOutButton } from "../../../sign-out-button";
@@ -168,6 +169,7 @@ function EvidenceResultSummary({
 export function CampaignEvidenceWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
+  const [organizationId, setOrganizationId] = useState<string>();
   const [sourceVersionId, setSourceVersionId] = useState("");
   const [syntheticJson, setSyntheticJson] = useState("[]");
   const [surveyJson, setSurveyJson] = useState(surveyExample);
@@ -182,6 +184,21 @@ export function CampaignEvidenceWorkspace({
     null,
   );
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    void getProject(projectId)
+      .then((project) => {
+        if (active) setOrganizationId(project.organization_id);
+      })
+      .catch(() => {
+        // The evidence workspace can still render its own project-scoped data
+        // if the navigation context request is temporarily unavailable.
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId]);
 
   useEffect(() => {
     if (!run || TERMINAL_STATES.has(run.status)) return;
@@ -297,7 +314,11 @@ export function CampaignEvidenceWorkspace({
         </Link>
         <SignOutButton />
       </header>
-      <WorkspaceSidebar current="evidence" projectId={projectId} />
+      <WorkspaceSidebar
+        current="evidence"
+        organizationId={organizationId}
+        projectId={projectId}
+      />
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href={`/projects/${projectId}`}>Project</Link>
         <span aria-hidden="true"> / </span>

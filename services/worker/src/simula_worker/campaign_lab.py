@@ -17,6 +17,10 @@ from uuid import UUID
 
 import structlog
 from pydantic import ValidationError
+from simula_core.aggregate_forecasting import (
+    AggregateForecastRequest,
+    forecast_aggregate_election,
+)
 from simula_core.calibration_monitoring import (
     build_calibration_version_history,
     monitor_calibration_drift,
@@ -49,6 +53,7 @@ from simula_core.survey_calibration import (
     SyntheticVariantObservation,
     calibrate_synthetic_panel,
 )
+from simula_core.survey_forms import NativeSurveyForm, native_survey_rows
 from simula_core.survey_imports import (
     SurveyImportFieldMap,
     SurveyImportFormat,
@@ -181,6 +186,51 @@ def _evaluate_survey_import(
     return _import_survey_payload(request, secret_payload)
 
 
+def _evaluate_native_survey_import(
+    request: Mapping[str, object], secret_payload: Mapping[str, object] | None
+) -> Mapping[str, object]:
+    """Normalize a SIMULA-native form without exposing respondent rows."""
+
+    if secret_payload is None:
+        raise ValueError("native survey responses are missing")
+    raw_form = secret_payload.get("native_form")
+    raw_responses = secret_payload.get("responses")
+    if not isinstance(raw_form, Mapping) or not isinstance(raw_responses, list):
+        raise ValueError("native survey worker envelope is invalid")
+    form = NativeSurveyForm.model_validate(raw_form)
+    rows = native_survey_rows(form, raw_responses)
+    metadata_raw = form.provenance.model_dump(mode="json")
+    metadata = SurveyImportMetadata.model_validate(metadata_raw)
+    field_map = SurveyImportFieldMap(
+        variant_key="variant_key",
+        cohort_key="cohort_key",
+        reaction_positive="positive",
+        reaction_neutral="neutral",
+        reaction_negative="negative",
+        reaction_mixed="mixed",
+        metric_clarity="clarity",
+        metric_relevance="relevance",
+        metric_trust="trust",
+        metric_persuasiveness="persuasiveness",
+        metric_consideration="consideration",
+        share_intent=(
+            "share_intent"
+            if any(question.key == "share_intent" for question in form.questions)
+            else None
+        ),
+        respondent_key="response_id",
+        quality_score="quality",
+        completed_flag="completed",
+    )
+    imported = import_survey(
+        rows,
+        import_format="generic_json",
+        metadata=metadata,
+        field_map=field_map,
+    )
+    return imported.model_dump(mode="json")
+
+
 def _evaluate_backtest(
     request: Mapping[str, object], secret_payload: Mapping[str, object] | None
 ) -> Mapping[str, object]:
@@ -203,6 +253,34 @@ def _evaluate_backtest(
         outcomes=outcomes,
         baseline_prediction_set=baseline,
     ).model_dump(mode="json")
+
+
+def _evaluate_aggregate_forecast(
+    request: Mapping[str, object], secret_payload: Mapping[str, object] | None
+) -> Mapping[str, object]:
+    if "source" in request or "observations" in request:
+        raise ValueError("aggregate forecast history must remain worker-only")
+    if secret_payload is None:
+        raise ValueError("aggregate forecast official history is missing")
+    source = secret_payload.get("source")
+    observations = secret_payload.get("observations")
+    admitted_targets = secret_payload.get("admitted_targets")
+    if (
+        not isinstance(source, Mapping)
+        or not isinstance(observations, list)
+        or not isinstance(admitted_targets, list)
+    ):
+        raise ValueError("aggregate forecast official history is invalid")
+    forecast_request = AggregateForecastRequest.model_validate(
+        {
+            "model_version": request.get("model_version"),
+            "source": source,
+            "observations": observations,
+            "admitted_targets": admitted_targets,
+            "targets": request.get("targets"),
+        }
+    )
+    return forecast_aggregate_election(forecast_request).model_dump(mode="json")
 
 
 def _evaluate_research(
@@ -354,9 +432,13 @@ def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]
     if claim.run_type == "survey_calibration":
         return _evaluate_calibration(claim.request, claim.secret_payload)
     if claim.run_type == "survey_import":
+        if claim.request.get("collection_mode") == "simula_native":
+            return _evaluate_native_survey_import(claim.request, claim.secret_payload)
         return _evaluate_survey_import(claim.request, claim.secret_payload)
     if claim.run_type == "historical_backtest":
         return _evaluate_backtest(claim.request, claim.secret_payload)
+    if claim.run_type == "aggregate_forecast":
+        return _evaluate_aggregate_forecast(claim.request, claim.secret_payload)
     if claim.run_type == "research_ingestion":
         return _evaluate_research(claim.request, claim.secret_payload)
     if claim.run_type == "interview":

@@ -95,6 +95,7 @@ describe("workspace navigation", () => {
       "aria-current",
       "page",
     );
+    expect(screen.getAllByRole("link")).toHaveLength(23);
     expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
       "href",
       "/projects/project-1/campaign-lab#overview",

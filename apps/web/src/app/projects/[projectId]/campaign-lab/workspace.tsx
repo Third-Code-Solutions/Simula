@@ -9,19 +9,23 @@ import {
   type CampaignLabAuditPage,
   type CampaignLabCampaign,
   type CampaignLabDurableRun,
+  type CampaignLabForecastDataset,
   type CampaignLabResearchRun,
   type CampaignLabSimulationResult,
   type CampaignLabRunStatus,
   createCampaignLabCampaign,
   createCampaignLabBacktest,
+  createCampaignLabAggregateForecast,
   createCampaignLabCalibration,
   createCampaignLabComplianceReview,
   createCampaignLabInterview,
+  createCampaignLabNativeSurveyForm,
   createCampaignLabReport,
   createCampaignLabResearch,
   createCampaignLabSimulation,
   createCampaignLabSurveyImport,
   getCampaignLabBacktestRun,
+  getCampaignLabAggregateForecastRun,
   getCampaignLabAudit,
   getCampaignLabCalibrationRun,
   getCampaignLabComplianceRun,
@@ -32,7 +36,10 @@ import {
   getCampaignLabSimulationStatus,
   getCampaignLabSurveyImportRun,
   getMethodologyRegistry,
+  getProject,
   listCampaignLabCampaigns,
+  listCampaignLabForecastDatasets,
+  submitCampaignLabNativeSurveyResponses,
   type MethodologyRegistry,
 } from "@/lib/api";
 
@@ -52,6 +59,7 @@ const STAGES = [
   "Survey import",
   "Survey calibration",
   "Historical backtest",
+  "Official forecast",
   "Compliance",
   "Report",
 ] as const;
@@ -72,8 +80,25 @@ const STAGE_KEYS = [
   "survey_imported",
   "calibrated",
   "backtested",
+  "forecasted",
   "compliance_reviewed",
   "reported",
+] as const;
+
+const CAMPAIGN_LAB_STAGE_ANCHORS = [
+  ["research-upload", "Research upload"],
+  ["audience-cohorts", "Audience cohorts"],
+  ["message-lab", "Message lab"],
+  ["simulation-config", "Simulation configuration"],
+  ["agent-activity", "Agent activity"],
+  ["persona-interviews", "Persona interviews"],
+  ["surveys", "Survey import"],
+  ["calibration", "Survey calibration"],
+  ["backtesting", "Historical backtesting"],
+  ["forecasting", "Official forecast"],
+  ["compliance", "Compliance review"],
+  ["reports", "Evidence reports"],
+  ["audit", "Audit trail"],
 ] as const;
 
 type PopulationFrameSelection = Readonly<{
@@ -438,6 +463,98 @@ const surveyFieldMapExample = JSON.stringify(
   2,
 );
 
+const nativeSurveyFormExample = JSON.stringify(
+  {
+    version: 1,
+    title: "Native message calibration",
+    description: "Consented aggregate message-testing survey.",
+    language: "taglish",
+    consent_text: "I agree to aggregate research use.",
+    privacy_notice:
+      "No identity, contact, political-affiliation, or free-text fields.",
+    provenance: {
+      source_id: "simula_native_survey",
+      source_version: "v1",
+      owner: "Research owner",
+      license: "Consented internal research",
+      allowed_uses: ["survey calibration"],
+      collection_period: "2026-Q3",
+      geography: "Philippines",
+      methodology: "Describe the consented aggregate message-test method.",
+      consent_recorded: true,
+      authorized_for_calibration: true,
+      quality_filter_version: "native_response_quality_v1",
+      known_biases: ["Document sample bias."],
+      coverage_limitations: ["Not a population estimate."],
+    },
+    questions: [
+      {
+        key: "variant_key",
+        kind: "variant",
+        label: "Which message did you see?",
+        options: ["control", "variant_a"],
+      },
+      {
+        key: "cohort_key",
+        kind: "cohort",
+        label: "Aggregate cohort",
+        options: ["metro", "visayas"],
+      },
+      {
+        key: "reaction",
+        kind: "reaction",
+        label: "Initial reaction",
+        options: ["positive", "neutral", "negative", "mixed"],
+      },
+      { key: "clarity", kind: "metric", label: "Clarity (0-100)" },
+      { key: "relevance", kind: "metric", label: "Relevance (0-100)" },
+      { key: "trust", kind: "metric", label: "Trust (0-100)" },
+      {
+        key: "persuasiveness",
+        kind: "metric",
+        label: "Persuasiveness (0-100)",
+      },
+      {
+        key: "consideration",
+        kind: "metric",
+        label: "Consideration (0-100)",
+      },
+      {
+        key: "share_intent",
+        kind: "share_intent",
+        label: "Share intent (0-1 or 0-100)",
+        required: false,
+      },
+      { key: "consent", kind: "consent", label: "Consent" },
+    ],
+    max_batch_size: 100,
+  },
+  null,
+  2,
+);
+
+const nativeSurveyResponsesExample = JSON.stringify(
+  [
+    {
+      response_id: "opaque-response-1",
+      answers: {
+        variant_key: "variant_a",
+        cohort_key: "metro",
+        reaction: "positive",
+        clarity: 80,
+        relevance: 78,
+        trust: 74,
+        persuasiveness: 71,
+        consideration: 69,
+        share_intent: 0.62,
+        consent: true,
+      },
+    },
+  ],
+  null,
+  2,
+);
+
 const surveyDatasetExample = JSON.stringify(
   {
     provenance: {
@@ -752,9 +869,112 @@ function useDurableRunPolling(
   }, [fetchRun, run]);
 }
 
+function AggregateForecastResult({
+  result,
+}: Readonly<{ result: Readonly<Record<string, unknown>> }>) {
+  const predictions = Array.isArray(result.predictions)
+    ? result.predictions.filter(isRecord)
+    : [];
+  const backtest = isRecord(result.backtest) ? result.backtest : undefined;
+  const evidenceStatus =
+    typeof result.evidence_status === "string"
+      ? result.evidence_status.replaceAll("_", " ")
+      : "unknown";
+  return (
+    <div aria-live="polite" className="panel">
+      <p className="eyebrow">Official aggregate forecast</p>
+      <h3>{evidenceStatus}</h3>
+      <p className="field-note">
+        Respondent data used: <strong>no</strong>. Strict walk-forward MAE:{" "}
+        <strong>
+          {typeof backtest?.mae === "number"
+            ? `${backtest.mae.toFixed(2)} points`
+            : "insufficient holdouts"}
+        </strong>
+        .
+      </p>
+      {predictions.length > 0 ? (
+        <div className="table-shell">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Option</th>
+                <th scope="col">Forecast</th>
+                <th scope="col">Uncertainty interval</th>
+                <th scope="col">Scope sensitivity</th>
+                <th scope="col">Geography</th>
+              </tr>
+            </thead>
+            <tbody>
+              {predictions.map((prediction) => {
+                const option = String(prediction.option_key ?? "unknown");
+                const share = prediction.predicted_vote_share;
+                const lower = prediction.interval_lower;
+                const upper = prediction.interval_upper;
+                const scopeLower = prediction.scope_sensitivity_lower;
+                const scopeUpper = prediction.scope_sensitivity_upper;
+                return (
+                  <tr key={`${String(prediction.geography_key)}-${option}`}>
+                    <th scope="row">{option.replaceAll("_", " ")}</th>
+                    <td>
+                      {typeof share === "number" ? `${share.toFixed(1)}%` : "—"}
+                    </td>
+                    <td>
+                      {typeof lower === "number" && typeof upper === "number"
+                        ? `${lower.toFixed(1)}–${upper.toFixed(1)}%`
+                        : "—"}
+                    </td>
+                    <td>
+                      {typeof scopeLower === "number" &&
+                      typeof scopeUpper === "number"
+                        ? `${scopeLower.toFixed(1)}–${scopeUpper.toFixed(1)}%`
+                        : "—"}
+                    </td>
+                    <td>{String(prediction.geography_key ?? "unknown")}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      <p className="field-note">
+        Retrospective aggregate association only. Not a sealed out-of-time
+        validation, person-level prediction, or causal proof that a message
+        persuades anyone.
+      </p>
+    </div>
+  );
+}
+
+export function CampaignLabSelectionNotice() {
+  return (
+    <section aria-labelledby="campaign-lab-selection-title" className="panel">
+      <p className="eyebrow">Campaign Lab stages</p>
+      <h2 id="campaign-lab-selection-title">
+        Select a workspace to open the workflow
+      </h2>
+      <p className="field-note">
+        The permanent sidebar remains available while you create or select a
+        Campaign Lab workspace. Each destination below is a stable landing point
+        for the corresponding stage.
+      </p>
+      <ol className="workflow-list">
+        {CAMPAIGN_LAB_STAGE_ANCHORS.map(([id, label], index) => (
+          <li id={id} key={id}>
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            {label}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 export function CampaignLabWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
+  const [organizationId, setOrganizationId] = useState<string>();
   const [campaigns, setCampaigns] = useState<
     ReadonlyArray<CampaignLabCampaign>
   >([]);
@@ -776,15 +996,33 @@ export function CampaignLabWorkspace({
   const [surveyImportFormat, setSurveyImportFormat] = useState("csv");
   const [surveyMetadataJson, setSurveyMetadataJson] = useState("");
   const [surveyFieldMapJson, setSurveyFieldMapJson] = useState("");
+  const [surveySourceVersionId, setSurveySourceVersionId] = useState("");
   const [surveyRun, setSurveyRun] = useState<CampaignLabDurableRun>();
   const [surveyDatasetJson, setSurveyDatasetJson] = useState("");
+  const [nativeSurveyFormJson, setNativeSurveyFormJson] = useState(
+    nativeSurveyFormExample,
+  );
+  const [nativeSurveyFormId, setNativeSurveyFormId] = useState("");
+  const [nativeSurveyResponsesJson, setNativeSurveyResponsesJson] = useState(
+    nativeSurveyResponsesExample,
+  );
   const [syntheticObservationsJson, setSyntheticObservationsJson] =
     useState("[]");
   const [calibrationRun, setCalibrationRun] = useState<CampaignLabDurableRun>();
+  const [calibrationSourceVersionId, setCalibrationSourceVersionId] =
+    useState("");
   const [backtestProtocolJson, setBacktestProtocolJson] = useState("");
   const [backtestPredictionJson, setBacktestPredictionJson] = useState("");
   const [backtestOutcomesJson, setBacktestOutcomesJson] = useState("");
+  const [backtestOutcomeSetId, setBacktestOutcomeSetId] = useState("");
   const [backtestRun, setBacktestRun] = useState<CampaignLabDurableRun>();
+  const [forecastDatasets, setForecastDatasets] = useState<
+    ReadonlyArray<CampaignLabForecastDataset>
+  >([]);
+  const [forecastDatasetId, setForecastDatasetId] = useState("");
+  const [forecastTargetsJson, setForecastTargetsJson] = useState("[]");
+  const [forecastRun, setForecastRun] = useState<CampaignLabDurableRun>();
+  const [forecastDatasetError, setForecastDatasetError] = useState<string>();
   const [complianceJson, setComplianceJson] = useState(complianceExample);
   const [complianceReviewer, setComplianceReviewer] = useState("");
   const [complianceRun, setComplianceRun] = useState<CampaignLabDurableRun>();
@@ -840,6 +1078,12 @@ export function CampaignLabWorkspace({
     (pollError) => setError(problemMessage(pollError)),
   );
   useDurableRunPolling(
+    forecastRun,
+    getCampaignLabAggregateForecastRun,
+    setForecastRun,
+    (pollError) => setError(problemMessage(pollError)),
+  );
+  useDurableRunPolling(
     complianceRun,
     complianceFetcher,
     setComplianceRun,
@@ -860,15 +1104,39 @@ export function CampaignLabWorkspace({
 
   useEffect(() => {
     let stale = false;
+    const projectPromise = getProject(projectId).catch(() => undefined);
+    const forecastDatasetPromise = listCampaignLabForecastDatasets()
+      .then((page) => {
+        if (!stale) setForecastDatasetError(undefined);
+        return page;
+      })
+      .catch((loadError: unknown) => {
+        if (!stale) setForecastDatasetError(problemMessage(loadError));
+        return { items: [] };
+      });
     void Promise.all([
       listCampaignLabCampaigns(projectId),
       getMethodologyRegistry(),
+      projectPromise,
+      forecastDatasetPromise,
     ])
-      .then(([page, registry]) => {
+      .then(([page, registry, project, forecastDatasetPage]) => {
         if (stale) return;
         const nextPopulationFrame = officialPopulationFrame(registry);
+        const nextForecastDataset = forecastDatasetPage.items[0];
         setCampaigns(page.items);
+        setOrganizationId(
+          project?.organization_id ?? page.items[0]?.organization_id,
+        );
         setSelectedPopulationFrame(nextPopulationFrame);
+        setForecastDatasets(forecastDatasetPage.items);
+        if (nextForecastDataset) {
+          setForecastDatasetId(nextForecastDataset.id);
+          const defaultTargets = nextForecastDataset.manifest.default_targets;
+          if (Array.isArray(defaultTargets)) {
+            setForecastTargetsJson(JSON.stringify(defaultTargets, null, 2));
+          }
+        }
         const first = page.items[0];
         if (first) {
           const id = campaignId(first);
@@ -1199,6 +1467,7 @@ export function CampaignLabWorkspace({
         format: surveyImportFormat,
         metadata,
         field_map: fieldMap,
+        source_version_id: surveySourceVersionId.trim() || undefined,
         secret_payload: { payload },
       });
       setSurveyRun(commandRun(created, selectedCampaignId, "survey_import"));
@@ -1209,6 +1478,72 @@ export function CampaignLabWorkspace({
         importError instanceof SyntaxError
           ? "Survey metadata, field map, or JSON export is not valid."
           : problemMessage(importError),
+      );
+    } finally {
+      setBusyStage(undefined);
+    }
+  }
+
+  async function createNativeSurveyForm(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (!selectedCampaignId) {
+      setError("Create or select a Campaign Lab workspace first.");
+      return;
+    }
+    setBusyStage("native-survey-form");
+    setError(undefined);
+    try {
+      const form = JSON.parse(nativeSurveyFormJson);
+      if (!isRecord(form)) {
+        throw new Error("Native survey form must be a JSON object.");
+      }
+      const created = await createCampaignLabNativeSurveyForm(
+        selectedCampaignId,
+        form,
+      );
+      if (!created.artifact_id) {
+        throw new Error("Native survey form did not return a form id.");
+      }
+      setNativeSurveyFormId(created.artifact_id);
+    } catch (formError) {
+      setError(
+        formError instanceof SyntaxError
+          ? "Native survey form JSON is not valid."
+          : problemMessage(formError),
+      );
+    } finally {
+      setBusyStage(undefined);
+    }
+  }
+
+  async function submitNativeSurveyResponses(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (!selectedCampaignId || !nativeSurveyFormId.trim()) {
+      setError("Create or enter a native survey form id first.");
+      return;
+    }
+    setBusyStage("native-survey-responses");
+    setError(undefined);
+    try {
+      const responses = JSON.parse(nativeSurveyResponsesJson);
+      if (!Array.isArray(responses)) {
+        throw new Error("Native survey responses must be a JSON array.");
+      }
+      const created = await submitCampaignLabNativeSurveyResponses(
+        selectedCampaignId,
+        nativeSurveyFormId.trim(),
+        responses,
+      );
+      setSurveyRun(commandRun(created, selectedCampaignId, "survey_import"));
+    } catch (responseError) {
+      setError(
+        responseError instanceof SyntaxError
+          ? "Native survey response JSON is not valid."
+          : problemMessage(responseError),
       );
     } finally {
       setBusyStage(undefined);
@@ -1232,6 +1567,10 @@ export function CampaignLabWorkspace({
       const created = await createCampaignLabCalibration(selectedCampaignId, {
         synthetic_observations: syntheticObservations,
         survey,
+        source_version_id:
+          calibrationSourceVersionId.trim() ||
+          surveySourceVersionId.trim() ||
+          undefined,
         calibration_version: "calibration_v1",
         model_version: "campaign-lab-population-weighted-v1",
       });
@@ -1264,6 +1603,7 @@ export function CampaignLabWorkspace({
       const created = await createCampaignLabBacktest(selectedCampaignId, {
         protocol,
         prediction_set: predictionSet,
+        outcome_set_id: backtestOutcomeSetId.trim() || undefined,
         secret_payload: { outcomes },
       });
       setBacktestRun(
@@ -1274,6 +1614,47 @@ export function CampaignLabWorkspace({
         backtestError instanceof SyntaxError
           ? "Backtest protocol, predictions, or outcomes JSON is not valid."
           : problemMessage(backtestError),
+      );
+    } finally {
+      setBusyStage(undefined);
+    }
+  }
+
+  async function runAggregateForecast(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedCampaignId) {
+      setError("Create or choose a message test first.");
+      return;
+    }
+    if (!forecastDatasetId) {
+      setError("No admitted official aggregate forecast dataset is available.");
+      return;
+    }
+    setBusyStage("forecasting");
+    setError(undefined);
+    try {
+      const targets = JSON.parse(forecastTargetsJson);
+      if (!Array.isArray(targets) || targets.length < 2) {
+        throw new Error(
+          "Official forecast targets must contain at least two options.",
+        );
+      }
+      const created = await createCampaignLabAggregateForecast(
+        selectedCampaignId,
+        {
+          dataset_id: forecastDatasetId,
+          model_version: "aggregate_trend_v1",
+          targets,
+        },
+      );
+      setForecastRun(
+        commandRun(created, selectedCampaignId, "aggregate_forecast"),
+      );
+    } catch (forecastError) {
+      setError(
+        forecastError instanceof SyntaxError
+          ? "The official forecast targets are not valid JSON."
+          : problemMessage(forecastError),
       );
     } finally {
       setBusyStage(undefined);
@@ -1389,7 +1770,11 @@ export function CampaignLabWorkspace({
           SIMULA
         </Link>
       </header>
-      <WorkspaceSidebar current="campaign-lab" projectId={projectId} />
+      <WorkspaceSidebar
+        current="campaign-lab"
+        organizationId={organizationId}
+        projectId={projectId}
+      />
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href={`/projects/${projectId}`}>Project workspace</Link>
         <span aria-hidden="true"> / </span>
@@ -1498,6 +1883,7 @@ export function CampaignLabWorkspace({
           not a synthesized campaign verdict.
         </p>
       </section>
+      {!selectedCampaignId ? <CampaignLabSelectionNotice /> : null}
       {selectedCampaignId ? (
         <section
           aria-labelledby="research-upload-title"
@@ -1547,8 +1933,8 @@ export function CampaignLabWorkspace({
       {selectedCampaignId ? (
         <section
           className="workspace-grid"
-          aria-label="Simulation request"
-          id="simulation-config"
+          aria-label="Audience cohorts and simulation request"
+          id="audience-cohorts"
         >
           <form
             className="panel form-stack"
@@ -1556,7 +1942,7 @@ export function CampaignLabWorkspace({
             onSubmit={launchSimulation}
           >
             <p className="eyebrow">03 / Repeated simulation</p>
-            <h2>Run an authored aggregate request</h2>
+            <h2 id="simulation-config">Run an authored aggregate request</h2>
             <label htmlFor="campaign-lab-request">Frozen request JSON</label>
             <textarea
               aria-describedby="campaign-lab-request-note"
@@ -1643,7 +2029,7 @@ export function CampaignLabWorkspace({
               ),
             )}
           </div>
-          <div className="campaign-lab-cohort-results" id="audience-cohorts">
+          <div className="campaign-lab-cohort-results" id="cohort-findings">
             <div>
               <p className="eyebrow">Cohort differences</p>
               <h3>Population-weighted cells, shown separately</h3>
@@ -1791,6 +2177,15 @@ export function CampaignLabWorkspace({
               rows={12}
               value={surveyMetadataJson}
             />
+            <label htmlFor="campaign-lab-survey-source-version">
+              Approved survey source version ID (production)
+            </label>
+            <input
+              id="campaign-lab-survey-source-version"
+              onChange={(event) => setSurveySourceVersionId(event.target.value)}
+              placeholder="UUID from the evidence source registry"
+              value={surveySourceVersionId}
+            />
             <label htmlFor="campaign-lab-survey-field-map">
               Field map JSON
             </label>
@@ -1807,6 +2202,78 @@ export function CampaignLabWorkspace({
                 : "Queue survey import"}
             </button>
           </form>
+          <div className="workspace-grid">
+            <form
+              className="panel form-stack"
+              onSubmit={createNativeSurveyForm}
+            >
+              <p className="eyebrow">Native form</p>
+              <h3>Create a SIMULA-native calibration form</h3>
+              <p className="field-note">
+                The schema accepts only aggregate message-testing fields and
+                required consent. It rejects identity, political-affiliation,
+                vulnerability, and free-text questions.
+              </p>
+              <label htmlFor="campaign-lab-native-survey-form">
+                Native form JSON
+              </label>
+              <textarea
+                id="campaign-lab-native-survey-form"
+                onChange={(event) =>
+                  setNativeSurveyFormJson(event.target.value)
+                }
+                rows={18}
+                value={nativeSurveyFormJson}
+              />
+              <button
+                disabled={busyStage === "native-survey-form"}
+                type="submit"
+              >
+                {busyStage === "native-survey-form"
+                  ? "Saving form…"
+                  : "Save native form"}
+              </button>
+            </form>
+            <form
+              className="panel form-stack"
+              onSubmit={submitNativeSurveyResponses}
+            >
+              <p className="eyebrow">Native collection</p>
+              <h3>Queue consented aggregate responses</h3>
+              <p className="field-note">
+                Responses are sent to the worker-only import envelope, then
+                reduced to aggregate survey observations and deleted.
+              </p>
+              <label htmlFor="campaign-lab-native-survey-form-id">
+                Native form id
+              </label>
+              <input
+                id="campaign-lab-native-survey-form-id"
+                onChange={(event) => setNativeSurveyFormId(event.target.value)}
+                placeholder="Filled after saving a form"
+                value={nativeSurveyFormId}
+              />
+              <label htmlFor="campaign-lab-native-survey-responses">
+                Response batch JSON
+              </label>
+              <textarea
+                id="campaign-lab-native-survey-responses"
+                onChange={(event) =>
+                  setNativeSurveyResponsesJson(event.target.value)
+                }
+                rows={18}
+                value={nativeSurveyResponsesJson}
+              />
+              <button
+                disabled={busyStage === "native-survey-responses"}
+                type="submit"
+              >
+                {busyStage === "native-survey-responses"
+                  ? "Queueing responses…"
+                  : "Queue response batch"}
+              </button>
+            </form>
+          </div>
           {surveyRun ? (
             <p aria-live="polite" className="field-note">
               Survey import: <strong>{surveyRun.status}</strong> ·{" "}
@@ -1849,6 +2316,17 @@ export function CampaignLabWorkspace({
               After a successful import, SIMULA fills this field with the
               normalized aggregate dataset. No respondent rows are returned.
             </p>
+            <label htmlFor="campaign-lab-calibration-source-version">
+              Approved survey source version ID (production)
+            </label>
+            <input
+              id="campaign-lab-calibration-source-version"
+              onChange={(event) =>
+                setCalibrationSourceVersionId(event.target.value)
+              }
+              placeholder="UUID from the evidence source registry"
+              value={calibrationSourceVersionId}
+            />
             <button disabled={busyStage === "calibration"} type="submit">
               {busyStage === "calibration"
                 ? "Queueing calibration…"
@@ -1927,6 +2405,15 @@ export function CampaignLabWorkspace({
               rows={18}
               value={backtestOutcomesJson}
             />
+            <label htmlFor="campaign-lab-backtest-outcome-set">
+              Admitted outcome set ID (production)
+            </label>
+            <input
+              id="campaign-lab-backtest-outcome-set"
+              onChange={(event) => setBacktestOutcomeSetId(event.target.value)}
+              placeholder="UUID from the admitted outcome registry"
+              value={backtestOutcomeSetId}
+            />
             <button disabled={busyStage === "backtesting"} type="submit">
               {busyStage === "backtesting"
                 ? "Queueing backtest…"
@@ -1949,10 +2436,102 @@ export function CampaignLabWorkspace({
       {selectedCampaignId ? (
         <section
           className="panel"
+          id="forecasting"
+          aria-labelledby="forecast-title"
+        >
+          <p className="eyebrow">09 / Official forecast</p>
+          <h2 id="forecast-title">Forecast from official aggregate history</h2>
+          <p className="field-note">
+            No respondents. No synthetic people. The worker uses only an
+            admitted, checksum-locked official election series and scores the
+            method on earlier elections before showing a future aggregate.
+          </p>
+          <form className="form-stack" onSubmit={runAggregateForecast}>
+            <label htmlFor="campaign-lab-forecast-dataset">
+              Official historical dataset
+            </label>
+            <select
+              id="campaign-lab-forecast-dataset"
+              onChange={(event) => {
+                const nextId = event.target.value;
+                setForecastDatasetId(nextId);
+                const dataset = forecastDatasets.find(
+                  (candidate) => candidate.id === nextId,
+                );
+                const defaultTargets = dataset?.manifest.default_targets;
+                if (Array.isArray(defaultTargets)) {
+                  setForecastTargetsJson(
+                    JSON.stringify(defaultTargets, null, 2),
+                  );
+                }
+              }}
+              value={forecastDatasetId}
+            >
+              {forecastDatasets.length === 0 ? (
+                <option value="">
+                  {forecastDatasetError
+                    ? "Dataset registry unavailable"
+                    : "No admitted dataset available"}
+                </option>
+              ) : null}
+              {forecastDatasets.map((dataset) => (
+                <option key={dataset.id} value={dataset.id}>
+                  {dataset.source_key} · {dataset.source_version}
+                </option>
+              ))}
+            </select>
+            {forecastDatasetError ? (
+              <p className="field-note" role="alert">
+                Official dataset registry unavailable: {forecastDatasetError}
+              </p>
+            ) : null}
+            {forecastDatasetId ? (
+              <p className="field-note">
+                {forecastDatasets.find(
+                  (dataset) => dataset.id === forecastDatasetId,
+                )?.owner_name ?? "Official source"}
+                {" · "}
+                {forecastDatasets.find(
+                  (dataset) => dataset.id === forecastDatasetId,
+                )?.observation_period ?? "Versioned observation period"}
+              </p>
+            ) : null}
+            <label htmlFor="campaign-lab-forecast-targets">
+              Future aggregate options (advanced)
+            </label>
+            <textarea
+              id="campaign-lab-forecast-targets"
+              onChange={(event) => setForecastTargetsJson(event.target.value)}
+              rows={16}
+              value={forecastTargetsJson}
+            />
+            <button
+              disabled={busyStage === "forecasting" || !forecastDatasetId}
+              type="submit"
+            >
+              {busyStage === "forecasting"
+                ? "Starting official forecast…"
+                : "Run official forecast"}
+            </button>
+          </form>
+          {forecastRun ? (
+            <p aria-live="polite" className="field-note">
+              Forecast: <strong>{forecastRun.status}</strong> ·{" "}
+              {forecastRun.progress}% · run <code>{forecastRun.id}</code>
+            </p>
+          ) : null}
+          {forecastRun?.result ? (
+            <AggregateForecastResult result={forecastRun.result} />
+          ) : null}
+        </section>
+      ) : null}
+      {selectedCampaignId ? (
+        <section
+          className="panel"
           id="compliance"
           aria-labelledby="compliance-title"
         >
-          <p className="eyebrow">09 / Compliance review</p>
+          <p className="eyebrow">10 / Compliance review</p>
           <h2 id="compliance-title">Review aggregate-use controls</h2>
           <p className="field-note">
             Compliance is enforced before report approval. A report cannot enter
@@ -1998,7 +2577,7 @@ export function CampaignLabWorkspace({
       ) : null}
       {selectedCampaignId ? (
         <section className="panel" id="reports" aria-labelledby="report-title">
-          <p className="eyebrow">10 / Evidence report</p>
+          <p className="eyebrow">11 / Evidence report</p>
           <h2 id="report-title">Generate the cited report envelope</h2>
           <p className="field-note">
             Reports preserve component metrics, cohort findings, synthetic
@@ -2053,7 +2632,7 @@ export function CampaignLabWorkspace({
       ) : null}
       {selectedCampaignId ? (
         <section className="panel" id="audit" aria-labelledby="audit-title">
-          <p className="eyebrow">11 / Audit trail</p>
+          <p className="eyebrow">12 / Audit trail</p>
           <h2 id="audit-title">Durable evidence events</h2>
           <p className="field-note">
             Queue, retry, progress, completion, and failure events are retained
