@@ -1784,10 +1784,7 @@ export function CampaignLabWorkspace({
         <span aria-hidden="true"> / </span>
         <span>Campaign Simulation Lab</span>
       </nav>
-      <section
-        aria-labelledby="campaign-lab-title"
-        className="workspace-intro"
-      >
+      <section aria-labelledby="campaign-lab-title" className="workspace-intro">
         <div>
           <p className="eyebrow">Aggregate research · Philippines</p>
           <h1 id="campaign-lab-title">Campaign Simulation Lab</h1>
