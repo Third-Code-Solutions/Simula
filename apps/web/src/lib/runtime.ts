@@ -4,13 +4,18 @@ export type RuntimeMetadata = Readonly<{
   service: "web";
 }>;
 
+function releaseSha(): string {
+  return (
+    process.env.VERCEL_GIT_COMMIT_SHA?.trim() ||
+    process.env.SIMULA_RELEASE_SHA?.trim() ||
+    "dev"
+  );
+}
+
 export function runtimeMetadata(): RuntimeMetadata {
   return {
     environment: process.env.SIMULA_ENVIRONMENT ?? "local",
-    releaseSha:
-      process.env.VERCEL_GIT_COMMIT_SHA ??
-      process.env.SIMULA_RELEASE_SHA ??
-      "dev",
+    releaseSha: releaseSha(),
     service: "web",
   };
 }

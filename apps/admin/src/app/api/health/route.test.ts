@@ -14,20 +14,20 @@ describe("GET /api/health", () => {
     expect(response.headers.get("cache-control")).toBe("no-store");
     await expect(response.json()).resolves.toEqual({
       environment: "local",
-      releaseSha: "dev",
-      service: "web",
+      release_sha: "dev",
+      service: "admin",
       status: "ok",
     });
   });
 
   it("falls back to the admitted release when Vercel provides an empty Git SHA", async () => {
     vi.stubEnv("VERCEL_GIT_COMMIT_SHA", "");
-    vi.stubEnv("SIMULA_RELEASE_SHA", "a".repeat(40));
+    vi.stubEnv("SIMULA_RELEASE_SHA", "b".repeat(40));
 
     const response = GET();
 
     await expect(response.json()).resolves.toMatchObject({
-      releaseSha: "a".repeat(40),
+      release_sha: "b".repeat(40),
     });
   });
 });
