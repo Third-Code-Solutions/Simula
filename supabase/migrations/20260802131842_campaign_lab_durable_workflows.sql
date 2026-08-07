@@ -1,15 +1,13 @@
--- Make survey normalization a durable Campaign Lab worker workflow.
--- Raw respondent rows remain in private.campaign_lab_secrets and are deleted
--- by the lease-bound completion function after aggregate normalization.
+-- Durable Campaign Lab workflows: document ingestion, interviews, compliance,
+-- and report generation all run through the leased worker queue.
+-- Version reconciled to the immutable hosted migration registry.
 
 alter table api.campaign_lab_runs
   drop constraint campaign_lab_runs_type_valid;
-
 alter table api.campaign_lab_runs
   add constraint campaign_lab_runs_type_valid check (
     run_type in (
       'repeated_simulation',
-      'survey_import',
       'survey_calibration',
       'historical_backtest',
       'research_ingestion',
@@ -19,7 +17,7 @@ alter table api.campaign_lab_runs
     )
   );
 
-create function private.create_campaign_lab_run_atomic_v3(
+create function private.create_campaign_lab_run_atomic_v2(
   requested_organization_id uuid,
   requested_campaign_id uuid,
   requested_run_type text,
@@ -58,9 +56,8 @@ begin
     raise exception using errcode = '42501', message = 'forbidden';
   end if;
   if requested_run_type not in (
-      'repeated_simulation', 'survey_import', 'survey_calibration',
-      'historical_backtest', 'research_ingestion', 'interview',
-      'compliance_review', 'report'
+      'repeated_simulation', 'survey_calibration', 'historical_backtest',
+      'research_ingestion', 'interview', 'compliance_review', 'report'
     )
     or requested_request is null
     or pg_catalog.jsonb_typeof(requested_request) <> 'object'
@@ -155,7 +152,7 @@ begin
 end
 $function$;
 
-create function api.create_campaign_lab_run_v3(
+create function api.create_campaign_lab_run_v2(
   requested_organization_id uuid,
   requested_campaign_id uuid,
   requested_run_type text,
@@ -169,23 +166,23 @@ returns jsonb
 language sql
 set search_path = ''
 as $function$
-  select private.create_campaign_lab_run_atomic_v3(
+  select private.create_campaign_lab_run_atomic_v2(
     requested_organization_id, requested_campaign_id, requested_run_type,
     requested_request, requested_secret, requested_idempotency_key,
     requested_sha256, requested_correlation_id
   );
 $function$;
 
-revoke all on function api.create_campaign_lab_run_v3(uuid, uuid, text, jsonb, jsonb, text, text, uuid)
+revoke all on function api.create_campaign_lab_run_v2(uuid, uuid, text, jsonb, jsonb, text, text, uuid)
   from public, anon, authenticated, simula_api, simula_worker, simula_worker_owner, postgres;
-grant execute on function api.create_campaign_lab_run_v3(uuid, uuid, text, jsonb, jsonb, text, text, uuid)
+grant execute on function api.create_campaign_lab_run_v2(uuid, uuid, text, jsonb, jsonb, text, text, uuid)
   to simula_api;
-revoke all on function private.create_campaign_lab_run_atomic_v3(uuid, uuid, text, jsonb, jsonb, text, text, uuid)
+revoke all on function private.create_campaign_lab_run_atomic_v2(uuid, uuid, text, jsonb, jsonb, text, text, uuid)
   from public, anon, authenticated, simula_api, simula_worker, simula_worker_owner, postgres;
-grant execute on function private.create_campaign_lab_run_atomic_v3(uuid, uuid, text, jsonb, jsonb, text, text, uuid)
+grant execute on function private.create_campaign_lab_run_atomic_v2(uuid, uuid, text, jsonb, jsonb, text, text, uuid)
   to simula_api;
 
-create function private.complete_campaign_lab_run_v3(
+create function private.complete_campaign_lab_run_v2(
   requested_run_id uuid,
   requested_lease_token uuid,
   requested_result jsonb
@@ -212,7 +209,6 @@ begin
   set status = 'succeeded',
       stage = case run_type
         when 'repeated_simulation' then 'simulated'
-        when 'survey_import' then 'survey_imported'
         when 'survey_calibration' then 'calibrated'
         when 'historical_backtest' then 'backtested'
         when 'research_ingestion' then 'research_validated'
@@ -234,7 +230,6 @@ begin
   set status = case when completed.run_type = 'report' then 'completed' else 'active' end,
       current_stage = case completed.run_type
         when 'repeated_simulation' then 'simulated'
-        when 'survey_import' then 'survey_imported'
         when 'survey_calibration' then 'calibrated'
         when 'historical_backtest' then 'backtested'
         when 'research_ingestion' then 'research_validated'
@@ -263,13 +258,16 @@ begin
 end
 $function$;
 
-revoke all on function private.complete_campaign_lab_run_v3(uuid, uuid, jsonb)
+revoke all on function private.complete_campaign_lab_run_v2(uuid, uuid, jsonb)
   from public, anon, authenticated, simula_api, simula_worker, simula_worker_owner, postgres;
-grant execute on function private.complete_campaign_lab_run_v3(uuid, uuid, jsonb)
+grant execute on function private.complete_campaign_lab_run_v2(uuid, uuid, jsonb)
   to simula_worker;
 
-create function private.runtime_schema_readiness_v3()
-returns table (migration_version bigint, rls_force_enabled boolean)
+create function private.runtime_schema_readiness_v2()
+returns table (
+  migration_version bigint,
+  rls_force_enabled boolean
+)
 language plpgsql
 security definer
 set search_path = ''
@@ -279,13 +277,15 @@ begin
   if session_user not in ('simula_api', 'simula_worker') then
     raise exception using errcode = '42501', message = 'unauthorized';
   end if;
+
   return query
   select
-    20260802150000::bigint,
+    20260802143000::bigint,
     not exists (
       select 1
       from pg_catalog.pg_class as relations
-      join pg_catalog.pg_namespace as schemas on schemas.oid = relations.relnamespace
+      join pg_catalog.pg_namespace as schemas
+        on schemas.oid = relations.relnamespace
       where schemas.nspname in ('api', 'private')
         and relations.relkind in ('r', 'p')
         and (not relations.relrowsecurity or not relations.relforcerowsecurity)
@@ -293,12 +293,12 @@ begin
 end
 $function$;
 
-revoke all on function private.runtime_schema_readiness_v3()
+revoke all on function private.runtime_schema_readiness_v2()
   from public, anon, authenticated, simula_api, simula_worker, simula_worker_owner, postgres;
-grant execute on function private.runtime_schema_readiness_v3()
+grant execute on function private.runtime_schema_readiness_v2()
   to simula_api, simula_worker;
 
-create function private.runtime_observability_snapshot_v3()
+create function private.runtime_observability_snapshot_v2()
 returns table (
   migration_version bigint,
   rls_force_enabled boolean,
@@ -321,13 +321,15 @@ begin
   if session_user not in ('simula_api', 'simula_worker') then
     raise exception using errcode = '42501', message = 'unauthorized';
   end if;
+
   return query
   select
-    20260802150000::bigint,
+    20260802143000::bigint,
     not exists (
       select 1
       from pg_catalog.pg_class as relations
-      join pg_catalog.pg_namespace as schemas on schemas.oid = relations.relnamespace
+      join pg_catalog.pg_namespace as schemas
+        on schemas.oid = relations.relnamespace
       where schemas.nspname in ('api', 'private')
         and relations.relkind in ('r', 'p')
         and (not relations.relrowsecurity or not relations.relforcerowsecurity)
@@ -346,7 +348,9 @@ begin
     coalesce(
       extract(
         epoch from pg_catalog.statement_timestamp()
-          - pg_catalog.min(case when runs.state = 'cancel_requested' then runs.updated_at end)
+          - pg_catalog.min(
+            case when runs.state = 'cancel_requested' then runs.updated_at end
+          )
       ),
       0::numeric
     )
@@ -354,9 +358,9 @@ begin
 end
 $function$;
 
-revoke all on function private.runtime_observability_snapshot_v3()
+revoke all on function private.runtime_observability_snapshot_v2()
   from public, anon, authenticated, simula_api, simula_worker, simula_worker_owner, postgres;
-grant execute on function private.runtime_observability_snapshot_v3()
+grant execute on function private.runtime_observability_snapshot_v2()
   to simula_api, simula_worker;
 
 set role postgres;

@@ -1,5 +1,6 @@
 -- Enforce bounded retention for Campaign Lab outputs and expire terminal rows
 -- through the worker-only database capability boundary.
+-- Version reconciled to the immutable hosted migration registry.
 
 set role postgres;
 

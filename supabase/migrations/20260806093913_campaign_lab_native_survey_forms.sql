@@ -1,6 +1,7 @@
 -- Native SIMULA survey definitions are tenant-scoped Campaign Lab artifacts.
 -- Respondent submissions continue through the existing worker-only
 -- survey_import envelope; this migration adds no public response table.
+-- Version reconciled to the immutable hosted migration registry.
 
 set role postgres;
 
