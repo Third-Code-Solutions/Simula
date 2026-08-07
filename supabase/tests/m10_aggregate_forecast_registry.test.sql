@@ -2,7 +2,7 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(15);
+select extensions.plan(16);
 
 select extensions.ok(
   pg_catalog.to_regclass('api.aggregate_forecast_datasets') is not null
@@ -124,12 +124,25 @@ select extensions.ok(
 );
 
 select extensions.ok(
+  (
+    select owners.rolname = 'simula_command_owner'
+      and functions.prosecdef
+      and functions.proconfig @> array['search_path=""', 'row_security=on']::text[]
+    from pg_catalog.pg_proc as functions
+    join pg_catalog.pg_roles as owners on owners.oid = functions.proowner
+    where functions.oid =
+      'private.create_campaign_lab_run_atomic_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
+  ),
+  'durable forecast admission executes as the least-privilege command owner'
+);
+
+select extensions.ok(
   pg_catalog.pg_get_functiondef(
     'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure
-  ) like '%20260807104033::bigint%'
+  ) like '%20260807190000::bigint%'
   and pg_catalog.pg_get_functiondef(
     'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure
-  ) like '%20260807104033::bigint%',
+  ) like '%20260807190000::bigint%',
   'runtime readiness and observability report the forecast schema head'
 );
 
