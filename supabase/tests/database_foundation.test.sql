@@ -24,6 +24,8 @@ select extensions.is(
       and relations.relkind = 'r'
   ),
   array[
+    'api.aggregate_forecast_datasets',
+    'api.aggregate_forecast_observations',
     'api.audience_versions',
     'api.audiences',
     'api.behavioral_agent_public_summaries',
@@ -127,6 +129,8 @@ select extensions.is(
     where policies.schemaname in ('api', 'private')
   ),
   array[
+    'aggregate_forecast_datasets_api_select',
+    'aggregate_forecast_observations_api_select',
     'audience_versions_api_select',
     'audience_versions_command_phase4_insert',
     'audience_versions_command_select',
@@ -501,7 +505,7 @@ select extensions.ok(
 -- 16
 select extensions.ok(
   (
-    select pg_catalog.count(*) = 46
+    select pg_catalog.count(*) = 48
     from pg_catalog.pg_class as relations
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
     where namespaces.nspname = 'api'
@@ -516,7 +520,7 @@ select extensions.ok(
       and relations.relkind = 'r'
       and pg_catalog.has_table_privilege('simula_api', relations.oid, 'SELECT')
   ),
-  'API role reads exactly the forty-six named API tables'
+  'API role reads exactly the forty-eight named API tables'
 );
 
 -- 17
@@ -572,6 +576,8 @@ select extensions.is(
       and grants.grantee like 'simula\_%' escape '\'
   ),
   array[
+    'simula_api|api.aggregate_forecast_datasets|SELECT',
+    'simula_api|api.aggregate_forecast_observations|SELECT',
     'simula_api|api.audience_versions|SELECT',
     'simula_api|api.audiences|SELECT',
     'simula_api|api.behavioral_agent_public_summaries|SELECT',
@@ -1239,6 +1245,9 @@ select extensions.is(
       and not triggers.tgisinternal
   ),
   array[
+    'aggregate_forecast_dataset_admission_guard',
+    'aggregate_forecast_dataset_immutability_guard',
+    'aggregate_forecast_observation_immutability_guard',
     'audience_versions_content_immutable',
     'audience_versions_organization_guard',
     'behavioral_evaluation_protocol_versions_guard',
