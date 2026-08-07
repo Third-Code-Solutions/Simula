@@ -67,9 +67,22 @@ async def test_phase34_methodology_and_product_commands(
         )
         assert registry.status_code == 200, registry.text
         registry_body = registry.json()
-        assert len(registry_body["population_frames"]) == 1
+        assert len(registry_body["population_frames"]) == 2
         assert len(registry_body["methodologies"]) == 1
         assert len(registry_body["providers"]) == 1
+        demo_population_frame = next(
+            frame
+            for frame in registry_body["population_frames"]
+            if frame["manifest"]["kind"] == "authored_demo"
+        )
+        official_population_frame = next(
+            frame
+            for frame in registry_body["population_frames"]
+            if frame["manifest"]["kind"] == "verified_public_dataset"
+        )
+        assert official_population_frame["manifest"]["source_export_sha256"] == (
+            "31bba5110897c5f60b907cfa7b53a7e7ea33bae701f7413e825a5b90ff5159d1"
+        )
 
         audience_body = {
             "name": "Fictional young households",
@@ -109,7 +122,7 @@ async def test_phase34_methodology_and_product_commands(
             json={
                 "name": "Deterministic experimental configuration",
                 "audience_version_id": audience_version_id,
-                "population_frame_version_id": registry_body["population_frames"][0]["id"],
+                "population_frame_version_id": demo_population_frame["id"],
                 "methodology_version_id": registry_body["methodologies"][0]["id"],
                 "provider_configuration_version_id": registry_body["providers"][0]["id"],
                 "sampling_configuration": {
