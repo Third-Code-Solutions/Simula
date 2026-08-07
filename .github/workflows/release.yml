@@ -15,11 +15,11 @@ concurrency:
 jobs:
   sign:
     name: Build, sign, and verify release
-    runs-on: [self-hosted, Windows, X64, simula-release]
+    runs-on: windows-2025
     timeout-minutes: 40
     defaults:
       run:
-        shell: "D:\\Git\\bin\\bash.exe --noprofile --norc -e -o pipefail {0}"
+        shell: bash
     permissions:
       contents: read
       id-token: write
