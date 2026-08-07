@@ -174,6 +174,19 @@ jobs:
       - name: Run root verification gate
         run: pnpm verify
 
+      - name: Generate database types for drift diagnosis
+        if: failure()
+        run: pnpm database:types:generate
+
+      - name: Upload database type drift evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: database-types-${{ github.sha }}
+          path: packages/contracts/src/database.ts
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Prove server-only values are absent from browser artifacts
         run: |
           uv run --frozen python -m scripts.check_web_bundle_secrets \
