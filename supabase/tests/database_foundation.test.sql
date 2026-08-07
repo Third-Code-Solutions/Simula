@@ -1432,11 +1432,21 @@ select extensions.ok(
       select pg_catalog.count(*)
       from api.population_frames
       where id <> '00000000-0000-4000-8000-0000000003f0'::uuid
+        and not (
+          organization_id is null
+          and name = 'PSA 2020 regional population frame'
+        )
     )
     + (
       select pg_catalog.count(*)
       from api.population_frame_versions
       where id <> '00000000-0000-4000-8000-0000000003f1'::uuid
+        and population_frame_id not in (
+          select id
+          from api.population_frames
+          where organization_id is null
+            and name = 'PSA 2020 regional population frame'
+        )
     )
     + (select pg_catalog.count(*) from api.simulation_configurations)
     + (select pg_catalog.count(*) from api.simulation_configuration_versions)
@@ -1474,6 +1484,29 @@ select extensions.ok(
       and versions.manifest ->> 'target_population'
         = 'No real population; authored engineering fixture only.'
       and pg_catalog.jsonb_array_length(versions.manifest -> 'cells') = 4
+      and versions.checksum_sha256 = pg_catalog.encode(
+        extensions.digest(
+          pg_catalog.convert_to(versions.manifest::text, 'UTF8'),
+          'sha256'
+        ),
+        'hex'
+      )
+  )
+  and 1 = (
+    select pg_catalog.count(*)
+    from api.population_frames as frames
+    join api.population_frame_versions as versions
+      on versions.population_frame_id = frames.id
+    where frames.organization_id is null
+      and frames.name = 'PSA 2020 regional population frame'
+      and frames.validation_status = 'experimental'
+      and versions.organization_id is null
+      and versions.version = 1
+      and versions.validation_status = 'experimental'
+      and versions.manifest ->> 'kind' = 'verified_public_dataset'
+      and versions.manifest ->> 'source_export_sha256'
+        = '31bba5110897c5f60b907cfa7b53a7e7ea33bae701f7413e825a5b90ff5159d1'
+      and pg_catalog.jsonb_array_length(versions.manifest -> 'cells') = 17
       and versions.checksum_sha256 = pg_catalog.encode(
         extensions.digest(
           pg_catalog.convert_to(versions.manifest::text, 'UTF8'),
@@ -1581,7 +1614,7 @@ select extensions.ok(
       and versions.manifest -> 'external_dependencies' = '[]'::jsonb
       and versions.manifest ->> 'retirement_state' = 'active'
   ),
-  'only governed global demo fixtures are seeded; tenant, evaluation, and run data remain empty'
+  'only governed global methodology fixtures are seeded; tenant, evaluation, and run data remain empty'
 );
 
 -- 33
