@@ -12,7 +12,7 @@ REQUIRED_DATABASE_MIGRATION_HEAD = "20260807104033"
 
 _DEPLOYED_ENVIRONMENTS = frozenset({"preview", "staging", "production"})
 _UUID_V4 = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
-_RELEASE_PROVENANCE_PATH = re.compile(r"/Third-Code-Solutions/Simula/actions/runs/[0-9]+")
+_RELEASE_PROVENANCE_PATH = re.compile(r"/kurtgav/Simula/actions/runs/[0-9]+")
 
 
 class RuntimeAdmissionError(ValueError):

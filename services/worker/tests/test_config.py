@@ -21,7 +21,7 @@ def _environment(monkeypatch: pytest.MonkeyPatch, **overrides: str) -> None:
                 "SIMULA_PRODUCTION_ADMISSION_ENABLED": "true",
                 "SIMULA_PRODUCTION_ROLLOUT_ID": ("018f274b-3c77-4b22-b749-c9274230ef9a"),
                 "SIMULA_RELEASE_PROVENANCE_URL": (
-                    "https://github.com/Third-Code-Solutions/Simula/actions/runs/12345678"
+                    "https://github.com/kurtgav/Simula/actions/runs/12345678"
                 ),
                 "SIMULA_RELEASE_BUNDLE_SHA256": "b" * 64,
                 "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": "c" * 64,

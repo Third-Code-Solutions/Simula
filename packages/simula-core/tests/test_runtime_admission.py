@@ -12,7 +12,7 @@ PRODUCTION = {
     "SIMULA_PRODUCTION_ADMISSION_ENABLED": "true",
     "SIMULA_PRODUCTION_ROLLOUT_ID": "018f274b-3c77-4b22-b749-c9274230ef9a",
     "SIMULA_RELEASE_PROVENANCE_URL": (
-        "https://github.com/Third-Code-Solutions/Simula/actions/runs/12345678"
+        "https://github.com/kurtgav/Simula/actions/runs/12345678"
     ),
     "SIMULA_RELEASE_BUNDLE_SHA256": "a" * 64,
     "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": "b" * 64,
@@ -69,15 +69,15 @@ def test_production_requires_bound_rollout_and_signed_provenance() -> None:
         ),
         (
             "SIMULA_RELEASE_PROVENANCE_URL",
-            "https://github.com/Third-Code-Solutions/Simula/actions/runs/123?query=1",
+            "https://github.com/kurtgav/Simula/actions/runs/123?query=1",
         ),
         (
             "SIMULA_RELEASE_PROVENANCE_URL",
-            "https://github.com:444/Third-Code-Solutions/Simula/actions/runs/12345678",
+            "https://github.com:444/kurtgav/Simula/actions/runs/12345678",
         ),
         (
             "SIMULA_RELEASE_PROVENANCE_URL",
-            "https://github.com:invalid/Third-Code-Solutions/Simula/actions/runs/12345678",
+            "https://github.com:invalid/kurtgav/Simula/actions/runs/12345678",
         ),
     ),
 )

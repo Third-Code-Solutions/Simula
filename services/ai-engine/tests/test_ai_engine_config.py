@@ -85,7 +85,7 @@ def test_engine_production_requires_release_admission(
     monkeypatch.setenv("SIMULA_PRODUCTION_ROLLOUT_ID", "018f274b-3c77-4b22-b749-c9274230ef9a")
     monkeypatch.setenv(
         "SIMULA_RELEASE_PROVENANCE_URL",
-        "https://github.com/Third-Code-Solutions/Simula/actions/runs/12345678",
+        "https://github.com/kurtgav/Simula/actions/runs/12345678",
     )
     monkeypatch.setenv("SIMULA_RELEASE_BUNDLE_SHA256", "b" * 64)
     monkeypatch.setenv("SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256", "c" * 64)
