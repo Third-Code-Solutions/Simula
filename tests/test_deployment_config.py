@@ -383,6 +383,38 @@ def test_behavioral_demo_patch_runs_as_hosted_object_owners() -> None:
     )
 
 
+def test_campaign_lab_runtime_head_patch_runs_as_function_owner() -> None:
+    migration = (
+        ROOT / "supabase" / "migrations" / "20260802105930_campaign_lab_mutation_idempotency.sql"
+    ).read_text(encoding="utf-8")
+
+    command_schema_revoke = migration.index(
+        "revoke create on schema private from simula_command_owner;"
+    )
+    worker_schema_grant = migration.index(
+        "grant create on schema private to simula_worker_owner;",
+        command_schema_revoke,
+    )
+    worker_role = migration.index("set role simula_worker_owner;", worker_schema_grant)
+    runtime_patch = migration.index("do $patch_campaign_lab_runtime_head$", worker_role)
+    reset_role = migration.index("reset role;", runtime_patch)
+    postgres_role = migration.index("set role postgres;", reset_role)
+    worker_schema_revoke = migration.index(
+        "revoke create on schema private from simula_worker_owner;",
+        postgres_role,
+    )
+
+    assert (
+        command_schema_revoke
+        < worker_schema_grant
+        < worker_role
+        < runtime_patch
+        < reset_role
+        < postgres_role
+        < worker_schema_revoke
+    )
+
+
 def test_behavioral_result_delete_grant_runs_as_table_owner() -> None:
     migration = (
         ROOT / "supabase" / "migrations" / "20260730170000_fix_behavioral_run_delete_cascade.sql"

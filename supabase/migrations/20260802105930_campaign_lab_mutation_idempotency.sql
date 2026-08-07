@@ -328,6 +328,8 @@ grant execute on function private.update_campaign_lab_campaign_atomic(uuid, inte
 reset role;
 set role postgres;
 revoke create on schema private from simula_command_owner;
+grant create on schema private to simula_worker_owner;
+set role simula_worker_owner;
 
 do $patch_campaign_lab_runtime_head$
 declare
@@ -355,3 +357,7 @@ begin
   execute replacement_definition;
 end
 $patch_campaign_lab_runtime_head$;
+
+reset role;
+set role postgres;
+revoke create on schema private from simula_worker_owner;
