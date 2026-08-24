@@ -205,7 +205,10 @@ describe("PgOrganizationGateway", () => {
 
     try {
       const options = pool as unknown as {
-        readonly options: { readonly connectionString: string; readonly ssl: unknown };
+        readonly options: {
+          readonly connectionString: string;
+          readonly ssl: unknown;
+        };
       };
       expect(options.options.connectionString).not.toContain("sslmode");
       expect(options.options.connectionString).not.toContain("sslrootcert");
