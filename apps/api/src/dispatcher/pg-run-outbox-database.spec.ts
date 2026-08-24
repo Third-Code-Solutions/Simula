@@ -193,7 +193,7 @@ describe("PgRunOutboxDatabase", () => {
       "private.require_queue_transport('bullmq')",
     );
     expect(readiness.query.mock.calls[2]?.[0]).toContain(
-      "private.runtime_schema_readiness()",
+      "private.runtime_schema_readiness_v4()",
     );
 
     const stale = poolWithRows([
