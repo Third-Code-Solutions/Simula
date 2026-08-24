@@ -269,6 +269,10 @@ export function databaseProblem(error: unknown): AppProblem {
 export function createDomainPool(config: EnabledDomainRuntime): Pool {
   const url = new URL(config.databaseUrl);
   url.searchParams.delete("sslmode");
+  // node-postgres treats this libpq-only option as a filesystem path. The
+  // trusted CA is supplied explicitly below so it remains portable in a
+  // container and cannot silently weaken certificate verification.
+  url.searchParams.delete("sslrootcert");
   const poolConfig: PoolConfig = {
     connectionString: url.toString(),
     connectionTimeoutMillis: 2_000,

@@ -1,7 +1,11 @@
 import type { Pool, PoolClient, QueryResult } from "pg";
 
 import { REQUIRED_DATABASE_MIGRATION_HEAD } from "../config/production-admission";
-import { PgRunOutboxDatabase } from "./pg-run-outbox-database";
+import {
+  createDispatcherPool,
+  PgRunOutboxDatabase,
+} from "./pg-run-outbox-database";
+import type { DispatcherRuntimeConfig } from "./dispatcher-runtime";
 
 const OUTBOX_ID = "00000000-0000-4000-8000-0000000000a1";
 const RUN_ID = "00000000-0000-4000-8000-0000000000b3";
@@ -38,6 +42,40 @@ function poolWithRows(rows: readonly Record<string, unknown>[]): {
 }
 
 describe("PgRunOutboxDatabase", () => {
+  it("uses the injected CA instead of a libpq root-certificate path", async () => {
+    const pool = createDispatcherPool({
+      environment: "production",
+      releaseSha: "a".repeat(40),
+      migrationHead: REQUIRED_DATABASE_MIGRATION_HEAD,
+      databaseUrl:
+        "postgresql://simula_worker:password@db.example.com:5432/postgres?sslmode=verify-full&sslrootcert=%2Fetc%2Fssl%2Fsupabase-ca.pem",
+      databaseCaPem: "trusted-ca",
+      redisConnection: {
+        db: 0,
+        enableOfflineQueue: false,
+        host: "redis.railway.internal",
+        maxRetriesPerRequest: 1,
+        port: 6379,
+      },
+      rateLimitKeyPrefix: "simula:test:dispatcher",
+      port: 8080,
+    } satisfies DispatcherRuntimeConfig);
+
+    try {
+      const options = pool as unknown as {
+        readonly options: { readonly connectionString: string; readonly ssl: unknown };
+      };
+      expect(options.options.connectionString).not.toContain("sslmode");
+      expect(options.options.connectionString).not.toContain("sslrootcert");
+      expect(options.options.ssl).toEqual({
+        ca: "trusted-ca",
+        rejectUnauthorized: true,
+      });
+    } finally {
+      await pool.end();
+    }
+  });
+
   it("claims and validates the legacy durable identity before v2 publication", async () => {
     const fixture = poolWithRows([
       {

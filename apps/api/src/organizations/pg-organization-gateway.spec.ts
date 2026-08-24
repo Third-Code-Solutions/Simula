@@ -3,7 +3,10 @@ import { createHash } from "node:crypto";
 
 import type { EnabledDomainRuntime } from "../domain/domain-runtime";
 import { REQUIRED_DATABASE_MIGRATION_HEAD } from "../config/production-admission";
-import { PgOrganizationGateway } from "./pg-organization-gateway";
+import {
+  createDomainPool,
+  PgOrganizationGateway,
+} from "./pg-organization-gateway";
 
 const CONFIG: EnabledDomainRuntime = {
   enabled: true,
@@ -192,6 +195,29 @@ function poolFor(query: jest.Mock): Pool {
 }
 
 describe("PgOrganizationGateway", () => {
+  it("uses the injected CA instead of a libpq root-certificate path", async () => {
+    const pool = createDomainPool({
+      ...CONFIG,
+      databaseUrl:
+        "postgresql://simula_api:password@db.example.com:5432/postgres?sslmode=verify-full&sslrootcert=%2Fetc%2Fssl%2Fsupabase-ca.pem",
+      databaseCaPem: "trusted-ca",
+    });
+
+    try {
+      const options = pool as unknown as {
+        readonly options: { readonly connectionString: string; readonly ssl: unknown };
+      };
+      expect(options.options.connectionString).not.toContain("sslmode");
+      expect(options.options.connectionString).not.toContain("sslrootcert");
+      expect(options.options.ssl).toEqual({
+        ca: "trusted-ca",
+        rejectUnauthorized: true,
+      });
+    } finally {
+      await pool.end();
+    }
+  });
+
   it("installs transaction-local claims and returns strict RLS rows", async () => {
     const query = jest
       .fn()
