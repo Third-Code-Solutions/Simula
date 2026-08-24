@@ -180,6 +180,14 @@ jobs:
             --directory "$RUNNER_TEMP/simula-security/bin" grype
           echo "$RUNNER_TEMP/simula-security/bin" >> "$GITHUB_PATH"
 
+      - name: Reclaim Docker build cache before SBOM binding
+        run: |
+          set -euo pipefail
+          # The release images are tagged and must remain available for Syft. Only
+          # dangling images and unreferenced BuildKit cache are safe to reclaim.
+          docker image prune --force
+          docker builder prune --all --force
+
       - name: Bind SBOMs and block fixable High or Critical findings
         run: |
           set -euo pipefail
@@ -188,6 +196,10 @@ jobs:
           for image in web api control-plane worker ai-engine; do
             syft "docker:simula-${image}:release" \
               --output "cyclonedx-json=release/security/simula-${image}.cdx.json"
+            # Syft has fully materialized the SBOM, so this tagged image is no
+            # longer needed. Removing it bounds runner disk use for later scans.
+            docker image rm "simula-${image}:release"
+            docker builder prune --all --force
             grype "sbom:release/security/simula-${image}.cdx.json" \
               --config .grype.yaml \
               --output json \
