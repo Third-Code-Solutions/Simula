@@ -200,8 +200,16 @@ def runtime_environments(
     ).stdout.strip()
     if re.fullmatch(r"[0-9a-f]{40}", release_sha) is None:
         raise BrowserGateError("git did not return an exact release SHA")
+    # A release workflow provides public production origins for artifact builds.
+    # The browser proof must override every routing input so no local test can
+    # reach those origins when versioned API configuration is present.
     public = {
         "NEXT_PUBLIC_SIMULA_API_URL": "http://127.0.0.1:8000",
+        "NEXT_PUBLIC_SIMULA_API_V1_URL": "http://127.0.0.1:8000",
+        "NEXT_PUBLIC_SIMULA_API_V2_URL": "http://127.0.0.1:8000",
+        "NEXT_PUBLIC_SIMULA_DOMAIN_API_VERSION": "v1",
+        "NEXT_PUBLIC_SIMULA_ENVIRONMENT": "local",
+        "NEXT_PUBLIC_SIMULA_WEB_URL": "http://127.0.0.1:3100",
         "NEXT_PUBLIC_SUPABASE_URL": supabase.api_url,
         "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": supabase.publishable_key,
     }
