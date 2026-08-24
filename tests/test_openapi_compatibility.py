@@ -92,6 +92,21 @@ def test_removed_operation_and_tightened_request_are_breaking() -> None:
     assert any("maxLength" in change for change in breaking)
 
 
+def test_explicit_major_contract_version_accepts_reviewed_breaking_change() -> None:
+    baseline = _document()
+    baseline["info"] = {"version": "0.0.0"}
+    candidate = deepcopy(baseline)
+    candidate["info"] = {"version": "0.1.0"}
+    candidate["paths"] = {}
+    assert find_breaking_changes(baseline, candidate) == ["paths./widgets: path removed"]
+
+    candidate = deepcopy(baseline)
+    candidate["info"] = {"version": "1.0.0"}
+    candidate["paths"] = {}
+
+    assert find_breaking_changes(baseline, candidate) == []
+
+
 def test_response_property_and_enum_expansion_are_breaking() -> None:
     baseline = _document()
     candidate = deepcopy(baseline)

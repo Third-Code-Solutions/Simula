@@ -2,7 +2,7 @@
 title: ADR-0002 Toolchain and Generated Contracts
 status: accepted
 created: 2026-07-17
-updated: 2026-07-20
+updated: 2026-08-24
 owner: Architecture lead
 classification: PROPOSED
 source_of_truth: true
@@ -16,13 +16,13 @@ Phase 2 needs one reproducible monorepo for a Next.js web app, FastAPI API, Pyth
 
 Current official/registry observations on 2026-07-17:
 
-- Node 24 is LTS; current patch is `24.18.0`. Node 26 is Current, not LTS.
-- Python `3.14.6` is the current 3.14 maintenance release.
+- Node 24 is LTS; the repository selects security patch `24.18.1`.
+- Python `3.14.7` is the current 3.14 maintenance release.
 - Next.js `16.2.10` requires Node `>=20.9`; `@supabase/supabase-js 2.110.7` requires Node `>=22`.
 - Supabase changelog announces TypeScript 5+ as a future client minimum, Node 20 support removal, changed Data API exposure defaults, and a prior pgmq upgrade hazard. Pins and migration tests are mandatory.
 - Repository host has Node `24.16.0`, pnpm `9.15.0`, Python `3.14.5`, uv `0.11.19`, Docker `29.6.1`, Railway CLI `5.12.1`, and Vercel CLI `54.7.1`. Host drift is allowed only for bootstrap; CI/container pins are authoritative.
 
-Sources: [Node release table](https://nodejs.org/en/about/previous-releases), [Node 24.18.0](https://nodejs.org/en/blog/release/v24.18.0), [Python 3.14.6](https://www.python.org/downloads/release/python-3146/), [Next 16.2](https://nextjs.org/blog/next-16-2), [Supabase changelog](https://supabase.com/changelog.md), npm and PyPI registry metadata queried 2026-07-17.
+Sources: [Node release table](https://nodejs.org/en/about/previous-releases), [Node 24.18.1](https://nodejs.org/en/blog/release/v24.18.1), [Python 3.14.7](https://www.python.org/downloads/release/python-3147/), [Next 16.2](https://nextjs.org/blog/next-16-2), [Supabase changelog](https://supabase.com/changelog.md), npm and PyPI registry metadata queried 2026-08-24.
 
 Evidence ledger: E-4014, E-4015, E-4016, E-4017, E-4018, E-4026, E-4027.
 
@@ -43,8 +43,8 @@ tests/                    cross-service, RLS, and E2E assets
 
 - JavaScript workspace/package manager: pnpm workspaces with Turborepo task orchestration.
 - Python workspace/package manager: uv workspace with PEP 621 projects and one lock.
-- Node pin: `24.18.0`; pnpm `11.13.1`; Turbo `2.10.5`.
-- Python pin: `3.14.6`; uv `0.11.19` minimum/CI pin.
+- Node pin: `24.18.1`; pnpm `11.13.1`; Turbo `2.10.5`.
+- Python pin: `3.14.7`; uv `0.11.19` minimum/CI pin.
 - Containers and CI use exact runtime patch versions. Developers may use another compatible patch only if lock/install/test output is identical.
 - Exact direct dependencies are committed. Transitives are locked by `pnpm-lock.yaml` and `uv.lock`; no wildcard, caret, tilde, URL branch, or unpinned action reference in release inputs.
 
@@ -52,7 +52,7 @@ tests/                    cross-service, RLS, and E2E assets
 
 | Surface | Pins |
 |---|---|
-| Web runtime | Next `16.2.10`; React/React DOM `19.2.7`; TypeScript `5.9.3` (openapi-typescript 7.13 requires TypeScript 5.x) |
+| Web runtime | Next `16.2.11`; React/React DOM `19.2.7`; TypeScript `5.9.3` (openapi-typescript 7.13 requires TypeScript 5.x) |
 | Web types | `@types/node 24.13.3`; `@types/react 19.2.17`; `@types/react-dom 19.2.3` |
 | Web data/contracts | `@supabase/supabase-js 2.110.7`; `@supabase/ssr 0.12.3`; Zod `4.4.3`; openapi-typescript `7.13.0` |
 | Web style | Tailwind CSS `4.3.3`; `@tailwindcss/postcss 4.3.3`; PostCSS `8.5.19` |

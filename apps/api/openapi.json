@@ -120,7 +120,8 @@
     },
     "/api/v2/projects/{project_id}/campaign-evidence/survey-calibrations": {
       "post": {
-        "description": "Queue a deterministic comparison between weighted synthetic aggregate observations and an admitted consented survey dataset.",
+        "deprecated": true,
+        "description": "Unavailable until the submitted survey is immutably bound to its admitted registry artifact.",
         "operationId": "createSurveyCalibration",
         "parameters": [
           {
@@ -153,16 +154,6 @@
           }
         },
         "responses": {
-          "202": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CampaignEvidenceRunResponseDto"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Authentication is missing, expired, or invalid.",
             "content": {
@@ -194,7 +185,7 @@
             }
           },
           "409": {
-            "description": "The command conflicts with durable resource state.",
+            "description": "The command conflicts with durable resource state.\n\nImmutable evidence binding is unavailable.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -267,7 +258,8 @@
     },
     "/api/v2/projects/{project_id}/campaign-evidence/backtests": {
       "post": {
-        "description": "Queue a blind historical replay. Held-out outcomes are stored in a worker-only secret row and are never returned by reads.",
+        "deprecated": true,
+        "description": "Unavailable until the exact held-out outcome envelope is immutably bound to its admitted registry artifact.",
         "operationId": "createHistoricalBacktest",
         "parameters": [
           {
@@ -300,16 +292,6 @@
           }
         },
         "responses": {
-          "202": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CampaignEvidenceRunResponseDto"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Authentication is missing, expired, or invalid.",
             "content": {
@@ -341,7 +323,7 @@
             }
           },
           "409": {
-            "description": "The command conflicts with durable resource state.",
+            "description": "The command conflicts with durable resource state.\n\nImmutable evidence binding is unavailable.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2245,6 +2227,8 @@
     },
     "/api/v2/runs/{run_id}/methodology-reports": {
       "post": {
+        "deprecated": true,
+        "description": "Unavailable until runs record the exact immutable configuration executed by the methodology engine.",
         "operationId": "createRunMethodologyReport",
         "parameters": [
           {
@@ -2277,16 +2261,6 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProductCommandResponseDto"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Authentication is missing, expired, or invalid.",
             "content": {
@@ -2318,7 +2292,7 @@
             }
           },
           "409": {
-            "description": "The command conflicts with durable resource state.",
+            "description": "The command conflicts with durable resource state.\n\nImmutable run configuration binding is unavailable.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2391,6 +2365,8 @@
     },
     "/api/v2/runs/{run_id}/report": {
       "get": {
+        "deprecated": true,
+        "description": "Legacy report artifacts are quarantined and unavailable.",
         "operationId": "getRunReport",
         "parameters": [
           {
@@ -2403,16 +2379,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProductCommandResponseDto"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Authentication is missing, expired, or invalid.",
             "content": {
@@ -2445,6 +2411,16 @@
           },
           "409": {
             "description": "The command conflicts with durable resource state.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Legacy report artifact is quarantined.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2517,6 +2493,8 @@
     },
     "/api/v2/reports/{report_id}/exports": {
       "post": {
+        "deprecated": true,
+        "description": "Exports of quarantined report artifacts are unavailable.",
         "operationId": "createReportExport",
         "parameters": [
           {
@@ -2549,16 +2527,6 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ProductCommandResponseDto"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Authentication is missing, expired, or invalid.",
             "content": {
@@ -2591,6 +2559,16 @@
           },
           "409": {
             "description": "The command conflicts with durable resource state.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Legacy report artifact is quarantined.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -2663,6 +2641,8 @@
     },
     "/api/v2/exports/{export_id}": {
       "get": {
+        "deprecated": true,
+        "description": "Downloads of quarantined report artifacts are unavailable.",
         "operationId": "downloadReportExport",
         "parameters": [
           {
@@ -2675,23 +2655,6 @@
           }
         ],
         "responses": {
-          "200": {
-            "description": "Unexpired report export.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              },
-              "text/csv": {
-                "schema": {
-                  "type": "string",
-                  "format": "binary"
-                }
-              }
-            }
-          },
           "401": {
             "description": "Authentication is missing, expired, or invalid.",
             "content": {
@@ -2724,6 +2687,16 @@
           },
           "409": {
             "description": "The command conflicts with durable resource state.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetailsDto"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Legacy report export is quarantined.",
             "content": {
               "application/problem+json": {
                 "schema": {
@@ -6832,6 +6805,39 @@
         ],
         "additionalProperties": false
       },
+      "HistoricalBacktestCreateDto": {
+        "type": "object",
+        "properties": {
+          "outcome_set_id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "protocol": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "prediction_set": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "baseline_prediction_set": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "outcomes": {
+            "type": "object",
+            "additionalProperties": true,
+            "description": "Held-out outcomes are accepted for the blind evaluator and are never returned by the API."
+          }
+        },
+        "required": [
+          "outcome_set_id",
+          "protocol",
+          "prediction_set",
+          "outcomes"
+        ],
+        "additionalProperties": false
+      },
       "CampaignEvidenceRunResponseDto": {
         "type": "object",
         "properties": {
@@ -6941,39 +6947,6 @@
           "retention_until",
           "attempt_count",
           "replayed"
-        ],
-        "additionalProperties": false
-      },
-      "HistoricalBacktestCreateDto": {
-        "type": "object",
-        "properties": {
-          "outcome_set_id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "protocol": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "prediction_set": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "baseline_prediction_set": {
-            "type": "object",
-            "additionalProperties": true
-          },
-          "outcomes": {
-            "type": "object",
-            "additionalProperties": true,
-            "description": "Held-out outcomes are accepted for the blind evaluator and are never returned by the API."
-          }
-        },
-        "required": [
-          "outcome_set_id",
-          "protocol",
-          "prediction_set",
-          "outcomes"
         ],
         "additionalProperties": false
       },

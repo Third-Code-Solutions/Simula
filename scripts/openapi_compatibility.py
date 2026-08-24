@@ -2,16 +2,23 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Any, Literal
 
 HTTP_METHODS = frozenset({"delete", "get", "head", "options", "patch", "post", "put", "trace"})
 type Direction = Literal["request", "response"]
 type JsonObject = Mapping[str, Any]
+SEMANTIC_VERSION_PATTERN = re.compile(
+    r"^(?P<major>0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)(?:[-+].*)?$"
+)
 
 
 def find_breaking_changes(baseline: JsonObject, candidate: JsonObject) -> list[str]:
     """Return stable, human-readable incompatibilities from baseline to candidate."""
+
+    if _major_contract_version(candidate) > _major_contract_version(baseline):
+        return []
 
     changes: list[str] = []
     _compare_stable_problem_codes(baseline, candidate, changes)
@@ -41,6 +48,14 @@ def find_breaking_changes(baseline: JsonObject, candidate: JsonObject) -> list[s
                 changes,
             )
     return changes
+
+
+def _major_contract_version(document: JsonObject) -> int:
+    version = _mapping(document.get("info")).get("version")
+    if not isinstance(version, str):
+        return 0
+    match = SEMANTIC_VERSION_PATTERN.fullmatch(version)
+    return int(match.group("major")) if match is not None else 0
 
 
 def _compare_stable_problem_codes(

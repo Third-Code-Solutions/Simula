@@ -156,7 +156,7 @@ class _Group:
     reactions: list[float] | None = None
     metrics: list[float] | None = None
     share_intent_total: float = 0.0
-    share_intent_count: int = 0
+    share_intent_weight: float = 0.0
 
 
 def _payload_bytes(payload: SurveyImportPayload) -> bytes:
@@ -417,9 +417,16 @@ def _dataset_from_rows(
             ]
             if any(value < 0 or value > 100 for value in metrics):
                 raise ValueError("survey metrics must be between zero and one hundred")
-            share_intent = (
-                _probability(_field_value(row, field_map.share_intent), field_map.share_intent)
+            share_intent_value = (
+                _field_value(row, field_map.share_intent)
                 if field_map.share_intent is not None
+                else None
+            )
+            share_intent = (
+                _probability(share_intent_value, field_map.share_intent)
+                if field_map.share_intent is not None
+                and share_intent_value is not None
+                and str(share_intent_value).strip()
                 else None
             )
             group = groups.setdefault((variant_key, cohort_key), _Group())
@@ -437,7 +444,7 @@ def _dataset_from_rows(
                 group.metrics[index] += weight * value
             if share_intent is not None:
                 group.share_intent_total += weight * share_intent
-                group.share_intent_count += 1
+                group.share_intent_weight += weight
         except TypeError, ValueError:
             malformed_count += 1
 
@@ -465,7 +472,9 @@ def _dataset_from_rows(
                     )
                 ),
                 share_intent=(
-                    group.share_intent_total / weight if group.share_intent_count > 0 else None
+                    group.share_intent_total / group.share_intent_weight
+                    if group.share_intent_weight > 0
+                    else None
                 ),
                 quality_pass_rate=group.quality_total / group.count,
             )

@@ -11,6 +11,7 @@ import asyncio
 import os
 from collections.abc import Mapping
 from datetime import UTC, datetime
+from hmac import compare_digest
 from time import monotonic
 from typing import cast
 from uuid import UUID
@@ -65,6 +66,19 @@ from simula_core.survey_imports import (
 from simula_worker.database import CampaignLabClaim, CampaignLabDatabase
 
 logger = structlog.get_logger()
+_CAMPAIGN_LAB_HEARTBEAT_SECONDS = 60.0
+
+
+def _assert_approved_survey_checksum(request: Mapping[str, object], actual_checksum: str) -> None:
+    expected_checksum = request.get("approved_payload_checksum_sha256")
+    if expected_checksum is None:
+        if os.getenv("SIMULA_ENVIRONMENT", "local").strip().casefold() == "production":
+            raise ValueError("approved survey payload checksum is required in production")
+        return
+    if not isinstance(expected_checksum, str) or not compare_digest(
+        actual_checksum, expected_checksum.casefold()
+    ):
+        raise ValueError("survey payload does not match its approved source checksum")
 
 
 def _import_survey_payload(
@@ -89,6 +103,7 @@ def _import_survey_payload(
         metadata=SurveyImportMetadata.model_validate(metadata),
         field_map=SurveyImportFieldMap.model_validate(field_map),
     )
+    _assert_approved_survey_checksum(request, imported.payload_checksum_sha256)
     return imported.model_dump(mode="json")
 
 
@@ -117,8 +132,14 @@ def _evaluate_calibration(
             metadata=SurveyImportMetadata.model_validate(metadata),
             field_map=SurveyImportFieldMap.model_validate(survey_import.get("field_map", {})),
         )
+        _assert_approved_survey_checksum(request, imported.payload_checksum_sha256)
         survey = imported.dataset
     else:
+        if os.getenv("SIMULA_ENVIRONMENT", "local").strip().casefold() == "production":
+            raise ValueError(
+                "direct survey calibration is unavailable without an immutable "
+                "derived-dataset binding"
+            )
         survey = SurveyDataset.model_validate(request.get("survey"))
     calibration = calibrate_synthetic_panel(
         synthetic_observations=synthetic,
@@ -234,6 +255,10 @@ def _evaluate_native_survey_import(
 def _evaluate_backtest(
     request: Mapping[str, object], secret_payload: Mapping[str, object] | None
 ) -> Mapping[str, object]:
+    if os.getenv("SIMULA_ENVIRONMENT", "local").strip().lower() == "production":
+        raise ValueError(
+            "production historical backtest lacks an immutable admitted outcome binding"
+        )
     if "outcomes" in request:
         raise ValueError("historical outcomes must remain worker-only")
     if secret_payload is None or not isinstance(secret_payload.get("outcomes"), Mapping):
@@ -398,6 +423,16 @@ def _evaluate_report(request: Mapping[str, object]) -> Mapping[str, object]:
     cultural_evaluation = request.get("cultural_evaluation")
     compliance_review = request.get("compliance_review")
     human_reviewer = request.get("human_reviewer")
+    if any(
+        isinstance(evidence, Mapping)
+        for evidence in (
+            survey_calibration,
+            historical_backtest,
+            cultural_evaluation,
+            compliance_review,
+        )
+    ):
+        raise ValueError("report evidence lacks an immutable source-run and result binding")
     report = build_campaign_lab_report(
         lab_request,
         lab_result,
@@ -450,7 +485,79 @@ def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]
     raise ValueError("unsupported Campaign Lab durable run type")
 
 
-async def process_campaign_lab_claim(database: CampaignLabDatabase, claim: CampaignLabClaim) -> str:
+async def _evaluate_with_lease_heartbeat(
+    database: CampaignLabDatabase,
+    claim: CampaignLabClaim,
+    *,
+    heartbeat_seconds: float,
+) -> tuple[Mapping[str, object], bool]:
+    if heartbeat_seconds <= 0:
+        raise ValueError("Campaign Lab heartbeat interval must be positive")
+    stop_heartbeat = asyncio.Event()
+    lease_current = True
+
+    async def heartbeat() -> None:
+        nonlocal lease_current
+        while not stop_heartbeat.is_set():
+            try:
+                await asyncio.wait_for(stop_heartbeat.wait(), timeout=heartbeat_seconds)
+                return
+            except TimeoutError:
+                pass
+            try:
+                lease_current = await database.update_campaign_lab_progress(
+                    claim.run_id,
+                    claim.lease_token,
+                    "evaluating",
+                    55,
+                    "Running deterministic repeated metrics or evidence comparison.",
+                )
+            except Exception as error:
+                lease_current = False
+                logger.warning(
+                    "campaign_lab_heartbeat_failed",
+                    run_id=str(claim.run_id),
+                    error_type=type(error).__name__,
+                )
+            if not lease_current:
+                return
+
+    heartbeat_task = asyncio.create_task(heartbeat())
+    evaluation_task = asyncio.create_task(asyncio.to_thread(evaluate_campaign_lab_claim, claim))
+    try:
+        result = await asyncio.shield(evaluation_task)
+    except asyncio.CancelledError:
+        # A thread submitted through to_thread cannot be canceled. Keep the
+        # lease heartbeat alive until that computation really exits so another
+        # worker cannot reclaim and duplicate the same claim during shutdown.
+        while not evaluation_task.done():
+            try:
+                await asyncio.shield(evaluation_task)
+            except asyncio.CancelledError:
+                continue
+            except BaseException:
+                break
+        if evaluation_task.done() and not evaluation_task.cancelled():
+            evaluation_error = evaluation_task.exception()
+            if evaluation_error is not None:
+                logger.warning(
+                    "campaign_lab_evaluation_failed",
+                    run_id=str(claim.run_id),
+                    error_type=type(evaluation_error).__name__,
+                )
+        raise
+    finally:
+        stop_heartbeat.set()
+        await heartbeat_task
+    return result, lease_current
+
+
+async def process_campaign_lab_claim(
+    database: CampaignLabDatabase,
+    claim: CampaignLabClaim,
+    *,
+    heartbeat_seconds: float = _CAMPAIGN_LAB_HEARTBEAT_SECONDS,
+) -> str:
     if not await database.update_campaign_lab_progress(
         claim.run_id,
         claim.lease_token,
@@ -478,7 +585,19 @@ async def process_campaign_lab_claim(database: CampaignLabDatabase, claim: Campa
                 )
                 else "stale"
             )
-        result = evaluate_campaign_lab_claim(claim)
+        result, lease_current = await _evaluate_with_lease_heartbeat(
+            database,
+            claim,
+            heartbeat_seconds=heartbeat_seconds,
+        )
+        if not lease_current:
+            return (
+                "canceled"
+                if await database.finalize_canceled_campaign_lab_run(
+                    claim.run_id, claim.lease_token
+                )
+                else "stale"
+            )
         if not await database.update_campaign_lab_progress(
             claim.run_id,
             claim.lease_token,
@@ -560,7 +679,7 @@ async def campaign_lab_loop(
                 )
             last_retention_cleanup_at = now
         try:
-            claims = await database.claim_campaign_lab_runs(5)
+            claims = await database.claim_campaign_lab_runs(1)
         except Exception as error:
             logger.warning("campaign_lab_claim_failed", error_type=type(error).__name__)
             try:

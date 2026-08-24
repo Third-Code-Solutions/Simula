@@ -1,16 +1,20 @@
+import { workspaceOrigin } from "@/lib/platform-api";
+
 import { SignInForm } from "./sign-in-form";
 
 export default function SignInPage() {
+  const origin = workspaceOrigin();
+
   return (
     <main className="centered-main" id="main-content" tabIndex={-1}>
       <section className="auth-context" aria-label="About SIMULA">
-        <a
-          aria-label="SIMULA main site"
-          className="wordmark"
-          href="https://simula-iota.vercel.app"
-        >
-          SIMULA
-        </a>
+        {origin ? (
+          <a aria-label="SIMULA main site" className="wordmark" href={origin}>
+            SIMULA
+          </a>
+        ) : (
+          <span className="wordmark">SIMULA</span>
+        )}
         <div>
           <p className="eyebrow">Decision rehearsal, with receipts</p>
           <h2>Bring a draft. Find the weak spots.</h2>

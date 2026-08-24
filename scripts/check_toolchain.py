@@ -47,8 +47,8 @@ def main() -> None:
         if value != EXPECTED[name]
     ]
     python = platform.python_version()
-    if python != "3.14.6":
-        failures.append(f"python: expected 3.14.6, got {python}")
+    if python != "3.14.7":
+        failures.append(f"python: expected 3.14.7, got {python}")
     pnpm_config = json.loads(output("pnpm", "config", "list", "--location", "project", "--json"))
     for name, expected in EXPECTED_PNPM_CONFIG.items():
         observed_value = pnpm_config.get(name)

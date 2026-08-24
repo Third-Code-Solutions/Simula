@@ -147,7 +147,7 @@ async def wait_for_key(pool: Any, key: str, *, present: bool, deadline_seconds: 
 
 
 async def test_exact_arq_redis_startup_enqueue_retry_and_result() -> None:
-    assert platform.python_version() == "3.14.6"
+    assert platform.python_version() == "3.14.7"
     assert importlib.metadata.version("arq") == "0.28.0"
     assert importlib.metadata.version("redis") == "5.3.1"
 

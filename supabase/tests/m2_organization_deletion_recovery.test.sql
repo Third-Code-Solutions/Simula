@@ -70,8 +70,7 @@ select extensions.ok(
     from pg_catalog.pg_policies as policies
     where policies.schemaname = 'api'
       and policies.tablename = 'organizations'
-      and policies.policyname =
-        'organizations_command_select_for_worker_deletion'
+      and policies.policyname = 'organizations_command_select'
       and policies.roles = array['simula_command_owner']::name[]
       and policies.cmd = 'SELECT'
       and pg_catalog.lower(policies.qual) like '%session_user%'
@@ -82,18 +81,18 @@ select extensions.ok(
     from pg_catalog.pg_policies as policies
     where policies.schemaname = 'api'
       and policies.tablename = 'organizations'
-      and policies.policyname =
-        'organizations_command_delete_after_worker_cleanup'
+      and policies.policyname = 'organizations_command_delete_after_cleanup'
       and policies.roles = array['simula_command_owner']::name[]
       and policies.cmd = 'DELETE'
+      and pg_catalog.lower(policies.qual) like '%session_user%'
+      and pg_catalog.lower(policies.qual) like '%simula_worker%'
   )
   and exists (
     select 1
     from pg_catalog.pg_policies as policies
     where policies.schemaname = 'api'
       and policies.tablename = 'simulation_runs'
-      and policies.policyname =
-        'simulation_runs_command_select_for_worker_deletion'
+      and policies.policyname = 'simulation_runs_command_select'
       and policies.roles = array['simula_command_owner']::name[]
       and policies.cmd = 'SELECT'
       and pg_catalog.lower(policies.qual) like '%session_user%'

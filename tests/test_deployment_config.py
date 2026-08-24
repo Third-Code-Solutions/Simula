@@ -41,9 +41,12 @@ def test_web_image_accepts_public_build_values_and_dynamic_port() -> None:
 
     for key in (
         "NEXT_PUBLIC_SIMULA_API_URL",
+        "NEXT_PUBLIC_SIMULA_API_V1_URL",
+        "NEXT_PUBLIC_SIMULA_API_V2_URL",
         "NEXT_PUBLIC_SIMULA_ENVIRONMENT",
         "NEXT_PUBLIC_SIMULA_RELEASE_SHA",
         "NEXT_PUBLIC_SIMULA_TELEMETRY_ENABLED",
+        "NEXT_PUBLIC_SIMULA_WEB_URL",
         "NEXT_PUBLIC_SENTRY_DSN",
         "NEXT_PUBLIC_SUPABASE_URL",
         "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
@@ -65,6 +68,58 @@ def test_target_control_plane_image_is_non_root_and_telemetry_first() -> None:
     assert '"--require", "./dist/instrumentation.js"' in dockerfile
     assert config["build"]["dockerfilePath"] == "apps/api/Dockerfile"
     assert config["deploy"]["healthcheckPath"] == "/health/ready"
+
+
+def test_ci_builds_and_scans_every_containerized_production_runtime() -> None:
+    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+
+    expected_builds = {
+        "simula-web:m0 --file apps/web/Dockerfile",
+        "simula-api:m0 --file services/api/Dockerfile",
+        "simula-control-plane:m0 --file apps/api/Dockerfile",
+        "simula-worker:m0 --file services/worker/Dockerfile",
+        "simula-ai-engine:m0 --file services/ai-engine/Dockerfile",
+    }
+    for expected in expected_builds:
+        assert expected in workflow
+    assert "--build-arg NEXT_PUBLIC_SIMULA_API_V1_URL=http://127.0.0.1:8000" in workflow
+    assert "--build-arg NEXT_PUBLIC_SIMULA_API_V2_URL=http://127.0.0.1:3002" in workflow
+    assert '--build-arg NEXT_PUBLIC_SIMULA_RELEASE_SHA="$GITHUB_SHA"' in workflow
+    assert "--build-arg NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321" in workflow
+    assert "for image in web api control-plane worker ai-engine; do" in workflow
+
+
+def test_root_and_signed_release_run_the_control_plane_and_full_verification() -> None:
+    package = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
+    release = (ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
+
+    assert "pnpm verify:m1-control-plane" in package["scripts"]["verify"]
+    assert "pnpm verify" in release
+    assert "supabase start" in release
+    assert "docker compose up --detach --wait redis" in release
+    assert "for image in web api control-plane worker ai-engine; do" in release
+    assert "simula-control-plane:release --file apps/api/Dockerfile" in release
+    assert "simula-ai-engine:release --file services/ai-engine/Dockerfile" in release
+    assert "vars.NEXT_PUBLIC_SIMULA_API_V1_URL" in release
+    assert "vars.NEXT_PUBLIC_SIMULA_API_V2_URL" in release
+    assert "vars.NEXT_PUBLIC_SUPABASE_URL" in release
+    assert "vars.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" in release
+    assert "--build-arg NEXT_PUBLIC_SIMULA_API_V1_URL" in release
+    assert "--build-arg NEXT_PUBLIC_SIMULA_API_V2_URL" in release
+    assert "--build-arg NEXT_PUBLIC_SIMULA_RELEASE_SHA" in release
+    assert "--build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY" in release
+    assert "Telemetry requires an HTTPS Sentry DSN" in release
+    assert "NEXT_PUBLIC_SIMULA_API_URL: ${{ vars.NEXT_PUBLIC_SIMULA_API_V1_URL }}" in release
+    assert "admin API origin must match the authoritative v1 origin" in release
+    assert 'syft "dir:apps/admin/.next/standalone"' in release
+    assert "release/security/simula-admin.grype.json" in release
+    assert "cp -R apps/admin/.next/standalone release/stage/admin" in release
+    assert "cp -R apps/admin/.next/static release/stage/admin-static" in release
+    assert "v1 and v2 API origins must be distinct" in release
+    for image in ("web", "api", "control-plane", "worker", "ai-engine"):
+        assert release.count(f"--tag simula-{image}:release") == 1
+    assert "release/image-identities.txt" in release
+    assert "cp release/image-identities.txt release/stage/" in release
 
 
 def test_dispatcher_reuses_the_control_plane_image_without_dual_process_overlap() -> None:

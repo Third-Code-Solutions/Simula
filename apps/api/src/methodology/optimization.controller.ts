@@ -12,11 +12,11 @@ import {
 } from "@nestjs/common";
 import {
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
-  ApiProduces,
   ApiTags,
 } from "@nestjs/swagger";
 import type { Response } from "express";
@@ -35,6 +35,7 @@ import {
 import { AppProblem } from "../domain/problem";
 import {
   ApiAuthenticatedDomainProblems,
+  ApiGoneProblem,
   ApiValidationProblem,
 } from "../domain/problem.dto";
 import {
@@ -50,7 +51,6 @@ import {
 import type { OrganizationGateway } from "../organizations/organization-gateway.port";
 import type { DomainRateLimiter } from "../rate-limits/domain-rate-limiter";
 import type { MethodologyEngine } from "./methodology-engine";
-import { uuid5Url } from "./methodology.controller";
 import { ProductCommandResponseDto } from "./methodology.dto";
 import {
   ProductCollectionResponseDto,
@@ -64,16 +64,6 @@ const IDEMPOTENCY_HEADER = {
   required: true,
   schema: { type: "string", minLength: 16, maxLength: 128 },
 } as const;
-
-function record(
-  value: unknown,
-  name: string,
-): Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    throw new Error(`invalid ${name}`);
-  }
-  return value as Readonly<Record<string, unknown>>;
-}
 
 @ApiTags("optimization")
 @ApiBearerAuth("supabase")
@@ -177,10 +167,17 @@ export class OptimizationController {
   }
 
   @Post("runs/:run_id/methodology-reports")
-  @HttpCode(201)
-  @ApiOperation({ operationId: "createRunMethodologyReport" })
+  @HttpCode(409)
+  @ApiOperation({
+    operationId: "createRunMethodologyReport",
+    deprecated: true,
+    description:
+      "Unavailable until runs record the exact immutable configuration executed by the methodology engine.",
+  })
   @ApiHeader(IDEMPOTENCY_HEADER)
-  @ApiCreatedResponse({ type: ProductCommandResponseDto })
+  @ApiConflictResponse({
+    description: "Immutable run configuration binding is unavailable.",
+  })
   @ApiAuthenticatedDomainProblems()
   @ApiValidationProblem()
   async createRunMethodologyReport(
@@ -190,79 +187,52 @@ export class OptimizationController {
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ProductCommandResponseDto> {
-    const runId = resourceId(rawRunId, "run_id");
-    const run = await this.gateway.getSimulationRun(identity, runId);
-    if (run.state !== "succeeded") {
-      throw new AppProblem(
-        409,
-        "version_conflict",
-        "Completed run unavailable",
-        "A succeeded run is required before generating its methodology report.",
-      );
-    }
-    const key = idempotencyKey(request);
-    const admission = await this.rateLimiter.requireOrganizationMutation(
-      identity.userId,
-      run.organization_id,
-      {
-        key,
-        scope: "POST:/api/v2/runs/{run_id}/methodology-reports",
-        resourceId: runId,
-      },
+    void rawRunId;
+    void identity;
+    void body;
+    void request;
+    void response;
+    throw new AppProblem(
+      409,
+      "version_conflict",
+      "Bound methodology report unavailable",
+      "This run does not contain an immutable simulation-configuration binding, so a methodology report cannot be generated safely.",
     );
-    try {
-      const previewCommand = await this.gateway.getMethodologyPreviewCommand(
-        identity,
-        run.project_id,
-        {
-          ...body,
-          stimulus_version_id: run.stimulus_version_id,
-          run_id: runId,
-        },
-        runId,
-        uuid5Url(`simula-report:${runId}`),
-      );
-      const preview = await this.engine.execute(previewCommand);
-      const report = record(preview.report, "methodology report");
-      const command = await this.gateway.createReportArtifact(
-        identity,
-        runId,
-        report,
-        key,
-        canonicalRequestSha256({ run_id: runId, ...body }),
-        requestCorrelationId(request),
-      );
-      await acceptAdmissions(this.rateLimiter, [admission]);
-      response.setHeader("Idempotent-Replayed", String(command.replayed));
-      if (command.replayed) {
-        response.status(200);
-      }
-      return { data: { ...command.value, artifact: report } };
-    } catch (error) {
-      await rejectAdmissions(this.rateLimiter, [admission]);
-      throw error;
-    }
   }
 
   @Get("runs/:run_id/report")
-  @ApiOperation({ operationId: "getRunReport" })
-  @ApiOkResponse({ type: ProductCommandResponseDto })
+  @HttpCode(410)
+  @ApiOperation({
+    operationId: "getRunReport",
+    deprecated: true,
+    description: "Legacy report artifacts are quarantined and unavailable.",
+  })
+  @ApiGoneProblem("Legacy report artifact is quarantined.")
   @ApiAuthenticatedDomainProblems()
   @ApiValidationProblem()
   async getRunReport(
     @Param("run_id") rawRunId: string,
     @CurrentIdentity() identity: VerifiedIdentity,
   ): Promise<ProductCommandResponseDto> {
-    const runId = resourceId(rawRunId, "run_id");
-    await this.rateLimiter.requireRunRead(identity.userId, runId);
-    return { data: { ...(await this.gateway.getRunReport(identity, runId)) } };
+    void rawRunId;
+    void identity;
+    throw new AppProblem(
+      410,
+      "unsupported_scope",
+      "Legacy report artifacts are quarantined",
+      "Reports created before canonical run-to-configuration binding are unavailable.",
+    );
   }
 
   @Post("reports/:report_id/exports")
-  @HttpCode(201)
-  @ApiOperation({ operationId: "createReportExport" })
+  @HttpCode(410)
+  @ApiOperation({
+    operationId: "createReportExport",
+    deprecated: true,
+    description: "Exports of quarantined report artifacts are unavailable.",
+  })
   @ApiHeader(IDEMPOTENCY_HEADER)
-  @ApiCreatedResponse({ type: ProductCommandResponseDto })
+  @ApiGoneProblem("Legacy report artifact is quarantined.")
   @ApiAuthenticatedDomainProblems()
   @ApiValidationProblem()
   async createReportExport(
@@ -272,54 +242,27 @@ export class OptimizationController {
     @Req() request: AuthenticatedRequest,
     @Res({ passthrough: true }) response: Response,
   ): Promise<ProductCommandResponseDto> {
-    const reportId = resourceId(rawReportId, "report_id");
-    const report = await this.gateway.getStoredReportArtifact(
-      identity,
-      reportId,
+    void rawReportId;
+    void identity;
+    void body;
+    void request;
+    void response;
+    throw new AppProblem(
+      410,
+      "unsupported_scope",
+      "Legacy report exports are unavailable",
+      "Quarantined report artifacts cannot be exported.",
     );
-    const key = idempotencyKey(request);
-    const admission = await this.rateLimiter.requireOrganizationMutation(
-      identity.userId,
-      report.organization_id,
-      {
-        key,
-        scope: "POST:/api/v2/reports/{report_id}/exports",
-        resourceId: reportId,
-      },
-    );
-    try {
-      const rendered = await this.engine.renderExport({
-        report: report.artifact,
-        format: body.format,
-      });
-      const command = await this.gateway.createReportExport(
-        identity,
-        reportId,
-        body,
-        rendered,
-        key,
-        canonicalRequestSha256({ report_id: reportId, ...body }),
-        requestCorrelationId(request),
-      );
-      await acceptAdmissions(this.rateLimiter, [admission]);
-      response.setHeader("Idempotent-Replayed", String(command.replayed));
-      if (command.replayed) {
-        response.status(200);
-      }
-      return { data: { ...command.value } };
-    } catch (error) {
-      await rejectAdmissions(this.rateLimiter, [admission]);
-      throw error;
-    }
   }
 
   @Get("exports/:export_id")
-  @ApiOperation({ operationId: "downloadReportExport" })
-  @ApiProduces("application/json", "text/csv")
-  @ApiOkResponse({
-    description: "Unexpired report export.",
-    schema: { type: "string", format: "binary" },
+  @HttpCode(410)
+  @ApiOperation({
+    operationId: "downloadReportExport",
+    deprecated: true,
+    description: "Downloads of quarantined report artifacts are unavailable.",
   })
+  @ApiGoneProblem("Legacy report export is quarantined.")
   @ApiAuthenticatedDomainProblems()
   @ApiValidationProblem()
   async downloadReportExport(
@@ -327,23 +270,14 @@ export class OptimizationController {
     @CurrentIdentity() identity: VerifiedIdentity,
     @Res() response: Response,
   ): Promise<void> {
-    await this.rateLimiter.requireGeneral(identity.userId);
-    const stored = await this.gateway.getReportExport(
-      identity,
-      resourceId(rawExportId, "export_id"),
+    void rawExportId;
+    void identity;
+    void response;
+    throw new AppProblem(
+      410,
+      "unsupported_scope",
+      "Legacy report exports are unavailable",
+      "Quarantined report exports cannot be downloaded.",
     );
-    response.setHeader(
-      "Content-Type",
-      stored.format === "json" ? "application/json" : "text/csv; charset=utf-8",
-    );
-    response.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${stored.filename}"`,
-    );
-    response.setHeader("Content-Length", String(stored.content.length));
-    response.setHeader("ETag", `"${stored.content_sha256}"`);
-    response.setHeader("Cache-Control", "private, no-store");
-    response.setHeader("X-Content-Type-Options", "nosniff");
-    response.status(200).send(stored.content);
   }
 }

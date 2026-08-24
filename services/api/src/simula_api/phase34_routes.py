@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import secrets
 from collections.abc import Mapping
 from typing import Annotated, Any, cast
@@ -31,7 +32,6 @@ from simula_core.reporting import (
     CompleteReport,
     build_complete_report,
     compare_variants,
-    export_report,
 )
 
 from simula_api.auth import VerifiedIdentity
@@ -855,6 +855,16 @@ async def create_feedback(
     idempotency_key: IdempotencyKey,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCommandResponse:
+    if os.getenv("SIMULA_ENVIRONMENT", "local").strip().lower() == "production":
+        raise AppProblem(
+            status=409,
+            code="version_conflict",
+            title="Generic feedback intake is unavailable",
+            detail=(
+                "Production feedback intake is disabled until payloads use a governed "
+                "aggregate evidence schema with explicit retention and immutable provenance."
+            ),
+        )
     payload = await _services(request).database.execute_product_command(
         identity,
         operation="create_feedback",
@@ -905,8 +915,10 @@ async def list_feedback(
 @router.post(
     "/runs/{run_id}/methodology-reports",
     operation_id="create_run_methodology_report",
-    response_model=ProductCommandResponse,
-    status_code=201,
+    response_model=None,
+    status_code=409,
+    deprecated=True,
+    responses={409: _problem_response("Immutable run configuration binding is unavailable.")},
 )
 async def create_run_methodology_report(
     run_id: UUID,
@@ -916,64 +928,29 @@ async def create_run_methodology_report(
     idempotency_key: IdempotencyKey,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCommandResponse:
-    database = _services(request).database
-    run_rows = await database.read_product_rows(
-        identity,
-        operation="read_run_for_methodology_report",
-        query="""
-          select project_id, stimulus_version_id
-          from api.simulation_runs where id = %s and state = 'succeeded'
-          limit 1
-        """,
-        parameters=(run_id,),
-    )
-    if not run_rows:
-        raise AppProblem(
-            status=409,
-            code="version_conflict",
-            title="Completed run unavailable",
-            detail="A succeeded run is required before generating its methodology report.",
-        )
-    run_row = run_rows[0]
-    preview = await create_methodology_preview(
-        cast(UUID, run_row["project_id"]),
-        MethodologyPreviewCreate(
-            configuration_version_id=body.configuration_version_id,
-            stimulus_version_id=cast(UUID, run_row["stimulus_version_id"]),
-            variant_key=body.variant_key,
-            variant_label=body.variant_label,
-            run_id=run_id,
-            repetition_configuration=body.repetition_configuration,
-        ),
-        request,
-        idempotency_key,
-        identity,
-    )
-    report = cast(dict[str, JsonValue], preview.data["report"])
-    payload = await database.execute_product_command(
-        identity,
-        operation="create_methodology_report",
-        query="select api.create_report_artifact(%s,%s,%s,%s,%s) as payload",
-        parameters=(
-            run_id,
-            Jsonb(report),
-            idempotency_key,
-            _hash(body, run_id=str(run_id)),
-            _correlation_id(request),
+    del run_id, body, request, response, idempotency_key, identity
+    raise AppProblem(
+        status=409,
+        code="version_conflict",
+        title="Methodology report creation is unavailable",
+        detail=(
+            "Simulation runs do not yet record a canonical immutable binding to the exact "
+            "frozen configuration executed by the methodology engine."
         ),
     )
-    _replay_header(response, payload)
-    if payload.get("replayed"):
-        response.status_code = 200
-    payload["artifact"] = report
-    return ProductCommandResponse(data=cast(dict[str, JsonValue], _json(payload)))
 
 
 @router.post(
     "/runs/{run_id}/reports",
     operation_id="create_run_report",
-    response_model=ProductCommandResponse,
-    status_code=201,
+    response_model=None,
+    status_code=410,
+    deprecated=True,
+    responses={
+        410: _problem_response(
+            "Client-authored report persistence was removed; use methodology-reports."
+        )
+    },
 )
 async def create_report(
     run_id: UUID,
@@ -983,61 +960,44 @@ async def create_report(
     idempotency_key: IdempotencyKey,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCommandResponse:
-    CompleteReport.model_validate(body.artifact)
-    payload = await _services(request).database.execute_product_command(
-        identity,
-        operation="create_report",
-        query="select api.create_report_artifact(%s,%s,%s,%s,%s) as payload",
-        parameters=(
-            run_id,
-            Jsonb(body.artifact),
-            idempotency_key,
-            _hash(body, run_id=str(run_id)),
-            _correlation_id(request),
-        ),
+    del run_id, body, request, response, idempotency_key, identity
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Client-authored reports are no longer accepted",
+        detail=("Generate a server-authored report through the run methodology-reports command."),
     )
-    _replay_header(response, payload)
-    if payload.get("replayed"):
-        response.status_code = 200
-    return ProductCommandResponse(data=cast(dict[str, JsonValue], _json(payload)))
 
 
 @router.get(
     "/runs/{run_id}/report",
     operation_id="get_run_report",
-    response_model=ProductCommandResponse,
+    response_model=None,
+    status_code=410,
+    deprecated=True,
+    responses={410: _problem_response("Legacy report artifacts are quarantined.")},
 )
 async def get_report(
     run_id: UUID,
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCommandResponse:
-    rows = await _services(request).database.read_product_rows(
-        identity,
-        operation="get_report",
-        query="""
-          select id as report_id, run_id, schema_version, artifact,
-            content_sha256, created_at
-          from api.report_artifacts where run_id = %s
-          order by created_at desc, id desc limit 1
-        """,
-        parameters=(run_id,),
+    del run_id, request, identity
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy report artifacts are quarantined",
+        detail="Report rows created before canonical run-to-configuration binding are unavailable.",
     )
-    if not rows:
-        raise AppProblem(
-            status=404,
-            code="not_found",
-            title="Resource not found",
-            detail="No report exists for this run.",
-        )
-    return ProductCommandResponse(data=cast(dict[str, JsonValue], _json(rows[0])))
 
 
 @router.post(
     "/reports/{report_id}/exports",
     operation_id="create_report_export",
-    response_model=ProductCommandResponse,
-    status_code=201,
+    response_model=None,
+    status_code=410,
+    deprecated=True,
+    responses={410: _problem_response("Legacy report exports are unavailable.")},
 )
 async def create_export(
     report_id: UUID,
@@ -1047,82 +1007,44 @@ async def create_export(
     idempotency_key: IdempotencyKey,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCommandResponse:
-    rows = await _services(request).database.read_product_rows(
-        identity,
-        operation="read_report_for_export",
-        query="select artifact from api.report_artifacts where id = %s limit 1",
-        parameters=(report_id,),
+    del report_id, body, request, response, idempotency_key, identity
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy report exports are unavailable",
+        detail="Quarantined report artifacts cannot be exported.",
     )
-    if not rows:
-        raise AppProblem(
-            status=404,
-            code="not_found",
-            title="Resource not found",
-            detail="The report was not found.",
-        )
-    exported = export_report(CompleteReport.model_validate(rows[0]["artifact"]), body.format)
-    payload = await _services(request).database.execute_product_command(
-        identity,
-        operation="create_export",
-        query="select api.create_report_export(%s,%s,%s,%s,%s,%s,%s,%s) as payload",
-        parameters=(
-            report_id,
-            body.format,
-            exported.filename,
-            exported.content,
-            body.expires_at,
-            idempotency_key,
-            _hash(body, report_id=str(report_id)),
-            _correlation_id(request),
-        ),
-    )
-    _replay_header(response, payload)
-    if payload.get("replayed"):
-        response.status_code = 200
-    return ProductCommandResponse(data=cast(dict[str, JsonValue], _json(payload)))
 
 
-@router.get("/exports/{export_id}", operation_id="download_report_export")
+@router.get(
+    "/exports/{export_id}",
+    operation_id="download_report_export",
+    response_model=None,
+    status_code=410,
+    deprecated=True,
+    responses={410: _problem_response("Legacy report exports are unavailable.")},
+)
 async def download_export(
     export_id: UUID,
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> Response:
-    rows = await _services(request).database.read_product_rows(
-        identity,
-        operation="download_export",
-        query="""
-          select format, filename, content, content_sha256
-          from api.report_exports
-          where id = %s and deleted_at is null and expires_at > statement_timestamp()
-          limit 1
-        """,
-        parameters=(export_id,),
-    )
-    if not rows:
-        raise AppProblem(
-            status=404,
-            code="not_found",
-            title="Resource not found",
-            detail="The export is missing or expired.",
-        )
-    row = rows[0]
-    media_type = "application/json" if row["format"] == "json" else "text/csv; charset=utf-8"
-    return Response(
-        content=bytes(row["content"]),
-        media_type=media_type,
-        headers={
-            "Content-Disposition": f'attachment; filename="{row["filename"]}"',
-            "ETag": f'"{row["content_sha256"]}"',
-        },
+    del export_id, request, identity
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy report exports are unavailable",
+        detail="Quarantined report exports cannot be downloaded.",
     )
 
 
 @router.post(
     "/reports/{report_id}/shares",
     operation_id="create_report_share",
-    response_model=ProductCommandResponse,
-    status_code=201,
+    response_model=None,
+    status_code=410,
+    deprecated=True,
+    responses={410: _problem_response("Legacy report sharing is unavailable.")},
 )
 async def create_report_share(
     report_id: UUID,
@@ -1132,80 +1054,66 @@ async def create_report_share(
     idempotency_key: IdempotencyKey,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCommandResponse:
-    share_token = secrets.token_urlsafe(32)
-    token_sha256 = hashlib.sha256(share_token.encode()).hexdigest()
-    payload = await _services(request).database.execute_product_command(
-        identity,
-        operation="create_report_share",
-        query="select api.create_report_share_grant(%s,%s,%s,%s,%s,%s,%s,%s) as payload",
-        parameters=(
-            report_id,
-            body.recipient_user_id,
-            body.permission,
-            token_sha256,
-            body.expires_at,
-            idempotency_key,
-            _hash(body, report_id=str(report_id)),
-            _correlation_id(request),
-        ),
+    del report_id, body, request, response, idempotency_key, identity
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy report sharing is unavailable",
+        detail="Quarantined report artifacts cannot be shared.",
     )
-    replayed = bool(payload.get("replayed"))
-    _replay_header(response, payload)
-    if replayed:
-        response.status_code = 200
-    else:
-        payload["share_token"] = share_token
-    return ProductCommandResponse(data=cast(dict[str, JsonValue], _json(payload)))
 
 
 @router.get(
     "/reports/{report_id}/shares",
     operation_id="list_report_shares",
-    response_model=ProductCollectionResponse,
+    response_model=None,
+    status_code=410,
+    deprecated=True,
+    responses={410: _problem_response("Legacy report sharing is unavailable.")},
 )
 async def list_report_shares(
     report_id: UUID,
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCollectionResponse:
-    rows = await _services(request).database.read_product_rows(
-        identity,
-        operation="list_report_shares",
-        query="""
-          select id, report_artifact_id as report_id, recipient_user_id,
-            permission, expires_at, revoked_at, access_count,
-            last_accessed_at, created_at
-          from api.report_share_grants where report_artifact_id = %s
-          order by created_at desc, id desc limit 100
-        """,
-        parameters=(report_id,),
+    del report_id, request, identity
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy report sharing is unavailable",
+        detail="Share grants for quarantined report artifacts are unavailable.",
     )
-    return ProductCollectionResponse(items=cast(list[dict[str, JsonValue]], _json(rows)))
 
 
 @router.get(
     "/shared-reports/{token}",
     operation_id="access_shared_report",
-    response_model=ProductCommandResponse,
+    response_model=None,
+    status_code=410,
+    deprecated=True,
+    responses={410: _problem_response("Legacy shared reports are unavailable.")},
 )
 async def access_shared_report(
     token: Annotated[str, Path(pattern=r"^[A-Za-z0-9_-]{43}$")],
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCommandResponse:
-    payload = await _services(request).database.read_product_json(
-        identity,
-        operation="access_shared_report",
-        query="select api.access_shared_report(%s,%s) as payload",
-        parameters=(hashlib.sha256(token.encode()).hexdigest(), _correlation_id(request)),
+    del token, request, identity
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy shared reports are unavailable",
+        detail="Quarantined report artifacts cannot be accessed by share token.",
     )
-    return ProductCommandResponse(data=cast(dict[str, JsonValue], _json(payload)))
 
 
 @router.delete(
     "/report-shares/{share_id}",
     operation_id="revoke_report_share",
-    response_model=ProductCommandResponse,
+    response_model=None,
+    status_code=410,
+    deprecated=True,
+    responses={410: _problem_response("Legacy report sharing is unavailable.")},
 )
 async def revoke_report_share(
     share_id: UUID,
@@ -1214,19 +1122,13 @@ async def revoke_report_share(
     idempotency_key: IdempotencyKey,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> ProductCommandResponse:
-    payload = await _services(request).database.execute_product_command(
-        identity,
-        operation="revoke_report_share",
-        query="select api.revoke_report_share_grant(%s,%s,%s,%s) as payload",
-        parameters=(
-            share_id,
-            idempotency_key,
-            canonical_request_sha256({"share_id": str(share_id)}),
-            _correlation_id(request),
-        ),
+    del share_id, request, response, idempotency_key, identity
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy report sharing is unavailable",
+        detail="Share grants for quarantined report artifacts cannot be mutated.",
     )
-    _replay_header(response, payload)
-    return ProductCommandResponse(data=cast(dict[str, JsonValue], _json(payload)))
 
 
 @router.post(

@@ -1491,6 +1491,22 @@ def build_campaign_lab_report(
 ) -> CampaignLabReport:
     """Build the evidence-labelled report without collapsing metrics into one score."""
 
+    if human_reviewer is not None or approval_status == "approved_experimental":
+        raise ValueError("approved reports require a separate authenticated approval command")
+    if any(
+        evidence is not None
+        for evidence in (
+            survey_calibration,
+            historical_backtest,
+            cultural_evaluation,
+            compliance_review,
+        )
+    ):
+        raise ValueError(
+            "report evidence requires an immutable binding to the exact source run, "
+            "configuration, input, and result"
+        )
+
     findings = {
         metric_key: ranking.model_dump(mode="json")
         for metric_key, ranking in result.overall_component_rankings.items()
@@ -1514,24 +1530,16 @@ def build_campaign_lab_report(
         "scoring_version": request.configuration.scoring_version,
         "simulation_engine_version": request.configuration.simulation_engine_version,
     }
-    calibration = (
-        dict(survey_calibration)
-        if survey_calibration is not None
-        else {
-            "status": "not_run",
-            "evidence_status": "Synthetic-only",
-            "limitations": ["No consented survey dataset has been attached to this report."],
-        }
-    )
-    backtest = (
-        dict(historical_backtest)
-        if historical_backtest is not None
-        else {
-            "status": "not_run",
-            "evidence_status": "Synthetic-only",
-            "limitations": ["No blind held-out historical outcome dataset has been attached."],
-        }
-    )
+    calibration = {
+        "status": "not_run",
+        "evidence_status": "Synthetic-only",
+        "limitations": ["No consented survey dataset has been attached to this report."],
+    }
+    backtest = {
+        "status": "not_run",
+        "evidence_status": "Synthetic-only",
+        "limitations": ["No blind held-out historical outcome dataset has been attached."],
+    }
     calibration_status = str(calibration.get("evidence_status") or calibration.get("status"))
     backtest_status = str(backtest.get("evidence_status") or backtest.get("status"))
     evidence_status: CampaignEvidenceStatus
@@ -1545,7 +1553,7 @@ def build_campaign_lab_report(
         evidence_status = "Insufficient evidence"
     else:
         evidence_status = "Synthetic-only"
-    cultural = cultural_evaluation or {
+    cultural = {
         "status": "not_run",
         "supported_languages": ["english", "filipino", "taglish"],
         "limitations": [
@@ -1706,7 +1714,9 @@ def build_compliance_review(
     payload: object,
     reviewer: str | None = None,
 ) -> CampaignComplianceReview:
-    """Return an auditable fail-closed compliance disposition."""
+    """Return an automated scan disposition without granting reviewer authority."""
+
+    del reviewer
 
     try:
         validate_campaign_policy(payload)
@@ -1716,17 +1726,17 @@ def build_compliance_review(
             status="blocked",
             prohibited_uses_detected=(str(error),),
             aggregate_only=False,
-            reviewed_by=reviewer,
-            reviewed_at=datetime.now(UTC) if reviewer else None,
+            reviewed_by=None,
+            reviewed_at=None,
             rationale="The request includes a prohibited political-use pattern.",
         )
     return CampaignComplianceReview(
         review_id=review_id,
-        status="needs_human_review" if reviewer is None else "approved_experimental",
+        status="needs_human_review",
         prohibited_uses_detected=(),
         aggregate_only=True,
-        reviewed_by=reviewer,
-        reviewed_at=datetime.now(UTC) if reviewer else None,
+        reviewed_by=None,
+        reviewed_at=None,
         rationale=(
             "Aggregate research controls passed; human review is still required before "
             "external use."

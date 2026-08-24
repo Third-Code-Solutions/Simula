@@ -144,3 +144,16 @@ def test_native_form_rejects_identity_and_political_answers() -> None:
                 }
             ],
         )
+
+
+def test_native_survey_provenance_rejects_negative_calibration_prose() -> None:
+    provenance = _form().provenance.model_dump(mode="python")
+    provenance["allowed_uses"] = ("This source is not approved for calibration.",)
+
+    with pytest.raises(ValueError, match="must permit calibration"):
+        NativeSurveyProvenance.model_validate(provenance)
+
+    provenance["allowed_uses"] = ("Survey calibration.",)
+    assert NativeSurveyProvenance.model_validate(provenance).allowed_uses == (
+        "Survey calibration.",
+    )

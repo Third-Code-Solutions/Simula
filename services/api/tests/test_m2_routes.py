@@ -495,3 +495,43 @@ async def test_actual_oversized_body_is_rejected_before_domain_processing() -> N
     assert response.headers["access-control-allow-origin"] == "https://console.example.test"
     assert rate_limiter.pre_auth_attempts == 1
     assert database.organization_names == []
+
+
+async def test_campaign_lab_bulk_json_is_not_limited_by_the_small_command_envelope() -> None:
+    app, _ = app_with_fakes()
+    campaign_id = "40000000-0000-4000-8000-000000000001"
+    body = b'{"padding":"' + b"a" * 5_600_000 + b'"}'
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            f"/api/v1/campaign-lab/campaigns/{campaign_id}/research",
+            headers={
+                "Authorization": f"Bearer {TEST_BEARER}",
+                "Content-Type": "application/json",
+                "Idempotency-Key": "campaign-research-bulk-body-0001",
+            },
+            content=body,
+        )
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"
+
+
+async def test_campaign_lab_bulk_json_remains_bounded() -> None:
+    app, _ = app_with_fakes()
+    campaign_id = "40000000-0000-4000-8000-000000000001"
+    body = b'{"padding":"' + b"a" * (6 * 1024 * 1024) + b'"}'
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            f"/api/v1/campaign-lab/campaigns/{campaign_id}/research",
+            headers={
+                "Authorization": f"Bearer {TEST_BEARER}",
+                "Content-Type": "application/json",
+                "Idempotency-Key": "campaign-research-bulk-body-0002",
+            },
+            content=body,
+        )
+
+    assert response.status_code == 413
+    assert response.json()["code"] == "request_too_large"

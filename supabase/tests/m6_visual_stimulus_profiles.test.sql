@@ -121,7 +121,7 @@ select extensions.ok(
       ) like '%organization.deletion_requested%'
     from pg_catalog.pg_policy as policies
     where policies.polrelid = 'private.audit_events'::pg_catalog.regclass
-      and policies.polname = 'audit_events_command_phase4_insert'
+      and policies.polname = 'audit_events_command_insert'
   ),
   'phase 4 audit policy admits both visual-profile and deletion events'
 );

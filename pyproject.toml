@@ -1,7 +1,7 @@
 [project]
 name = "simula-workspace"
 version = "0.0.0"
-requires-python = "==3.14.6"
+requires-python = "==3.14.7"
 dependencies = [
     "simula-api==0.0.0",
     "simula-ai-engine==0.0.0",
@@ -29,6 +29,7 @@ members = ["packages/simula-core", "services/ai-engine", "services/api", "servic
 dev = [
     "coverage==7.15.2",
     "mypy==2.3.0",
+    "pip==26.2",
     "pip-audit==2.10.1",
     "pytest==9.1.1",
     "pytest-asyncio==1.4.0",

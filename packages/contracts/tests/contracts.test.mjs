@@ -504,6 +504,16 @@ test("NestJS migration contract remains separate and fail-closed", async () => {
       "application/problem+json"
     ],
   );
+  for (const response of [
+    document.paths["/api/v2/runs/{run_id}/report"].get.responses["410"],
+    document.paths["/api/v2/reports/{report_id}/exports"].post.responses["410"],
+    document.paths["/api/v2/exports/{export_id}"].get.responses["410"],
+  ]) {
+    assert.equal(
+      response.content["application/problem+json"].schema.$ref,
+      "#/components/schemas/ProblemDetailsDto",
+    );
+  }
   assert.ok(document.paths["/health/live"].get);
   assert.ok(document.paths["/health/ready"].get.responses["503"]);
 });

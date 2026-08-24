@@ -236,6 +236,15 @@ def test_policy_rejects_individual_persuasion_and_compliance_fails_closed() -> N
     assert review.status == "blocked"
     assert review.aggregate_only is False
 
+    caller_named_review = build_compliance_review(
+        review_id=UUID("30000000-0000-4000-8000-000000000105"),
+        payload={"aggregate_only": True},
+        reviewer="self-asserted-reviewer",
+    )
+    assert caller_named_review.status == "needs_human_review"
+    assert caller_named_review.reviewed_by is None
+    assert caller_named_review.reviewed_at is None
+
 
 @pytest.mark.parametrize(
     "payload",
@@ -261,66 +270,52 @@ def test_persona_narrative_cannot_claim_a_real_respondent() -> None:
         validate_persona_narrative(persona, "This is a real respondent's testimony.")
 
 
-def test_campaign_lab_report_keeps_cultural_evaluation_separate_from_component_metrics() -> None:
+def test_campaign_lab_report_rejects_unbound_cultural_evaluation() -> None:
     result = run_campaign_lab_simulation(_request())
-    report = build_campaign_lab_report(
-        _request(),
-        result,
-        cultural_evaluation={
-            "status": "Human-reviewed",
-            "suite_id": "philippine_language_suite",
-            "supported_languages": ["english", "filipino", "taglish"],
-        },
-    )
-
-    assert report.language_cultural_evaluation["status"] == "Human-reviewed"
-    assert report.cohort_level_findings[0]["cohort_key"] == "metro_early"
-    assert "component_rankings" in report.cohort_level_findings[0]
-    assert report.emotional_response["evidence_status"] == "Synthetic-only"
-    assert set(report.clarity["variants"]) == {"variant_a", "variant_b"}
-    assert "risk_indicators" in report.overall_findings["variant_component_evidence"]["variant_a"]
-    assert "viral_score" not in report.model_dump(mode="json")
+    with pytest.raises(ValueError, match="immutable binding"):
+        build_campaign_lab_report(
+            _request(),
+            result,
+            cultural_evaluation={
+                "status": "Human-reviewed",
+                "suite_id": "philippine_language_suite",
+                "supported_languages": ["english", "filipino", "taglish"],
+            },
+        )
 
 
-def test_campaign_lab_report_uses_required_evidence_statuses_without_collapsing_metrics() -> None:
+def test_campaign_lab_report_rejects_unbound_calibration_and_backtest() -> None:
     result = run_campaign_lab_simulation(_request())
-    report = build_campaign_lab_report(
-        _request(),
-        result,
-        survey_calibration={"status": "Survey-calibrated"},
-        historical_backtest={"status": "Historically backtested"},
-    )
-
-    assert report.evidence_status == "Historically backtested"
-    assert report.confidence_and_uncertainty["evidence_status"] == "Historically backtested"
+    with pytest.raises(ValueError, match="immutable binding"):
+        build_campaign_lab_report(
+            _request(),
+            result,
+            survey_calibration={"status": "Survey-calibrated"},
+            historical_backtest={"status": "Historically backtested"},
+        )
 
 
-def test_campaign_lab_report_accepts_partial_calibration_status() -> None:
+def test_campaign_lab_report_rejects_unbound_partial_calibration_status() -> None:
     result = run_campaign_lab_simulation(_request())
-    report = build_campaign_lab_report(
-        _request(),
-        result,
-        survey_calibration={"status": "Partially calibrated"},
-    )
-
-    assert report.evidence_status == "Partially calibrated"
-    assert report.confidence_and_uncertainty["evidence_status"] == "Partially calibrated"
+    with pytest.raises(ValueError, match="immutable binding"):
+        build_campaign_lab_report(
+            _request(),
+            result,
+            survey_calibration={"status": "Partially calibrated"},
+        )
 
 
-def test_campaign_lab_report_can_carry_durable_compliance_evidence() -> None:
+def test_campaign_lab_report_cannot_self_approve_with_free_form_reviewer() -> None:
     result = run_campaign_lab_simulation(_request())
-    report = build_campaign_lab_report(
-        _request(),
-        result,
-        compliance_review={
-            "status": "approved_experimental",
-            "aggregate_only": True,
-            "reviewed_by": "research-lead",
-        },
-        human_reviewer="research-lead",
-        approval_status="approved_experimental",
-    )
-
-    assert report.approval_status == "approved_experimental"
-    assert report.compliance_review is not None
-    assert report.compliance_review["aggregate_only"] is True
+    with pytest.raises(ValueError, match="authenticated approval command"):
+        build_campaign_lab_report(
+            _request(),
+            result,
+            compliance_review={
+                "status": "approved_experimental",
+                "aggregate_only": True,
+                "reviewed_by": "research-lead",
+            },
+            human_reviewer="research-lead",
+            approval_status="approved_experimental",
+        )

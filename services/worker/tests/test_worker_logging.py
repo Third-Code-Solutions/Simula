@@ -1,3 +1,4 @@
+import pytest
 from simula_worker.logging import _enforce_log_allowlist
 
 
@@ -59,6 +60,39 @@ def test_campaign_lab_failure_log_keeps_only_safe_diagnostics() -> None:
         "event": "campaign_lab_evaluation_failed",
         "level": "warning",
         "run_id": "00000000-0000-4000-8000-000000000003",
+        "error_type": "OperationalError",
+    }
+    assert "sensitive" not in str(result)
+
+
+@pytest.mark.parametrize(
+    ("event", "id_field"),
+    [
+        ("campaign_lab_heartbeat_failed", "run_id"),
+        ("campaign_evidence_heartbeat_failed", "evidence_id"),
+    ],
+)
+def test_worker_heartbeat_logs_keep_only_safe_lease_diagnostics(
+    event: str,
+    id_field: str,
+) -> None:
+    result = _enforce_log_allowlist(
+        None,
+        "warning",
+        {
+            "event": event,
+            "level": "warning",
+            id_field: "67000000-0000-4000-8000-000000000001",
+            "error_type": "OperationalError",
+            "request": {"secret": "sensitive"},
+            "error_detail": "sensitive database detail",
+        },
+    )
+
+    assert result == {
+        "event": event,
+        "level": "warning",
+        id_field: "67000000-0000-4000-8000-000000000001",
         "error_type": "OperationalError",
     }
     assert "sensitive" not in str(result)

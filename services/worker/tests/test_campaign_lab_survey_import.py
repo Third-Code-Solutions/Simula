@@ -1,14 +1,23 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import replace
+from hashlib import sha256
 from typing import cast
 from uuid import UUID
 
+import pytest
 from simula_worker.campaign_lab import evaluate_campaign_lab_claim
 from simula_worker.database import CampaignLabClaim
 
 
 def test_campaign_lab_survey_import_is_worker_only_and_aggregate() -> None:
+    survey_payload = (
+        "variant_key,cohort_key,positive,neutral,negative,mixed,"
+        "clarity,relevance,trust,persuasiveness,consideration\n"
+        "variant_a,metro,60,20,15,5,70,71,72,73,74\n"
+        "variant_b,metro,30,20,15,35,40,41,42,43,44"
+    )
     claim = CampaignLabClaim(
         run_id=UUID("40000000-0000-4000-8000-000000000001"),
         run_type="survey_import",
@@ -42,15 +51,9 @@ def test_campaign_lab_survey_import_is_worker_only_and_aggregate() -> None:
                 "metric_persuasiveness": "persuasiveness",
                 "metric_consideration": "consideration",
             },
+            "approved_payload_checksum_sha256": sha256(survey_payload.encode("utf-8")).hexdigest(),
         },
-        secret_payload={
-            "payload": (
-                "variant_key,cohort_key,positive,neutral,negative,mixed,"
-                "clarity,relevance,trust,persuasiveness,consideration\n"
-                "variant_a,metro,60,20,15,5,70,71,72,73,74\n"
-                "variant_b,metro,30,20,15,35,40,41,42,43,44"
-            )
-        },
+        secret_payload={"payload": survey_payload},
         lease_token=UUID("40000000-0000-4000-8000-000000000002"),
         attempt_count=1,
     )
@@ -66,6 +69,66 @@ def test_campaign_lab_survey_import_is_worker_only_and_aggregate() -> None:
     assert summary["accepted_response_count"] == 2
     assert provenance["authorized_for_calibration"] is True
     assert "payload" not in result
+
+    with pytest.raises(ValueError, match="approved source checksum"):
+        evaluate_campaign_lab_claim(
+            replace(
+                claim,
+                request={**claim.request, "approved_payload_checksum_sha256": "f" * 64},
+            )
+        )
+
+
+def test_production_survey_import_requires_frozen_approved_checksum(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SIMULA_ENVIRONMENT", "production")
+    payload = (
+        "variant_key,cohort_key,positive,neutral,negative,mixed,"
+        "clarity,relevance,trust,persuasiveness,consideration\n"
+        "variant_a,metro,60,20,15,5,70,71,72,73,74"
+    )
+    claim = CampaignLabClaim(
+        run_id=UUID("40000000-0000-4000-8000-000000000005"),
+        run_type="survey_import",
+        request={
+            "format": "csv",
+            "metadata": {
+                "source_id": "survey_source_v1",
+                "source_version": "v1",
+                "owner": "research-team",
+                "license": "consented-internal",
+                "allowed_uses": ["campaign calibration"],
+                "collection_period": "2026-Q1",
+                "geography": "Philippines",
+                "methodology": "consented aggregate survey",
+                "consent_recorded": True,
+                "authorized_for_calibration": True,
+                "quality_filter_version": "quality_v1",
+                "known_biases": ["coverage"],
+                "coverage_limitations": ["aggregate only"],
+            },
+            "field_map": {
+                "variant_key": "variant_key",
+                "cohort_key": "cohort_key",
+                "reaction_positive": "positive",
+                "reaction_neutral": "neutral",
+                "reaction_negative": "negative",
+                "reaction_mixed": "mixed",
+                "metric_clarity": "clarity",
+                "metric_relevance": "relevance",
+                "metric_trust": "trust",
+                "metric_persuasiveness": "persuasiveness",
+                "metric_consideration": "consideration",
+            },
+        },
+        secret_payload={"payload": payload},
+        lease_token=UUID("40000000-0000-4000-8000-000000000006"),
+        attempt_count=1,
+    )
+
+    with pytest.raises(ValueError, match="checksum is required in production"):
+        evaluate_campaign_lab_claim(claim)
 
 
 def test_campaign_lab_native_survey_import_normalizes_and_discards_rows() -> None:
@@ -112,6 +175,12 @@ def test_campaign_lab_native_survey_import_normalizes_and_discards_rows() -> Non
             {"key": "trust", "kind": "metric", "label": "Trust"},
             {"key": "persuasiveness", "kind": "metric", "label": "Persuasiveness"},
             {"key": "consideration", "kind": "metric", "label": "Consideration"},
+            {
+                "key": "share_intent",
+                "kind": "share_intent",
+                "label": "Share intent",
+                "required": False,
+            },
             {"key": "consent", "kind": "consent", "label": "Consent"},
         ],
     }
@@ -133,9 +202,24 @@ def test_campaign_lab_native_survey_import_normalizes_and_discards_rows() -> Non
                         "trust": 82,
                         "persuasiveness": 83,
                         "consideration": 84,
+                        "share_intent": 0.7,
                         "consent": True,
                     },
-                }
+                },
+                {
+                    "response_id": "opaque-2",
+                    "answers": {
+                        "variant_key": "variant_a",
+                        "cohort_key": "metro",
+                        "reaction": "neutral",
+                        "clarity": 60,
+                        "relevance": 61,
+                        "trust": 62,
+                        "persuasiveness": 63,
+                        "consideration": 64,
+                        "consent": True,
+                    },
+                },
             ],
         },
         lease_token=UUID("40000000-0000-4000-8000-000000000012"),
@@ -147,7 +231,9 @@ def test_campaign_lab_native_survey_import_normalizes_and_discards_rows() -> Non
     summary = cast(Mapping[str, object], result["summary"])
     dataset = cast(Mapping[str, object], result["dataset"])
     provenance = cast(Mapping[str, object], dataset["provenance"])
-    assert summary["accepted_response_count"] == 1
+    assert summary["accepted_response_count"] == 2
     assert provenance["source_id"] == "simula_native_survey"
+    observations = cast(list[Mapping[str, object]], dataset["observations"])
+    assert observations[0]["share_intent"] == 0.7
     assert "responses" not in result
     assert "native_form" not in result

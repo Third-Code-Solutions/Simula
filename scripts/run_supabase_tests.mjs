@@ -74,11 +74,12 @@ function localAdminDatabaseUrl() {
 }
 
 const testArgs = ["exec", "supabase", "test", "db", "supabase/tests"];
-if (process.env.SIMULA_SUPABASE_TEST_AS_ADMIN === "true") {
-  testArgs.push("--db-url", localAdminDatabaseUrl());
-} else {
-  testArgs.push("--local");
-}
+// The local Supabase `postgres` role is intentionally not a superuser. Several
+// authorization tests must change session identity to exercise the exact
+// simula_api login boundary, so always use the disposable stack's generated,
+// short-lived admin credential. The helper is pinned to the exact project
+// container and never exposes the credential outside this process.
+testArgs.push("--db-url", localAdminDatabaseUrl());
 
 const result = spawnSync("pnpm", testArgs, {
   stdio: "inherit",

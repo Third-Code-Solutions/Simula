@@ -74,6 +74,74 @@ def test_csv_adapter_aggregates_weights_and_reports_quality_filters() -> None:
     assert result.summary.accepted_response_count == 1
 
 
+def test_csv_adapter_keeps_equal_weight_rows_when_optional_share_intent_is_omitted() -> None:
+    csv_payload = "\n".join(
+        (
+            "respondent_id,variant,cohort,positive,neutral,negative,mixed,clarity,relevance,trust,persuasiveness,consideration,share,weight,quality,bot",
+            "r1,A,metro,60,20,10,10,80,81,82,83,84,80,1,1,false",
+            "r2,A,metro,40,20,20,20,60,61,62,63,64,,1,1,false",
+        )
+    )
+
+    result = CsvSurveyAdapter().import_dataset(
+        csv_payload,
+        metadata=_metadata(),
+        field_map=_field_map(),
+    )
+
+    observation = result.dataset.observations[0]
+    assert result.summary.accepted_response_count == 2
+    assert result.summary.malformed_response_count == 0
+    assert observation.respondent_count == 2
+    assert observation.share_intent == pytest.approx(0.8)
+    assert observation.metrics[0].value == pytest.approx(70)
+
+
+def test_csv_adapter_weights_optional_share_intent_by_answered_weight_only() -> None:
+    csv_payload = "\n".join(
+        (
+            "respondent_id,variant,cohort,positive,neutral,negative,mixed,clarity,relevance,trust,persuasiveness,consideration,share,weight,quality,bot",
+            "r1,A,metro,60,20,10,10,80,81,82,83,84,20,1,1,false",
+            "r2,A,metro,40,20,20,20,60,61,62,63,64,80,3,1,false",
+            "r3,A,metro,50,20,15,15,40,41,42,43,44,,6,1,false",
+        )
+    )
+
+    result = CsvSurveyAdapter().import_dataset(
+        csv_payload,
+        metadata=_metadata(),
+        field_map=_field_map(),
+    )
+
+    observation = result.dataset.observations[0]
+    assert result.summary.accepted_response_count == 3
+    assert result.summary.malformed_response_count == 0
+    assert observation.share_intent == pytest.approx(0.65)
+    assert observation.metrics[0].value == pytest.approx(50)
+
+
+def test_csv_adapter_reports_no_share_intent_when_every_response_omits_it() -> None:
+    csv_payload = "\n".join(
+        (
+            "respondent_id,variant,cohort,positive,neutral,negative,mixed,clarity,relevance,trust,persuasiveness,consideration,share,weight,quality,bot",
+            "r1,A,metro,60,20,10,10,80,81,82,83,84,,1,1,false",
+            "r2,A,metro,40,20,20,20,60,61,62,63,64,,2,1,false",
+        )
+    )
+
+    result = CsvSurveyAdapter().import_dataset(
+        csv_payload,
+        metadata=_metadata(),
+        field_map=_field_map(),
+    )
+
+    observation = result.dataset.observations[0]
+    assert result.summary.accepted_response_count == 2
+    assert result.summary.malformed_response_count == 0
+    assert observation.share_intent is None
+    assert observation.metrics[0].value == pytest.approx(200 / 3)
+
+
 def test_formbricks_adapter_flattens_response_data_and_deduplicates_provider_ids() -> None:
     payload = {
         "data": [

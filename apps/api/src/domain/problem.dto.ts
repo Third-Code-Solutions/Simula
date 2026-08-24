@@ -110,3 +110,14 @@ export function ApiValidationProblem(): MethodDecorator {
     }),
   );
 }
+
+export function ApiGoneProblem(description: string): MethodDecorator {
+  return applyDecorators(
+    ApiExtraModels(ProblemDetailsDto, ProblemFieldErrorDto),
+    ApiResponse({
+      status: 410,
+      description,
+      content: problemContent(),
+    }),
+  );
+}

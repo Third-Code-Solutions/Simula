@@ -233,8 +233,16 @@ function retryAfterSeconds(value: string | null): number | undefined {
     : undefined;
 }
 
-function apiOrigin(): string {
-  const value = process.env.NEXT_PUBLIC_SIMULA_API_URL;
+function apiOrigin(path: string): string {
+  const apiVersion = /^\/api\/(v1|v2)(?:\/|$)/.exec(path)?.[1];
+  const value =
+    apiVersion === "v1"
+      ? (process.env.NEXT_PUBLIC_SIMULA_API_V1_URL ??
+        process.env.NEXT_PUBLIC_SIMULA_API_URL)
+      : apiVersion === "v2"
+        ? (process.env.NEXT_PUBLIC_SIMULA_API_V2_URL ??
+          process.env.NEXT_PUBLIC_SIMULA_API_URL)
+        : process.env.NEXT_PUBLIC_SIMULA_API_URL;
   if (!value) {
     throw new ApiProblem(
       503,
@@ -278,6 +286,13 @@ function domainV2Path(path: string): string {
     throw new Error("domain API paths must be absolute");
   }
   return `/api/v2${path}`;
+}
+
+function domainV1Path(path: string): string {
+  if (!path.startsWith("/")) {
+    throw new Error("domain API paths must be absolute");
+  }
+  return `/api/v1${path}`;
 }
 
 function asProblem(value: unknown): ApiProblemDocument | undefined {
@@ -346,7 +361,7 @@ async function request<T>(
 
   let response: Response;
   try {
-    response = await fetch(`${apiOrigin()}${path}`, {
+    response = await fetch(`${apiOrigin(path)}${path}`, {
       body: options.body ? JSON.stringify(options.body) : undefined,
       cache: "no-store",
       headers,
@@ -445,7 +460,7 @@ async function assetFetch(
     headers.set("Idempotency-Key", init.idempotencyKey);
   }
   try {
-    return await fetch(`${apiOrigin()}${path}`, {
+    return await fetch(`${apiOrigin(path)}${path}`, {
       body: init.body,
       cache: "no-store",
       headers,
@@ -550,7 +565,7 @@ export function listCampaignLabCampaigns(
   projectId: string,
 ): Promise<CampaignLabCampaignPage> {
   return request<CampaignLabCampaignPage>(
-    domainPath(
+    domainV1Path(
       `/campaign-lab/campaigns?project_id=${encodeURIComponent(projectId)}`,
     ),
   );
@@ -563,7 +578,7 @@ export function createCampaignLabCampaign(input: {
   purpose: string;
   decision: Record<string, unknown>;
 }): Promise<CampaignLabCommand> {
-  return request<CampaignLabCommand>(domainPath("/campaign-lab/campaigns"), {
+  return request<CampaignLabCommand>(domainV1Path("/campaign-lab/campaigns"), {
     body: input,
     headers: idempotencyHeaders(),
     method: "POST",
@@ -591,7 +606,7 @@ export function createCampaignLabResearch(
   }>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/research`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/research`),
     {
       body: input,
       headers: idempotencyHeaders(),
@@ -604,7 +619,7 @@ export function getCampaignLabResearchRun(
   runId: string,
 ): Promise<CampaignLabResearchRun> {
   return request<CampaignLabResearchRun>(
-    domainPath(`/campaign-lab/research/runs/${runId}`),
+    domainV1Path(`/campaign-lab/research/runs/${runId}`),
   );
 }
 
@@ -613,7 +628,7 @@ export function createCampaignLabSimulation(
   requestBody: Record<string, unknown>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/simulations`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/simulations`),
     {
       body: { request: requestBody },
       headers: idempotencyHeaders(),
@@ -627,7 +642,7 @@ export function createCampaignLabCulturalEvaluation(
   suite: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/cultural-evaluations`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/cultural-evaluations`),
     {
       body: { suite },
       headers: idempotencyHeaders(),
@@ -640,7 +655,7 @@ export function getCampaignLabSimulationStatus(
   runId: string,
 ): Promise<CampaignLabRunStatus> {
   return request<CampaignLabRunStatus>(
-    domainPath(`/campaign-lab/simulations/${runId}/status`),
+    domainV1Path(`/campaign-lab/simulations/${runId}/status`),
   );
 }
 
@@ -648,7 +663,7 @@ export function getCampaignLabSimulationResults(
   runId: string,
 ): Promise<CampaignLabSimulationResult> {
   return request<CampaignLabSimulationResult>(
-    domainPath(`/campaign-lab/simulations/${runId}/results`),
+    domainV1Path(`/campaign-lab/simulations/${runId}/results`),
   );
 }
 
@@ -657,7 +672,7 @@ export function createCampaignLabInterview(
   input: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/interviews`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/interviews`),
     { body: input, headers: idempotencyHeaders(), method: "POST" },
   );
 }
@@ -666,7 +681,7 @@ export function getCampaignLabInterviewRun(
   runId: string,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
-    domainPath(`/campaign-lab/interviews/runs/${runId}`),
+    domainV1Path(`/campaign-lab/interviews/runs/${runId}`),
   );
 }
 
@@ -675,7 +690,7 @@ export function createCampaignLabSurveyImport(
   input: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/surveys/import`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/surveys/import`),
     { body: input, headers: idempotencyHeaders(), method: "POST" },
   );
 }
@@ -685,7 +700,7 @@ export function createCampaignLabNativeSurveyForm(
   form: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/surveys/forms`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/surveys/forms`),
     {
       body: { form },
       headers: idempotencyHeaders(),
@@ -700,7 +715,7 @@ export function submitCampaignLabNativeSurveyResponses(
   responses: ReadonlyArray<Readonly<Record<string, unknown>>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(
+    domainV1Path(
       `/campaign-lab/campaigns/${campaignId}/surveys/forms/${formId}/responses`,
     ),
     {
@@ -715,7 +730,7 @@ export function getCampaignLabSurveyImportRun(
   runId: string,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
-    domainPath(`/campaign-lab/surveys/runs/${runId}`),
+    domainV1Path(`/campaign-lab/surveys/runs/${runId}`),
   );
 }
 
@@ -724,7 +739,7 @@ export function createCampaignLabCalibration(
   input: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/calibrations`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/calibrations`),
     { body: input, headers: idempotencyHeaders(), method: "POST" },
   );
 }
@@ -733,7 +748,7 @@ export function getCampaignLabCalibrationRun(
   runId: string,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
-    domainPath(`/campaign-lab/calibrations/${runId}`),
+    domainV1Path(`/campaign-lab/calibrations/${runId}`),
   );
 }
 
@@ -742,7 +757,7 @@ export function createCampaignLabBacktest(
   input: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/backtests`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/backtests`),
     { body: input, headers: idempotencyHeaders(), method: "POST" },
   );
 }
@@ -751,7 +766,7 @@ export function getCampaignLabBacktestRun(
   runId: string,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
-    domainPath(`/campaign-lab/backtests/${runId}`),
+    domainV1Path(`/campaign-lab/backtests/${runId}`),
   );
 }
 
@@ -760,7 +775,7 @@ export function listCampaignLabForecastDatasets(): Promise<
 > {
   return request<
     Readonly<{ items: ReadonlyArray<CampaignLabForecastDataset> }>
-  >(domainPath("/campaign-lab/forecast-datasets"));
+  >(domainV1Path("/campaign-lab/forecast-datasets"));
 }
 
 export function createCampaignLabAggregateForecast(
@@ -768,7 +783,7 @@ export function createCampaignLabAggregateForecast(
   input: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/forecasts`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/forecasts`),
     { body: input, headers: idempotencyHeaders(), method: "POST" },
   );
 }
@@ -777,7 +792,7 @@ export function getCampaignLabAggregateForecastRun(
   runId: string,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
-    domainPath(`/campaign-lab/forecasts/${runId}`),
+    domainV1Path(`/campaign-lab/forecasts/${runId}`),
   );
 }
 
@@ -786,7 +801,7 @@ export function createCampaignLabComplianceReview(
   input: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/compliance/reviews`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/compliance/reviews`),
     { body: input, headers: idempotencyHeaders(), method: "POST" },
   );
 }
@@ -796,7 +811,7 @@ export function getCampaignLabComplianceRun(
   runId: string,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
-    domainPath(
+    domainV1Path(
       `/campaign-lab/campaigns/${campaignId}/compliance/runs/${runId}`,
     ),
   );
@@ -807,7 +822,7 @@ export function createCampaignLabReport(
   input: Readonly<Record<string, unknown>>,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/reports`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/reports`),
     { body: input, headers: idempotencyHeaders(), method: "POST" },
   );
 }
@@ -816,7 +831,7 @@ export function getCampaignLabReportRun(
   runId: string,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
-    domainPath(`/campaign-lab/reports/runs/${runId}`),
+    domainV1Path(`/campaign-lab/reports/runs/${runId}`),
   );
 }
 
@@ -824,7 +839,7 @@ export function getCampaignLabAudit(
   campaignId: string,
 ): Promise<CampaignLabAuditPage> {
   return request<CampaignLabAuditPage>(
-    domainPath(`/campaign-lab/campaigns/${campaignId}/audit`),
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/audit`),
   );
 }
 
@@ -1466,20 +1481,6 @@ export function getRunReport(
   );
 }
 
-export function createReportExport(
-  reportId: string,
-  input: ControlPlaneSchemas["ReportExportCreateDto"],
-): Promise<ControlPlaneSchemas["ProductCommandResponseDto"]> {
-  return request<ControlPlaneSchemas["ProductCommandResponseDto"]>(
-    domainPath(`/reports/${reportId}/exports`),
-    {
-      body: input,
-      headers: idempotencyHeaders(),
-      method: "POST",
-    },
-  );
-}
-
 export async function downloadReportExport(
   exportId: string,
 ): Promise<ReportExportDownload> {
@@ -1488,15 +1489,13 @@ export async function downloadReportExport(
   headers.set("Authorization", `Bearer ${await accessToken()}`);
 
   let response: Response;
+  const path = domainPath(`/exports/${exportId}`);
   try {
-    response = await fetch(
-      `${apiOrigin()}${domainPath(`/exports/${exportId}`)}`,
-      {
-        cache: "no-store",
-        headers,
-        method: "GET",
-      },
-    );
+    response = await fetch(`${apiOrigin(path)}${path}`, {
+      cache: "no-store",
+      headers,
+      method: "GET",
+    });
   } catch {
     throw new ApiProblem(
       503,

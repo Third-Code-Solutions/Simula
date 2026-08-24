@@ -56,8 +56,10 @@ DEPLOYED_RELEASE_SHA_PATTERN = re.compile(r"^[0-9a-f]{7,64}$")
 ALLOWED_ENVIRONMENTS = frozenset({"local", "test", "preview", "staging", "production"})
 ALLOWED_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 MAX_BODY_BYTES = 64 * 1024
+MAX_BULK_JSON_BODY_BYTES = 6 * 1024 * 1024
 MAX_HEADER_BYTES = 16 * 1024
 JSON_COMMAND_METHODS = frozenset({"POST", "PATCH", "PUT"})
+BULK_JSON_PATH_PREFIXES = ("/api/v1/campaign-lab/",)
 CORS_EXPOSE_HEADERS = (
     "ETag",
     "Idempotent-Replayed",
@@ -191,6 +193,11 @@ class CorrelationMiddleware:
         response_started = False
         status_code = 500
         body_bytes = 0
+        body_limit = (
+            MAX_BULK_JSON_BODY_BYTES
+            if str(scope.get("path", "")).startswith(BULK_JSON_PATH_PREFIXES)
+            else MAX_BODY_BYTES
+        )
 
         async def send_with_correlation(message: Message) -> None:
             nonlocal response_started, status_code
@@ -209,14 +216,14 @@ class CorrelationMiddleware:
                 if not isinstance(body, bytes):
                     raise RequestTooLargeError
                 body_bytes += len(body)
-                if body_bytes > MAX_BODY_BYTES:
+                if body_bytes > body_limit:
                     raise RequestTooLargeError
             return message
 
         header_bytes = sum(len(key) + len(value) + 4 for key, value in scope.get("headers", []))
         declared_length = request_headers.get("content-length")
         declared_too_large = declared_length is not None and (
-            not declared_length.isdecimal() or int(declared_length) > MAX_BODY_BYTES
+            not declared_length.isdecimal() or int(declared_length) > body_limit
         )
 
         try:
@@ -607,7 +614,7 @@ def create_app(*, services: AppServices | None = None) -> FastAPI:
         openapi_url=None,
         redoc_url=None,
         title="SIMULA API",
-        version="0.0.0",
+        version="1.0.0",
     )
     app.state.domain_services = services
     app.state.domain_ready = services is not None

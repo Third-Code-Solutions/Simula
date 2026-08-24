@@ -84,7 +84,7 @@ jobs:
       - name: Install exact Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: 3.14.6
+          python-version: 3.14.7
 
       - name: Install exact pnpm
         run: |
@@ -139,7 +139,7 @@ jobs:
       - name: Install exact Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: 3.14.6
+          python-version: 3.14.7
 
       - name: Install exact pnpm
         run: |
@@ -225,9 +225,20 @@ jobs:
         run: |
           docker build --pull \
             --secret id=simula_bundle_canary,env=SIMULA_BUNDLE_SECRET_CANARY \
+            --build-arg NEXT_PUBLIC_SIMULA_API_V1_URL=http://127.0.0.1:8000 \
+            --build-arg NEXT_PUBLIC_SIMULA_API_V2_URL=http://127.0.0.1:3002 \
+            --build-arg NEXT_PUBLIC_SIMULA_WEB_URL=http://127.0.0.1:3000 \
+            --build-arg NEXT_PUBLIC_SIMULA_DOMAIN_API_VERSION=v2 \
+            --build-arg NEXT_PUBLIC_SIMULA_ENVIRONMENT=test \
+            --build-arg NEXT_PUBLIC_SIMULA_RELEASE_SHA="$GITHUB_SHA" \
+            --build-arg NEXT_PUBLIC_SIMULA_TELEMETRY_ENABLED=false \
+            --build-arg NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
+            --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_ci_placeholder \
             --tag simula-web:m0 --file apps/web/Dockerfile .
           docker build --pull --tag simula-api:m0 --file services/api/Dockerfile .
+          docker build --pull --tag simula-control-plane:m0 --file apps/api/Dockerfile .
           docker build --pull --tag simula-worker:m0 --file services/worker/Dockerfile .
+          docker build --pull --tag simula-ai-engine:m0 --file services/ai-engine/Dockerfile .
 
       - name: Prove server-only values are absent from the final web image
         run: |
@@ -242,9 +253,13 @@ jobs:
         run: |
           test "$(docker image inspect --format '{{.Config.User}}' simula-web:m0)" = "node"
           test "$(docker image inspect --format '{{.Config.User}}' simula-api:m0)" = "simula"
+          test "$(docker image inspect --format '{{.Config.User}}' simula-control-plane:m0)" = "simula"
           test "$(docker image inspect --format '{{.Config.User}}' simula-worker:m0)" = "simula"
+          test "$(docker image inspect --format '{{.Config.User}}' simula-ai-engine:m0)" = "simula"
           docker run --rm simula-api:m0 python -c "import simula_api"
+          docker run --rm simula-control-plane:m0 node -e "require('./dist/application')"
           docker run --rm simula-worker:m0 python -m simula_worker --check
+          docker run --rm simula-ai-engine:m0 python -c "import simula_ai_engine"
 
       - name: Prove deterministic worker has no network egress
         run: |
@@ -283,7 +298,7 @@ jobs:
           report_dir="$RUNNER_TEMP/simula-security/reports"
           install -d "$report_dir"
           failed=0
-          for image in web api worker; do
+          for image in web api control-plane worker ai-engine; do
             syft "docker:simula-${image}:m0" \
               --output "cyclonedx-json=${report_dir}/simula-${image}.cdx.json"
             grype "sbom:${report_dir}/simula-${image}.cdx.json" \

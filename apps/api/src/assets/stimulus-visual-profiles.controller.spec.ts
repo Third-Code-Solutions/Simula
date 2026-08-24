@@ -19,6 +19,7 @@ const CORRELATION_ID = "018f274b-3c77-4b22-b749-c9274230ef94";
 const IDEMPOTENCY_KEY = "visual-profile-key-0001";
 const CONTENT = Buffer.from("verified-visual-content", "utf8");
 const CHECKSUM = createHash("sha256").update(CONTENT).digest("hex");
+const RETENTION = new Date(Date.now() + 86_400_000).toISOString();
 const IDENTITY: VerifiedIdentity = {
   userId: USER_ID,
   issuer: "http://127.0.0.1:54321/auth/v1",
@@ -42,7 +43,7 @@ function asset(
     byte_size: CONTENT.length,
     content_sha256: CHECKSUM,
     status: "available",
-    retention_until: "2026-08-15T00:00:00.000000Z",
+    retention_until: RETENTION,
     created_at: "2026-07-30T00:00:00.000000Z",
     replayed: false,
   };

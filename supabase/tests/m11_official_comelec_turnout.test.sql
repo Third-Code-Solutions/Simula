@@ -110,11 +110,11 @@ select extensions.ok(
 
 select extensions.ok(
   pg_catalog.pg_get_functiondef(
-    'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure
-  ) like '%20260807200000::bigint%'
+    'private.runtime_schema_readiness_v4()'::pg_catalog.regprocedure
+  ) like '%20260824020000::bigint%'
   and pg_catalog.pg_get_functiondef(
-    'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure
-  ) like '%20260807200000::bigint%',
+    'private.runtime_observability_snapshot_v4()'::pg_catalog.regprocedure
+  ) like '%20260824020000::bigint%',
   'runtime readiness and observability report the admitted-data schema head'
 );
 

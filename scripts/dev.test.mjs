@@ -11,6 +11,9 @@ test("loads only safe web values with local and process overrides", () => {
     [
       [
         "NEXT_PUBLIC_SIMULA_API_URL=http://127.0.0.1:8000",
+        "NEXT_PUBLIC_SIMULA_API_V1_URL=http://127.0.0.1:8001",
+        "NEXT_PUBLIC_SIMULA_API_V2_URL=http://127.0.0.1:8002",
+        "NEXT_PUBLIC_SIMULA_WEB_URL=http://127.0.0.1:3000",
         "NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321",
         "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=base-public-key",
         "SIMULA_ENVIRONMENT=local",
@@ -21,10 +24,22 @@ test("loads only safe web values with local and process overrides", () => {
         "SIMULA_RELEASE_SHA=dev-release",
       ].join("\n"),
     ],
-    { NEXT_PUBLIC_SIMULA_API_URL: "http://localhost:8000" },
+    {
+      NEXT_PUBLIC_SIMULA_API_URL: "http://localhost:8000",
+      NEXT_PUBLIC_SIMULA_WEB_URL: "http://localhost:3000",
+    },
   );
 
   assert.equal(environment.NEXT_PUBLIC_SIMULA_API_URL, "http://localhost:8000");
+  assert.equal(
+    environment.NEXT_PUBLIC_SIMULA_API_V1_URL,
+    "http://127.0.0.1:8001",
+  );
+  assert.equal(
+    environment.NEXT_PUBLIC_SIMULA_API_V2_URL,
+    "http://127.0.0.1:8002",
+  );
+  assert.equal(environment.NEXT_PUBLIC_SIMULA_WEB_URL, "http://localhost:3000");
   assert.equal(environment.NEXT_PUBLIC_SUPABASE_URL, "http://127.0.0.1:54321");
   assert.equal(
     environment.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY,

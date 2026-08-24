@@ -8,8 +8,10 @@ outcomes are accepted only in a worker secret envelope and are never returned.
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Mapping
 from hashlib import sha256
+from hmac import compare_digest
 from typing import Annotated, Any, Literal, cast
 from uuid import UUID, uuid4
 
@@ -68,6 +70,47 @@ router = APIRouter(
         503: _problem_response("A required dependency is temporarily unavailable."),
     },
 )
+
+_ALLOWED_USE_PHRASES: dict[str, frozenset[str]] = {
+    "backtest": frozenset(
+        {
+            "backtest",
+            "historical backtest",
+            "aggregate historical backtesting and evaluation",
+            (
+                "aggregate turnout forecasting historical backtesting and reproducibility "
+                "auditing with attribution and stated limitations"
+            ),
+        }
+    ),
+    "calibration": frozenset(
+        {
+            "calibration",
+            "survey calibration",
+            "campaign calibration",
+            "aggregate survey calibration",
+            "aggregate simula survey calibration",
+        }
+    ),
+    "campaign lab": frozenset({"campaign lab", "campaign lab research"}),
+    "campaign research": frozenset(
+        {
+            "campaign research",
+            "campaign research and message testing",
+            "aggregate campaign research",
+        }
+    ),
+    "campaign simulation": frozenset({"campaign simulation", "aggregate campaign simulation"}),
+    "population weighting": frozenset({"population weighting", "aggregate population weighting"}),
+    "research": frozenset(
+        {
+            "research",
+            "campaign research and message testing",
+            "aggregate campaign research",
+            "aggregate research context only",
+        }
+    ),
+}
 
 
 class _LabModel(BaseModel):
@@ -263,6 +306,12 @@ class ComplianceCreate(_LabModel):
     payload: dict[str, Any]
     reviewer: str | None = Field(default=None, min_length=1, max_length=160)
 
+    @model_validator(mode="after")
+    def reject_unverified_reviewer(self) -> ComplianceCreate:
+        if self.reviewer is not None:
+            raise ValueError("reviewer identity requires a separate authenticated approval command")
+        return self
+
 
 class ReportCreate(_LabModel):
     run_id: UUID
@@ -275,13 +324,8 @@ class ReportCreate(_LabModel):
 
     @model_validator(mode="after")
     def require_approval_evidence(self) -> ReportCreate:
-        if self.approval_status == "approved_experimental":
-            if self.compliance_review_run_id is None:
-                raise ValueError(
-                    "approved_experimental reports require a succeeded compliance review"
-                )
-            if self.human_reviewer is None:
-                raise ValueError("approved_experimental reports require a named human reviewer")
+        if self.human_reviewer is not None or self.approval_status == "approved_experimental":
+            raise ValueError("approved reports require a separate authenticated approval command")
         return self
 
 
@@ -393,9 +437,6 @@ def _registry_source_matches(source: CampaignLabResearchSource, row: Mapping[str
             "campaign research",
             "campaign simulation",
             "population weighting",
-            "research",
-            "calibration",
-            "backtest",
         )
     )
 
@@ -403,11 +444,44 @@ def _registry_source_matches(source: CampaignLabResearchSource, row: Mapping[str
 def _allowed_use_contains(allowed_uses: object, *markers: str) -> bool:
     if not isinstance(allowed_uses, list) or not allowed_uses:
         return False
-    normalized_markers = tuple(marker.casefold() for marker in markers)
+    approved_phrases = {
+        phrase
+        for marker in markers
+        for phrase in _ALLOWED_USE_PHRASES.get(_normalize_allowed_use(marker), frozenset())
+    }
     return any(
-        any(marker in str(allowed_use).casefold() for marker in normalized_markers)
-        for allowed_use in allowed_uses
+        _normalize_allowed_use(str(allowed_use)) in approved_phrases for allowed_use in allowed_uses
     )
+
+
+def _normalize_allowed_use(value: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", value.casefold()))
+
+
+def _assert_survey_payload_matches_registry(
+    secret_payload: Mapping[str, Any] | None,
+    source_row: Mapping[str, Any],
+) -> str:
+    if secret_payload is None or "payload" not in secret_payload:
+        raise CampaignLabPolicyError("the approved survey payload is missing")
+    payload = secret_payload["payload"]
+    if isinstance(payload, bytes):
+        payload_bytes = payload
+    elif isinstance(payload, str):
+        payload_bytes = payload.encode("utf-8")
+    elif isinstance(payload, (Mapping, list, tuple)):
+        payload_bytes = canonical_json_dumps(payload)
+    else:
+        raise CampaignLabPolicyError("the approved survey payload type is unsupported")
+    actual_checksum = sha256(payload_bytes).hexdigest()
+    approved_checksum = source_row.get("checksum_sha256")
+    if not isinstance(approved_checksum, str) or not compare_digest(
+        actual_checksum, approved_checksum.casefold()
+    ):
+        raise CampaignLabPolicyError(
+            "submitted survey payload checksum does not match the approved source registry version"
+        )
+    return actual_checksum
 
 
 async def _validate_population_registry(
@@ -564,55 +638,6 @@ async def _admitted_evidence_source(
     return row
 
 
-async def _admitted_outcome_set(
-    request: Request,
-    identity: VerifiedIdentity,
-    campaign_id: UUID,
-    outcome_set_id: UUID | None,
-) -> dict[str, Any]:
-    if outcome_set_id is None:
-        raise CampaignLabPolicyError(
-            "production historical backtests require an admitted outcome_set_id"
-        )
-    organization_id = await _campaign_organization(request, identity, campaign_id)
-    rows = await _services(request).database.read_product_rows(
-        identity,
-        operation="campaign_lab_backtesting_outcome_registry_admission",
-        query="""
-          select outcomes.id, outcomes.outcome_kind,
-                 sources.source_key, versions.source_version,
-                 versions.checksum_sha256, versions.allowed_uses
-          from api.observed_outcome_sets as outcomes
-          join api.evidence_source_versions as versions
-            on versions.id = outcomes.evidence_source_version_id
-          join api.evidence_sources as sources
-            on sources.id = versions.evidence_source_id
-          where outcomes.id = %s
-            and outcomes.organization_id = %s
-            and outcomes.status = 'admitted'
-            and outcomes.outcome_kind = 'historical_backtest'
-            and versions.rights_status = 'approved'
-            and (
-              versions.rights_expires_at is null
-              or versions.rights_expires_at > pg_catalog.statement_timestamp()
-            )
-          limit 1
-        """,
-        parameters=(outcome_set_id, organization_id),
-    )
-    if not rows:
-        raise CampaignLabPolicyError(
-            "production historical backtest outcomes are absent or not admitted"
-        )
-    row = rows[0]
-    allowed_uses = row.get("allowed_uses")
-    if not _allowed_use_contains(allowed_uses, "backtest"):
-        raise CampaignLabPolicyError(
-            "the historical outcome source is not approved for backtesting"
-        )
-    return row
-
-
 async def _aggregate_forecast_secret(
     request: Request,
     identity: VerifiedIdentity,
@@ -696,8 +721,6 @@ def _source_metadata(value: object) -> Mapping[str, Any] | None:
 def _assert_source_metadata(
     metadata: Mapping[str, Any] | None,
     source_row: Mapping[str, Any],
-    *,
-    require_checksum: bool = False,
 ) -> None:
     if metadata is None:
         raise CampaignLabPolicyError(
@@ -708,11 +731,6 @@ def _assert_source_metadata(
     ) != source_row.get("source_version"):
         raise CampaignLabPolicyError(
             "submitted evidence provenance does not match the approved source registry version"
-        )
-    if require_checksum and metadata.get("checksum_sha256") != source_row.get("checksum_sha256"):
-        raise CampaignLabPolicyError(
-            "submitted held-out evidence checksum does not match the approved source "
-            "registry version"
         )
 
 
@@ -898,7 +916,7 @@ async def _store_run(
         identity,
         operation=f"create_campaign_lab_{run_type}_run",
         query="""
-          select api.create_campaign_lab_run_v3(
+          select api.create_campaign_lab_run_v4(
             %s, %s, %s, %s, %s, %s, %s, %s
           ) as payload
         """,
@@ -1048,7 +1066,15 @@ async def update_campaign(
     return result
 
 
-@router.get("/campaigns/{campaign_id}/artifacts", operation_id="list_campaign_lab_artifacts")
+@router.get(
+    "/campaigns/{campaign_id}/artifacts",
+    operation_id="list_campaign_lab_artifacts",
+    responses={
+        410: _problem_response(
+            "Legacy report artifacts are quarantined because they lack immutable evidence binding."
+        )
+    },
+)
 async def list_artifacts(
     campaign_id: UUID,
     request: Request,
@@ -1057,6 +1083,16 @@ async def list_artifacts(
     offset: int = Query(default=0, ge=0, le=10_000),
     kind: str | None = Query(default=None, min_length=2, max_length=64),
 ) -> dict[str, Any]:
+    if kind is not None and kind.strip().casefold() == "report":
+        raise AppProblem(
+            status=410,
+            code="unsupported_scope",
+            title="Legacy Campaign Lab report is quarantined",
+            detail=(
+                "Legacy report artifacts are unavailable because they lack immutable "
+                "evidence binding."
+            ),
+        )
     await _campaign_row(request, identity, campaign_id)
     parameters: tuple[object, ...]
     if kind is None:
@@ -1064,7 +1100,7 @@ async def list_artifacts(
           select id, organization_id, campaign_id, kind, status, title, payload,
                  provenance, checksum_sha256, retention_until, created_by, created_at, updated_at
           from api.campaign_lab_artifacts
-          where campaign_id = %s
+          where campaign_id = %s and kind <> 'report'
           order by created_at desc, id desc
           limit %s offset %s
         """
@@ -1322,9 +1358,25 @@ async def get_simulation(
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> dict[str, Any]:
+    run = await _get_run(run_id, request, identity)
+    if run.get("run_type") != "repeated_simulation":
+        raise AppProblem(
+            status=404,
+            code="not_found",
+            title="Simulation not found",
+            detail="The repeated simulation is absent or not visible.",
+        )
+    return run
+
+
+async def _get_run(
+    run_id: UUID,
+    request: Request,
+    identity: VerifiedIdentity,
+) -> dict[str, Any]:
     rows = await _services(request).database.read_product_rows(
         identity,
-        operation="campaign_lab_simulation",
+        operation="campaign_lab_run",
         query="""
           select id, organization_id, campaign_id, run_type, status, stage, progress,
                  result, created_by, created_at, started_at, completed_at, attempt_count,
@@ -1338,7 +1390,7 @@ async def get_simulation(
         raise AppProblem(
             status=404,
             code="not_found",
-            title="Simulation not found",
+            title="Campaign Lab run not found",
             detail="The run is absent or not visible.",
         )
     return rows[0]
@@ -1356,7 +1408,7 @@ async def _get_campaign_lab_run(
     request: Request,
     identity: VerifiedIdentity,
 ) -> dict[str, Any]:
-    run = await get_simulation(run_id, request, identity)
+    run = await _get_run(run_id, request, identity)
     if run.get("run_type") != expected_run_type:
         raise AppProblem(
             status=404,
@@ -1373,7 +1425,7 @@ async def _get_evidence_run(
     request: Request,
     identity: VerifiedIdentity,
 ) -> dict[str, Any]:
-    run = await get_simulation(run_id, request, identity)
+    run = await _get_run(run_id, request, identity)
     if run.get("run_type") != expected_run_type:
         raise AppProblem(
             status=404,
@@ -1418,6 +1470,7 @@ async def simulation_events(
     limit: PageSize = 100,
     offset: int = Query(default=0, ge=0, le=10_000),
 ) -> dict[str, Any]:
+    await get_simulation(run_id, request, identity)
     rows = await _services(request).database.read_product_rows(
         identity,
         operation="campaign_lab_simulation_events",
@@ -1459,6 +1512,7 @@ async def cancel_simulation(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     idempotency_key: OptionalIdempotencyKey = None,
 ) -> dict[str, Any]:
+    await get_simulation(run_id, request, identity)
     payload = {"run_id": str(run_id)}
     effective_idempotency_key = idempotency_key or f"campaign-lab-{_request_sha(payload)}"
     result = await _services(request).database.execute_product_command(
@@ -1690,6 +1744,7 @@ async def import_survey(
 ) -> dict[str, Any]:
     metadata = {**body.metadata, "format": body.format, "field_map": body.field_map}
     _validate_policy(metadata)
+    approved_payload_checksum: str | None = None
     if _is_production():
         try:
             source_row = await _admitted_evidence_source(
@@ -1700,6 +1755,10 @@ async def import_survey(
                 allowed_use="calibration",
             )
             _assert_source_metadata(body.metadata, source_row)
+            approved_payload_checksum = _assert_survey_payload_matches_registry(
+                body.secret_payload,
+                source_row,
+            )
         except CampaignLabPolicyError as error:
             raise _invalid(str(error), field="source_version_id") from error
     # Survey rows must pass through the same durable lease/retry path as every
@@ -1715,6 +1774,8 @@ async def import_survey(
             "format": body.format,
             "metadata": body.metadata,
             "field_map": body.field_map,
+            "source_version_id": str(body.source_version_id) if body.source_version_id else None,
+            "approved_payload_checksum_sha256": approved_payload_checksum,
         },
         secret_payload=body.secret_payload,
         idempotency_key=idempotency_key,
@@ -1894,7 +1955,14 @@ async def create_calibration(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     idempotency_key: IdempotencyKey,
 ) -> dict[str, Any]:
+    approved_payload_checksum: str | None = None
     if _is_production():
+        if body.survey is not None:
+            raise _invalid(
+                "production calibration requires an approved raw survey import whose payload "
+                "checksum can be recomputed",
+                field="survey",
+            )
         try:
             source_row = await _admitted_evidence_source(
                 request,
@@ -1903,14 +1971,22 @@ async def create_calibration(
                 body.source_version_id,
                 allowed_use="calibration",
             )
-            _assert_source_metadata(
-                _source_metadata(body.survey if body.survey is not None else body.survey_import),
-                source_row,
-                require_checksum=body.survey is not None,
-            )
+            _assert_source_metadata(_source_metadata(body.survey_import), source_row)
+            if body.survey_import is not None:
+                secret_import = (
+                    body.secret_payload.get("survey_import")
+                    if isinstance(body.secret_payload, Mapping)
+                    else None
+                )
+                approved_payload_checksum = _assert_survey_payload_matches_registry(
+                    secret_import if isinstance(secret_import, Mapping) else None,
+                    source_row,
+                )
         except CampaignLabPolicyError as error:
             raise _invalid(str(error), field="source_version_id") from error
     payload = body.model_dump(mode="json", exclude={"secret_payload"})
+    if approved_payload_checksum is not None:
+        payload["approved_payload_checksum_sha256"] = approved_payload_checksum
     result = await _store_run(
         request,
         identity,
@@ -1948,31 +2024,11 @@ async def create_backtest(
     idempotency_key: IdempotencyKey,
 ) -> dict[str, Any]:
     if _is_production():
-        try:
-            outcome_row = await _admitted_outcome_set(
-                request,
-                identity,
-                campaign_id,
-                body.outcome_set_id,
-            )
-            secret_outcomes = (
-                body.secret_payload.get("outcomes")
-                if isinstance(body.secret_payload, Mapping)
-                else None
-            )
-            metadata = _source_metadata(secret_outcomes)
-            _assert_source_metadata(metadata, outcome_row, require_checksum=True)
-            if metadata is None or metadata.get("held_out") is not True:
-                raise CampaignLabPolicyError(
-                    "production historical backtests require an explicitly held-out "
-                    "outcome envelope"
-                )
-            if metadata.get("authorized_for_evaluation") is not True:
-                raise CampaignLabPolicyError(
-                    "production historical backtests require authorized outcome evaluation"
-                )
-        except CampaignLabPolicyError as error:
-            raise _invalid(str(error), field="outcome_set_id") from error
+        raise _invalid(
+            "production historical backtests are disabled until the admitted outcome-set "
+            "registry defines an immutable checksum for the exact worker outcome envelope",
+            field="outcome_set_id",
+        )
     payload = body.model_dump(mode="json", exclude={"secret_payload"})
     result = await _store_run(
         request,
@@ -2078,7 +2134,6 @@ async def create_compliance_review(
     payload = {
         "review_id": str(review_id),
         "payload": body.payload,
-        "reviewer": body.reviewer,
     }
     result = await _store_run(
         request,
@@ -2142,7 +2197,16 @@ async def campaign_audit(
 
 
 @router.post(
-    "/campaigns/{campaign_id}/reports", status_code=201, operation_id="create_campaign_lab_report"
+    "/campaigns/{campaign_id}/reports",
+    status_code=409,
+    response_model=None,
+    deprecated=True,
+    operation_id="create_campaign_lab_report",
+    responses={
+        409: _problem_response(
+            "Campaign Lab reports are unavailable until immutable evidence binding exists."
+        )
+    },
 )
 async def create_report(
     campaign_id: UUID,
@@ -2151,169 +2215,65 @@ async def create_report(
     response: Response,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     idempotency_key: IdempotencyKey,
-) -> dict[str, Any]:
-    await _campaign_row(request, identity, campaign_id)
-    rows = await _services(request).database.read_product_rows(
-        identity,
-        operation="campaign_lab_report_source_run",
-        query="""
-          select id, campaign_id, run_type, request, result, status
-          from api.campaign_lab_runs
-          where id = %s and campaign_id = %s
-        """,
-        parameters=(body.run_id, campaign_id),
+) -> None:
+    raise AppProblem(
+        status=409,
+        code="version_conflict",
+        title="Campaign Lab reports are unavailable",
+        detail=(
+            "Campaign Lab reports remain unavailable until every source, configuration, "
+            "input, result, and approval is bound to an immutable evidence manifest."
+        ),
     )
-    if (
-        not rows
-        or rows[0].get("run_type") != "repeated_simulation"
-        or rows[0].get("status") != "succeeded"
-    ):
-        raise AppProblem(
-            status=409,
-            code="version_conflict",
-            title="Report source is not ready",
-            detail="A report can only be created from a succeeded durable run.",
-        )
-    source = rows[0]
-
-    async def evidence_result(
-        run_id: UUID | None,
-        expected_type: Literal["survey_calibration", "historical_backtest", "compliance_review"],
-    ) -> Mapping[str, Any] | None:
-        if run_id is None:
-            return None
-        evidence_rows = await _services(request).database.read_product_rows(
-            identity,
-            operation=f"campaign_lab_report_{expected_type}",
-            query="""
-              select id, campaign_id, run_type, status, result
-              from api.campaign_lab_runs
-              where id = %s and campaign_id = %s and run_type = %s
-            """,
-            parameters=(run_id, campaign_id, expected_type),
-        )
-        if (
-            not evidence_rows
-            or evidence_rows[0].get("status") != "succeeded"
-            or not isinstance(evidence_rows[0].get("result"), Mapping)
-        ):
-            raise AppProblem(
-                status=409,
-                code="version_conflict",
-                title="Report evidence is not ready",
-                detail=(
-                    "Attach a succeeded calibration or backtest run before generating the report."
-                ),
-            )
-        return cast(Mapping[str, Any], evidence_rows[0]["result"])
-
-    calibration_result = await evidence_result(body.calibration_run_id, "survey_calibration")
-    historical_backtest_result = await evidence_result(
-        body.historical_backtest_run_id, "historical_backtest"
-    )
-    compliance_result = await evidence_result(body.compliance_review_run_id, "compliance_review")
-    if body.approval_status == "approved_experimental" and (
-        not isinstance(compliance_result, Mapping)
-        or compliance_result.get("status") != "approved_experimental"
-    ):
-        raise AppProblem(
-            status=409,
-            code="version_conflict",
-            title="Approved report requires compliance evidence",
-            detail=(
-                "Only a succeeded compliance review with approved_experimental status "
-                "can authorize this report state."
-            ),
-        )
-    cultural_evaluation: Mapping[str, Any] | None = None
-    if body.cultural_evaluation_artifact_id is not None:
-        cultural_rows = await _services(request).database.read_product_rows(
-            identity,
-            operation="campaign_lab_report_cultural_evaluation",
-            query="""
-              select payload
-              from api.campaign_lab_artifacts
-              where id = %s and campaign_id = %s and kind = 'cultural_evaluation'
-            """,
-            parameters=(body.cultural_evaluation_artifact_id, campaign_id),
-        )
-        if not cultural_rows or not isinstance(cultural_rows[0].get("payload"), Mapping):
-            raise AppProblem(
-                status=404,
-                code="not_found",
-                title="Cultural evaluation not found",
-                detail="The selected language evaluation is absent or not visible.",
-            )
-        payload = cast(Mapping[str, Any], cultural_rows[0]["payload"])
-        raw_result = payload.get("result", payload)
-        if not isinstance(raw_result, Mapping):
-            raise _invalid(
-                "The cultural evaluation artifact does not contain a valid result.",
-                field="cultural_evaluation_artifact_id",
-            )
-        cultural_evaluation = raw_result
-    if not isinstance(source.get("request"), Mapping) or not isinstance(
-        source.get("result"), Mapping
-    ):
-        raise _invalid(
-            "The durable run does not contain a valid Campaign Lab report source.", field="run_id"
-        )
-    payload = {
-        "source_run_id": str(body.run_id),
-        "simulation_request": source["request"],
-        "simulation_result": source["result"],
-        "survey_calibration": calibration_result,
-        "historical_backtest": historical_backtest_result,
-        "compliance_review": compliance_result,
-        "cultural_evaluation": cultural_evaluation,
-        "human_reviewer": body.human_reviewer,
-        "approval_status": body.approval_status,
-    }
-    result = await _store_run(
-        request,
-        identity,
-        campaign_id=campaign_id,
-        run_type="report",
-        payload=payload,
-        secret_payload=None,
-        idempotency_key=idempotency_key,
-        correlation_id=_correlation_id(request),
-    )
-    _replay_header(response, result)
-    return result
 
 
-@router.get("/reports/runs/{run_id}", operation_id="get_campaign_lab_report_run")
+@router.get(
+    "/reports/runs/{run_id}",
+    status_code=410,
+    response_model=None,
+    deprecated=True,
+    operation_id="get_campaign_lab_report_run",
+    responses={
+        410: _problem_response(
+            "Legacy report runs are quarantined because they lack immutable evidence binding."
+        )
+    },
+)
 async def get_report_run(
     run_id: UUID,
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
-) -> dict[str, Any]:
-    return await _get_campaign_lab_run(run_id, "report", request, identity)
+) -> None:
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy Campaign Lab report is quarantined",
+        detail="Legacy report runs are unavailable because they lack immutable evidence binding.",
+    )
 
 
-@router.get("/reports/{artifact_id}", operation_id="get_campaign_lab_report")
+@router.get(
+    "/reports/{artifact_id}",
+    status_code=410,
+    response_model=None,
+    deprecated=True,
+    operation_id="get_campaign_lab_report",
+    responses={
+        410: _problem_response(
+            "Legacy report artifacts are quarantined because they lack immutable evidence binding."
+        )
+    },
+)
 async def get_report(
     artifact_id: UUID,
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
-) -> dict[str, Any]:
-    rows = await _services(request).database.read_product_rows(
-        identity,
-        operation="campaign_lab_report",
-        query="""
-          select id, organization_id, campaign_id, kind, status, title, payload,
-                 provenance, checksum_sha256, created_by, created_at, updated_at
-          from api.campaign_lab_artifacts
-          where id = %s and kind = 'report'
-        """,
-        parameters=(artifact_id,),
+) -> None:
+    raise AppProblem(
+        status=410,
+        code="unsupported_scope",
+        title="Legacy Campaign Lab report is quarantined",
+        detail=(
+            "Legacy report artifacts are unavailable because they lack immutable evidence binding."
+        ),
     )
-    if not rows:
-        raise AppProblem(
-            status=404,
-            code="not_found",
-            title="Campaign Lab report not found",
-            detail="The report is absent or not visible.",
-        )
-    return rows[0]

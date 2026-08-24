@@ -134,7 +134,7 @@ export function databaseProblem(error: unknown): AppProblem {
   ) {
     return new AppProblem(
       403,
-      "evidence_not_admitted",
+      "forbidden",
       "Evidence is not admitted",
       "The referenced evidence source is not approved for this evaluation.",
     );

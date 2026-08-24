@@ -288,7 +288,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Report */
+        /**
+         * Create Report
+         * @deprecated
+         */
         post: operations["create_campaign_lab_report"];
         delete?: never;
         options?: never;
@@ -493,7 +496,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Report */
+        /**
+         * Get Report
+         * @deprecated
+         */
         get: operations["get_campaign_lab_report"];
         put?: never;
         post?: never;
@@ -510,7 +516,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Report Run */
+        /**
+         * Get Report Run
+         * @deprecated
+         */
         get: operations["get_campaign_lab_report_run"];
         put?: never;
         post?: never;
@@ -663,7 +672,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Download Export */
+        /**
+         * Download Export
+         * @deprecated
+         */
         get: operations["download_report_export"];
         put?: never;
         post?: never;
@@ -1037,7 +1049,10 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Revoke Report Share */
+        /**
+         * Revoke Report Share
+         * @deprecated
+         */
         delete: operations["revoke_report_share"];
         options?: never;
         head?: never;
@@ -1053,7 +1068,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Export */
+        /**
+         * Create Export
+         * @deprecated
+         */
         post: operations["create_report_export"];
         delete?: never;
         options?: never;
@@ -1068,10 +1086,16 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Report Shares */
+        /**
+         * List Report Shares
+         * @deprecated
+         */
         get: operations["list_report_shares"];
         put?: never;
-        /** Create Report Share */
+        /**
+         * Create Report Share
+         * @deprecated
+         */
         post: operations["create_report_share"];
         delete?: never;
         options?: never;
@@ -1122,7 +1146,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Run Methodology Report */
+        /**
+         * Create Run Methodology Report
+         * @deprecated
+         */
         post: operations["create_run_methodology_report"];
         delete?: never;
         options?: never;
@@ -1154,7 +1181,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Get Report */
+        /**
+         * Get Report
+         * @deprecated
+         */
         get: operations["get_run_report"];
         put?: never;
         post?: never;
@@ -1173,7 +1203,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Create Report */
+        /**
+         * Create Report
+         * @deprecated
+         */
         post: operations["create_run_report"];
         delete?: never;
         options?: never;
@@ -1205,7 +1238,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Access Shared Report */
+        /**
+         * Access Shared Report
+         * @deprecated
+         */
         get: operations["access_shared_report"];
         put?: never;
         post?: never;
@@ -5759,6 +5795,37 @@ export interface operations {
                     };
                 };
             };
+            /** @description Legacy report artifacts are quarantined because they lack immutable evidence binding. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
             /** @description The request exceeds the API body limit. */
             413: {
                 headers: {
@@ -8671,17 +8738,6 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -8775,12 +8831,13 @@ export interface operations {
                     };
                 };
             };
-            /** @description The request conflicts with current durable state. */
+            /** @description Campaign Lab reports are unavailable until immutable evidence binding exists. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -12796,17 +12853,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -12906,6 +12952,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy report artifacts are quarantined because they lack immutable evidence binding. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -13068,17 +13146,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": {
-                        [key: string]: unknown;
-                    };
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -13178,6 +13245,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy report runs are quarantined because they lack immutable evidence binding. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -15523,15 +15622,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": unknown;
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -15631,6 +15721,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy report exports are unavailable. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -24207,15 +24329,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponse"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -24315,6 +24428,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy report sharing is unavailable. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -24514,15 +24659,6 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponse"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -24622,6 +24758,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy report exports are unavailable. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -24815,15 +24983,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCollectionResponse"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -24923,6 +25082,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy report sharing is unavailable. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -25122,15 +25313,6 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponse"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -25230,6 +25412,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy report sharing is unavailable. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -26044,15 +26258,6 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponse"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -26146,12 +26351,13 @@ export interface operations {
                     };
                 };
             };
-            /** @description The request conflicts with current durable state. */
+            /** @description Immutable run configuration binding is unavailable. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -26646,15 +26852,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponse"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -26754,6 +26951,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy report artifacts are quarantined. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -26953,15 +27182,6 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponse"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -27061,6 +27281,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Client-authored report persistence was removed; use methodology-reports. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -27555,15 +27807,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponse"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -27663,6 +27906,38 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description Legacy shared reports are unavailable. */
+            410: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";

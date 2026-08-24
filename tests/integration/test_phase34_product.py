@@ -206,26 +206,26 @@ async def test_phase34_methodology_and_product_commands(
             },
             headers=_headers(token, "phase34-durable-report-0001"),
         )
-        assert durable_report.status_code == 201, durable_report.text
-        report_id = durable_report.json()["data"]["report_id"]
-        assert durable_report.json()["data"]["artifact"]["identity"]["run_id"] == str(run_id)
+        assert durable_report.status_code == 409, durable_report.text
+        assert durable_report.json()["code"] == "version_conflict"
+
+        legacy_report = await client.get(
+            f"/api/v1/runs/{run_id}/report",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+        assert legacy_report.status_code == 410, legacy_report.text
+        assert legacy_report.json()["code"] == "unsupported_scope"
 
         exported = await client.post(
-            f"/api/v1/reports/{report_id}/exports",
+            f"/api/v1/reports/{run_id}/exports",
             json={
                 "format": "json",
                 "expires_at": (datetime.now(UTC) + timedelta(days=1)).isoformat(),
             },
             headers=_headers(token, "phase34-durable-export-0001"),
         )
-        assert exported.status_code == 201, exported.text
-        downloaded = await client.get(
-            f"/api/v1/exports/{exported.json()['data']['export_id']}",
-            headers={"Authorization": f"Bearer {token}"},
-        )
-        assert downloaded.status_code == 200
-        assert downloaded.headers["content-type"].startswith("application/json")
-        assert downloaded.json()["schema_version"] == "2.0.0"
+        assert exported.status_code == 410, exported.text
+        assert exported.json()["code"] == "unsupported_scope"
 
         variants = await client.post(
             f"/api/v1/projects/{project_id}/variant-groups",
@@ -287,15 +287,14 @@ async def test_phase34_methodology_and_product_commands(
             },
             headers=_headers(token, "phase34-candidate-report-0001"),
         )
-        assert candidate_report.status_code == 201, candidate_report.text
+        assert candidate_report.status_code == 409, candidate_report.text
+        assert candidate_report.json()["code"] == "version_conflict"
         comparison = await client.get(
             f"/api/v1/variant-groups/{variant_group_id}/comparison",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert comparison.status_code == 200, comparison.text
-        comparison_body = comparison.json()["items"][0]["comparison"]
-        assert comparison_body["compatibility"] == "compatible"
-        assert "winner" not in comparison_body
+        assert comparison.status_code == 409, comparison.text
+        assert comparison.json()["code"] == "version_conflict"
 
         feedback = await client.post(
             f"/api/v1/organizations/{organization_id}/feedback",
@@ -353,7 +352,7 @@ async def test_phase34_methodology_and_product_commands(
             "can_view_audit": True,
         }
         assert owner_dashboard.json()["metrics"]["projects"] == 1
-        assert owner_dashboard.json()["metrics"]["reports"] == 2
+        assert owner_dashboard.json()["metrics"]["reports"] == 0
 
         viewer_dashboard = await client.get(
             f"/api/v1/organizations/{organization_id}/dashboard",
@@ -383,7 +382,7 @@ async def test_phase34_methodology_and_product_commands(
         assert foreign_dashboard.status_code == 404
 
         cross_tenant_share = await client.post(
-            f"/api/v1/reports/{report_id}/shares",
+            f"/api/v1/reports/{run_id}/shares",
             json={
                 "recipient_user_id": LOCAL_USERS[OWNER_B],
                 "permission": "view",
@@ -391,10 +390,11 @@ async def test_phase34_methodology_and_product_commands(
             },
             headers=_headers(token, "phase34-share-cross-tenant-0001"),
         )
-        assert cross_tenant_share.status_code == 422, cross_tenant_share.text
+        assert cross_tenant_share.status_code == 410, cross_tenant_share.text
+        assert cross_tenant_share.json()["code"] == "unsupported_scope"
 
         share = await client.post(
-            f"/api/v1/reports/{report_id}/shares",
+            f"/api/v1/reports/{run_id}/shares",
             json={
                 "recipient_user_id": LOCAL_USERS[VIEWER_A],
                 "permission": "view",
@@ -402,31 +402,26 @@ async def test_phase34_methodology_and_product_commands(
             },
             headers=_headers(token, "phase34-share-create-0001"),
         )
-        assert share.status_code == 201, share.text
-        share_id = share.json()["data"]["share_id"]
-        share_token = share.json()["data"]["share_token"]
+        assert share.status_code == 410, share.text
+        assert share.json()["code"] == "unsupported_scope"
         shared_report = await client.get(
-            f"/api/v1/shared-reports/{share_token}",
+            f"/api/v1/shared-reports/{'a' * 43}",
             headers={"Authorization": f"Bearer {viewer_token}"},
         )
-        assert shared_report.status_code == 200, shared_report.text
-        assert shared_report.json()["data"]["report_id"] == report_id
+        assert shared_report.status_code == 410, shared_report.text
+        assert shared_report.json()["code"] == "unsupported_scope"
         listed_shares = await client.get(
-            f"/api/v1/reports/{report_id}/shares",
+            f"/api/v1/reports/{run_id}/shares",
             headers={"Authorization": f"Bearer {token}"},
         )
-        assert listed_shares.status_code == 200, listed_shares.text
-        assert listed_shares.json()["items"][0]["access_count"] == 1
+        assert listed_shares.status_code == 410, listed_shares.text
+        assert listed_shares.json()["code"] == "unsupported_scope"
         revoked = await client.delete(
-            f"/api/v1/report-shares/{share_id}",
+            f"/api/v1/report-shares/{run_id}",
             headers=_headers(token, "phase34-share-revoke-0001"),
         )
-        assert revoked.status_code == 200, revoked.text
-        denied_after_revoke = await client.get(
-            f"/api/v1/shared-reports/{share_token}",
-            headers={"Authorization": f"Bearer {viewer_token}"},
-        )
-        assert denied_after_revoke.status_code == 404
+        assert revoked.status_code == 410, revoked.text
+        assert revoked.json()["code"] == "unsupported_scope"
 
         admin = await client.get(
             f"/api/v1/organizations/{organization_id}/admin-summary",
@@ -452,7 +447,4 @@ async def test_phase34_methodology_and_product_commands(
             "feature_flag.updated",
             "invitation.created",
             "invitation.accepted",
-            "share.created",
-            "share.accessed",
-            "share.revoked",
         } <= actions

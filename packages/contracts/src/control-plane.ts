@@ -91,6 +91,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @deprecated
+         * @description Downloads of quarantined report artifacts are unavailable.
+         */
         get: operations["downloadReportExport"];
         put?: never;
         post?: never;
@@ -257,7 +261,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Queue a blind historical replay. Held-out outcomes are stored in a worker-only secret row and are never returned by reads. */
+        /**
+         * @deprecated
+         * @description Unavailable until the exact held-out outcome envelope is immutably bound to its admitted registry artifact.
+         */
         post: operations["createHistoricalBacktest"];
         delete?: never;
         options?: never;
@@ -274,7 +281,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** @description Queue a deterministic comparison between weighted synthetic aggregate observations and an admitted consented survey dataset. */
+        /**
+         * @deprecated
+         * @description Unavailable until the submitted survey is immutably bound to its admitted registry artifact.
+         */
         post: operations["createSurveyCalibration"];
         delete?: never;
         options?: never;
@@ -371,6 +381,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * @deprecated
+         * @description Exports of quarantined report artifacts are unavailable.
+         */
         post: operations["createReportExport"];
         delete?: never;
         options?: never;
@@ -499,6 +513,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
+        /**
+         * @deprecated
+         * @description Unavailable until runs record the exact immutable configuration executed by the methodology engine.
+         */
         post: operations["createRunMethodologyReport"];
         delete?: never;
         options?: never;
@@ -529,6 +547,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /**
+         * @deprecated
+         * @description Legacy report artifacts are quarantined and unavailable.
+         */
         get: operations["getRunReport"];
         put?: never;
         post?: never;
@@ -2369,16 +2391,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Unexpired report export. */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": string;
-                    "text/csv": string;
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -2408,6 +2420,15 @@ export interface operations {
             };
             /** @description The command conflicts with durable resource state. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description Legacy report export is quarantined. */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3887,14 +3908,6 @@ export interface operations {
             };
         };
         responses: {
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CampaignEvidenceRunResponseDto"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -3922,7 +3935,11 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetailsDto"];
                 };
             };
-            /** @description The command conflicts with durable resource state. */
+            /**
+             * @description The command conflicts with durable resource state.
+             *
+             *     Immutable evidence binding is unavailable.
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -3999,14 +4016,6 @@ export interface operations {
             };
         };
         responses: {
-            202: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CampaignEvidenceRunResponseDto"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -4034,7 +4043,11 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetailsDto"];
                 };
             };
-            /** @description The command conflicts with durable resource state. */
+            /**
+             * @description The command conflicts with durable resource state.
+             *
+             *     Immutable evidence binding is unavailable.
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -4883,14 +4896,6 @@ export interface operations {
             };
         };
         responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponseDto"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -4920,6 +4925,15 @@ export interface operations {
             };
             /** @description The command conflicts with durable resource state. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description Legacy report artifact is quarantined. */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -5645,14 +5659,6 @@ export interface operations {
             };
         };
         responses: {
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponseDto"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -5680,7 +5686,11 @@ export interface operations {
                     "application/problem+json": components["schemas"]["ProblemDetailsDto"];
                 };
             };
-            /** @description The command conflicts with durable resource state. */
+            /**
+             * @description The command conflicts with durable resource state.
+             *
+             *     Immutable run configuration binding is unavailable.
+             */
             409: {
                 headers: {
                     [name: string]: unknown;
@@ -5857,14 +5867,6 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ProductCommandResponseDto"];
-                };
-            };
             /** @description Authentication is missing, expired, or invalid. */
             401: {
                 headers: {
@@ -5894,6 +5896,15 @@ export interface operations {
             };
             /** @description The command conflicts with durable resource state. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetailsDto"];
+                };
+            };
+            /** @description Legacy report artifact is quarantined. */
+            410: {
                 headers: {
                     [name: string]: unknown;
                 };

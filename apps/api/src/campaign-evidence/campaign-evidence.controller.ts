@@ -13,6 +13,7 @@ import {
 import {
   ApiAcceptedResponse,
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiHeader,
   ApiOkResponse,
   ApiOperation,
@@ -76,14 +77,17 @@ export class CampaignEvidenceController {
   ) {}
 
   @Post("projects/:project_id/campaign-evidence/survey-calibrations")
-  @HttpCode(202)
+  @HttpCode(409)
   @ApiOperation({
     operationId: "createSurveyCalibration",
+    deprecated: true,
     description:
-      "Queue a deterministic comparison between weighted synthetic aggregate observations and an admitted consented survey dataset.",
+      "Unavailable until the submitted survey is immutably bound to its admitted registry artifact.",
   })
   @ApiHeader(IDEMPOTENCY_HEADER)
-  @ApiAcceptedResponse({ type: CampaignEvidenceRunResponseDto })
+  @ApiConflictResponse({
+    description: "Immutable evidence binding is unavailable.",
+  })
   @ApiAuthenticatedDomainProblems()
   @ApiValidationProblem()
   async createSurveyCalibration(
@@ -104,14 +108,17 @@ export class CampaignEvidenceController {
   }
 
   @Post("projects/:project_id/campaign-evidence/backtests")
-  @HttpCode(202)
+  @HttpCode(409)
   @ApiOperation({
     operationId: "createHistoricalBacktest",
+    deprecated: true,
     description:
-      "Queue a blind historical replay. Held-out outcomes are stored in a worker-only secret row and are never returned by reads.",
+      "Unavailable until the exact held-out outcome envelope is immutably bound to its admitted registry artifact.",
   })
   @ApiHeader(IDEMPOTENCY_HEADER)
-  @ApiAcceptedResponse({ type: CampaignEvidenceRunResponseDto })
+  @ApiConflictResponse({
+    description: "Immutable evidence binding is unavailable.",
+  })
   @ApiAuthenticatedDomainProblems()
   @ApiValidationProblem()
   async createHistoricalBacktest(

@@ -2812,6 +2812,19 @@ export type Database = {
         }
         Returns: Json
       }
+      create_campaign_lab_run_v4: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_request: Json
+          requested_run_type: string
+          requested_secret: Json
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       create_feedback_record: {
         Args: {
           requested_correlation_id: string
@@ -3751,6 +3764,63 @@ export type Database = {
         }
         Relationships: []
       }
+      legacy_campaign_lab_report_quarantine: {
+        Row: {
+          campaign_id: string
+          organization_id: string
+          previous_campaign_compliance_status: string
+          previous_campaign_stage: string
+          previous_campaign_status: string
+          previous_last_error_code: string | null
+          previous_last_error_detail: string | null
+          previous_progress: number
+          previous_request: Json
+          previous_request_sha256: string
+          previous_result: Json | null
+          previous_stage: string
+          previous_status: string
+          quarantined_at: string
+          run_id: string
+          source_retention_until: string
+        }
+        Insert: {
+          campaign_id: string
+          organization_id: string
+          previous_campaign_compliance_status: string
+          previous_campaign_stage: string
+          previous_campaign_status: string
+          previous_last_error_code?: string | null
+          previous_last_error_detail?: string | null
+          previous_progress: number
+          previous_request: Json
+          previous_request_sha256: string
+          previous_result?: Json | null
+          previous_stage: string
+          previous_status: string
+          quarantined_at?: string
+          run_id: string
+          source_retention_until: string
+        }
+        Update: {
+          campaign_id?: string
+          organization_id?: string
+          previous_campaign_compliance_status?: string
+          previous_campaign_stage?: string
+          previous_campaign_status?: string
+          previous_last_error_code?: string | null
+          previous_last_error_detail?: string | null
+          previous_progress?: number
+          previous_request?: Json
+          previous_request_sha256?: string
+          previous_result?: Json | null
+          previous_stage?: string
+          previous_status?: string
+          quarantined_at?: string
+          run_id?: string
+          source_retention_until?: string
+        }
+        Relationships: []
+      }
       organization_deletion_requests: {
         Row: {
           actor_user_id: string
@@ -4626,6 +4696,19 @@ export type Database = {
         }
         Returns: Json
       }
+      create_campaign_lab_run_atomic_v4: {
+        Args: {
+          requested_campaign_id: string
+          requested_correlation_id: string
+          requested_idempotency_key: string
+          requested_organization_id: string
+          requested_request: Json
+          requested_run_type: string
+          requested_secret: Json
+          requested_sha256: string
+        }
+        Returns: Json
+      }
       create_feedback_record_atomic: {
         Args: {
           requested_correlation_id: string
@@ -5092,6 +5175,7 @@ export type Database = {
           template_id: string
         }[]
       }
+      quarantine_legacy_campaign_lab_reports: { Args: never; Returns: number }
       reconcile_run_dispatch: {
         Args: {
           requested_batch_size: number
@@ -5217,6 +5301,22 @@ export type Database = {
           succeeded_count: number
         }[]
       }
+      runtime_observability_snapshot_v4: {
+        Args: never
+        Returns: {
+          cancel_requested_count: number
+          canceled_count: number
+          failed_count: number
+          migration_version: number
+          oldest_cancel_requested_age_seconds: number
+          queued_count: number
+          retrying_count: number
+          rls_force_enabled: boolean
+          running_count: number
+          stuck_lease_count: number
+          succeeded_count: number
+        }[]
+      }
       runtime_schema_readiness: {
         Args: never
         Returns: {
@@ -5232,6 +5332,13 @@ export type Database = {
         }[]
       }
       runtime_schema_readiness_v3: {
+        Args: never
+        Returns: {
+          migration_version: number
+          rls_force_enabled: boolean
+        }[]
+      }
+      runtime_schema_readiness_v4: {
         Args: never
         Returns: {
           migration_version: number

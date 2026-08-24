@@ -8,6 +8,7 @@ payload and are never written to logs or returned by the API read path.
 from __future__ import annotations
 
 import asyncio
+import os
 from collections.abc import Mapping
 from typing import cast
 
@@ -35,6 +36,7 @@ from simula_core.survey_imports import (
 from simula_worker.database import CampaignEvidenceClaim, CampaignEvidenceDatabase
 
 logger = structlog.get_logger()
+_CAMPAIGN_EVIDENCE_HEARTBEAT_SECONDS = 30.0
 
 
 def _evaluate_survey(
@@ -106,6 +108,8 @@ def evaluate_campaign_evidence_claim(
 ) -> Mapping[str, object]:
     """Evaluate one claim without side effects or network calls."""
 
+    if os.getenv("SIMULA_ENVIRONMENT", "local").strip().lower() == "production":
+        raise ValueError("production campaign evidence lacks an exact immutable registry binding")
     if claim.kind == "survey_calibration":
         return _evaluate_survey(claim.request, claim.secret_payload)
     if claim.kind == "historical_backtest":
@@ -113,9 +117,80 @@ def evaluate_campaign_evidence_claim(
     raise ValueError("unsupported evidence kind")
 
 
+async def _evaluate_with_lease_heartbeat(
+    database: CampaignEvidenceDatabase,
+    claim: CampaignEvidenceClaim,
+    *,
+    heartbeat_seconds: float,
+) -> tuple[Mapping[str, object], bool]:
+    if heartbeat_seconds <= 0:
+        raise ValueError("Campaign evidence heartbeat interval must be positive")
+    stop_heartbeat = asyncio.Event()
+    lease_current = True
+
+    async def heartbeat() -> None:
+        nonlocal lease_current
+        while not stop_heartbeat.is_set():
+            try:
+                await asyncio.wait_for(stop_heartbeat.wait(), timeout=heartbeat_seconds)
+                return
+            except TimeoutError:
+                pass
+            try:
+                lease_current = await database.update_campaign_evidence_progress(
+                    claim.evidence_id,
+                    claim.lease_token,
+                    "evaluating",
+                    55,
+                    "Computing deterministic evidence metrics.",
+                )
+            except Exception as error:
+                lease_current = False
+                logger.warning(
+                    "campaign_evidence_heartbeat_failed",
+                    evidence_id=str(claim.evidence_id),
+                    error_type=type(error).__name__,
+                )
+            if not lease_current:
+                return
+
+    heartbeat_task = asyncio.create_task(heartbeat())
+    evaluation_task = asyncio.create_task(
+        asyncio.to_thread(evaluate_campaign_evidence_claim, claim)
+    )
+    try:
+        result = await asyncio.shield(evaluation_task)
+    except asyncio.CancelledError:
+        # The thread remains live after coroutine cancellation. Continue
+        # renewing the lease until the computation exits, then propagate the
+        # cancellation without persisting its now-abandoned result.
+        while not evaluation_task.done():
+            try:
+                await asyncio.shield(evaluation_task)
+            except asyncio.CancelledError:
+                continue
+            except BaseException:
+                break
+        if evaluation_task.done() and not evaluation_task.cancelled():
+            evaluation_error = evaluation_task.exception()
+            if evaluation_error is not None:
+                logger.warning(
+                    "campaign_evidence_evaluation_failed",
+                    evidence_id=str(claim.evidence_id),
+                    error_type=type(evaluation_error).__name__,
+                )
+        raise
+    finally:
+        stop_heartbeat.set()
+        await heartbeat_task
+    return result, lease_current
+
+
 async def process_campaign_evidence_claim(
     database: CampaignEvidenceDatabase,
     claim: CampaignEvidenceClaim,
+    *,
+    heartbeat_seconds: float = _CAMPAIGN_EVIDENCE_HEARTBEAT_SECONDS,
 ) -> str:
     """Run a leased evidence job and persist a bounded terminal disposition."""
 
@@ -148,7 +223,19 @@ async def process_campaign_evidence_claim(
                 )
                 else "stale"
             )
-        result = evaluate_campaign_evidence_claim(claim)
+        result, lease_current = await _evaluate_with_lease_heartbeat(
+            database,
+            claim,
+            heartbeat_seconds=heartbeat_seconds,
+        )
+        if not lease_current:
+            return (
+                "canceled"
+                if await database.finalize_canceled_campaign_evidence_run(
+                    claim.evidence_id, claim.lease_token
+                )
+                else "stale"
+            )
         if not await database.update_campaign_evidence_progress(
             claim.evidence_id,
             claim.lease_token,
@@ -218,7 +305,7 @@ async def campaign_evidence_loop(
     while not stop.is_set():
         try:
             await database.expire_campaign_evidence_runs(50)
-            claims = await database.claim_campaign_evidence_runs(5)
+            claims = await database.claim_campaign_evidence_runs(1)
         except Exception as error:
             logger.warning(
                 "campaign_evidence_claim_failed",

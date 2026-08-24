@@ -15,7 +15,7 @@ const CORRELATION_ID = "018f274b-3c77-4b22-b749-c9274230efa4";
 const IDEMPOTENCY_KEY = "asset-test-key-0001";
 const CONTENT = Buffer.from("bounded visual fixture", "utf8");
 const CHECKSUM = createHash("sha256").update(CONTENT).digest("hex");
-const RETENTION = "2026-08-15T00:00:00.000000Z";
+const RETENTION = new Date(Date.now() + 86_400_000).toISOString();
 
 const IDENTITY: VerifiedIdentity = Object.freeze({
   userId: USER_ID,

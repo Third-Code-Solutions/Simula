@@ -151,107 +151,22 @@ export class CampaignEvidenceService implements CampaignEvidenceServicePort {
   ) {}
 
   async create(
-    identity: VerifiedIdentity,
-    organizationId: string,
-    projectId: string,
-    kind: EvidenceKind,
-    input: CreateInput,
-    idempotencyKey: string,
-    requestSha256: string,
-    correlationId: string,
+    _identity: VerifiedIdentity,
+    _organizationId: string,
+    _projectId: string,
+    _kind: EvidenceKind,
+    _input: CreateInput,
+    _idempotencyKey: string,
+    _requestSha256: string,
+    _correlationId: string,
   ): Promise<CampaignEvidenceRunResponseDto> {
-    const surveyInput = input as SurveyCalibrationCreateDto;
-    const backtestInput = input as HistoricalBacktestCreateDto;
-    if (
-      kind === "survey_calibration" &&
-      surveyInput.survey === undefined &&
-      surveyInput.survey_import === undefined
-    ) {
-      throw new AppProblem(
-        400,
-        "survey_input_required",
-        "Survey input is required",
-        "Provide a normalized aggregate survey or a governed external survey import.",
-      );
-    }
-    const publicSurveyImport =
-      surveyInput.survey_import === undefined
-        ? undefined
-        : (({ payload: _payload, ...metadata }) => metadata)(
-            surveyInput.survey_import,
-          );
-    const request =
-      kind === "survey_calibration"
-        ? {
-            synthetic_observations: surveyInput.synthetic_observations,
-            ...(surveyInput.survey === undefined
-              ? {}
-              : { survey: surveyInput.survey }),
-            ...(publicSurveyImport === undefined
-              ? {}
-              : { survey_import: publicSurveyImport }),
-          }
-        : {
-            protocol: backtestInput.protocol,
-            prediction_set: backtestInput.prediction_set,
-            ...(backtestInput.baseline_prediction_set === undefined
-              ? {}
-              : {
-                  baseline_prediction_set:
-                    backtestInput.baseline_prediction_set,
-                }),
-          };
-    const secret =
-      kind === "historical_backtest"
-        ? { outcomes: backtestInput.outcomes }
-        : surveyInput.survey_import === undefined
-          ? null
-          : { survey_import: surveyInput.survey_import };
-    this.assertPayloadBudget(request, "request");
-    if (secret !== null) {
-      this.assertPayloadBudget(
-        secret,
-        kind === "historical_backtest" ? "outcomes" : "survey_import",
-      );
-    }
-    try {
-      const command = await this.transaction(identity, async (client) => {
-        const result = await client.query<{ payload: unknown }>(
-          `
-          select api.create_campaign_evidence_run(
-            $1::uuid, $2::uuid, $3::text, $4::jsonb, $5::jsonb,
-            $6::uuid, $7::uuid, $8::text, $9::text, $10::uuid
-          ) as payload
-          `,
-          [
-            organizationId,
-            projectId,
-            kind,
-            JSON.stringify(request),
-            secret === null ? null : JSON.stringify(secret),
-            kind === "survey_calibration"
-              ? surveyInput.source_version_id
-              : null,
-            kind === "historical_backtest"
-              ? backtestInput.outcome_set_id
-              : null,
-            idempotencyKey,
-            requestSha256,
-            correlationId,
-          ],
-        );
-        return responsePayload(result.rows[0]?.payload);
-      });
-      const evidenceId = command.evidence_id;
-      if (typeof evidenceId !== "string") {
-        throw new Error("database returned an invalid evidence id");
-      }
-      const current = await this.get(identity, evidenceId);
-      return { ...current, replayed: command.replayed === true };
-    } catch (error) {
-      if (error instanceof AppProblem) throw error;
-      throw databaseProblem(error);
-    }
+    throw new AppProblem(
+      409,
+      "version_conflict",
+      "Campaign evidence creation is unavailable",
+      "Evidence creation is disabled until the exact survey or outcome payload " +
+        "is immutably bound to its admitted registry version.",
+    );
   }
 
   async get(
@@ -350,22 +265,6 @@ export class CampaignEvidenceService implements CampaignEvidenceServicePort {
     } catch (error) {
       if (error instanceof AppProblem) throw error;
       throw databaseProblem(error);
-    }
-  }
-
-  private assertPayloadBudget(value: object, field: string): void {
-    const encoded = JSON.stringify(value);
-    if (
-      encoded === undefined ||
-      Buffer.byteLength(encoded, "utf8") > 60 * 1024
-    ) {
-      throw new AppProblem(
-        413,
-        "evidence_payload_too_large",
-        "Evidence payload is too large",
-        "Use the governed evidence-source import path for larger datasets.",
-        [{ field, code: "max_size" }],
-      );
     }
   }
 

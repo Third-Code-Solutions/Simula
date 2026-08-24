@@ -2,24 +2,24 @@ begin;
 
 create extension if not exists pgtap with schema extensions;
 
-select extensions.plan(10);
+select extensions.plan(13);
 
 select extensions.ok(
-  'api.create_campaign_lab_run_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
+  'api.create_campaign_lab_run_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
     is not null,
   'durable Campaign Lab API wrapper exists'
 );
 
 select extensions.ok(
   (
-    select owner_roles.rolname = 'postgres'
+    select owner_roles.rolname = 'simula_command_owner'
       and not functions.prosecdef
       and functions.proconfig @> array['search_path=""']::text[]
     from pg_catalog.pg_proc as functions
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
     join pg_catalog.pg_roles as owner_roles on owner_roles.oid = functions.proowner
     where functions.oid =
-      'api.create_campaign_lab_run_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
+      'api.create_campaign_lab_run_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
   ),
   'durable Campaign Lab API wrapper preserves the published security-invoker boundary'
 );
@@ -27,12 +27,12 @@ select extensions.ok(
 select extensions.ok(
   pg_catalog.has_function_privilege(
     'simula_api',
-    'api.create_campaign_lab_run_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure,
+    'api.create_campaign_lab_run_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure,
     'EXECUTE'
   )
   and not pg_catalog.has_function_privilege(
     'anon',
-    'api.create_campaign_lab_run_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure,
+    'api.create_campaign_lab_run_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure,
     'EXECUTE'
   ),
   'only the API service role can invoke the durable Campaign Lab API wrapper'
@@ -44,13 +44,13 @@ select extensions.ok(
       and functions.proconfig @> array['search_path=""', 'row_security=on']::text[]
     from pg_catalog.pg_proc as functions
     where functions.oid =
-      'private.create_campaign_lab_run_atomic_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
+      'private.create_campaign_lab_run_atomic_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
   )
   and pg_catalog.pg_get_functiondef(
-    'private.create_campaign_lab_run_atomic_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
+    'private.create_campaign_lab_run_atomic_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
   ) like '%research_ingestion%'
   and pg_catalog.pg_get_functiondef(
-    'private.create_campaign_lab_run_atomic_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
+    'private.create_campaign_lab_run_atomic_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
   ) like '%survey_import%'
   and pg_catalog.pg_get_functiondef(
     'private.create_campaign_lab_run_atomic_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure
@@ -61,7 +61,7 @@ select extensions.ok(
 select extensions.ok(
   pg_catalog.has_function_privilege(
     'simula_api',
-    'private.create_campaign_lab_run_atomic_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure,
+    'private.create_campaign_lab_run_atomic_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'::pg_catalog.regprocedure,
     'EXECUTE'
   )
   and not pg_catalog.has_function_privilege(
@@ -104,19 +104,19 @@ select extensions.ok(
     from pg_catalog.pg_proc as functions
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = functions.pronamespace
     join pg_catalog.pg_roles as owner_roles on owner_roles.oid = functions.proowner
-    where functions.oid = 'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure
+    where functions.oid = 'private.runtime_schema_readiness_v4()'::pg_catalog.regprocedure
   )
   and pg_catalog.pg_get_functiondef(
-    'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure
-  ) like '%20260807200000::bigint%'
+    'private.runtime_schema_readiness_v4()'::pg_catalog.regprocedure
+  ) like '%20260824020000::bigint%'
   and pg_catalog.has_function_privilege(
     'simula_api',
-    'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure,
+    'private.runtime_schema_readiness_v4()'::pg_catalog.regprocedure,
     'EXECUTE'
   )
   and pg_catalog.has_function_privilege(
     'simula_worker',
-    'private.runtime_schema_readiness_v3()'::pg_catalog.regprocedure,
+    'private.runtime_schema_readiness_v4()'::pg_catalog.regprocedure,
     'EXECUTE'
   ),
   'runtime readiness reports the durable-workflow schema head'
@@ -124,21 +124,21 @@ select extensions.ok(
 
 select extensions.ok(
   pg_catalog.pg_get_functiondef(
-    'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure
-  ) like '%20260807200000::bigint%'
+    'private.runtime_observability_snapshot_v4()'::pg_catalog.regprocedure
+  ) like '%20260824020000::bigint%'
   and pg_catalog.has_function_privilege(
     'simula_api',
-    'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure,
+    'private.runtime_observability_snapshot_v4()'::pg_catalog.regprocedure,
     'EXECUTE'
   )
   and pg_catalog.has_function_privilege(
     'simula_worker',
-    'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure,
+    'private.runtime_observability_snapshot_v4()'::pg_catalog.regprocedure,
     'EXECUTE'
   )
   and not pg_catalog.has_function_privilege(
     'authenticated',
-    'private.runtime_observability_snapshot_v3()'::pg_catalog.regprocedure,
+    'private.runtime_observability_snapshot_v4()'::pg_catalog.regprocedure,
     'EXECUTE'
   ),
   'runtime observability is aggregate-only at the durable-workflow head'
@@ -174,6 +174,60 @@ select extensions.ok(
       and constraints.conname = 'audit_events_outcome_valid'
   ),
   'worker failure audit rows are admitted by the table constraint'
+);
+
+select extensions.ok(
+  (
+    select pg_catalog.bool_and(
+      pg_catalog.pg_get_constraintdef(constraints.oid) like '%8388608%'
+    )
+    from pg_catalog.pg_constraint as constraints
+    join pg_catalog.pg_class as relations on relations.oid = constraints.conrelid
+    join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
+    where (namespaces.nspname, relations.relname, constraints.conname) in (
+      ('api', 'campaign_lab_runs', 'campaign_lab_runs_request_valid'),
+      ('private', 'campaign_lab_secrets', 'campaign_lab_secrets_payload_valid'),
+      ('api', 'campaign_evidence_runs', 'campaign_evidence_runs_request_valid'),
+      ('private', 'campaign_evidence_secrets', 'campaign_evidence_secrets_payload_valid')
+    )
+  ),
+  'both durable queues admit the shared six-mebibyte request envelope'
+);
+
+select extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'api.create_campaign_lab_run_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'
+      ::pg_catalog.regprocedure
+  ) like '%private.create_campaign_lab_run_atomic_v4%'
+  and pg_catalog.pg_get_functiondef(
+    'private.create_campaign_lab_run_atomic_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'
+      ::pg_catalog.regprocedure
+  ) like '%8388608%'
+  and pg_catalog.pg_get_functiondef(
+    'private.create_campaign_lab_run_atomic_v4(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'
+      ::pg_catalog.regprocedure
+  ) not like '%4194304%'
+  and pg_catalog.pg_get_functiondef(
+    'private.create_campaign_lab_run_atomic_v3(uuid,uuid,text,jsonb,jsonb,text,text,uuid)'
+      ::pg_catalog.regprocedure
+  ) like '%4194304%',
+  'routed V4 admission alone has the bounded JSONB-rendering headroom'
+);
+
+select extensions.ok(
+  pg_catalog.pg_get_functiondef(
+    'private.complete_campaign_lab_run_v2(uuid,uuid,jsonb)'::pg_catalog.regprocedure
+  ) like '%4194304%'
+  and pg_catalog.pg_get_functiondef(
+    'private.complete_campaign_lab_run_v2(uuid,uuid,jsonb)'::pg_catalog.regprocedure
+  ) not like '%8388608%'
+  and pg_catalog.pg_get_functiondef(
+    'private.complete_campaign_lab_run_v3(uuid,uuid,jsonb)'::pg_catalog.regprocedure
+  ) like '%4194304%'
+  and pg_catalog.pg_get_functiondef(
+    'private.complete_campaign_lab_run_v3(uuid,uuid,jsonb)'::pg_catalog.regprocedure
+  ) not like '%8388608%',
+  'worker results retain the independent four-mebibyte bounded-output contract'
 );
 
 select * from extensions.finish();

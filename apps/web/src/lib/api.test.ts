@@ -13,6 +13,7 @@ import {
   appendStimulusVersion,
   createBehavioralDemoRun,
   createOrganization,
+  createSurveyCalibration,
   createStimulusVisualProfile,
   deleteStimulusAsset,
   downloadReportExport,
@@ -23,6 +24,7 @@ import {
   getRunAuditHistory,
   getStimulusVisualProfile,
   listOrganizations,
+  listCampaignLabCampaigns,
   listStimulusAssets,
   reserveStimulusAsset,
   revokeReportShare,
@@ -146,6 +148,8 @@ function visualProfileResponse(content: Uint8Array) {
 describe("SIMULA domain API client", () => {
   beforeEach(() => {
     process.env.NEXT_PUBLIC_SIMULA_API_URL = "http://127.0.0.1:8000";
+    delete process.env.NEXT_PUBLIC_SIMULA_API_V1_URL;
+    delete process.env.NEXT_PUBLIC_SIMULA_API_V2_URL;
     delete process.env.NEXT_PUBLIC_SIMULA_DOMAIN_API_VERSION;
     getSession.mockReset();
     getSession.mockResolvedValue({
@@ -153,6 +157,56 @@ describe("SIMULA domain API client", () => {
       error: null,
     });
     vi.stubGlobal("fetch", vi.fn());
+  });
+
+  it("routes fixed v1 and v2 product surfaces to their configured upstreams", async () => {
+    process.env.NEXT_PUBLIC_SIMULA_API_URL = "https://legacy.invalid";
+    process.env.NEXT_PUBLIC_SIMULA_API_V1_URL = "https://v1.simula.invalid";
+    process.env.NEXT_PUBLIC_SIMULA_API_V2_URL = "https://v2.simula.invalid";
+    process.env.NEXT_PUBLIC_SIMULA_DOMAIN_API_VERSION = "v2";
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ items: [], pagination: { limit: 50, offset: 0 } }),
+          {
+            headers: { "content-type": "application/json" },
+            status: 200,
+          },
+        ),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            code: "version_conflict",
+            detail:
+              "Campaign Evidence creation is unavailable until immutable evidence binding is implemented.",
+            status: 409,
+            title: "Conflict",
+          }),
+          {
+            headers: { "content-type": "application/problem+json" },
+            status: 409,
+          },
+        ),
+      );
+
+    await listCampaignLabCampaigns("project-1");
+    await expect(
+      createSurveyCalibration("project-1", {
+        source_version_id: "source-version-1",
+        synthetic_observations: [],
+      }),
+    ).rejects.toMatchObject({
+      code: "version_conflict",
+      status: 409,
+    });
+
+    expect(vi.mocked(fetch).mock.calls[0]?.[0]).toBe(
+      "https://v1.simula.invalid/api/v1/campaign-lab/campaigns?project_id=project-1",
+    );
+    expect(vi.mocked(fetch).mock.calls[1]?.[0]).toBe(
+      "https://v2.simula.invalid/api/v2/projects/project-1/campaign-evidence/survey-calibrations",
+    );
   });
 
   it("uses the user bearer token and an idempotency key for a domain command", async () => {

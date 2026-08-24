@@ -8,6 +8,7 @@ or vulnerability fields from entering the Campaign Lab pipeline.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping, Sequence
 from hashlib import sha256
 from math import isfinite
@@ -86,6 +87,19 @@ _PROHIBITED_ANSWER_KEYS = frozenset(
         "vulnerability",
     }
 )
+_CALIBRATION_ALLOWED_USES = frozenset(
+    {
+        "calibration",
+        "survey calibration",
+        "campaign calibration",
+        "aggregate survey calibration",
+        "aggregate simula survey calibration",
+    }
+)
+
+
+def _normalize_allowed_use(value: str) -> str:
+    return " ".join(re.findall(r"[a-z0-9]+", value.casefold()))
 
 
 class NativeSurveyProvenance(FrozenModel):
@@ -107,7 +121,10 @@ class NativeSurveyProvenance(FrozenModel):
 
     @model_validator(mode="after")
     def permits_calibration(self) -> Self:
-        if not any("calibration" in value.casefold() for value in self.allowed_uses):
+        if not any(
+            _normalize_allowed_use(value) in _CALIBRATION_ALLOWED_USES
+            for value in self.allowed_uses
+        ):
             raise ValueError("native survey provenance must permit calibration")
         return self
 

@@ -2,27 +2,18 @@
 
 from __future__ import annotations
 
+import argparse
 import base64
 import binascii
 import json
 import os
 import re
+import shutil
+import subprocess
 from pathlib import Path
 from typing import cast
 
 ROOT = Path(__file__).resolve().parents[1]
-SKIP_DIRECTORIES = {
-    ".git",
-    ".mypy_cache",
-    ".next",
-    ".pnpm-store",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".supabase",
-    ".turbo",
-    ".venv",
-    "node_modules",
-}
 TEXT_SUFFIXES = {
     ".css",
     ".dockerignore",
@@ -59,6 +50,10 @@ JWT_PATTERN = re.compile(
 PRIVILEGED_SUPABASE_ROLES = {"service_role", "supabase_admin"}
 
 
+def _is_local_environment_file(path: Path) -> bool:
+    return path.name == ".env" or (path.name.startswith(".env.") and path.name != ".env.example")
+
+
 def _decode_jwt_payload(segment: str) -> object | None:
     padding = "=" * (-len(segment) % 4)
     try:
@@ -77,21 +72,56 @@ def findings_for_text(content: str) -> set[str]:
     return findings
 
 
-def source_files() -> list[Path]:
-    result: list[Path] = []
-    for directory, names, files in os.walk(ROOT):
-        names[:] = sorted(name for name in names if name not in SKIP_DIRECTORIES)
-        base = Path(directory)
-        for name in sorted(files):
-            path = base / name
-            if path.suffix.lower() in TEXT_SUFFIXES or name.startswith("."):
-                result.append(path)
-    return result
+def source_files(
+    root: Path = ROOT,
+    *,
+    include_working_tree: bool = False,
+) -> list[Path]:
+    """Return repository text source/configuration files in stable path order.
+
+    The default release gate scans Git-indexed files only. The opt-in
+    working-tree mode includes non-ignored untracked source/configuration files
+    while retaining the local environment and symlink safety boundaries.
+    """
+
+    def git_files(*arguments: str) -> list[Path]:
+        git = shutil.which("git")
+        if git is None:
+            raise RuntimeError("Git executable not found")
+        result = subprocess.run(  # noqa: S603 -- fixed Git query scoped to the repository.
+            [git, "-C", os.fspath(root), "ls-files", *arguments, "-z"],
+            check=True,
+            stdout=subprocess.PIPE,
+        ).stdout.split(b"\0")
+        return [root / os.fsdecode(item) for item in result if item]
+
+    candidates = [(path, True) for path in git_files("--cached")]
+    if include_working_tree:
+        candidates.extend((path, False) for path in git_files("--others", "--exclude-standard"))
+    return sorted(
+        (
+            path
+            for path, is_tracked in candidates
+            if not path.is_symlink()
+            and path.is_file()
+            and (is_tracked or not _is_local_environment_file(path))
+            and (path.suffix.lower() in TEXT_SUFFIXES or path.name.startswith("."))
+        ),
+        key=lambda path: path.relative_to(root).as_posix(),
+    )
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--working-tree",
+        action="store_true",
+        help="also scan non-ignored untracked source and configuration files",
+    )
+    arguments = parser.parse_args(argv)
+    files = source_files(include_working_tree=arguments.working_tree)
     findings: list[str] = []
-    for path in source_files():
+    for path in files:
         try:
             content = path.read_text(encoding="utf-8")
         except UnicodeDecodeError:
@@ -100,7 +130,8 @@ def main() -> None:
             findings.append(f"{path.relative_to(ROOT)}: {label}")
     if findings:
         raise SystemExit("credential-like material found:\n" + "\n".join(findings))
-    print(f"secret baseline passed: {len(source_files())} text files scanned")
+    scope = "working-tree" if arguments.working_tree else "tracked"
+    print(f"{scope} secret baseline passed: {len(files)} text files scanned")
 
 
 if __name__ == "__main__":
