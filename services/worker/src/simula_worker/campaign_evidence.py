@@ -194,21 +194,21 @@ async def process_campaign_evidence_claim(
 ) -> str:
     """Run a leased evidence job and persist a bounded terminal disposition."""
 
-    if not await database.update_campaign_evidence_progress(
-        claim.evidence_id,
-        claim.lease_token,
-        "validating",
-        15,
-        "Validating provenance, aggregate inputs, and the blind boundary.",
-    ):
-        return (
-            "canceled"
-            if await database.finalize_canceled_campaign_evidence_run(
-                claim.evidence_id, claim.lease_token
-            )
-            else "stale"
-        )
     try:
+        if not await database.update_campaign_evidence_progress(
+            claim.evidence_id,
+            claim.lease_token,
+            "validating",
+            15,
+            "Validating provenance, aggregate inputs, and the blind boundary.",
+        ):
+            return (
+                "canceled"
+                if await database.finalize_canceled_campaign_evidence_run(
+                    claim.evidence_id, claim.lease_token
+                )
+                else "stale"
+            )
         if not await database.update_campaign_evidence_progress(
             claim.evidence_id,
             claim.lease_token,

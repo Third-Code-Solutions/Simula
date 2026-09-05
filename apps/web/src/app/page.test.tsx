@@ -9,7 +9,7 @@ describe("HomePage", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /Rehearse the decision\.\s*Keep the doubt\./,
+        name: /Test your message\.\s*Know what to ask next\./,
       }),
     ).toBeInTheDocument();
     expect(
@@ -18,8 +18,22 @@ describe("HomePage", () => {
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "The full context stays attached." }),
+      screen.getByRole("heading", {
+        name: /One decision\.\s*Five inspectable moves\./,
+      }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Simulated responses are not observed human behavior or validated population estimates/,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "How it works" })).toHaveAttribute(
+      "href",
+      "#product",
+    );
+    expect(
+      screen.getByRole("link", { name: "Data and access" }),
+    ).toHaveAttribute("href", "/data-use");
     expect(screen.getAllByText(/estimates nobody/i)).not.toHaveLength(0);
     expect(
       screen.getAllByRole("link", { name: /Start a rehearsal/ }),

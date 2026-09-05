@@ -1,0 +1,61 @@
+.main {
+  max-width: 48rem;
+  padding: 3rem 2rem;
+  margin: auto;
+}
+.back {
+  color: var(--stone);
+  font-size: 0.85rem;
+  text-underline-offset: 0.25em;
+}
+.label {
+  margin-top: 2.5rem;
+  color: #245b47;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.main h1 {
+  font-family: var(--font-ui);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+}
+.intro {
+  color: var(--stone);
+  line-height: 1.75;
+  margin: 1.25rem 0 2.5rem;
+}
+.main section {
+  border-top: 1px solid var(--edge);
+  padding: 1.5rem 0;
+}
+.main h2 {
+  font-family: var(--font-ui);
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0 0 0.75rem;
+}
+.main section p {
+  font-size: 0.9rem;
+  line-height: 1.75;
+  color: var(--stone);
+}
+.main section a {
+  color: #245b47;
+  text-underline-offset: 0.25em;
+  font-size: 0.9rem;
+}
+.footer {
+  border-top: 1px solid var(--edge);
+  padding-top: 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  font-size: 0.85rem;
+}
+@media (max-width: 40rem) {
+  .main {
+    padding: 2rem 1rem;
+  }
+}

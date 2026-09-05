@@ -6,6 +6,7 @@ execution functions.  It has no direct table DML surface in application code.
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -234,23 +235,22 @@ class WorkerDatabase(WorkerExecutionGateway):
         started_at = perf_counter()
         outcome = "error"
         try:
-            async with self._pool.connection(timeout=2.0) as connection:
-                async with connection.transaction():
-                    cursor = await connection.execute(
-                        "select private.require_queue_transport(%s) as ready",
-                        (self._queue_transport,),
-                    )
-                    row = await cursor.fetchone()
-                    schema_cursor = await connection.execute(
-                        "select * from private.runtime_schema_readiness_v4()"
-                    )
-                    schema = await schema_cursor.fetchone()
+            async with self._transaction() as connection:
+                cursor = await connection.execute(
+                    "select private.require_queue_transport(%s) as ready",
+                    (self._queue_transport,),
+                )
+                row = await cursor.fetchone()
+                schema_cursor = await connection.execute(
+                    "select * from private.runtime_schema_readiness_v4()"
+                )
+                schema = await schema_cursor.fetchone()
             ready = (
                 row is not None
-                and cast(DatabaseRow, row)["ready"] is True
+                and row["ready"] is True
                 and schema is not None
-                and str(cast(DatabaseRow, schema)["migration_version"]) == self._migration_head
-                and cast(DatabaseRow, schema)["rls_force_enabled"] is True
+                and str(schema["migration_version"]) == self._migration_head
+                and schema["rls_force_enabled"] is True
             )
             outcome = "success" if ready else "error"
             return ready
@@ -722,15 +722,25 @@ class WorkerDatabase(WorkerExecutionGateway):
     @asynccontextmanager
     async def _transaction(self) -> AsyncIterator[AsyncConnection[DatabaseRow]]:
         async with self._pool.connection(timeout=2.0) as connection:
-            async with connection.transaction():
-                await connection.execute(
-                    """
-                    select
-                      pg_catalog.set_config('statement_timeout', '8000', true),
-                      pg_catalog.set_config('lock_timeout', '2000', true),
-                      pg_catalog.set_config(
-                        'idle_in_transaction_session_timeout', '10000', true
-                      )
-                    """
-                )
-                yield cast(AsyncConnection[DatabaseRow], connection)
+            entered = False
+            try:
+                async with connection.transaction():
+                    entered = True
+                    await connection.execute(
+                        """
+                        select
+                          pg_catalog.set_config('statement_timeout', '8000', true),
+                          pg_catalog.set_config('lock_timeout', '2000', true),
+                          pg_catalog.set_config(
+                            'idle_in_transaction_session_timeout', '10000', true
+                          )
+                        """
+                    )
+                    yield cast(AsyncConnection[DatabaseRow], connection)
+            except BaseException as error:
+                # psycopg updates its transaction stack before awaiting BEGIN.
+                # Entry cancellation skips __aexit__; never return that half-entered
+                # connection to the pool's rollback path or another claimant.
+                if not entered or isinstance(error, asyncio.CancelledError):
+                    await connection.close()
+                raise

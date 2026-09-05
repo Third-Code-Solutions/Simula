@@ -1,16 +1,7 @@
 "use client";
 
-import { useRef, useState, type ComponentType } from "react";
-import { useGSAP } from "@gsap/react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-
+import { useState, type ComponentType } from "react";
 import styles from "./motion-sections.module.css";
-
-gsap.registerPlugin(useGSAP);
-if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
-  gsap.registerPlugin(ScrollTrigger);
-}
 
 const STEPS = [
   {
@@ -208,59 +199,14 @@ const PANELS: readonly ComponentType[] = [
 ];
 
 export function ProductStory() {
-  const sectionRef = useRef<HTMLElement>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-
-  useGSAP(
-    () => {
-      if (typeof window.matchMedia !== "function") return;
-      const media = gsap.matchMedia();
-      media.add(
-        "(min-width: 960px) and (prefers-reduced-motion: no-preference)",
-        () => {
-          ScrollTrigger.create({
-            trigger: sectionRef.current,
-            start: "top top",
-            end: "bottom bottom",
-            onUpdate: (self) => {
-              const next = Math.min(
-                STEPS.length - 1,
-                Math.floor(self.progress * STEPS.length),
-              );
-              setActiveIndex(next);
-            },
-          });
-        },
-      );
-      return () => media.revert();
-    },
-    { scope: sectionRef },
-  );
-
-  function jumpTo(index: number) {
-    setActiveIndex(index);
-    if (
-      !sectionRef.current ||
-      typeof window.matchMedia !== "function" ||
-      !window.matchMedia("(min-width: 960px)").matches
-    ) {
-      return;
-    }
-    const top = sectionRef.current.offsetTop;
-    const range = sectionRef.current.offsetHeight - window.innerHeight;
-    window.scrollTo({
-      top: top + range * ((index + 0.12) / STEPS.length),
-      behavior: "smooth",
-    });
-  }
-
   const activeStep = STEPS[activeIndex] ?? STEPS[0];
 
   return (
     <section
       className={styles.productStory}
       id="product"
-      ref={sectionRef}
+
       aria-labelledby="product-story-title"
     >
       <div className={styles.productSticky}>
@@ -277,7 +223,7 @@ export function ProductStory() {
                 <button
                   aria-current={activeIndex === index ? "step" : undefined}
                   key={step.label}
-                  onClick={() => jumpTo(index)}
+                  onClick={() => setActiveIndex(index)}
                   type="button"
                 >
                   <span>0{index + 1}</span>

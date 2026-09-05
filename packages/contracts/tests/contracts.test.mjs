@@ -101,6 +101,7 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
     "/api/v1/campaign-lab/campaigns/{campaign_id}/interviews",
     "/api/v1/campaign-lab/campaigns/{campaign_id}/reports",
     "/api/v1/campaign-lab/campaigns/{campaign_id}/research",
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/runs",
     "/api/v1/campaign-lab/campaigns/{campaign_id}/simulations",
     "/api/v1/campaign-lab/campaigns/{campaign_id}/surveys/forms",
     "/api/v1/campaign-lab/campaigns/{campaign_id}/surveys/forms/{form_id}",

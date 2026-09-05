@@ -16,6 +16,7 @@ from simula_api.problems import AppProblem, unauthenticated
 
 ASYMMETRIC_ALGORITHMS = frozenset({"ES256", "RS256"})
 JWKS_TTL_SECONDS = 600.0
+JWKS_REFRESH_COOLDOWN_SECONDS = 10.0
 MAX_JWKS_BYTES = 64 * 1024
 
 
@@ -43,6 +44,7 @@ class SupabaseTokenVerifier:
         self._keys: dict[str, jwt.PyJWK] = {}
         self._keys_expire_at = 0.0
         self._keys_lock = asyncio.Lock()
+        self._next_forced_refresh_at = 0.0
 
     async def verify(self, token: str) -> VerifiedIdentity:
         try:
@@ -141,8 +143,15 @@ class SupabaseTokenVerifier:
 
     async def _refresh_keys(self, *, force: bool = False) -> None:
         async with self._keys_lock:
-            if not force and monotonic() < self._keys_expire_at:
+            now = monotonic()
+            if not force and now < self._keys_expire_at:
                 return
+            if force:
+                if now < self._next_forced_refresh_at:
+                    return
+                # Bound attacker-chosen key IDs, including failed upstream calls.
+                # One global window also bounds concurrent distinct unknown IDs.
+                self._next_forced_refresh_at = now + JWKS_REFRESH_COOLDOWN_SECONDS
             try:
                 response = await self._client.get(self._settings.supabase_jwks_url)
                 response.raise_for_status()

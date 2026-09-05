@@ -839,3 +839,12 @@ source_of_truth: true
 - Added checksum-pinned Gitleaks scanning of every reachable commit plus an exact Windows Server 2025 quality/SCA gate. GitHub Actions `29647492906` passed history scanning over 52 commits, the Windows gate, the disposable Linux foundation, and hardened three-image container scanning. R-025 remains Open for one root verification command and plan-blocked required-check governance (E-5029).
 - Consolidated the disposable Linux foundation checks behind root `pnpm verify`. GitHub Actions `29648136756` passed that command plus history, exact Windows, no-egress, SBOM, and fixable High/Critical image gates in about eight minutes. R-025 now remains Open only for GitHub-plan-blocked enforceable required checks (E-5030).
 - Closed the remaining API/auth/observability High code themes: rate admission now precedes sign-in audit writes; API/worker runtime metrics cover bounded database, pool, migration/RLS, run-state, cancellation, lease, delivery, transition, retry, failure, and provider signals; the local run-disable contract has an executable runbook. Root `pnpm verify` passes the complete 58-pgTAP/60-API/9-browser/198-Python/43-web/22-integration gate. Migration `20260719040000` is applied seed-free to hosted Supabase with exact history parity and clean linked lint. The final audit keeps Phase 2 open for independent re-review, human screen-reader proof, required-check governance, and five Medium findings (E-5031).
+
+
+## 2026-09-05 — UX and reliability remediation
+
+Implemented contextual workspace navigation, task-oriented Campaign Lab, structured controls, saved run history, simplified public/admin pages and runtime fault handling. Release is not promoted; final verification remains active.
+
+- 2026-09-05: Completed local UX refactor and real worker/refresh browser proof;
+  repaired duplicate-read429 recovery and complete Python environment; root
+  check/SCA and uncached build passed. See [[../docs/audit/2026-09-05/REMEDIATION_VERIFICATION]].

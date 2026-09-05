@@ -31,7 +31,20 @@ export function workspaceOrigin(): string | undefined {
   }
 }
 
-export async function loadPlatformAdminDashboard(): Promise<{
+export const ADMIN_PAGE_SIZE = 20;
+export const MAX_ORGANIZATION_OFFSET = 1_000_000;
+
+export function organizationOffset(
+  value: string | string[] | undefined,
+): number {
+  if (typeof value !== "string" || !/^\d+$/.test(value)) return 0;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed <= MAX_ORGANIZATION_OFFSET
+    ? Math.floor(parsed / ADMIN_PAGE_SIZE) * ADMIN_PAGE_SIZE
+    : 0;
+}
+
+export async function loadPlatformAdminDashboard(offset = 0): Promise<{
   dashboard: PlatformAdminDashboard;
   email: string;
 }> {
@@ -48,9 +61,10 @@ export async function loadPlatformAdminDashboard(): Promise<{
   }
 
   const response = await fetch(
-    `${apiOrigin()}/api/v1/platform-admin/dashboard?organization_limit=100`,
+    `${apiOrigin()}/api/v1/platform-admin/dashboard?organization_limit=${ADMIN_PAGE_SIZE}&organization_offset=${organizationOffset(String(offset))}`,
     {
       cache: "no-store",
+      signal: AbortSignal.timeout(30_000),
       headers: {
         Accept: "application/json, application/problem+json",
         Authorization: `Bearer ${token}`,

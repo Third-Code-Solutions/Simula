@@ -1,23 +1,9 @@
-import { CinematicProof } from "./landing/cinematic-proof";
-import { EvidenceLibrary } from "./landing/evidence-library";
+import Link from "next/link";
 import { Hero } from "./landing/hero";
-import styles from "./landing/landing-page.module.css";
-import { PinnedStatement } from "./landing/pinned-statement";
 import { ProductStory } from "./landing/product-story";
+import { EvidenceLibrary } from "./landing/evidence-library";
 import { SiteHeader } from "./landing/site-header";
-import {
-  ClosingSection,
-  ContextSurface,
-  DecisionActions,
-  SourceRail,
-} from "./landing/support-sections";
-
-const trustAnchors = [
-  "Frozen inputs",
-  "Typed outputs",
-  "Visible limits",
-  "Human next steps",
-] as const;
+import styles from "./landing/landing-page.module.css";
 
 export default function HomePage() {
   return (
@@ -25,39 +11,29 @@ export default function HomePage() {
       <SiteHeader />
       <main className={styles.main} id="main-content" tabIndex={-1}>
         <Hero />
-
-        <section
-          aria-label="SIMULA evidence commitments"
-          className={styles.trust}
-        >
-          <div className={styles.trustInner}>
-            <p>Fast feedback only matters when its receipt travels with it.</p>
-            {trustAnchors.map((anchor) => (
-              <span key={anchor}>{anchor}</span>
-            ))}
-          </div>
-        </section>
-
-        <PinnedStatement
-          eyebrow="A decision rehearsal with memory"
-          emphasis="inspectable"
-          lead="Meet your most"
-          tail="rehearsal."
-        />
-        <EvidenceLibrary />
-        <DecisionActions />
-        <SourceRail />
-        <PinnedStatement
-          eyebrow="One connected system"
-          emphasis="rehearsal"
-          lead="Everything the"
-          tail="needs."
-          tone="mint"
-        />
         <ProductStory />
-        <CinematicProof />
-        <ContextSurface />
-        <ClosingSection />
+        <EvidenceLibrary />
+        <section className={styles.closing} aria-labelledby="begin-title">
+          <div>
+            <p className={styles.eyebrow}>Your next step</p>
+            <h2 id="begin-title">Bring a message worth testing.</h2>
+            <p>
+              Create a project, save your draft, and review what needs further
+              research.
+            </p>
+          </div>
+          <Link className={styles.primaryAction} href="/organizations">
+            Open workspace <span aria-hidden="true">→</span>
+          </Link>
+        </section>
+        <footer className={styles.footer}>
+          <span>SIMULA · Experimental campaign research</span>
+          <p>
+            Modeled outputs support research planning. They do not replace
+            evidence from people.
+          </p>
+          <Link href="/data-use">Data and access</Link>
+        </footer>
       </main>
     </>
   );

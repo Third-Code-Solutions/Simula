@@ -1030,6 +1030,33 @@ async def get_campaign(
     return {"campaign": campaign, "counts": counts[0] if counts else {}}
 
 
+@router.get("/campaigns/{campaign_id}/runs", operation_id="list_campaign_lab_runs")
+async def list_campaign_runs(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 25,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    campaign = await _campaign_row(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="list_campaign_lab_runs",
+        query="""
+          select id, campaign_id, run_type, status, stage, progress, attempt_count,
+                 created_at, started_at, completed_at, last_error_code, retention_until
+          from api.campaign_lab_runs
+          where campaign_id = %s and organization_id = %s
+            and run_type in ('repeated_simulation', 'research_ingestion', 'survey_import',
+                             'aggregate_forecast', 'compliance_review', 'interview')
+          order by created_at desc, id desc
+          limit %s offset %s
+        """,
+        parameters=(campaign_id, campaign["organization_id"], limit, offset),
+    )
+    return {"items": rows, "pagination": {"limit": limit, "offset": offset}}
+
+
 @router.patch("/campaigns/{campaign_id}", operation_id="update_campaign_lab_campaign")
 async def update_campaign(
     campaign_id: UUID,

@@ -214,3 +214,32 @@ def test_production_campaign_evidence_worker_rejects_unbound_payloads(
 
     with pytest.raises(ValueError, match="immutable registry binding"):
         campaign_evidence.evaluate_campaign_evidence_claim(_claim())
+
+
+@pytest.mark.parametrize("failure", ["first_write", "cancel_finalize", "failure_write"])
+async def test_campaign_evidence_initial_database_failure_is_contained(
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    database = _Database()
+
+    async def progress(*args: object) -> bool:
+        if failure == "cancel_finalize":
+            return False
+        raise ConnectionError("synthetic database interruption")
+
+    async def fail(*args: object) -> str:
+        raise ConnectionError("synthetic unavailable persistence")
+
+    async def finalize(*args: object) -> bool:
+        raise ConnectionError("synthetic cancellation persistence interruption")
+
+    monkeypatch.setattr(database, "update_campaign_evidence_progress", progress)
+    monkeypatch.setattr(database, "finalize_canceled_campaign_evidence_run", finalize)
+    if failure == "failure_write":
+        monkeypatch.setattr(database, "fail_campaign_evidence_run", fail)
+    state = await campaign_evidence.process_campaign_evidence_claim(database, _claim())
+    assert state == ("failure_persist_failed" if failure == "failure_write" else "failed")
+    assert database.completed is None
+    if failure != "failure_write":
+        assert database.failed == [("evidence_worker_error", True)]

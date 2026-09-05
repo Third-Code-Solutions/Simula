@@ -837,3 +837,19 @@ See [[RISK_REGISTER|Risk Register]]. Critical themes: false precision/representa
 - Human/design-partner evidence remains absent. It does not block an explicitly experimental local walking skeleton; it blocks Phase 6 staging acceptance/customer-facing release.
 - Hosted Supabase migrations through version `20260720083000` are applied and history-aligned. Before future hosted changes, inspect `db push --linked --dry-run`, reset/test the ordered migration locally, apply only checked-in migrations, and verify linked history/lint. Do not apply `seed.sql` or customer data.
 - R-020: ARQ maintenance-only status requires exact Phase 2 proof and a tested Phase 5 exit decision before Phase 6.
+
+
+## UX remediation in progress — 2026-09-05
+
+Current branch codex/ux-remediation implements the authorized whole-product UX refactor and confirmed runtime fixes. Prior production-green claims are superseded by the September audit. Local verification and production release remain separate. See [[../plans/active/005-ux-and-production-remediation]] and [[../docs/audit/2026-09-05/REMEDIATION_RUNTIME]].
+
+## Verified local UX refactor â€” 2026-09-05
+
+Public/account pages, contextual mobile navigation, organization/project
+workspaces, Campaign Lab editors/history/results and admin pagination were
+refactored. A real disposable Auth-to-API-to-worker simulation flow passes,
+including result recovery after reload. Root check, fresh uncached build and
+SCA pass. See [[../docs/audit/2026-09-05/REMEDIATION_VERIFICATION]] for counts,
+platform skips and failed-then-fixed checks. All disposable infrastructure was
+cleaned up. Production unchanged; signed promotion/rollback and original audit
+acceptance remain open. Do not infer scientific validation from this evidence.

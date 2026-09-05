@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 import pytest
+import simula_core.behavioral_engine as behavioral
+import simula_core.campaign_lab as campaign_lab_module
 from simula_core.campaign_lab import (
     BEHAVIORAL_DIMENSIONS,
     BehavioralDimensionDefinition,
@@ -24,6 +27,7 @@ from simula_core.campaign_lab import (
 )
 from simula_core.methodology import DimensionValue
 from simula_core.population_sources import psa_2020_regional_population_frame
+from simula_core.repeated_simulation import run_repeated_methodology
 from simula_core.research_ingestion import ingest_research_document
 from test_methodology import _audience, _population
 
@@ -319,3 +323,39 @@ def test_campaign_lab_report_cannot_self_approve_with_free_form_reviewer() -> No
             human_reviewer="research-lead",
             approval_status="approved_experimental",
         )
+
+
+@pytest.mark.parametrize("phase", ["methodology", "behavioral"])
+def test_simulation_uses_one_deadline_across_all_phases(
+    monkeypatch: pytest.MonkeyPatch,
+    phase: str,
+) -> None:
+    now = 0.0
+    calls = 0
+    monkeypatch.setattr(campaign_lab_module, "monotonic", lambda: now)
+    if phase == "methodology":
+        original = run_repeated_methodology
+
+        def run(*args: Any, **kwargs: Any) -> Any:
+            nonlocal now, calls
+            result = original(*args, **kwargs)
+            now += 20.0
+            calls += 1
+            return result
+
+        monkeypatch.setattr(campaign_lab_module, "run_repeated_methodology", run)
+    else:
+        provider_type = behavioral.DeterministicTieredProvider
+        decide = provider_type.decide
+
+        def slow_decide(*args: Any, **kwargs: Any) -> Any:
+            nonlocal now, calls
+            result = decide(*args, **kwargs)
+            now += 31.0
+            calls += 1
+            return result
+
+        monkeypatch.setattr(provider_type, "decide", slow_decide)
+    with pytest.raises(TimeoutError, match="whole-job deadline exceeded"):
+        run_campaign_lab_simulation(_request())
+    assert calls == (2 if phase == "methodology" else 1)

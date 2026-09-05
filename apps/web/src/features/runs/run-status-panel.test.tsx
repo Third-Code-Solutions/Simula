@@ -92,3 +92,18 @@ describe("RunStatusPanel", () => {
     ).toBeInTheDocument();
   });
 });
+
+it("replaces the loading state with an actionable unavailable state after a read failure", () => {
+  render(<RunStatusPanel isSlow={false} run={undefined} unavailable />);
+  expect(
+    screen.getByRole("heading", { name: "Run status unavailable" }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("heading", { name: "Loading run status" }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen
+      .getByRole("heading", { name: "Run status unavailable" })
+      .closest("section"),
+  ).not.toHaveAttribute("aria-busy", "true");
+});

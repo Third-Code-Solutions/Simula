@@ -90,68 +90,6 @@ export function DashboardOverview({
         />
       </section>
 
-      <section className={styles.operations} aria-label="Operational overview">
-        <article className={styles.runHealth}>
-          <div className={styles.sectionHeading}>
-            <div>
-              <p className="eyebrow">Run health</p>
-              <h2>Execution status</h2>
-            </div>
-            <strong className={styles.rate}>{completionRate(dashboard)}</strong>
-          </div>
-          <label htmlFor="successful-runs">Successful runs</label>
-          <progress
-            id="successful-runs"
-            max={Math.max(dashboard.metrics.runs, 1)}
-            value={dashboard.metrics.succeeded_runs}
-          />
-          <dl className={styles.healthBreakdown}>
-            <div>
-              <dt>Succeeded</dt>
-              <dd>{dashboard.metrics.succeeded_runs}</dd>
-            </div>
-            <div>
-              <dt>Active</dt>
-              <dd>{dashboard.metrics.active_runs}</dd>
-            </div>
-            <div>
-              <dt>Failed</dt>
-              <dd>{dashboard.metrics.failed_runs}</dd>
-            </div>
-          </dl>
-          {dashboard.metrics.runs === 0 ? (
-            <p className={styles.inlineEmpty}>
-              No runs yet. Open a project and review its frozen configuration
-              before starting a rehearsal.
-            </p>
-          ) : null}
-        </article>
-
-        <article className={styles.workflowStatus}>
-          <div>
-            <p className="eyebrow">Workflow coverage</p>
-            <h2>Research pipeline</h2>
-          </div>
-          <dl>
-            <div>
-              <dt>Audience definitions</dt>
-              <dd>{dashboard.metrics.audiences}</dd>
-            </div>
-            <div>
-              <dt>Projects with room to iterate</dt>
-              <dd>{dashboard.metrics.projects}</dd>
-            </div>
-            <div>
-              <dt>Inspectable report artifacts</dt>
-              <dd>{dashboard.metrics.reports}</dd>
-            </div>
-          </dl>
-          <Link href={`/organizations/${organizationId}/projects`}>
-            Open project directory <span aria-hidden="true">→</span>
-          </Link>
-        </article>
-      </section>
-
       <section className={styles.activity} aria-labelledby="activity-title">
         <div className={styles.activityHeading}>
           <div>
@@ -189,7 +127,10 @@ export function DashboardOverview({
             ) : (
               <div className={styles.composedEmpty}>
                 <strong>No projects yet</strong>
-                <p>Frame a decision and preserve the first source artifact.</p>
+                <p>
+                  Create a project to save a message and explore the research
+                  workflow.
+                </p>
                 {canCreate ? (
                   <Link
                     href={`/organizations/${organizationId}/projects#new-project`}
@@ -247,6 +188,67 @@ export function DashboardOverview({
             </article>
           </div>
         </div>
+      </section>
+      <section className={styles.operations} aria-label="Operational overview">
+        <article className={styles.runHealth}>
+          <div className={styles.sectionHeading}>
+            <div>
+              <p className="eyebrow">Run health</p>
+              <h2>Execution status</h2>
+            </div>
+            <strong className={styles.rate}>{completionRate(dashboard)}</strong>
+          </div>
+          <label htmlFor="successful-runs">Successful runs</label>
+          <progress
+            id="successful-runs"
+            max={Math.max(dashboard.metrics.runs, 1)}
+            value={dashboard.metrics.succeeded_runs}
+          />
+          <dl className={styles.healthBreakdown}>
+            <div>
+              <dt>Succeeded</dt>
+              <dd>{dashboard.metrics.succeeded_runs}</dd>
+            </div>
+            <div>
+              <dt>Active</dt>
+              <dd>{dashboard.metrics.active_runs}</dd>
+            </div>
+            <div>
+              <dt>Failed</dt>
+              <dd>{dashboard.metrics.failed_runs}</dd>
+            </div>
+          </dl>
+          {dashboard.metrics.runs === 0 ? (
+            <p className={styles.inlineEmpty}>
+              No runs yet. Open a project and review its settings before
+              starting a rehearsal.
+            </p>
+          ) : null}
+        </article>
+
+        <article className={styles.workflowStatus}>
+          <div>
+            <p className="eyebrow">Workflow coverage</p>
+            <h2>Research pipeline</h2>
+          </div>
+          <dl>
+            <div>
+              <dt>Audience definitions</dt>
+              <dd>{dashboard.metrics.audiences}</dd>
+            </div>
+            <div>
+              <dt>Projects</dt>
+              <dd>{dashboard.metrics.projects}</dd>
+            </div>
+            <div>
+              <dt>Saved reports</dt>
+              <dd>{dashboard.metrics.reports}</dd>
+            </div>
+          </dl>
+          <Link href={`/organizations/${organizationId}/projects`}>
+            Open project directory <span aria-hidden="true">→</span>
+          </Link>
+        </article>
       </section>
     </>
   );

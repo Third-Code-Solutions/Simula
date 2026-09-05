@@ -1,10 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 import { complianceReviewInput } from "./governance";
+import { StructuredEditor } from "./structured-editor";
+import { RunHistory } from "./run-history";
+import styles from "./workspace.module.css";
 import {
   ApiProblem,
   type CampaignLabAuditPage,
@@ -23,6 +33,7 @@ import {
   createCampaignLabSimulation,
   createCampaignLabSurveyImport,
   getCampaignLabAggregateForecastRun,
+  getCampaignLabCampaign,
   getCampaignLabAudit,
   getCampaignLabComplianceRun,
   getCampaignLabInterviewRun,
@@ -37,48 +48,6 @@ import {
   submitCampaignLabNativeSurveyResponses,
   type MethodologyRegistry,
 } from "@/lib/api";
-
-const STAGES = [
-  "Campaign",
-  "Decision",
-  "Research",
-  "Cohort",
-  "Weighted panel",
-  "Variants",
-  "Configuration",
-  "Repeated simulations",
-  "Aggregate metrics",
-  "Compare components",
-  "Cohort analysis",
-  "Synthetic interviews",
-  "Survey import",
-  "Survey calibration",
-  "Historical backtest",
-  "Official forecast",
-  "Compliance",
-  "Report",
-] as const;
-
-const STAGE_KEYS = [
-  "campaign_created",
-  "decision_defined",
-  "research_validated",
-  "cohort_defined",
-  "panel_weighted",
-  "variants_added",
-  "simulation_configured",
-  "simulated",
-  "aggregated",
-  "compared",
-  "cohorts_analyzed",
-  "interviewed",
-  "survey_imported",
-  "calibrated",
-  "backtested",
-  "forecasted",
-  "compliance_reviewed",
-  "reported",
-] as const;
 
 const CAMPAIGN_LAB_STAGE_ANCHORS = [
   ["research-upload", "Research upload"],
@@ -425,8 +394,8 @@ const surveyMetadataExample = JSON.stringify(
     collection_period: "2026-Q2",
     geography: "Philippines",
     methodology: "Describe the consented survey methodology.",
-    consent_recorded: true,
-    authorized_for_calibration: true,
+    consent_recorded: false,
+    authorized_for_calibration: false,
     quality_filter_version: "quality-filter-v1",
     known_biases: ["Replace this fixture note with documented survey bias."],
     coverage_limitations: [
@@ -476,8 +445,8 @@ const nativeSurveyFormExample = JSON.stringify(
       collection_period: "2026-Q3",
       geography: "Philippines",
       methodology: "Describe the consented aggregate message-test method.",
-      consent_recorded: true,
-      authorized_for_calibration: true,
+      consent_recorded: false,
+      authorized_for_calibration: false,
       quality_filter_version: "native_response_quality_v1",
       known_biases: ["Document sample bias."],
       coverage_limitations: ["Not a population estimate."],
@@ -524,28 +493,6 @@ const nativeSurveyFormExample = JSON.stringify(
     ],
     max_batch_size: 100,
   },
-  null,
-  2,
-);
-
-const nativeSurveyResponsesExample = JSON.stringify(
-  [
-    {
-      response_id: "opaque-response-1",
-      answers: {
-        variant_key: "variant_a",
-        cohort_key: "metro",
-        reaction: "positive",
-        clarity: 80,
-        relevance: 78,
-        trust: 74,
-        persuasiveness: 71,
-        consideration: 69,
-        share_intent: 0.62,
-        consent: true,
-      },
-    },
-  ],
   null,
   2,
 );
@@ -673,40 +620,55 @@ function commandRun(
   };
 }
 
-function useDurableRunPolling(
-  run: CampaignLabDurableRun | undefined,
-  fetchRun: (runId: string) => Promise<CampaignLabDurableRun>,
-  onUpdate: (nextRun: CampaignLabDurableRun) => void,
+export function useDurableRunPolling<T extends CampaignLabDurableRun>(
+  run: T | undefined,
+  fetchRun: (runId: string, signal?: AbortSignal) => Promise<T>,
+  onUpdate: (nextRun: T) => void | Promise<void>,
   onError: (error: unknown) => void,
 ) {
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const onUpdateRef = useRef(onUpdate);
   const onErrorRef = useRef(onError);
   useEffect(() => {
     onUpdateRef.current = onUpdate;
     onErrorRef.current = onError;
   }, [onError, onUpdate]);
-
+  const runId = run?.id;
+  const active =
+    !!run && ["queued", "running", "retrying"].includes(run.status);
   useEffect(() => {
-    if (!run || !["queued", "running", "retrying"].includes(run.status)) {
-      return;
-    }
+    if (!runId || !active) return;
     let stale = false;
-    const poll = () => {
-      void fetchRun(run.id)
-        .then((nextRun) => {
-          if (!stale) onUpdateRef.current(nextRun);
-        })
-        .catch((pollError: unknown) => {
-          if (!stale) onErrorRef.current(pollError);
-        });
+    const controller = new AbortController();
+    let timer: number;
+    const poll = async () => {
+      try {
+        const nextRun = await fetchRun(runId, controller.signal);
+        if (stale) return;
+        await onUpdateRef.current(nextRun);
+        if (
+          !stale &&
+          ["queued", "running", "retrying"].includes(nextRun.status)
+        ) {
+          timer = window.setTimeout(() => {
+            void poll();
+          }, 2000);
+        }
+      } catch (pollError) {
+        if (!stale) onErrorRef.current(pollError);
+        // Stop after a failed request; an explicit retry avoids silent auth loops.
+      }
     };
-    poll();
-    const timer = window.setInterval(poll, 2000);
+    timer = window.setTimeout(() => {
+      void poll();
+    }, 2000);
     return () => {
       stale = true;
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
+      controller.abort();
     };
-  }, [fetchRun, run]);
+  }, [fetchRun, runId, active, retryAttempt]);
+  return () => setRetryAttempt((attempt) => attempt + 1);
 }
 
 function AggregateForecastResult({
@@ -799,18 +761,25 @@ export function CampaignLabSelectionNotice() {
         Select a workspace to open the workflow
       </h2>
       <p className="field-note">
-        The permanent sidebar remains available while you create or select a
-        Campaign Lab workspace. Each destination below is a stable landing point
-        for the corresponding stage.
+        Start a message test above, then work through four tasks. Your sources,
+        experimental results, and review history stay with that campaign.
       </p>
       <ol className="workflow-list">
-        {CAMPAIGN_LAB_STAGE_ANCHORS.map(([id, label], index) => (
-          <li id={id} key={id}>
-            <span>{String(index + 1).padStart(2, "0")}</span>
+        {[
+          "Prepare your sources",
+          "Test authored messages",
+          "Add observed evidence",
+          "Review the limitations",
+        ].map((label, index) => (
+          <li key={label}>
+            <span>{index + 1}</span>
             {label}
           </li>
         ))}
       </ol>
+      {CAMPAIGN_LAB_STAGE_ANCHORS.map(([id]) => (
+        <span id={id} key={id} aria-hidden="true" />
+      ))}
     </section>
   );
 }
@@ -820,6 +789,7 @@ export function CampaignLabHistoricalBacktestUnavailable() {
     <section
       className="panel"
       id="backtesting"
+      data-step="evidence"
       aria-labelledby="backtest-title"
     >
       <p className="eyebrow">08 / Historical backtesting</p>
@@ -838,6 +808,7 @@ export function CampaignLabCalibrationUnavailable() {
     <section
       className="panel"
       id="calibration"
+      data-step="evidence"
       aria-labelledby="calibration-title"
     >
       <p className="eyebrow">07 / Survey calibration</p>
@@ -854,7 +825,12 @@ export function CampaignLabCalibrationUnavailable() {
 
 export function CampaignLabReportUnavailable() {
   return (
-    <section className="panel" id="reports" aria-labelledby="report-title">
+    <section
+      className="panel"
+      id="reports"
+      data-step="review"
+      aria-labelledby="report-title"
+    >
       <p className="eyebrow">11 / Evidence report</p>
       <h2 id="report-title">Evidence report creation is unavailable</h2>
       <p className="methodology-warning" role="status">
@@ -867,16 +843,147 @@ export function CampaignLabReportUnavailable() {
   );
 }
 
+function readCampaignSelection() {
+  return new URL(window.location.href).searchParams.get("campaign") ?? "";
+}
+function subscribeCampaignSelection(listener: () => void) {
+  window.addEventListener("popstate", listener);
+  window.addEventListener("simula-campaign-selection", listener);
+  return () => {
+    window.removeEventListener("popstate", listener);
+    window.removeEventListener("simula-campaign-selection", listener);
+  };
+}
+
 export function CampaignLabWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
+  const selection = useSyncExternalStore(
+    subscribeCampaignSelection,
+    readCampaignSelection,
+    () => undefined,
+  );
+  if (selection === undefined)
+    return (
+      <main className="workspace-main" id="main-content">
+        <p role="status">Loading campaign workspace...</p>
+      </main>
+    );
+  function selectCampaign(id: string) {
+    const url = new URL(window.location.href);
+    url.searchParams.set("campaign", id);
+    for (const kind of [
+      "simulation",
+      "research",
+      "survey",
+      "forecast",
+      "compliance",
+      "interview",
+    ])
+      url.searchParams.delete(kind);
+    window.history.replaceState(null, "", url);
+    window.dispatchEvent(new Event("simula-campaign-selection"));
+  }
+  return (
+    <CampaignLabSession
+      key={`${projectId}:${selection ?? "initial"}`}
+      projectId={projectId}
+      initialCampaignId={selection}
+      onCampaignChange={selectCampaign}
+    />
+  );
+}
+
+function loadCampaignContext(projectId: string) {
+  return Promise.all([
+    listCampaignLabCampaigns(projectId),
+    getMethodologyRegistry(),
+    getProject(projectId).catch(() => undefined),
+    listCampaignLabForecastDatasets()
+      .then((page) => ({ page, error: undefined as string | undefined }))
+      .catch((error: unknown) => ({
+        page: { items: [] },
+        error: problemMessage(error),
+      })),
+  ]);
+}
+
+function CampaignLabSession({
+  projectId,
+  initialCampaignId,
+  onCampaignChange,
+}: Readonly<{
+  projectId: string;
+  initialCampaignId?: string;
+  onCampaignChange: (id: string) => void;
+}>) {
+  const initialization = useRef<ReturnType<typeof loadCampaignContext> | null>(
+    null,
+  );
+  const [historyRevision, setHistoryRevision] = useState(0);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const commandKeys = useRef(
+    new Map<string, { fingerprint: string; key: string }>(),
+  );
+  function commandKey(operation: string, payload: unknown) {
+    const fingerprint = JSON.stringify(payload);
+    const existing = commandKeys.current.get(operation);
+    if (existing?.fingerprint === fingerprint) return existing.key;
+    const key = crypto.randomUUID();
+    commandKeys.current.set(operation, { fingerprint, key });
+    return key;
+  }
+  const [view, setView] = useState("prepare");
+  useEffect(() => {
+    const followHash = () => {
+      const id = window.location.hash.slice(1);
+      if (
+        [
+          "audience-cohorts",
+          "message-lab",
+          "simulation-config",
+          "agent-activity",
+          "results",
+          "persona-interviews",
+        ].includes(id)
+      )
+        setView("simulate");
+      else if (
+        ["surveys", "calibration", "backtesting", "forecasting"].includes(id)
+      )
+        setView("evidence");
+      else if (["compliance", "reports", "audit"].includes(id))
+        setView("review");
+      else setView("prepare");
+    };
+    followHash();
+    window.addEventListener("hashchange", followHash);
+    return () => window.removeEventListener("hashchange", followHash);
+  }, []);
+  function rememberRun(kind: string, runId: string) {
+    if (!mounted.current) return;
+    const url = new URL(window.location.href);
+    url.searchParams.set("campaign", selectedCampaignId);
+    url.searchParams.set(kind, runId);
+    window.history.replaceState(null, "", url);
+  }
   const [organizationId, setOrganizationId] = useState<string>();
   const [campaigns, setCampaigns] = useState<
     ReadonlyArray<CampaignLabCampaign>
   >([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState("");
+  const [campaignOffset, setCampaignOffset] = useState(0);
+  const [moreCampaigns, setMoreCampaigns] = useState(false);
+  const [loadingMoreCampaigns, setLoadingMoreCampaigns] = useState(false);
   const [run, setRun] = useState<CampaignLabRunStatus>();
   const [result, setResult] = useState<CampaignLabSimulationResult>();
+  const [resultLoadAttempt, setResultLoadAttempt] = useState(0);
   const [requestText, setRequestText] = useState("");
   const [selectedPopulationFrame, setSelectedPopulationFrame] =
     useState<PopulationFrameSelection>();
@@ -885,22 +992,27 @@ export function CampaignLabWorkspace({
   const [saving, setSaving] = useState(false);
   const [running, setRunning] = useState(false);
   const [researchFile, setResearchFile] = useState<File | null>(null);
-  const [researchSourceJson, setResearchSourceJson] = useState("");
+  const [researchSourceJson, setResearchSourceJson] = useState(
+    researchSourceExample,
+  );
   const [researchRun, setResearchRun] = useState<CampaignLabResearchRun>();
   const [researchBusy, setResearchBusy] = useState(false);
   const [surveyImportFile, setSurveyImportFile] = useState<File | null>(null);
   const [surveyImportFormat, setSurveyImportFormat] = useState("csv");
-  const [surveyMetadataJson, setSurveyMetadataJson] = useState("");
-  const [surveyFieldMapJson, setSurveyFieldMapJson] = useState("");
+  const [surveyMetadataJson, setSurveyMetadataJson] = useState(
+    surveyMetadataExample,
+  );
+  const [surveyFieldMapJson, setSurveyFieldMapJson] = useState(
+    surveyFieldMapExample,
+  );
   const [surveySourceVersionId, setSurveySourceVersionId] = useState("");
   const [surveyRun, setSurveyRun] = useState<CampaignLabDurableRun>();
   const [nativeSurveyFormJson, setNativeSurveyFormJson] = useState(
     nativeSurveyFormExample,
   );
   const [nativeSurveyFormId, setNativeSurveyFormId] = useState("");
-  const [nativeSurveyResponsesJson, setNativeSurveyResponsesJson] = useState(
-    nativeSurveyResponsesExample,
-  );
+  const [nativeSurveyResponsesJson, setNativeSurveyResponsesJson] =
+    useState("[]");
   const [forecastDatasets, setForecastDatasets] = useState<
     ReadonlyArray<CampaignLabForecastDataset>
   >([]);
@@ -919,39 +1031,84 @@ export function CampaignLabWorkspace({
   const [busyStage, setBusyStage] = useState<string>();
   const [audit, setAudit] = useState<CampaignLabAuditPage>();
 
-  const selectedCampaign = useMemo(
-    () =>
-      campaigns.find((campaign) => campaignId(campaign) === selectedCampaignId),
-    [campaigns, selectedCampaignId],
-  );
+  const adoptResearchRun = useCallback((nextRun: CampaignLabResearchRun) => {
+    setResearchRun(nextRun);
+    const graph = nextRun.result?.knowledge_graph;
+    const source = nextRun.result?.source;
+    if (
+      nextRun.status !== "succeeded" ||
+      !isRecord(graph) ||
+      !isRecord(source)
+    ) {
+      return;
+    }
+    setRequestText((current) => {
+      try {
+        const parsed = JSON.parse(current) as Record<string, unknown>;
+        const existingSources = Array.isArray(parsed.research_sources)
+          ? parsed.research_sources.filter(isRecord)
+          : [];
+        const existingKnowledge = Array.isArray(parsed.research_knowledge)
+          ? parsed.research_knowledge.filter(isRecord)
+          : [];
+        const sourceId =
+          typeof source.source_id === "string" ? source.source_id : null;
+        const nextSources = sourceId
+          ? [
+              ...existingSources.filter((item) => item.source_id !== sourceId),
+              source,
+            ]
+          : existingSources;
+        const nextKnowledge = sourceId
+          ? [
+              ...existingKnowledge.filter(
+                (item) => item.source_id !== sourceId,
+              ),
+              graph,
+            ]
+          : existingKnowledge;
+        return JSON.stringify(
+          {
+            ...parsed,
+            research_sources: nextSources,
+            research_knowledge: nextKnowledge,
+          },
+          null,
+          2,
+        );
+      } catch {
+        return current;
+      }
+    });
+  }, []);
 
   const complianceFetcher = useMemo(
-    () => (runId: string) =>
+    () => (runId: string, signal?: AbortSignal) =>
       selectedCampaignId
-        ? getCampaignLabComplianceRun(selectedCampaignId, runId)
+        ? getCampaignLabComplianceRun(selectedCampaignId, runId, signal)
         : Promise.reject(new Error("Select a Campaign Lab workspace first.")),
     [selectedCampaignId],
   );
 
-  useDurableRunPolling(
+  const retrySurvey = useDurableRunPolling(
     surveyRun,
     getCampaignLabSurveyImportRun,
     setSurveyRun,
     (pollError) => setError(problemMessage(pollError)),
   );
-  useDurableRunPolling(
+  const retryForecast = useDurableRunPolling(
     forecastRun,
     getCampaignLabAggregateForecastRun,
     setForecastRun,
     (pollError) => setError(problemMessage(pollError)),
   );
-  useDurableRunPolling(
+  const retryCompliance = useDurableRunPolling(
     complianceRun,
     complianceFetcher,
     setComplianceRun,
     (pollError) => setError(problemMessage(pollError)),
   );
-  useDurableRunPolling(
+  const retryInterview = useDurableRunPolling(
     interviewRun,
     getCampaignLabInterviewRun,
     setInterviewRun,
@@ -960,27 +1117,28 @@ export function CampaignLabWorkspace({
 
   useEffect(() => {
     let stale = false;
-    const projectPromise = getProject(projectId).catch(() => undefined);
-    const forecastDatasetPromise = listCampaignLabForecastDatasets()
-      .then((page) => {
-        if (!stale) setForecastDatasetError(undefined);
-        return page;
-      })
-      .catch((loadError: unknown) => {
-        if (!stale) setForecastDatasetError(problemMessage(loadError));
-        return { items: [] };
-      });
-    void Promise.all([
-      listCampaignLabCampaigns(projectId),
-      getMethodologyRegistry(),
-      projectPromise,
-      forecastDatasetPromise,
-    ])
-      .then(([page, registry, project, forecastDatasetPage]) => {
+    initialization.current ??= loadCampaignContext(projectId);
+    void initialization.current
+      .then(async ([page, registry, project, forecast]) => {
+        const forecastDatasetPage = forecast.page;
         if (stale) return;
+        setForecastDatasetError(forecast.error);
+        let items = page.items;
+        if (
+          initialCampaignId &&
+          !items.some((item) => campaignId(item) === initialCampaignId)
+        ) {
+          const detail = await getCampaignLabCampaign(initialCampaignId);
+          if (stale) return;
+          if (detail.campaign.project_id !== projectId)
+            throw new Error("Campaign does not belong to this project");
+          items = [detail.campaign, ...items];
+        }
+        setCampaignOffset(page.items.length);
+        setMoreCampaigns(page.items.length >= (page.pagination?.limit ?? 50));
         const nextPopulationFrame = officialPopulationFrame(registry);
         const nextForecastDataset = forecastDatasetPage.items[0];
-        setCampaigns(page.items);
+        setCampaigns(items);
         setOrganizationId(
           project?.organization_id ?? page.items[0]?.organization_id,
         );
@@ -993,7 +1151,10 @@ export function CampaignLabWorkspace({
             setForecastTargetsJson(JSON.stringify(defaultTargets, null, 2));
           }
         }
-        const first = page.items[0];
+        const first =
+          items.find(
+            (campaign) => campaignId(campaign) === initialCampaignId,
+          ) ?? items[0];
         if (first) {
           const id = campaignId(first);
           setSelectedCampaignId(id);
@@ -1011,7 +1172,7 @@ export function CampaignLabWorkspace({
     return () => {
       stale = true;
     };
-  }, [projectId]);
+  }, [projectId, initialCampaignId]);
 
   useEffect(() => {
     if (!selectedCampaignId) {
@@ -1030,6 +1191,121 @@ export function CampaignLabWorkspace({
     };
   }, [selectedCampaignId]);
 
+  useEffect(() => {
+    if (!selectedCampaignId) return;
+    const params = new URL(window.location.href).searchParams;
+    if (params.get("campaign") !== selectedCampaignId) return;
+    let stale = false;
+    const controller = new AbortController();
+    const restore = <T extends CampaignLabDurableRun>(
+      kind: string,
+      fetchRun: (id: string, signal?: AbortSignal) => Promise<T>,
+      update: (run: T) => void,
+    ) => {
+      const id = params.get(kind);
+      if (!id) return;
+      void fetchRun(id, controller.signal)
+        .then((saved) => {
+          if (!stale && saved.campaign_id === selectedCampaignId) update(saved);
+        })
+        .catch((restoreError: unknown) => {
+          if (!stale) setError(problemMessage(restoreError));
+        });
+    };
+    restore("simulation", getCampaignLabSimulationStatus, setRun);
+    restore("research", getCampaignLabResearchRun, adoptResearchRun);
+    restore("survey", getCampaignLabSurveyImportRun, setSurveyRun);
+    restore("forecast", getCampaignLabAggregateForecastRun, setForecastRun);
+    restore("compliance", complianceFetcher, setComplianceRun);
+    restore("interview", getCampaignLabInterviewRun, setInterviewRun);
+    return () => {
+      stale = true;
+      controller.abort();
+    };
+  }, [selectedCampaignId, complianceFetcher, adoptResearchRun]);
+
+  async function loadMoreCampaigns() {
+    setLoadingMoreCampaigns(true);
+    try {
+      const page = await listCampaignLabCampaigns(projectId, campaignOffset);
+      if (!mounted.current) return;
+      setCampaigns((current) => [
+        ...current,
+        ...page.items.filter(
+          (item) =>
+            !current.some(
+              (existing) => campaignId(existing) === campaignId(item),
+            ),
+        ),
+      ]);
+      setCampaignOffset((offset) => offset + page.items.length);
+      setMoreCampaigns(page.items.length >= page.pagination.limit);
+    } catch (loadError) {
+      if (mounted.current) setError(problemMessage(loadError));
+    } finally {
+      if (mounted.current) setLoadingMoreCampaigns(false);
+    }
+  }
+
+  async function reopenRun(saved: CampaignLabRunStatus) {
+    if (saved.campaign_id !== selectedCampaignId)
+      throw new Error("Campaign mismatch");
+    const fetchers = {
+      repeated_simulation: getCampaignLabSimulationStatus,
+      research_ingestion: getCampaignLabResearchRun,
+      survey_import: getCampaignLabSurveyImportRun,
+      aggregate_forecast: getCampaignLabAggregateForecastRun,
+      compliance_review: complianceFetcher,
+      interview: getCampaignLabInterviewRun,
+    };
+    if (!(saved.run_type in fetchers))
+      throw new Error("This activity cannot be reopened");
+    const next = await fetchers[saved.run_type as keyof typeof fetchers](
+      saved.id,
+    );
+    if (!mounted.current) return;
+    if (next.campaign_id !== selectedCampaignId)
+      throw new Error("Campaign mismatch");
+    switch (saved.run_type) {
+      case "repeated_simulation":
+        setResultLoadAttempt((attempt) => attempt + 1);
+        setResult(undefined);
+        setRun(next);
+        rememberRun("simulation", next.id);
+        setView("simulate");
+        break;
+      case "research_ingestion":
+        adoptResearchRun({
+          ...next,
+          result:
+            "result" in next && isRecord(next.result) ? next.result : undefined,
+        });
+        rememberRun("research", next.id);
+        setView("prepare");
+        break;
+      case "survey_import":
+        setSurveyRun(next);
+        rememberRun("survey", next.id);
+        setView("evidence");
+        break;
+      case "aggregate_forecast":
+        setForecastRun(next);
+        rememberRun("forecast", next.id);
+        setView("evidence");
+        break;
+      case "compliance_review":
+        setComplianceRun(next);
+        rememberRun("compliance", next.id);
+        setView("review");
+        break;
+      case "interview":
+        setInterviewRun(next);
+        rememberRun("interview", next.id);
+        setView("simulate");
+        break;
+    }
+  }
+
   function adoptSimulationResult(nextResult: CampaignLabSimulationResult) {
     setResult(nextResult);
     const diagnostics = nextResult.result.behavioral_diagnostics;
@@ -1039,113 +1315,63 @@ export function CampaignLabWorkspace({
     if (firstAgent) setInterviewAgentId(firstAgent.agent_id);
   }
 
-  useEffect(() => {
-    if (!run || !["queued", "running", "retrying"].includes(run.status)) {
-      return;
-    }
-    let stale = false;
-    const timer = window.setInterval(() => {
-      void getCampaignLabSimulationStatus(run.id)
-        .then((nextRun) => {
-          if (stale) return;
-          if (nextRun.status === "succeeded") {
-            void getCampaignLabSimulationResults(nextRun.id)
-              .then((nextResult) => {
-                if (!stale) {
-                  setRun(nextRun);
-                  adoptSimulationResult(nextResult);
-                }
-              })
-              .catch((resultError: unknown) => {
-                if (!stale) setError(problemMessage(resultError));
-              });
-          } else {
-            setRun(nextRun);
-          }
-        })
-        .catch((pollError: unknown) => setError(problemMessage(pollError)));
-    }, 2000);
-    return () => {
-      stale = true;
-      window.clearInterval(timer);
-    };
-  }, [run]);
+  const retrySimulation = useDurableRunPolling(
+    run,
+    getCampaignLabSimulationStatus,
+    (nextRun) => {
+      setRun(nextRun);
+    },
+    (pollError) => setError(problemMessage(pollError)),
+  );
 
+  const completedRunId = run?.status === "succeeded" ? run.id : undefined;
   useEffect(() => {
-    if (
-      !researchRun ||
-      !["queued", "running", "retrying"].includes(researchRun.status)
-    ) {
-      return;
-    }
+    if (!completedRunId) return;
     let stale = false;
-    const timer = window.setInterval(() => {
-      void getCampaignLabResearchRun(researchRun.id)
-        .then((nextRun) => {
-          if (stale) return;
-          setResearchRun(nextRun);
-          const graph = nextRun.result?.knowledge_graph;
-          const source = nextRun.result?.source;
-          if (
-            nextRun.status !== "succeeded" ||
-            !isRecord(graph) ||
-            !isRecord(source)
-          ) {
-            return;
-          }
-          setRequestText((current) => {
-            try {
-              const parsed = JSON.parse(current) as Record<string, unknown>;
-              const existingSources = Array.isArray(parsed.research_sources)
-                ? parsed.research_sources.filter(isRecord)
-                : [];
-              const existingKnowledge = Array.isArray(parsed.research_knowledge)
-                ? parsed.research_knowledge.filter(isRecord)
-                : [];
-              const sourceId =
-                typeof source.source_id === "string" ? source.source_id : null;
-              const nextSources = sourceId
-                ? [
-                    ...existingSources.filter(
-                      (item) => item.source_id !== sourceId,
-                    ),
-                    source,
-                  ]
-                : existingSources;
-              const nextKnowledge = sourceId
-                ? [
-                    ...existingKnowledge.filter(
-                      (item) => item.source_id !== sourceId,
-                    ),
-                    graph,
-                  ]
-                : existingKnowledge;
-              return JSON.stringify(
-                {
-                  ...parsed,
-                  research_sources: nextSources,
-                  research_knowledge: nextKnowledge,
-                },
-                null,
-                2,
-              );
-            } catch {
-              return current;
-            }
-          });
-        })
-        .catch((pollError: unknown) => {
-          if (!stale) setError(problemMessage(pollError));
-        });
-    }, 2000);
+    let timer: number | undefined;
+    let attempts = 0;
+    const controller = new AbortController();
+    const loadResult = async () => {
+      attempts += 1;
+      try {
+        const nextResult = await getCampaignLabSimulationResults(
+          completedRunId,
+          controller.signal,
+        );
+        if (!stale) adoptSimulationResult(nextResult);
+      } catch (resultError) {
+        if (stale) return;
+        if (
+          resultError instanceof ApiProblem &&
+          resultError.status === 429 &&
+          resultError.retryAfterSeconds &&
+          resultError.retryAfterSeconds <= 10 &&
+          attempts < 3
+        ) {
+          timer = window.setTimeout(() => {
+            void loadResult();
+          }, resultError.retryAfterSeconds * 1000);
+        } else setError(problemMessage(resultError));
+      }
+    };
+    void loadResult();
     return () => {
       stale = true;
-      window.clearInterval(timer);
+      controller.abort();
+      if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [researchRun]);
+  }, [completedRunId, resultLoadAttempt]);
+
+  const retryResearch = useDurableRunPolling(
+    researchRun,
+    getCampaignLabResearchRun,
+    adoptResearchRun,
+    (pollError) => setError(problemMessage(pollError)),
+  );
 
   async function createCampaign(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     const form = new FormData(event.currentTarget);
     const name = form.get("name");
     const objective = form.get("objective");
@@ -1153,13 +1379,20 @@ export function CampaignLabWorkspace({
     setSaving(true);
     setError(undefined);
     try {
-      const created = await createCampaignLabCampaign({
+      const payload = {
         project_id: projectId,
         name,
         objective,
         purpose: "commercial_marketing",
         decision: { decision: "compare_authored_variants" },
-      });
+      };
+      const created = await createCampaignLabCampaign(
+        payload,
+        commandKey("campaign", payload),
+      );
+      if (!mounted.current) return;
+      commandKeys.current.delete("campaign");
+      setHistoryRevision((revision) => revision + 1);
       const id = created.campaign_id ?? "";
       const next = {
         ...created,
@@ -1180,7 +1413,8 @@ export function CampaignLabWorkspace({
       setRequestText(
         JSON.stringify(starterRequest(id, selectedPopulationFrame), null, 2),
       );
-      event.currentTarget.reset();
+      formElement.reset();
+      onCampaignChange(id);
     } catch (createError) {
       setError(problemMessage(createError));
     } finally {
@@ -1209,7 +1443,11 @@ export function CampaignLabWorkspace({
       const created = await createCampaignLabSimulation(
         selectedCampaignId,
         parsed,
+        commandKey("simulation", parsed),
       );
+      if (!mounted.current) return;
+      commandKeys.current.delete("simulation");
+      setHistoryRevision((revision) => revision + 1);
       if (!created.run_id)
         throw new Error("Campaign Lab did not return a run id.");
       const nextRun = {
@@ -1226,12 +1464,8 @@ export function CampaignLabWorkspace({
         last_error_code: null,
         retention_until: null,
       } satisfies CampaignLabRunStatus;
+      rememberRun("simulation", nextRun.id);
       setRun(nextRun);
-      if (nextRun.status === "succeeded") {
-        adoptSimulationResult(
-          await getCampaignLabSimulationResults(nextRun.id),
-        );
-      }
     } catch (launchError) {
       setError(
         launchError instanceof SyntaxError
@@ -1245,6 +1479,7 @@ export function CampaignLabWorkspace({
 
   async function uploadResearch(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!selectedCampaignId || !researchFile) {
       setError("Select a Campaign Lab and a research file first.");
       return;
@@ -1255,7 +1490,7 @@ export function CampaignLabWorkspace({
       const mediaType = researchMediaType(researchFile);
       const source = JSON.parse(researchSourceJson) as Record<string, unknown>;
       const secretPayload = await readResearchPayload(researchFile, mediaType);
-      const created = await createCampaignLabResearch(selectedCampaignId, {
+      const payload = {
         title: researchFile.name,
         payload: {},
         provenance: source,
@@ -1265,10 +1500,19 @@ export function CampaignLabWorkspace({
         chunk_size: 1200,
         overlap: 120,
         secret_payload: secretPayload,
-      });
+      };
+      const created = await createCampaignLabResearch(
+        selectedCampaignId,
+        payload,
+        commandKey("research", payload),
+      );
+      if (!mounted.current) return;
+      commandKeys.current.delete("research");
+      setHistoryRevision((revision) => revision + 1);
       if (!created.run_id) {
         throw new Error("Research ingestion did not return a run id.");
       }
+      rememberRun("research", created.run_id);
       setResearchRun({
         id: created.run_id,
         campaign_id: selectedCampaignId,
@@ -1284,7 +1528,7 @@ export function CampaignLabWorkspace({
         retention_until: null,
       });
       setResearchFile(null);
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (uploadError) {
       setError(
         uploadError instanceof SyntaxError
@@ -1298,6 +1542,7 @@ export function CampaignLabWorkspace({
 
   async function importSurvey(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const formElement = event.currentTarget;
     if (!selectedCampaignId || !surveyImportFile) {
       setError("Select a Campaign Lab and a survey export first.");
       return;
@@ -1314,18 +1559,27 @@ export function CampaignLabWorkspace({
         unknown
       >;
       const rawText = await surveyImportFile.text();
-      const payload =
+      const rawPayload =
         surveyImportFormat === "csv" ? rawText : JSON.parse(rawText);
-      const created = await createCampaignLabSurveyImport(selectedCampaignId, {
+      const payload = {
         format: surveyImportFormat,
         metadata,
         field_map: fieldMap,
         source_version_id: surveySourceVersionId.trim() || undefined,
-        secret_payload: { payload },
-      });
+        secret_payload: { payload: rawPayload },
+      };
+      const created = await createCampaignLabSurveyImport(
+        selectedCampaignId,
+        payload,
+        commandKey("survey", payload),
+      );
+      if (!mounted.current) return;
+      commandKeys.current.delete("survey");
+      setHistoryRevision((revision) => revision + 1);
       setSurveyRun(commandRun(created, selectedCampaignId, "survey_import"));
+      if (created.run_id) rememberRun("survey", created.run_id);
       setSurveyImportFile(null);
-      event.currentTarget.reset();
+      formElement.reset();
     } catch (importError) {
       setError(
         importError instanceof SyntaxError
@@ -1355,7 +1609,11 @@ export function CampaignLabWorkspace({
       const created = await createCampaignLabNativeSurveyForm(
         selectedCampaignId,
         form,
+        commandKey("native-form", form),
       );
+      if (!mounted.current) return;
+      commandKeys.current.delete("native-form");
+      setHistoryRevision((revision) => revision + 1);
       if (!created.artifact_id) {
         throw new Error("Native survey form did not return a form id.");
       }
@@ -1383,15 +1641,23 @@ export function CampaignLabWorkspace({
     setError(undefined);
     try {
       const responses = JSON.parse(nativeSurveyResponsesJson);
-      if (!Array.isArray(responses)) {
+      if (!Array.isArray(responses) || responses.length === 0) {
         throw new Error("Native survey responses must be a JSON array.");
       }
       const created = await submitCampaignLabNativeSurveyResponses(
         selectedCampaignId,
         nativeSurveyFormId.trim(),
         responses,
+        commandKey("responses", {
+          formId: nativeSurveyFormId.trim(),
+          responses,
+        }),
       );
+      if (!mounted.current) return;
+      commandKeys.current.delete("responses");
+      setHistoryRevision((revision) => revision + 1);
       setSurveyRun(commandRun(created, selectedCampaignId, "survey_import"));
+      if (created.run_id) rememberRun("survey", created.run_id);
     } catch (responseError) {
       setError(
         responseError instanceof SyntaxError
@@ -1422,17 +1688,23 @@ export function CampaignLabWorkspace({
           "Official forecast targets must contain at least two options.",
         );
       }
+      const payload = {
+        dataset_id: forecastDatasetId,
+        model_version: "aggregate_trend_v1",
+        targets,
+      };
       const created = await createCampaignLabAggregateForecast(
         selectedCampaignId,
-        {
-          dataset_id: forecastDatasetId,
-          model_version: "aggregate_trend_v1",
-          targets,
-        },
+        payload,
+        commandKey("forecast", payload),
       );
+      if (!mounted.current) return;
+      commandKeys.current.delete("forecast");
+      setHistoryRevision((revision) => revision + 1);
       setForecastRun(
         commandRun(created, selectedCampaignId, "aggregate_forecast"),
       );
+      if (created.run_id) rememberRun("forecast", created.run_id);
     } catch (forecastError) {
       setError(
         forecastError instanceof SyntaxError
@@ -1457,10 +1729,15 @@ export function CampaignLabWorkspace({
       const created = await createCampaignLabComplianceReview(
         selectedCampaignId,
         complianceReviewInput(payload),
+        commandKey("compliance", complianceReviewInput(payload)),
       );
+      if (!mounted.current) return;
+      commandKeys.current.delete("compliance");
+      setHistoryRevision((revision) => revision + 1);
       setComplianceRun(
         commandRun(created, selectedCampaignId, "compliance_review"),
       );
+      if (created.run_id) rememberRun("compliance", created.run_id);
     } catch (complianceError) {
       setError(
         complianceError instanceof SyntaxError
@@ -1483,14 +1760,23 @@ export function CampaignLabWorkspace({
     setBusyStage("interviews");
     setError(undefined);
     try {
-      const created = await createCampaignLabInterview(selectedCampaignId, {
+      const payload = {
         source_run_id: run.id,
         agent_id: interviewAgentId,
         variant_key: interviewVariantKey,
         question: interviewQuestion,
         prompt_version: "campaign-lab-interview-v1",
-      });
+      };
+      const created = await createCampaignLabInterview(
+        selectedCampaignId,
+        payload,
+        commandKey("interview", payload),
+      );
+      if (!mounted.current) return;
+      commandKeys.current.delete("interview");
+      setHistoryRevision((revision) => revision + 1);
       setInterviewRun(commandRun(created, selectedCampaignId, "interview"));
+      if (created.run_id) rememberRun("interview", created.run_id);
     } catch (interviewError) {
       setError(problemMessage(interviewError));
     } finally {
@@ -1498,16 +1784,10 @@ export function CampaignLabWorkspace({
     }
   }
 
-  const activeStage =
-    run?.stage ?? selectedCampaign?.current_stage ?? "campaign_created";
-  const activeStageIndex = Math.max(
-    0,
-    STAGE_KEYS.indexOf(activeStage as (typeof STAGE_KEYS)[number]),
-  );
-
   return (
     <main
-      className="workspace-main workspace-main-wide"
+      className={`workspace-main workspace-main-wide ${styles.workspace}`}
+      data-view={view}
       id="main-content"
       tabIndex={-1}
     >
@@ -1531,13 +1811,14 @@ export function CampaignLabWorkspace({
           <p className="eyebrow">Aggregate research · Philippines</p>
           <h1 id="campaign-lab-title">Campaign Simulation Lab</h1>
           <p className="lede">
-            Compare authored variants with population weighting, repeated seeded
-            runs, survey calibration, and historical backtesting.
+            Build a message test, compare experimental results, and check the
+            evidence before making a decision.
           </p>
         </div>
         <div className="panel">
           <strong>
-            Population frame: {selectedPopulationFrame ? "PSA 2020" : "fixture"}
+            Population frame:{" "}
+            {selectedPopulationFrame ? "PSA 2020" : "unavailable"}
           </strong>
           <p className="field-note">
             No individual voter records. Behavioral output remains
@@ -1546,27 +1827,46 @@ export function CampaignLabWorkspace({
         </div>
       </section>
       {error ? (
-        <p className="problem" role="alert">
-          {error}
-        </p>
+        <div className="problem" role="alert">
+          <p>{error}</p>
+          <button
+            className="button-quiet"
+            type="button"
+            onClick={() => {
+              setError(undefined);
+              retrySurvey();
+              retryForecast();
+              retryCompliance();
+              retryInterview();
+              retrySimulation();
+              retryResearch();
+              setResultLoadAttempt((attempt) => attempt + 1);
+            }}
+          >
+            Retry loading
+          </button>
+        </div>
       ) : null}
       <section className="workspace-grid" aria-label="Campaign Lab setup">
-        <form className="panel form-stack" onSubmit={createCampaign}>
-          <p className="eyebrow">01 / Campaign definition</p>
-          <h2>Start a bounded lab</h2>
-          <label htmlFor="campaign-name">Campaign name</label>
-          <input id="campaign-name" minLength={2} name="name" required />
-          <label htmlFor="campaign-objective">Decision objective</label>
-          <textarea
-            id="campaign-objective"
-            name="objective"
-            required
-            rows={4}
-          />
-          <button disabled={saving} type="submit">
-            {saving ? "Saving…" : "Create Campaign Lab"}
-          </button>
-        </form>
+        <details className="panel" open={campaigns.length === 0}>
+          <summary>Create a new message test</summary>
+          <form className="form-stack" onSubmit={createCampaign}>
+            <p className="eyebrow">01 / Campaign definition</p>
+            <h2>Start a message test</h2>
+            <label htmlFor="campaign-name">Campaign name</label>
+            <input id="campaign-name" minLength={2} name="name" required />
+            <label htmlFor="campaign-objective">Decision objective</label>
+            <textarea
+              id="campaign-objective"
+              name="objective"
+              required
+              rows={4}
+            />
+            <button disabled={saving} type="submit">
+              {saving ? "Saving…" : "Create message test"}
+            </button>
+          </form>
+        </details>
         <div className="panel">
           <p className="eyebrow">Saved workspaces</p>
           {loading ? (
@@ -1586,58 +1886,64 @@ export function CampaignLabWorkspace({
                   className={
                     id === selectedCampaignId ? "button-ghost" : "button-quiet"
                   }
+                  aria-pressed={id === selectedCampaignId}
+                  disabled={saving || running || researchBusy || !!busyStage}
                   key={id}
-                  onClick={() => {
-                    setSelectedCampaignId(id);
-                    setRequestText(
-                      JSON.stringify(
-                        starterRequest(id, selectedPopulationFrame),
-                        null,
-                        2,
-                      ),
-                    );
-                    setRun(undefined);
-                    setResult(undefined);
-                  }}
+                  onClick={() => onCampaignChange(id)}
                   type="button"
                 >
                   {campaign.name} · {campaign.status}
                 </button>
               );
             })}
+            {moreCampaigns ? (
+              <button
+                className="button-quiet"
+                type="button"
+                disabled={loadingMoreCampaigns}
+                onClick={() => {
+                  void loadMoreCampaigns();
+                }}
+              >
+                {loadingMoreCampaigns
+                  ? "Loading more campaigns..."
+                  : "Load more campaigns"}
+              </button>
+            ) : null}
           </div>
         </div>
       </section>
       {selectedCampaignId ? (
-        <section className="panel" aria-labelledby="flow-title" id="research">
-          <p className="eyebrow">02 / Evidence workflow</p>
-          <h2 id="flow-title">Traceable flow</h2>
-          <ol className="workflow-list">
-            {STAGES.map((stage, index) => (
-              <li
-                className={index <= activeStageIndex ? "is-active" : undefined}
-                id={`stage-${STAGE_KEYS[index]}`}
-                key={stage}
-              >
-                <span>{String(index + 1).padStart(2, "0")}</span>
-                {stage}
-              </li>
-            ))}
-          </ol>
-          <p className="field-note">
-            Survey-derived and historical evidence remain separate stages. The
-            deterministic first release exposes component metrics and stability,
-            not a synthesized campaign verdict.
-          </p>
-        </section>
-      ) : (
-        <CampaignLabSelectionNotice />
-      )}
+        <RunHistory
+          campaignId={selectedCampaignId}
+          onOpen={reopenRun}
+          revision={String(historyRevision)}
+        />
+      ) : null}
+      <nav aria-label="Campaign tasks" className={styles.taskNav}>
+        {[
+          ["prepare", "research-upload", "1. Prepare"],
+          ["simulate", "audience-cohorts", "2. Test messages"],
+          ["evidence", "surveys", "3. Add evidence"],
+          ["review", "compliance", "4. Review"],
+        ].map(([key, anchor, label]) => (
+          <a
+            key={key}
+            href={`#${anchor}`}
+            aria-current={view === key ? "page" : undefined}
+            onClick={() => setView(key!)}
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+      {!selectedCampaignId ? <CampaignLabSelectionNotice /> : null}
       {selectedCampaignId ? (
         <section
           aria-labelledby="research-upload-title"
           className="panel"
           id="research-upload"
+          data-step="prepare"
         >
           <p className="eyebrow">02A / Research ingestion</p>
           <h2 id="research-upload-title">Upload source-grounded research</h2>
@@ -1657,15 +1963,11 @@ export function CampaignLabWorkspace({
               required
               type="file"
             />
-            <label htmlFor="campaign-lab-research-source">
-              Source provenance JSON
-            </label>
-            <textarea
+            <StructuredEditor
               id="campaign-lab-research-source"
-              onChange={(event) => setResearchSourceJson(event.target.value)}
-              placeholder={researchSourceExample}
-              rows={12}
+              label="Research source"
               value={researchSourceJson}
+              onChange={setResearchSourceJson}
             />
             <button disabled={researchBusy} type="submit">
               {researchBusy ? "Queueing research…" : "Queue research ingestion"}
@@ -1684,6 +1986,7 @@ export function CampaignLabWorkspace({
           className="workspace-grid"
           aria-label="Audience cohorts and simulation request"
           id="audience-cohorts"
+          data-step="simulate"
         >
           <form
             className="panel form-stack"
@@ -1691,21 +1994,33 @@ export function CampaignLabWorkspace({
             onSubmit={launchSimulation}
           >
             <p className="eyebrow">03 / Repeated simulation</p>
-            <h2 id="simulation-config">Run an authored aggregate request</h2>
-            <label htmlFor="campaign-lab-request">Frozen request JSON</label>
-            <textarea
-              aria-describedby="campaign-lab-request-note"
+            <h2 id="simulation-config">Set up your message comparison</h2>
+            <StructuredEditor
               id="campaign-lab-request"
-              onChange={(event) => setRequestText(event.target.value)}
-              rows={24}
+              label="Message test settings"
               value={requestText}
+              onChange={setRequestText}
+              fields={[
+                "objective",
+                "variants",
+                "configuration",
+                "ranking_metric",
+              ]}
             />
             <p className="field-note" id="campaign-lab-request-note">
               {selectedPopulationFrame
                 ? "Starter request uses the hosted, cited PSA 2020 17-region frame. Add separately authorized survey and historical outcome evidence before treating results as real-world evidence."
                 : "The hosted PSA frame was unavailable, so this request remains an authored fixture. Do not use it for a real decision until a cited population frame is loaded."}
             </p>
-            <button disabled={running} type="submit">
+            <button
+              disabled={
+                running ||
+                !selectedPopulationFrame ||
+                (!!run &&
+                  ["queued", "running", "retrying"].includes(run.status))
+              }
+              type="submit"
+            >
               {running ? "Queueing…" : "Queue repeated simulation"}
             </button>
           </form>
@@ -1741,6 +2056,7 @@ export function CampaignLabWorkspace({
           aria-labelledby="campaign-lab-results-title"
           className="panel campaign-lab-results"
           id="results"
+          data-step="simulate"
         >
           <p className="eyebrow">04 / Component results</p>
           <div className="section-heading-row">
@@ -1825,6 +2141,7 @@ export function CampaignLabWorkspace({
         <section
           className="panel"
           id="persona-interviews"
+          data-step="simulate"
           aria-labelledby="interview-title"
         >
           <p className="eyebrow">05 / Persona interviews</p>
@@ -1866,7 +2183,14 @@ export function CampaignLabWorkspace({
               onChange={(event) => setInterviewQuestion(event.target.value)}
               value={interviewQuestion}
             />
-            <button disabled={busyStage === "interviews"} type="submit">
+            <button
+              disabled={
+                busyStage === "interviews" ||
+                run?.status !== "succeeded" ||
+                !interviewAgentId
+              }
+              type="submit"
+            >
               {busyStage === "interviews"
                 ? "Queueing interview…"
                 : "Queue synthetic interview"}
@@ -1879,14 +2203,32 @@ export function CampaignLabWorkspace({
             </p>
           ) : null}
           {interviewRun?.result ? (
-            <pre className="field-note">
-              {JSON.stringify(interviewRun.result, null, 2)}
-            </pre>
+            <div className="panel">
+              <p>
+                {typeof interviewRun.result.transcript === "string"
+                  ? interviewRun.result.transcript
+                  : "The completed record is available in the details below."}
+              </p>
+              <p className="field-note">
+                This is a synthetic explanation, not a respondent quotation.
+              </p>
+              <details>
+                <summary>View supporting evidence record</summary>
+                <pre className="field-note">
+                  {JSON.stringify(interviewRun.result, null, 2)}
+                </pre>
+              </details>
+            </div>
           ) : null}
         </section>
       ) : null}
       {selectedCampaignId ? (
-        <section className="panel" id="surveys" aria-labelledby="survey-title">
+        <section
+          className="panel"
+          id="surveys"
+          data-step="evidence"
+          aria-labelledby="survey-title"
+        >
           <p className="eyebrow">06 / Survey import</p>
           <h2 id="survey-title">Import a consented aggregate survey</h2>
           <p className="field-note">
@@ -1916,15 +2258,11 @@ export function CampaignLabWorkspace({
               <option value="formbricks">Formbricks JSON</option>
               <option value="odk">ODK JSON</option>
             </select>
-            <label htmlFor="campaign-lab-survey-metadata">
-              Survey provenance JSON
-            </label>
-            <textarea
+            <StructuredEditor
               id="campaign-lab-survey-metadata"
-              onChange={(event) => setSurveyMetadataJson(event.target.value)}
-              placeholder={surveyMetadataExample}
-              rows={12}
+              label="Survey provenance"
               value={surveyMetadataJson}
+              onChange={setSurveyMetadataJson}
             />
             <label htmlFor="campaign-lab-survey-source-version">
               Approved survey source version ID (production)
@@ -1935,94 +2273,133 @@ export function CampaignLabWorkspace({
               placeholder="UUID from the evidence source registry"
               value={surveySourceVersionId}
             />
-            <label htmlFor="campaign-lab-survey-field-map">
-              Field map JSON
-            </label>
-            <textarea
-              id="campaign-lab-survey-field-map"
-              onChange={(event) => setSurveyFieldMapJson(event.target.value)}
-              placeholder={surveyFieldMapExample}
-              rows={10}
-              value={surveyFieldMapJson}
-            />
+            <details>
+              <summary>Review column mapping</summary>
+              <p className="field-note">
+                Match each metric to the column name in your export. Default
+                names match the standard SIMULA aggregate format.
+              </p>
+              <StructuredEditor
+                id="campaign-lab-survey-field-map"
+                label="Column mapping"
+                value={surveyFieldMapJson}
+                onChange={setSurveyFieldMapJson}
+              />
+            </details>
             <button disabled={busyStage === "surveys"} type="submit">
               {busyStage === "surveys"
                 ? "Queueing survey…"
                 : "Queue survey import"}
             </button>
           </form>
-          <div className="workspace-grid">
-            <form
-              className="panel form-stack"
-              onSubmit={createNativeSurveyForm}
-            >
-              <p className="eyebrow">Native form</p>
-              <h3>Create a SIMULA-native calibration form</h3>
-              <p className="field-note">
-                The schema accepts only aggregate message-testing fields and
-                required consent. It rejects identity, political-affiliation,
-                vulnerability, and free-text questions.
-              </p>
-              <label htmlFor="campaign-lab-native-survey-form">
-                Native form JSON
-              </label>
-              <textarea
-                id="campaign-lab-native-survey-form"
-                onChange={(event) =>
-                  setNativeSurveyFormJson(event.target.value)
-                }
-                rows={18}
-                value={nativeSurveyFormJson}
-              />
-              <button
-                disabled={busyStage === "native-survey-form"}
-                type="submit"
+          <details className="panel">
+            <summary>Collect responses with a SIMULA form</summary>
+            <div className="workspace-grid">
+              <form
+                className="panel form-stack"
+                onSubmit={createNativeSurveyForm}
               >
-                {busyStage === "native-survey-form"
-                  ? "Saving form…"
-                  : "Save native form"}
-              </button>
-            </form>
-            <form
-              className="panel form-stack"
-              onSubmit={submitNativeSurveyResponses}
-            >
-              <p className="eyebrow">Native collection</p>
-              <h3>Queue consented aggregate responses</h3>
-              <p className="field-note">
-                Responses are sent to the worker-only import envelope, then
-                reduced to aggregate survey observations and deleted.
-              </p>
-              <label htmlFor="campaign-lab-native-survey-form-id">
-                Native form id
-              </label>
-              <input
-                id="campaign-lab-native-survey-form-id"
-                onChange={(event) => setNativeSurveyFormId(event.target.value)}
-                placeholder="Filled after saving a form"
-                value={nativeSurveyFormId}
-              />
-              <label htmlFor="campaign-lab-native-survey-responses">
-                Response batch JSON
-              </label>
-              <textarea
-                id="campaign-lab-native-survey-responses"
-                onChange={(event) =>
-                  setNativeSurveyResponsesJson(event.target.value)
-                }
-                rows={18}
-                value={nativeSurveyResponsesJson}
-              />
-              <button
-                disabled={busyStage === "native-survey-responses"}
-                type="submit"
+                <p className="eyebrow">Native form</p>
+                <h3>Create a SIMULA-native calibration form</h3>
+                <p className="field-note">
+                  The schema accepts only aggregate message-testing fields and
+                  required consent. It rejects identity, political-affiliation,
+                  vulnerability, and free-text questions.
+                </p>
+                <StructuredEditor
+                  id="campaign-lab-native-survey-form"
+                  label="Survey form"
+                  value={nativeSurveyFormJson}
+                  onChange={setNativeSurveyFormJson}
+                />
+                <button
+                  disabled={busyStage === "native-survey-form"}
+                  type="submit"
+                >
+                  {busyStage === "native-survey-form"
+                    ? "Saving form…"
+                    : "Save native form"}
+                </button>
+              </form>
+              <form
+                className="panel form-stack"
+                onSubmit={submitNativeSurveyResponses}
               >
-                {busyStage === "native-survey-responses"
-                  ? "Queueing responses…"
-                  : "Queue response batch"}
-              </button>
-            </form>
-          </div>
+                <p className="eyebrow">Native collection</p>
+                <h3>Queue consented aggregate responses</h3>
+                <p className="field-note">
+                  Responses are sent to the worker-only import envelope, then
+                  reduced to aggregate survey observations and deleted.
+                </p>
+                <label htmlFor="campaign-lab-native-survey-form-id">
+                  Native form id
+                </label>
+                <input
+                  id="campaign-lab-native-survey-form-id"
+                  onChange={(event) =>
+                    setNativeSurveyFormId(event.target.value)
+                  }
+                  placeholder="Filled after saving a form"
+                  value={nativeSurveyFormId}
+                />
+                <label htmlFor="native-response-upload">
+                  Response export (.json)
+                </label>
+                <input
+                  id="native-response-upload"
+                  type="file"
+                  accept=".json,application/json"
+                  required
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) {
+                      setNativeSurveyResponsesJson("[]");
+                      return;
+                    }
+                    void file
+                      .text()
+                      .then((text) => {
+                        if (!mounted.current) return;
+                        const parsed: unknown = JSON.parse(text);
+                        if (!Array.isArray(parsed) || !parsed.every(isRecord))
+                          throw new Error("Invalid response batch");
+                        setNativeSurveyResponsesJson(JSON.stringify(parsed));
+                      })
+                      .catch(() => {
+                        if (mounted.current) {
+                          setNativeSurveyResponsesJson("[]");
+                          setError(
+                            "Choose a JSON export containing an array of response objects.",
+                          );
+                        }
+                      });
+                  }}
+                />
+                <details>
+                  <summary>Review uploaded responses</summary>
+                  <StructuredEditor
+                    id="campaign-lab-native-survey-responses"
+                    label="Response batch"
+                    value={nativeSurveyResponsesJson}
+                    onChange={setNativeSurveyResponsesJson}
+                  />
+                </details>
+
+                <button
+                  disabled={
+                    busyStage === "native-survey-responses" ||
+                    !nativeSurveyFormId ||
+                    nativeSurveyResponsesJson === "[]"
+                  }
+                  type="submit"
+                >
+                  {busyStage === "native-survey-responses"
+                    ? "Queueing responses…"
+                    : "Queue response batch"}
+                </button>
+              </form>
+            </div>
+          </details>
           {surveyRun ? (
             <p aria-live="polite" className="field-note">
               Survey import: <strong>{surveyRun.status}</strong> ·{" "}
@@ -2037,6 +2414,7 @@ export function CampaignLabWorkspace({
         <section
           className="panel"
           id="forecasting"
+          data-step="evidence"
           aria-labelledby="forecast-title"
         >
           <p className="eyebrow">09 / Official forecast</p>
@@ -2096,14 +2474,11 @@ export function CampaignLabWorkspace({
                 )?.observation_period ?? "Versioned observation period"}
               </p>
             ) : null}
-            <label htmlFor="campaign-lab-forecast-targets">
-              Future aggregate options (advanced)
-            </label>
-            <textarea
+            <StructuredEditor
               id="campaign-lab-forecast-targets"
-              onChange={(event) => setForecastTargetsJson(event.target.value)}
-              rows={16}
+              label="Forecast options"
               value={forecastTargetsJson}
+              onChange={setForecastTargetsJson}
             />
             <button
               disabled={busyStage === "forecasting" || !forecastDatasetId}
@@ -2129,6 +2504,7 @@ export function CampaignLabWorkspace({
         <section
           className="panel"
           id="compliance"
+          data-step="review"
           aria-labelledby="compliance-title"
         >
           <p className="eyebrow">10 / Compliance review</p>
@@ -2139,14 +2515,11 @@ export function CampaignLabWorkspace({
             report.
           </p>
           <form className="form-stack" onSubmit={runCompliance}>
-            <label htmlFor="campaign-lab-compliance-payload">
-              Review payload JSON
-            </label>
-            <textarea
+            <StructuredEditor
               id="campaign-lab-compliance-payload"
-              onChange={(event) => setComplianceJson(event.target.value)}
-              rows={12}
+              label="Use and safeguards"
               value={complianceJson}
+              onChange={setComplianceJson}
             />
             <button disabled={busyStage === "compliance"} type="submit">
               {busyStage === "compliance"
@@ -2161,15 +2534,34 @@ export function CampaignLabWorkspace({
             </p>
           ) : null}
           {complianceRun?.result ? (
-            <pre className="field-note">
-              {JSON.stringify(complianceRun.result, null, 2)}
-            </pre>
+            <div className="panel">
+              <p>
+                {typeof complianceRun.result.rationale === "string"
+                  ? complianceRun.result.rationale
+                  : "The completed record is available in the details below."}
+              </p>
+              <p className="field-note">
+                An automated control scan does not grant independent human
+                approval.
+              </p>
+              <details>
+                <summary>View supporting evidence record</summary>
+                <pre className="field-note">
+                  {JSON.stringify(complianceRun.result, null, 2)}
+                </pre>
+              </details>
+            </div>
           ) : null}
         </section>
       ) : null}
       {selectedCampaignId ? <CampaignLabReportUnavailable /> : null}
       {selectedCampaignId ? (
-        <section className="panel" id="audit" aria-labelledby="audit-title">
+        <section
+          className="panel"
+          id="audit"
+          data-step="review"
+          aria-labelledby="audit-title"
+        >
           <p className="eyebrow">12 / Audit trail</p>
           <h2 id="audit-title">Durable evidence events</h2>
           <p className="field-note">

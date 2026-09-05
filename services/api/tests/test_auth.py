@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from time import time
 from typing import Any, cast
@@ -8,6 +9,7 @@ from uuid import UUID
 import httpx
 import jwt
 import pytest
+import simula_api.auth as auth_module
 from cryptography.hazmat.primitives.asymmetric import rsa
 from simula_api.auth import SupabaseTokenVerifier
 from simula_api.config import ApiSettings
@@ -130,7 +132,7 @@ async def test_jwks_unknown_key_refreshes_once_and_accepts_rotated_key() -> None
 
         unknown_key = rsa.generate_private_key(public_exponent=65_537, key_size=2_048)
         await _assert_unauthenticated(verifier, _token(unknown_key, key_id="unknown"))
-        assert calls == 3
+        assert calls == 2
 
 
 async def test_symmetric_tokens_are_only_delegated_to_local_auth() -> None:
@@ -152,3 +154,34 @@ async def test_symmetric_tokens_are_only_delegated_to_local_auth() -> None:
         deployed_verifier = SupabaseTokenVerifier(_settings(environment="production"), client)
         await _assert_unauthenticated(deployed_verifier, local_token)
         assert auth_calls == 1
+
+
+async def test_unknown_key_cooldown_bounds_distinct_concurrent_ids_and_allows_rotation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    now = 100.0
+    monkeypatch.setattr(auth_module, "monotonic", lambda: now)
+    private_key = rsa.generate_private_key(public_exponent=65_537, key_size=2_048)
+    keys = [_jwk(private_key, key_id="known")]
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"keys": keys})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        verifier = SupabaseTokenVerifier(_settings(), client)
+        await verifier.verify(_token(private_key, key_id="known"))
+        await asyncio.gather(
+            *[
+                _assert_unauthenticated(verifier, _token(private_key, key_id=f"unknown-{i}"))
+                for i in range(20)
+            ]
+        )
+        assert calls == 2
+        keys.append(_jwk(private_key, key_id="rotated"))
+        now += auth_module.JWKS_REFRESH_COOLDOWN_SECONDS
+        identity = await verifier.verify(_token(private_key, key_id="rotated"))
+        assert identity.user_id == UUID(USER_ID)
+        assert calls == 3

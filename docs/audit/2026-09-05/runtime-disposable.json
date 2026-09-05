@@ -1,0 +1,52 @@
+{
+  "scope": "disposable local synthetic fixture; alternate ports",
+  "source_sha": "21469e533625fb50da1f7054e42f4efda9da0048",
+  "source_identity_note": "Configured baseline SHA only; processes ran the remediation working tree. This is not immutable release identity evidence.",
+  "database_port": 56322,
+  "api_port": 8017,
+  "checks": {
+    "readiness_http": 200,
+    "/health/live": {
+      "status": 200,
+      "body": {
+        "environment": "local",
+        "release_sha": "21469e533625fb50da1f7054e42f4efda9da0048",
+        "service": "api",
+        "status": "ok"
+      }
+    },
+    "/health/ready": {
+      "status": 200,
+      "body": {
+        "environment": "local",
+        "release_sha": "21469e533625fb50da1f7054e42f4efda9da0048",
+        "service": "api",
+        "status": "ready"
+      }
+    },
+    "dependencies": [
+      "simula_api_dependency_ready{dependency=\"auth\"} 1.0",
+      "simula_api_dependency_ready{dependency=\"database\"} 1.0",
+      "simula_api_dependency_ready{dependency=\"queue\"} 1.0",
+      "simula_api_dependency_ready{dependency=\"rate_limit\"} 1.0",
+      "simula_api_dependency_ready{dependency=\"run_admission\"} 1.0"
+    ],
+    "owner_auth_status": 200,
+    "owner_organizations_status": 200,
+    "viewer_auth_status": 200,
+    "viewer_organizations_status": 200,
+    "other_tenant_owner_auth_status": 200,
+    "other_tenant_owner_organizations_status": 200,
+    "database_boundary_and_redis_integration": {
+      "status": "passed",
+      "tests": 7
+    },
+    "database_lint": {
+      "exit_code": 0,
+      "levels": {
+        "warning extra": 10
+      }
+    }
+  },
+  "source_state": "modified local checkout; HEAD is baseline metadata, not immutable release proof"
+}

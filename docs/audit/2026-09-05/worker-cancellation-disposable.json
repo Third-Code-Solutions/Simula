@@ -1,0 +1,11 @@
+{
+  "scope": "real psycopg/pool cancellation on disposable PostgreSQL; not hosted shutdown proof",
+  "canceled_backend_pid": 643,
+  "cancellation_propagated": true,
+  "canceled_connection_closed": true,
+  "replacement_backend_pid": 645,
+  "replacement_query_ready": true,
+  "entry_cancellation_propagated": true,
+  "entry_connection_closed": true,
+  "entry_replacement_ready": true
+}

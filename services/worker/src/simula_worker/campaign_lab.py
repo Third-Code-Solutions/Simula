@@ -558,19 +558,21 @@ async def process_campaign_lab_claim(
     *,
     heartbeat_seconds: float = _CAMPAIGN_LAB_HEARTBEAT_SECONDS,
 ) -> str:
-    if not await database.update_campaign_lab_progress(
-        claim.run_id,
-        claim.lease_token,
-        "validating",
-        15,
-        "Validating aggregate inputs, provenance, and privacy boundaries.",
-    ):
-        return (
-            "canceled"
-            if await database.finalize_canceled_campaign_lab_run(claim.run_id, claim.lease_token)
-            else "stale"
-        )
     try:
+        if not await database.update_campaign_lab_progress(
+            claim.run_id,
+            claim.lease_token,
+            "validating",
+            15,
+            "Validating aggregate inputs, provenance, and privacy boundaries.",
+        ):
+            return (
+                "canceled"
+                if await database.finalize_canceled_campaign_lab_run(
+                    claim.run_id, claim.lease_token
+                )
+                else "stale"
+            )
         if not await database.update_campaign_lab_progress(
             claim.run_id,
             claim.lease_token,

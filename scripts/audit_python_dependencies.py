@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import importlib
 import importlib.metadata
 import os
 import subprocess
 import sys
 import tempfile
-import venv
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,7 +25,13 @@ def _uv_executable() -> str:
 
 
 def main() -> int:
-    if hasattr(venv, "EnvBuilder"):
+    try:
+        venv_module = importlib.import_module("venv")
+    except ModuleNotFoundError as error:
+        if error.name != "venv":
+            raise
+        venv_module = None
+    if venv_module is not None and hasattr(venv_module, "EnvBuilder"):
         return _run([sys.executable, "-m", "pip_audit", "--skip-editable"])
 
     # CPython's Windows embeddable distribution intentionally omits the venv

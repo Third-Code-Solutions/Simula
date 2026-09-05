@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
 import type { PlatformAdminDashboard as DashboardData } from "@/lib/platform-api";
 
 import { SignOutButton } from "./sign-out-button";
@@ -13,11 +17,31 @@ export function AdminDashboard({
   dashboard,
   email,
   workspaceOrigin,
+  offset = 0,
+  pageSize = 20,
 }: Readonly<{
   dashboard: DashboardData;
   email: string;
   workspaceOrigin?: string;
+  offset?: number;
+  pageSize?: number;
 }>) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
+
+  const filtered = dashboard.organizations.filter(
+    (organization) =>
+      `${organization.name} ${organization.id}`
+        .toLowerCase()
+        .includes(query.trim().toLowerCase()) &&
+      (status === "all" || organization.status === status),
+  );
+  const pageCount = Math.max(
+    1,
+    Math.ceil(dashboard.metrics.organizations / pageSize),
+  );
+  const currentPage = Math.floor(offset / pageSize);
+  const visible = filtered;
   const metrics = [
     ["Users", dashboard.metrics.users],
     ["Organizations", dashboard.metrics.organizations],
@@ -117,18 +141,84 @@ export function AdminDashboard({
               <p className="section-label">Tenant inventory</p>
               <h2 id="inventory-heading">Organizations</h2>
             </div>
-            <p>{dashboard.organizations.length} visible</p>
+            <p aria-live="polite">
+              {filtered.length} of {dashboard.organizations.length} loaded
+              organizations
+            </p>
           </div>
-
+          {dashboard.metrics.organizations > dashboard.organizations.length ? (
+            <p className="inventory-limit" role="note">
+              This page contains {dashboard.organizations.length} of{" "}
+              {number.format(dashboard.metrics.organizations)} organizations.
+              Search and status filters apply to this page only. Use Next to
+              load more organizations.
+            </p>
+          ) : null}
+          {dashboard.organizations.length > 0 && (
+            <div className="inventory-tools">
+              <label>
+                Find on this page
+                <input
+                  type="search"
+                  value={query}
+                  placeholder="Search this page by name or ID"
+                  onChange={(event) => {
+                    setQuery(event.target.value);
+                  }}
+                />
+              </label>
+              <label>
+                Status
+                <select
+                  value={status}
+                  onChange={(event) => {
+                    setStatus(event.target.value);
+                  }}
+                >
+                  <option value="all">All statuses</option>
+                  <option value="active">Active</option>
+                  <option value="disabled">Disabled</option>
+                </select>
+              </label>
+            </div>
+          )}
           {dashboard.organizations.length === 0 ? (
             <div className="empty-state" role="status">
-              <h3>No organizations yet</h3>
+              <h3>
+                {dashboard.metrics.organizations === 0
+                  ? "No organizations yet"
+                  : "No organizations on this page"}
+              </h3>
               <p>
-                New workspaces will appear here as soon as they are created.
+                {dashboard.metrics.organizations === 0
+                  ? "New workspaces will appear here as soon as they are created."
+                  : "The inventory may have changed. Return to the first page to refresh the list."}
               </p>
+              {dashboard.metrics.organizations > 0 && (
+                <Link href="/">Return to first page</Link>
+              )}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="empty-state" role="status">
+              <h3>No matching organizations</h3>
+              <p>Try a different name or clear the filters.</p>
+              <button
+                className="quiet-button"
+                onClick={() => {
+                  setQuery("");
+                  setStatus("all");
+                }}
+              >
+                Clear filters
+              </button>
             </div>
           ) : (
-            <div className="table-frame">
+            <div
+              className="table-frame"
+              role="region"
+              aria-label="Organization inventory"
+              tabIndex={0}
+            >
               <table>
                 <caption className="sr-only">
                   All SIMULA organizations visible to the platform
@@ -149,7 +239,7 @@ export function AdminDashboard({
                   </tr>
                 </thead>
                 <tbody>
-                  {dashboard.organizations.map((organization) => (
+                  {visible.map((organization) => (
                     <tr key={organization.id}>
                       <th scope="row">
                         <span>{organization.name}</span>
@@ -197,6 +287,36 @@ export function AdminDashboard({
                 </tbody>
               </table>
             </div>
+          )}
+          {(pageCount > 1 || offset > 0) && (
+            <nav className="pagination" aria-label="Organization pages">
+              <p>
+                Page {currentPage + 1} ·{" "}
+                {number.format(dashboard.metrics.organizations)} organizations
+                total
+              </p>
+              {offset > 0 ? (
+                <Link
+                  className="quiet-button"
+                  href={`/?offset=${Math.max(0, offset - pageSize)}#organization-inventory`}
+                >
+                  Previous
+                </Link>
+              ) : (
+                <span aria-disabled="true">Previous</span>
+              )}
+              {offset + pageSize < dashboard.metrics.organizations &&
+              offset + pageSize <= 1_000_000 ? (
+                <Link
+                  className="quiet-button"
+                  href={`/?offset=${offset + pageSize}#organization-inventory`}
+                >
+                  Next
+                </Link>
+              ) : (
+                <span aria-disabled="true">Next</span>
+              )}
+            </nav>
           )}
         </section>
       </main>

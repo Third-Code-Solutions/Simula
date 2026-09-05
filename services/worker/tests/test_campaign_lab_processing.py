@@ -222,3 +222,32 @@ async def test_campaign_lab_loop_claims_only_one_five_minute_lease_at_a_time() -
     )
 
     assert database.claim_sizes == [1]
+
+
+@pytest.mark.parametrize("failure", ["first_write", "cancel_finalize", "failure_write"])
+async def test_campaign_lab_initial_database_failure_is_contained(
+    monkeypatch: pytest.MonkeyPatch,
+    failure: str,
+) -> None:
+    database = _Database()
+
+    async def progress(*args: object) -> bool:
+        if failure == "cancel_finalize":
+            return False
+        raise ConnectionError("synthetic database interruption")
+
+    async def fail(*args: object) -> str:
+        raise ConnectionError("synthetic unavailable persistence")
+
+    async def finalize(*args: object) -> bool:
+        raise ConnectionError("synthetic cancellation persistence interruption")
+
+    monkeypatch.setattr(database, "update_campaign_lab_progress", progress)
+    monkeypatch.setattr(database, "finalize_canceled_campaign_lab_run", finalize)
+    if failure == "failure_write":
+        monkeypatch.setattr(database, "fail_campaign_lab_run", fail)
+    state = await campaign_lab.process_campaign_lab_claim(database, _claim())
+    assert state == ("failure_persist_failed" if failure == "failure_write" else "failed")
+    assert database.completed is None
+    if failure != "failure_write":
+        assert database.failed == [("campaign_lab_worker_error", True)]

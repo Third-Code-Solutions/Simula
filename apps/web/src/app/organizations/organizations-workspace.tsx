@@ -59,6 +59,7 @@ function problemMessage(error: unknown): string {
 
 export function OrganizationsWorkspace() {
   const router = useRouter();
+  const [search, setSearch] = useState("");
   const [items, setItems] = useState<Organization[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [error, setError] = useState<string>();
@@ -217,15 +218,16 @@ export function OrganizationsWorkspace() {
           <p className="eyebrow">Workspace index</p>
           <h1 id="page-title">Your organizations</h1>
           <p className="lede">
-            Choose a secured workspace or create one for a new decision
-            rehearsal. Every project, run, and report remains tenant-scoped.
+            Open an organization to continue your projects, review results, or
+            work with your team. Create a workspace when you are starting
+            something new.
           </p>
         </div>
         <aside className={styles.securityNote} aria-label="Workspace security">
           <span className={styles.statusMark}>Secured session</span>
-          <strong>API authorization + row-level isolation</strong>
+          <strong>Your work stays with your organization</strong>
           <p>
-            Membership and role are verified again for every domain request.
+            Only members with the right access can view or change your work.
           </p>
         </aside>
       </section>
@@ -297,32 +299,56 @@ export function OrganizationsWorkspace() {
             </div>
           ) : null}
 
+          {items.length > 0 ? (
+            <label className="directory-search">
+              Find an organization
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search loaded organizations"
+              />
+            </label>
+          ) : null}
+          {items.length > 0 &&
+          !items.some((item) =>
+            item.name.toLowerCase().includes(search.trim().toLowerCase()),
+          ) ? (
+            <p className="empty-state" role="status">
+              No matching organizations in this list. Try another name
+              {nextCursor ? " or load more workspaces" : ""}.
+            </p>
+          ) : null}
           <ul className={styles.organizationList}>
-            {items.map((organization, index) => (
-              <li key={organization.id}>
-                <Link href={`/organizations/${organization.id}/dashboard`}>
-                  <span className={styles.organizationIndex}>
-                    {String(index + 1).padStart(2, "0")}
-                  </span>
-                  <span className={styles.organizationIdentity}>
-                    <strong>{organization.name}</strong>
-                    <small>
+            {items
+              .filter((item) =>
+                item.name.toLowerCase().includes(search.trim().toLowerCase()),
+              )
+              .map((organization, index) => (
+                <li key={organization.id}>
+                  <Link href={`/organizations/${organization.id}/dashboard`}>
+                    <span className={styles.organizationIndex}>
+                      {String(index + 1).padStart(2, "0")}
+                    </span>
+                    <span className={styles.organizationIdentity}>
+                      <strong>{organization.name}</strong>
+                      <small>
+                        {organization.status === "disabled"
+                          ? "Deletion pending · open to retry cleanup"
+                          : "Open dashboard and recent activity"}
+                      </small>
+                    </span>
+                    <span className={styles.role}>
                       {organization.status === "disabled"
-                        ? "Deletion pending · open to retry cleanup"
-                        : "Open dashboard and recent activity"}
-                    </small>
-                  </span>
-                  <span className={styles.role}>
-                    {organization.status === "disabled"
-                      ? "deletion pending"
-                      : organization.role}
-                  </span>
-                  <span aria-hidden="true" className={styles.arrow}>
-                    ↗
-                  </span>
-                </Link>
-              </li>
-            ))}
+                        ? "deletion pending"
+                        : organization.role}
+                    </span>
+                    <span aria-hidden="true" className={styles.arrow}>
+                      ↗
+                    </span>
+                  </Link>
+                </li>
+              ))}
           </ul>
 
           {nextCursor ? (
@@ -345,8 +371,8 @@ export function OrganizationsWorkspace() {
           <p className="eyebrow">Guided setup · 01—03</p>
           <h2 id="create-title">Start a workspace</h2>
           <p>
-            Save an empty workspace, or create a complete rehearsal with real
-            tenant-scoped records and fictional, non-personal demo content.
+            Start with a fictional example to learn the workflow, or create an
+            empty workspace for your own project.
           </p>
           <form className="form-stack" onSubmit={submit}>
             <label htmlFor="organization-name">Organization name</label>
@@ -392,9 +418,9 @@ export function OrganizationsWorkspace() {
             </div>
           </form>
           <p className={styles.formNote}>
-            Guided setup persists an organization, project, immutable stimulus,
-            and deterministic mock run. Outputs estimate nobody. Use them to
-            prepare human research, not replace it.
+            Guided setup creates a project, sample message, and demo result.
+            These fictional outputs help you explore the product; they do not
+            replace research with real people.
           </p>
         </aside>
       </div>

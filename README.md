@@ -31,6 +31,24 @@ Install Python `3.14.7` from the signed PSF distribution or
 `uv python install 3.14.7` when the pinned uv catalog supports that patch. Put
 the exact interpreter on `PATH`; `pnpm toolchain:check` fails on drift.
 
+On the configured Windows workstation, isolate the pinned tools from ambient
+versions before running gates:
+
+```powershell
+$simulaTools = Join-Path $env:USERPROFILE '.codex/toolchains'
+$env:PATH = "$simulaTools/node-v24.18.1-win-x64;$simulaTools/uv-0.11.19;$simulaTools/bin;$env:PATH"
+$env:UV = "$simulaTools/uv-0.11.19/uv.exe"
+.venv/Scripts/python.exe -m scripts.check_toolchain
+```
+
+Use the complete PSF Python distribution, including `venv`, for a new
+development environment. A version check alone does not establish
+standard-library completeness. The dependency audit also supports the Windows
+embedded distribution: it exports all frozen packages/groups and scans them
+using an isolated full Python runtime with the locked pip-audit version. This
+fallback does not change the project interpreter requirement or omit packages
+from the audit.
+
 Start the local queue with `pnpm redis:up`. Supabase is managed separately with
 `pnpm supabase:start`; no hosted project is linked or mutated by these commands.
 With local Supabase running, `pnpm verify:m2-api` performs two clean resets,
@@ -74,3 +92,20 @@ content.
   stimulus command helpers for P2-03.
 
 External deployment and hosted resource mutation require explicit authorization.
+
+## UX refactor verification — 2026-09-05
+
+Current implementation and its evidence are tracked in
+[the active remediation plan](plans/active/005-ux-and-production-remediation.md)
+and [the remediation tracker](docs/audit/2026-09-05/REMEDIATION_TRACKER.md). The
+refactor covers public/account pages, contextual mobile navigation,
+organization/project workspaces, Campaign Lab forms/history, results, and admin
+pagination. It retains experimental labels and permission boundaries.
+
+Build tasks currently run without Turbo artifact caching. Windows builds contain
+runtime module links that Turbo could not archive reliably; restoring partial
+outputs is not safe. This trades build speed for complete, freshly generated
+artifacts until cache round-trip verification supports re-enabling it.
+Development output and caches are also excluded from the declared release
+outputs. Local passing checks do not establish hosted release or scientific
+validation.

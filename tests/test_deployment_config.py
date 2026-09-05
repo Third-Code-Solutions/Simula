@@ -541,3 +541,9 @@ def test_worker_image_installs_the_pinned_supabase_ca() -> None:
     assert "supabase-prod-ca-2021.crt /etc/ssl/certs/supabase-prod-ca-2021.crt" in dockerfile
     assert certificate.startswith("-----BEGIN CERTIFICATE-----")
     assert "PRIVATE KEY" not in certificate
+
+
+def test_rollback_api_deployment_requires_dependency_readiness() -> None:
+    config = json.loads((ROOT / "railway.api.json").read_text(encoding="utf-8"))
+    assert config["build"]["dockerfilePath"] == "services/api/Dockerfile"
+    assert config["deploy"]["healthcheckPath"] == "/health/ready"

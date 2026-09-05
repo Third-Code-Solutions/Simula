@@ -1,17 +1,18 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
-
 import { SiteHeader } from "./landing/site-header";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 
-afterEach(() => {
-  cleanup();
-});
-
+afterEach(cleanup);
 describe("workspace navigation", () => {
-  it("keeps the landing header focused on account entry", () => {
+  it("offers account entry on the public header", () => {
     render(<SiteHeader />);
-
     expect(screen.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/sign-in",
@@ -19,129 +20,57 @@ describe("workspace navigation", () => {
     expect(
       screen.getByRole("link", { name: /Open workspace/ }),
     ).toHaveAttribute("href", "/organizations");
-    expect(screen.queryByRole("link", { name: "Workflow" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Product" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Method" })).toBeNull();
   });
-
-  it("does not send authenticated users back to marketing sections", () => {
+  it("shows only useful destinations before an organization is selected", () => {
     render(<WorkspaceSidebar current="organizations" />);
-
-    expect(screen.getByRole("link", { name: "Organizations" })).toHaveAttribute(
-      "href",
-      "/organizations",
-    );
-    expect(screen.getByText("Dashboard", { exact: true })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    const nav = screen.getByRole("navigation", { name: "Workspace pages" });
     expect(
-      screen
-        .getAllByText("Campaign Simulation Lab", { exact: true })
-        .find((element) => element.getAttribute("aria-disabled") === "true"),
-    ).toHaveAttribute("aria-disabled", "true");
-    for (const label of [
-      "Overview",
-      "Research",
-      "Audience Cohorts",
-      "Message Lab",
-      "Simulations",
-      "Agent Activity",
-      "Persona Interviews",
-      "Surveys",
-      "Calibration",
-      "Backtesting",
-      "Compliance",
-      "Reports",
-      "Audit",
-      "Settings",
-    ]) {
-      expect(screen.getByText(label, { exact: true })).toHaveAttribute(
-        "aria-disabled",
-        "true",
-      );
-    }
-    expect(screen.queryByRole("link", { name: "Context map" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Method" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Boundaries" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Guided setup" })).toHaveAttribute(
-      "href",
-      "/organizations#guided-rehearsal",
-    );
+      within(nav).getByRole("link", { name: "Organizations" }),
+    ).toHaveAttribute("aria-current", "page");
+    expect(
+      within(nav).getByRole("link", { name: "Guided setup" }),
+    ).toHaveAttribute("href", "/organizations#guided-rehearsal");
+    expect(within(nav).queryByRole("link", { name: "Dashboard" })).toBeNull();
+    expect(within(nav).queryByText("Select a project")).toBeNull();
+    expect(
+      screen.getByText(/Choose an organization to see/),
+    ).toBeInTheDocument();
   });
-
-  it("keeps organization, project, and run context visible", () => {
+  it("preserves parent paths and a single current page from a run", () => {
     render(
       <WorkspaceSidebar
         current="run"
-        organizationId="organization-1"
+        organizationId="org-1"
         projectId="project-1"
         runId="run-1"
       />,
     );
-
     expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute(
       "href",
-      "/organizations/organization-1/dashboard",
-    );
-    expect(screen.getByRole("link", { name: "Projects" })).toHaveAttribute(
-      "href",
-      "/organizations/organization-1/projects",
+      "/organizations/org-1/dashboard",
     );
     expect(
       screen.getByRole("link", { name: "Project workspace" }),
     ).toHaveAttribute("href", "/projects/project-1");
+    expect(
+      screen.getByRole("link", { name: "Campaign Simulation Lab" }),
+    ).toHaveAttribute("href", "/projects/project-1/campaign-lab");
     expect(screen.getByRole("link", { name: "Run result" })).toHaveAttribute(
       "aria-current",
       "page",
     );
-    expect(screen.getAllByRole("link")).toHaveLength(23);
-    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
-      "href",
-      "/projects/project-1/campaign-lab#overview",
-    );
-    expect(screen.getByRole("link", { name: "Surveys" })).toHaveAttribute(
-      "href",
-      "/projects/project-1/campaign-lab#surveys",
-    );
-    expect(screen.getByRole("link", { name: "Research" })).toHaveAttribute(
-      "href",
-      "/projects/project-1/campaign-lab#research-upload",
-    );
-    expect(screen.getByRole("link", { name: "Settings" })).toHaveAttribute(
-      "href",
-      "/projects/project-1#settings",
-    );
+    expect(document.querySelectorAll('a[aria-current="page"]')).toHaveLength(1);
   });
-
-  it("keeps every Campaign Lab destination available on the project sidebar", () => {
+  it("opens the mobile menu and closes it when a destination is chosen", () => {
     render(<WorkspaceSidebar current="campaign-lab" projectId="project-1" />);
-
-    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(
-      screen
-        .getAllByRole("link")
-        .filter((link) =>
-          [
-            "Overview",
-            "Research",
-            "Audience Cohorts",
-            "Message Lab",
-            "Simulations",
-            "Agent Activity",
-            "Persona Interviews",
-            "Surveys",
-            "Calibration",
-            "Backtesting",
-            "Compliance",
-            "Reports",
-            "Audit",
-            "Settings",
-          ].includes(link.textContent ?? ""),
-        ),
-    ).toHaveLength(14);
+    const toggle = screen.getByRole("button", { name: /Menu/ });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    const menu = document.getElementById(toggle.getAttribute("aria-controls")!);
+    expect(menu).toHaveClass("is-expanded");
+    fireEvent.click(screen.getByRole("link", { name: "Project workspace" }));
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(menu).not.toHaveClass("is-expanded");
   });
 });

@@ -38,6 +38,7 @@ import {
 import { RunStatusPanel } from "./run-status-panel";
 import { RunAuditHistory } from "./run-audit-history";
 import { recordRunUiError } from "./run-telemetry";
+import navigationStyles from "@/app/workspace-actions.module.css";
 
 function problemMessage(error: unknown): string {
   if (error instanceof ApiProblem) {
@@ -326,6 +327,12 @@ export function RunWorkspace({
       <nav aria-label="Breadcrumb" className="breadcrumb">
         <Link href="/organizations">Organizations</Link>
         <span aria-hidden="true"> / </span>
+        {run ? (
+          <>
+            <Link href={`/projects/${run.project_id}`}>Project</Link>
+            <span aria-hidden="true"> / </span>
+          </>
+        ) : null}
         <span>Run</span>
       </nav>
       <section className="run-heading">
@@ -336,18 +343,53 @@ export function RunWorkspace({
               : "Experimental pressure test"}
           </p>
           <h1 id="run-title">
-            {run?.schema_version === 2
-              ? "Behavioral simulation run"
-              : "Deterministic demo run"}
+            {!run
+              ? "Simulation run"
+              : run.schema_version === 2
+                ? "Behavioral simulation run"
+                : "Deterministic demo run"}
           </h1>
           <p className="lede">
-            {run?.schema_version === 2
-              ? "This run uses deterministic synthetic agents. Its heuristic scores and generated explanations are not observed people or a population forecast."
-              : "This run uses an authored, non-representative demo audience. It estimates nobody and is not human evidence."}
+            {!run
+              ? "Review the method and audience before using any modeled output. Experimental outputs do not replace research with people."
+              : run.schema_version === 2
+                ? "This run uses deterministic synthetic agents. Its heuristic scores and generated explanations are not observed people or a population forecast."
+                : "This run uses an authored, non-representative demo audience. It estimates nobody and is not human evidence."}
           </p>
         </div>
-        <RunStatusPanel isSlow={snapshot.isSlow} run={run} />
+        <RunStatusPanel
+          isSlow={snapshot.isSlow}
+          run={run}
+          unavailable={Boolean(snapshot.error)}
+        />
       </section>
+      {run ? (
+        <nav className={navigationStyles.toolbar} aria-label="Run actions">
+          <Link href={`/projects/${run.project_id}`}>Back to project</Link>
+          {resultExperienceEnabled && result ? (
+            <a href="#result-title">Read findings</a>
+          ) : null}
+          {resultExperienceEnabled &&
+          behavioralExperienceEnabled &&
+          behavioralResult &&
+          behavioralEvidence &&
+          runAuditHistory ? (
+            <a href="#behavioral-result-title">Read findings</a>
+          ) : null}
+          {resultExperienceEnabled &&
+          behavioralExperienceEnabled &&
+          behavioralResult &&
+          runAuditHistory ? (
+            <a href="#run-audit-history-title">Review run history</a>
+          ) : null}
+          {resultExperienceEnabled &&
+          behavioralExperienceEnabled &&
+          behavioralResult &&
+          refinementAllowed ? (
+            <a href="#behavioral-refinement-title">Refine and retest</a>
+          ) : null}
+        </nav>
+      ) : null}
       {error ? (
         <p className="problem" role="alert">
           {error}

@@ -10,18 +10,14 @@ resolutionMode: highest
 savePrefix: ""
 strictPeerDependencies: true
 
-# Dev-only legacy minimatch paths cannot consume brace-expansion 5 without API
-# breakage. No production dependency path exists. Review by 2026-08-29.
-auditConfig:
-  ignoreGhsas:
-    - GHSA-mh99-v99m-4gvg
-
 overrides:
   # Security floors. Remove only after upstream ranges resolve to patched versions.
   "brace-expansion@1": 1.1.18
   "brace-expansion@2": 2.1.4
   "brace-expansion@5": 5.0.9
-  fast-uri: 3.1.5
+  browserslist: 4.28.7
+  fast-uri: 3.1.6
+  qs: 6.16.0
   js-yaml: 4.3.1
   nanoid: 3.3.18
   postcss: 8.5.23
@@ -66,7 +62,9 @@ minimumReleaseAgeExclude:
   - brace-expansion@1.1.18
   - brace-expansion@2.1.4
   - brace-expansion@5.0.9
-  - fast-uri@3.1.5
+  - browserslist@4.28.7
+  - fast-uri@3.1.6
+  - qs@6.16.0
   - js-yaml@4.3.1
   - nanoid@3.3.18
   - postcss@8.5.23

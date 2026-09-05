@@ -7,8 +7,9 @@ export default function ErrorPage({ reset }: Readonly<{ reset: () => void }>) {
         <p className="section-label">Platform unavailable</p>
         <h1>Control data could not load</h1>
         <p>
-          The admin API did not return a safe response. Retry after checking
-          service health.
+          The platform service is unavailable or took longer than 30 seconds.
+          Retry this page. If the problem continues, check service health or
+          contact your platform operator.
         </p>
         <button onClick={reset} type="button">
           Retry

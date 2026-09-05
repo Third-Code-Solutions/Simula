@@ -1,0 +1,141 @@
+.workspace {
+  max-width: 1440px;
+}
+.workspace :global(.methodology-warning) {
+  color: #70451b;
+  background: #fff6dc;
+}
+.workspace :global(.breadcrumb) a {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.workspace > section {
+  margin-block: 1.5rem;
+  scroll-margin-top: 5rem;
+}
+.taskNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-block: 1rem;
+  border-block: 1px solid var(--line, #d7dcd4);
+  margin-block: 1.5rem;
+}
+.taskNav a {
+  padding: 0.65rem 1rem;
+  text-decoration: none;
+  color: inherit;
+  font-weight: 600;
+  border-radius: 0.35rem;
+}
+.taskNav a[aria-current="page"] {
+  background: var(--ink, #23372f);
+  color: var(--paper, #fff);
+}
+.taskNav a:hover {
+  background: var(--surface-muted, #e4e9e1);
+  color: var(--ink, #23372f);
+}
+.workspace[data-view="prepare"] > section[data-step]:not([data-step="prepare"]),
+.workspace[data-view="simulate"]
+  > section[data-step]:not([data-step="simulate"]),
+.workspace[data-view="evidence"]
+  > section[data-step]:not([data-step="evidence"]),
+.workspace[data-view="review"] > section[data-step]:not([data-step="review"]) {
+  display: none;
+}
+.editor {
+  border: 0;
+  padding: 0;
+  margin: 0.5rem 0 1.5rem;
+  min-width: 0;
+}
+.editor legend {
+  font-weight: 650;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+.fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+}
+.field {
+  display: grid;
+  gap: 0.35rem;
+  align-content: start;
+  min-width: 0;
+}
+.field input {
+  width: 100%;
+  min-width: 0;
+}
+.multiline {
+  grid-column: 1 / -1;
+}
+.workspace :global(.panel) > summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.workspace :global(.panel) > summary + :global(.form-stack) {
+  margin-top: 1.25rem;
+}
+.field label {
+  font-size: 0.875rem;
+}
+.fieldGroup {
+  grid-column: 1 / -1;
+  border-block-start: 1px solid var(--line, #d7dcd4);
+  padding-block: 0.8rem;
+  min-width: 0;
+}
+.fieldGroup > summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding-block: 0.3rem;
+}
+.fieldGroup > .fields {
+  margin-top: 1rem;
+}
+.fieldGroup summary span {
+  font-weight: 400;
+}
+.arrayItem {
+  border-left: 2px solid var(--line, #d7dcd4);
+  margin-block: 0.8rem;
+  padding-left: 1rem;
+}
+.checkField {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.875rem;
+}
+.checkField input {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+}
+.advanced {
+  margin-block: 1.5rem 0.5rem;
+  font-size: 0.85rem;
+}
+.advanced summary {
+  cursor: pointer;
+  padding-block: 0.5rem;
+}
+.advanced textarea {
+  display: block;
+  width: 100%;
+  font-family: monospace;
+  margin-top: 0.5rem;
+}
+@media (max-width: 720px) {
+  .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .taskNav a {
+    padding: 0.6rem;
+    font-size: 0.85rem;
+  }
+}

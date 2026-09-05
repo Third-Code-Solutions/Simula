@@ -51,8 +51,24 @@ const behavioralStateDetail: Partial<Record<SimulationRun["state"], string>> = {
 export function RunStatusPanel({
   isSlow,
   run,
-}: Readonly<{ isSlow: boolean; run: SimulationRun | undefined }>) {
+  unavailable = false,
+}: Readonly<{
+  isSlow: boolean;
+  run: SimulationRun | undefined;
+  unavailable?: boolean;
+}>) {
   if (!run) {
+    if (unavailable) {
+      return (
+        <section className="panel status-panel" role="status">
+          <h2>Run status unavailable</h2>
+          <p>
+            We could not load this run. Review the error below and refresh to
+            try again.
+          </p>
+        </section>
+      );
+    }
     return (
       <section
         aria-busy="true"

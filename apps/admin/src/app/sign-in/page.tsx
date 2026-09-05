@@ -16,11 +16,11 @@ export default function SignInPage() {
           <span className="wordmark">SIMULA</span>
         )}
         <div>
-          <p className="eyebrow">Decision rehearsal, with receipts</p>
-          <h2>Bring a draft. Find the weak spots.</h2>
+          <p className="eyebrow">SIMULA administration</p>
+          <h2>Manage your platform.</h2>
           <p>
-            Private project workspaces, immutable text versions, bounded demo
-            runs, and inspectable provenance.
+            Review organizations, check platform activity, and open the
+            workspace that needs your attention.
           </p>
           <div className="proof-rail">
             <p className="proof-support">
@@ -29,15 +29,15 @@ export default function SignInPage() {
             <ul aria-label="SIMULA product assurances" className="proof-list">
               <li>
                 <span>01</span>
-                <strong>Versioned</strong>
+                <strong>Organizations</strong>
               </li>
               <li>
                 <span>02</span>
-                <strong>Bounded</strong>
+                <strong>Activity</strong>
               </li>
               <li>
                 <span>03</span>
-                <strong>Traceable</strong>
+                <strong>Workspace access</strong>
               </li>
             </ul>
           </div>
@@ -51,7 +51,9 @@ export default function SignInPage() {
           verified against the private role registry on every request.
         </p>
         <SignInForm />
-        <p className="auth-boundary">No service key enters this browser.</p>
+        <p className="auth-boundary">
+          Platform access is limited to authorized administrators.
+        </p>
       </section>
     </main>
   );
