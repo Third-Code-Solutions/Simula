@@ -29,6 +29,7 @@ export class HealthController {
       required: ["status"],
       properties: {
         status: { type: "string", enum: ["alive"] },
+        releaseSha: { type: "string", pattern: "^[0-9a-f]{40}$" },
       },
     },
   })
@@ -43,6 +44,7 @@ export class HealthController {
       required: ["status"],
       properties: {
         status: { type: "string", enum: ["ready"] },
+        releaseSha: { type: "string", pattern: "^[0-9a-f]{40}$" },
       },
     },
   })
@@ -52,6 +54,7 @@ export class HealthController {
       required: ["status"],
       properties: {
         status: { type: "string", enum: ["not_ready"] },
+        releaseSha: { type: "string", pattern: "^[0-9a-f]{40}$" },
       },
     },
   })

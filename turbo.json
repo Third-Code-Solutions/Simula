@@ -3,10 +3,11 @@
   "ui": "stream",
   "tasks": {
     "build": {
+      "cache": false,
       "dependsOn": ["^build"],
       "env": ["SIMULA_ENVIRONMENT", "SIMULA_RELEASE_SHA"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**", "dist/**"]
     },
     "dev": {
       "cache": false,

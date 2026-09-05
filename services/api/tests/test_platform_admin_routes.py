@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import UUID
 
+import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from simula_api.app import create_app
@@ -47,6 +48,7 @@ class FakeDatabase:
     def __init__(self, *, allowed: bool) -> None:
         self.allowed = allowed
         self.reads = 0
+        self.parameters: tuple[int, ...] = ()
 
     async def record_sign_in_success(self, _: VerifiedIdentity, **__: object) -> bool:
         return True
@@ -57,7 +59,8 @@ class FakeDatabase:
 
     async def read_product_json(self, _: VerifiedIdentity, **kwargs: Any) -> dict[str, object]:
         assert kwargs["operation"] == "platform_admin_dashboard"
-        assert kwargs["parameters"] == (25,)
+        self.parameters = kwargs["parameters"]
+        assert "limit %s offset %s" in kwargs["query"]
         self.reads += 1
         return {
             "generated_at": datetime(2026, 7, 22, tzinfo=UTC),
@@ -113,6 +116,7 @@ async def test_platform_admin_dashboard_returns_bounded_live_projection() -> Non
     assert response.json()["metrics"]["organizations"] == 1
     assert response.json()["organizations"][0]["name"] == "Research Lab"
     assert database.reads == 1
+    assert database.parameters == (25, 0)
 
 
 async def test_platform_admin_dashboard_denies_an_authenticated_non_admin() -> None:
@@ -127,4 +131,44 @@ async def test_platform_admin_dashboard_denies_an_authenticated_non_admin() -> N
 
     assert response.status_code == 403
     assert response.json()["code"] == "forbidden"
+    assert database.reads == 0
+
+
+async def test_platform_inventory_reads_beyond_first_hundred_with_bound_parameters() -> None:
+    database = FakeDatabase(allowed=True)
+    async with AsyncClient(
+        transport=ASGITransport(app=app_with_database(database)), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/api/v1/platform-admin/dashboard?organization_limit=20&organization_offset=120",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+    assert response.status_code == 200
+    assert database.parameters == (20, 120)
+
+
+@pytest.mark.parametrize("offset", ["-1", "1000001", "1.5", "bad"])
+async def test_platform_inventory_rejects_invalid_offset_before_read(offset: str) -> None:
+    database = FakeDatabase(allowed=True)
+    async with AsyncClient(
+        transport=ASGITransport(app=app_with_database(database)), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            f"/api/v1/platform-admin/dashboard?organization_offset={offset}",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+    assert response.status_code == 422
+    assert database.reads == 0
+
+
+async def test_platform_offset_does_not_bypass_superadmin_gate() -> None:
+    database = FakeDatabase(allowed=False)
+    async with AsyncClient(
+        transport=ASGITransport(app=app_with_database(database)), base_url="http://test"
+    ) as client:
+        response = await client.get(
+            "/api/v1/platform-admin/dashboard?organization_offset=120",
+            headers={"Authorization": f"Bearer {TOKEN}"},
+        )
+    assert response.status_code == 403
     assert database.reads == 0

@@ -1,0 +1,46 @@
+{
+  "engineeringFixture": true,
+  "realApi": true,
+  "realWorker": true,
+  "realCustodianUpload": true,
+  "refreshRestored": true,
+  "errors": [],
+  "views": [
+    {
+      "label": "backtest",
+      "width": 1440,
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "label": "backtest",
+      "width": 390,
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "label": "report",
+      "width": 1440,
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "label": "report",
+      "width": 390,
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "label": "calibration",
+      "width": 1440,
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "label": "calibration",
+      "width": 390,
+      "overflow": false,
+      "violations": []
+    }
+  ]
+}

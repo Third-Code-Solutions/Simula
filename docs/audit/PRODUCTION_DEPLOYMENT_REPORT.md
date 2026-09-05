@@ -1,5 +1,11 @@
 # Production Deployment Report
 
+> Historical snapshot retained. Local-green/no-mutation statements below
+> describe that decision only. Current new application promotion remains
+> pending; Auth/Git/Redis changes were separately verified. See
+> [current tracker](2026-09-05/REMEDIATION_TRACKER.md) and
+> [targets](2026-09-05/RELEASE_TARGETS.md).
+
 Status: **RELEASE WITHHELD — LOCAL GREEN, HOSTED ADMISSION NOT GREEN**
 
 ## Decision

@@ -1,0 +1,11 @@
+{
+  "engineeringFixture": true,
+  "realApi": true,
+  "realWorker": true,
+  "preregistrationSucceeded": true,
+  "independentSourceAdmissionSucceeded": true,
+  "sourceRegisteredAfterCommitment": true,
+  "resultBound": true,
+  "status": "Scoped historical comparison",
+  "campaignCount": 1
+}

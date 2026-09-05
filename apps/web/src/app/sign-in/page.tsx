@@ -17,11 +17,10 @@ export default async function SignInPage({
     <main className="centered-main" id="main-content" tabIndex={-1}>
       <AuthContext />
       <section className="auth-card" aria-labelledby="page-title">
-        <p className="eyebrow">Authorized prototype access</p>
+        <p className="eyebrow">Your workspace</p>
         <h1 id="page-title">Sign in</h1>
         <p className="lede">
-          Use an authorized SIMULA account. SIMULA&apos;s authored demo
-          artifacts are experimental, non-representative, and estimate nobody.
+          Sign in to continue your projects and review your results.
         </p>
         <SignInForm nextPath={safeNextPath(next)} />
       </section>

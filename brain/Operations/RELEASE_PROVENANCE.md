@@ -2,13 +2,34 @@
 title: SIMULA Release Provenance
 status: approved-for-staging
 created: 2026-07-29
-updated: 2026-07-30
+updated: 2026-09-05
 owner: Platform and security leads
 classification: PROPOSED
 source_of_truth: true
 ---
 
 # SIMULA Release Provenance
+
+
+## Production release verified - 5 September 2026, 11:30 UTC
+
+This section supersedes earlier application-release-pending statements while preserving their historical evidence. All seven application components now run source eb0ea931a180f1912f690be5648a6fb4a6557ab0: web, admin, API, control plane, dispatcher, worker and private engine. Required CI33961708123 and signed release33961707670 passed. Three release migrations are applied through20260905104327; V4 readiness remains available for rollback compatibility. Both canonical Vercel domains were promoted after protected-candidate checks.
+
+The production smoke receipt passes52 assertions: exact public service SHA/health and frontend security headers; fresh synthetic owner/editor/viewer/nonmember sessions; application invitation acceptance; editor/viewer reads; viewer mutation, editor owner-only action, nonmember and platform-admin denials; signed-out API/browser boundaries; actual browser campaign submission, worker success, exact run restoration and visible Synthetic-only limits. A separate real behavioral run completed in about5 seconds with same-command durable ID replay, saved experimental deterministic result and artifact checksum. Six protected-candidate desktop/mobile checks and production result1440/390 checks had zero Axe violations, document overflow and page errors.
+
+This is bounded production verification, not every route/role or scientific validity. Report/calibration/backtest complex lifecycle evidence remains local synthetic engineering proof; registry approval remains a separate administrator process. Hosted superadmin pagination beyond100, production recovery/load/retention and approved legal/privacy/terms text remain unverified or unresolved. Direct private SSH health checks were blocked by unavailable authorized keys; startup/config/image identities and an actual behavioral job provide fallback evidence, not direct private-endpoint coverage. Immediate publication means that job alone does not attribute dispatch to the dispatcher.
+
+Evidence: production-smoke-verification.json, production-backend-promotion.json and production-frontend-promotion.json in docs/audit/2026-09-05, plus the release result and protected-candidate receipt. Promotion receipts retain the initial frontend failure and subsequent recovery; they are not a claim of an uninterrupted first attempt. Synthetic fixture records are retained by UUID, not existing-user replacements.
+
+## Implementation checkpoint - 5 September 2026
+
+The signed archive now includes source.tar and promotion.json binding SHA, source digest, migrations and build inputs. scripts/promote_release.py verifies the successful workflow, Sigstore identity/issuer and archive, then four required CI checks before execution. It requires exact existing target/rollback IDs and writes partial receipts plus previous public Railway release settings. Provider builds are derivatives of verified source, not byte-identical signed scanner images.
+
+Vercel uses extracted monorepo source, explicit hosted roots and withheld domains; ambient Vercel/NOW target overrides are removed. Railway structured submission IDs and exact-ID polling bind receipts. Provider success does not substitute for runtime identity, readiness and authenticated smoke. Five Railway Git triggers and two Vercel Git connections are disabled with restoration evidence; this does not claim all alternate provider API paths are cryptographically prevented.
+
+Baseline f984244 signed run33958761514 and downloaded verification passed. Newer585d633/run33960462851 failed; health expectation and exact Redis digest false-positive fixes pass bounded checks. Local backtest mechanics now pass; final source requires new immutable gates. Campaign Lab emergency-pause admission is a newly identified rollout blocker; the atomic guard and additional migration require verification before promotion. No new application promotion or pending report/readiness migration application is established. Separately verified Redis/Auth/Git changes are not application release evidence.
+
+Follow [promotion procedure](../../docs/audit/2026-09-05/PROMOTION_PROCEDURE.md) and [targets](../../docs/audit/2026-09-05/RELEASE_TARGETS.md). Remaining sections define the provenance contract; provider-plan limitations below are historical observations, not a fresh capability recheck.
 
 ## Release rule
 
@@ -91,3 +112,17 @@ entire coordinated release. Every production server fails configuration
 admission unless those values, the exact Git SHA, and the compiled database
 migration head are present. Database readiness then independently verifies that
 the applied schema head matches and forced RLS remains enabled.
+
+## Failed provider submissions
+
+A nonzero deployment CLI exit does not prove that no deployment was created.
+Inspect the exact provider project and deployment timeline before retrying,
+including failed builds. The CLI may fail before returning a deployment ID;
+record the provider-discovered ID in the rollout evidence. For example, the
+2026-09-05 Vercel build failure created `dpl_72tJ7Joi1xVn5zyumNmwfm5eG1nq`
+even though the promotion command returned an error.
+
+On Windows, a provider subprocess may retain a handle in the verified temporary
+source directory. Promotion cleanup tolerates those cleanup errors so the
+original provider failure remains visible. A locked temporary directory may
+remain until the owning process exits; verify ownership before removing it.

@@ -24,6 +24,7 @@ import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 
 import { BehavioralRunLauncher } from "./behavioral-run-launcher";
 import { StimulusAssetsPanel } from "./stimulus-assets-panel";
+import navigationStyles from "@/app/workspace-actions.module.css";
 
 function problemMessage(error: unknown): string {
   if (error instanceof ApiProblem) {
@@ -64,6 +65,7 @@ export function ProjectWorkspace({
   const [dashboard, setDashboard] = useState<OrganizationDashboard>();
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(true);
+  const [loadRevision, setLoadRevision] = useState(0);
   const [savingProject, setSavingProject] = useState(false);
   const [savingStimulus, setSavingStimulus] = useState(false);
   const [versioningStimulus, setVersioningStimulus] = useState<string>();
@@ -86,6 +88,7 @@ export function ProjectWorkspace({
     let stale = false;
 
     async function loadInitialProject() {
+      setLoading(true);
       try {
         const loadedProject = await getProject(projectId);
         const [loadedAudience, loadedDashboard] = await Promise.all([
@@ -113,7 +116,7 @@ export function ProjectWorkspace({
     return () => {
       stale = true;
     };
-  }, [projectId]);
+  }, [projectId, loadRevision]);
 
   async function saveProject(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -301,13 +304,19 @@ export function ProjectWorkspace({
       ) : null}
       {!loading && error && !project ? (
         <section className="panel" aria-labelledby="project-unavailable-title">
-          <p className="eyebrow">Access boundary</p>
+          <p className="eyebrow">Project access</p>
           <h1 id="project-unavailable-title">Project unavailable</h1>
           <p>
-            This project is unavailable to the current account. Return to your
-            secured workspace directory.
+            We could not open this project. Check the message above, retry the
+            request, or return to your organizations to choose another project.
           </p>
-          <Link className="primary-link" href="/organizations">
+          <button
+            type="button"
+            onClick={() => setLoadRevision((value) => value + 1)}
+          >
+            Retry project
+          </button>
+          <Link className="button-ghost" href="/organizations">
             Back to organizations
           </Link>
         </section>
@@ -324,6 +333,7 @@ export function ProjectWorkspace({
                 Version {project.version}. Text is confidential within this
                 workspace.
               </p>
+              <p>{project.objective}</p>
               <Link
                 className="primary-link"
                 href={`/projects/${project.id}/methodology`}
@@ -344,34 +354,33 @@ export function ProjectWorkspace({
               </Link>
             </div>
             {dashboard.permissions.can_create_projects ? (
-              <form
-                className="panel form-stack"
-                id="settings"
-                onSubmit={saveProject}
-              >
-                <h2>Project details</h2>
-                <label htmlFor="edit-project-name">Project name</label>
-                <input
-                  defaultValue={project.name}
-                  id="edit-project-name"
-                  maxLength={80}
-                  minLength={2}
-                  name="name"
-                  required
-                />
-                <label htmlFor="edit-project-objective">Objective</label>
-                <textarea
-                  defaultValue={project.objective}
-                  id="edit-project-objective"
-                  maxLength={1000}
-                  name="objective"
-                  required
-                  rows={4}
-                />
-                <button disabled={savingProject} type="submit">
-                  {savingProject ? "Saving…" : "Save project"}
-                </button>
-              </form>
+              <details className="panel" id="settings">
+                <summary>Edit project details</summary>
+                <form className="form-stack" onSubmit={saveProject}>
+                  <h2>Project details</h2>
+                  <label htmlFor="edit-project-name">Project name</label>
+                  <input
+                    defaultValue={project.name}
+                    id="edit-project-name"
+                    maxLength={80}
+                    minLength={2}
+                    name="name"
+                    required
+                  />
+                  <label htmlFor="edit-project-objective">Objective</label>
+                  <textarea
+                    defaultValue={project.objective}
+                    id="edit-project-objective"
+                    maxLength={1000}
+                    name="objective"
+                    required
+                    rows={4}
+                  />
+                  <button disabled={savingProject} type="submit">
+                    {savingProject ? "Saving…" : "Save project"}
+                  </button>
+                </form>
+              </details>
             ) : (
               <div className="panel">
                 <h2>Project details</h2>
@@ -380,6 +389,16 @@ export function ProjectWorkspace({
               </div>
             )}
           </section>
+          <nav
+            className={navigationStyles.toolbar}
+            aria-label="Project sections"
+          >
+            <a href="#stimuli-title">Message drafts</a>
+            <a href="#audience-disclosure-title">Audience and limits</a>
+            {dashboard.permissions.can_create_projects ? (
+              <a href="#settings">Project settings</a>
+            ) : null}
+          </nav>
           <section
             className="panel"
             aria-labelledby="audience-disclosure-title"
@@ -387,7 +406,8 @@ export function ProjectWorkspace({
             <p className="eyebrow">Required pre-run disclosure</p>
             <h2 id="audience-disclosure-title">{audience.name}</h2>
             <p>
-              <strong>{audience.kind}</strong> · version {audience.version} ·{" "}
+              <strong>{audience.kind.replaceAll("_", " ")}</strong> · version{" "}
+              {audience.version} ·{" "}
               {audience.non_representative
                 ? "non-representative"
                 : "unavailable"}
@@ -401,13 +421,16 @@ export function ProjectWorkspace({
               Purpose: {audience.purpose} Prohibited uses:{" "}
               {audience.prohibited_uses.join(", ")}.
             </p>
-            <p className="resource-meta">
-              Fixture checksum: <code>{audience.checksum_sha256}</code>
-            </p>
+            <details className="resource-meta">
+              <summary>Audience verification details</summary>
+              <p>
+                Fixture checksum: <code>{audience.checksum_sha256}</code>
+              </p>
+            </details>
           </section>
           <section className="content-section" aria-labelledby="stimuli-title">
             <div>
-              <p className="eyebrow">Immutable source material</p>
+              <p className="eyebrow">Saved message versions</p>
               <h2 id="stimuli-title">Text stimuli</h2>
               <p className="lede">
                 Saving a revision creates a new version. Prior versions and
@@ -452,8 +475,9 @@ export function ProjectWorkspace({
           </section>
           {project.stimuli.length === 0 ? (
             <p className="empty-state">
-              No text stimuli yet. Add one to create its first immutable
-              version.
+              {dashboard.permissions.can_create_projects
+                ? "No message drafts yet. Add a text stimulus above to save your first version."
+                : "No message drafts yet. Ask a workspace editor to add a message for review."}
             </p>
           ) : null}
           <div className="stimulus-grid">

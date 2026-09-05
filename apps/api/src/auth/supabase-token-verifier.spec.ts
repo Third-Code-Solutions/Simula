@@ -208,3 +208,42 @@ describe("SupabaseTokenVerifier", () => {
     ).rejects.toMatchObject({ code: "unauthenticated", status: 401 });
   });
 });
+
+describe("JWKS refresh cooldown", () => {
+  it("bounds concurrent distinct missing IDs and accepts rotation after cooldown", async () => {
+    const clock = jest.spyOn(Date, "now");
+    const now = Date.now();
+    clock.mockReturnValue(now);
+    let keys = [keyDocument()];
+    const fetcher = jest.fn().mockImplementation(async () => jwks(keys));
+    const verifier = new SupabaseTokenVerifier(CONFIG, fetcher);
+    const withKeyId = (kid: string) =>
+      jwt.sign({ role: "authenticated", session_id: SESSION_ID }, privateKey, {
+        algorithm: "RS256",
+        audience: "authenticated",
+        expiresIn: 60,
+        issuer: ISSUER,
+        subject: USER_ID,
+        header: { alg: "RS256", kid, typ: "JWT" },
+      });
+    try {
+      await verifier.verify(token());
+      await Promise.all(
+        Array.from({ length: 20 }, (_, index) =>
+          expect(
+            verifier.verify(withKeyId(`missing-${index}`)),
+          ).rejects.toMatchObject({ status: 401 }),
+        ),
+      );
+      expect(fetcher).toHaveBeenCalledTimes(2);
+      keys = [...keys, keyDocument({ kid: "rotated" })];
+      clock.mockReturnValue(now + 10_000);
+      await expect(
+        verifier.verify(withKeyId("rotated")),
+      ).resolves.toMatchObject({ userId: USER_ID });
+      expect(fetcher).toHaveBeenCalledTimes(3);
+    } finally {
+      clock.mockRestore();
+    }
+  });
+});

@@ -12,7 +12,7 @@
   },
   "deploy": {
     "drainingSeconds": 15,
-    "healthcheckPath": "/health/live",
+    "healthcheckPath": "/health/ready",
     "healthcheckTimeout": 120,
     "overlapSeconds": 30,
     "restartPolicyMaxRetries": 10,

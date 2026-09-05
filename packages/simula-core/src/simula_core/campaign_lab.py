@@ -9,10 +9,11 @@ model to calculate a campaign result.
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from hashlib import sha256
 from math import fsum
+from time import monotonic
 from typing import Any, Literal, Self, cast
 from uuid import UUID, uuid5
 
@@ -1230,8 +1231,14 @@ def _behavioral_agent_evidence(
 
 def _run_behavioral_diagnostics(
     request: CampaignLabSimulationRequest,
+    *,
+    check_deadline: Callable[[], None],
 ) -> CampaignLabBehavioralDiagnostics:
     """Run the replayable event engine over the same weighted aggregate design."""
+
+    def deadline_cancellation() -> bool:
+        check_deadline()
+        return False
 
     agent_count = min(request.configuration.panel_size, 2000)
     sampling = SamplingConfiguration(
@@ -1247,6 +1254,7 @@ def _run_behavioral_diagnostics(
     for variant in request.variants:
         runs: list[behavioral.BehavioralRunResult] = []
         for repetition_index in range(request.configuration.repetitions):
+            check_deadline()
             repetition_sampling = sampling.model_copy(
                 update={"seed": request.configuration.random_seed + repetition_index}
             )
@@ -1289,7 +1297,7 @@ def _run_behavioral_diagnostics(
                     maximum_memory_entries_per_agent=20,
                     maximum_provider_calls=agent_count * request.configuration.rounds,
                     cost_ceiling_microusd=request.configuration.cost_ceiling_microusd,
-                    deadline_seconds=float(request.configuration.timeout_seconds),
+                    deadline_seconds=float(min(request.configuration.timeout_seconds, 300)),
                     seed=request.configuration.random_seed + repetition_index,
                 ),
                 provider=provider.descriptor,
@@ -1299,6 +1307,7 @@ def _run_behavioral_diagnostics(
                     command,
                     provider=provider,
                     synthesizer=synthesizer,
+                    should_cancel=deadline_cancellation,
                 )
             )
         action_shares: dict[str, float] = {
@@ -1404,6 +1413,12 @@ def run_campaign_lab_simulation(
 ) -> CampaignLabSimulationResult:
     """Run all variants repeatedly over one frozen weighted aggregate frame."""
 
+    deadline_at = monotonic() + request.configuration.timeout_seconds
+
+    def check_deadline() -> None:
+        if monotonic() >= deadline_at:
+            raise TimeoutError("Campaign Lab whole-job deadline exceeded")
+
     engine = MethodologyEngine(DeterministicCohortProvider())
     sampling = SamplingConfiguration(
         sample_size=request.configuration.panel_size,
@@ -1429,10 +1444,12 @@ def run_campaign_lab_simulation(
             methodology_version=methodology_version,
             cost_ceiling_microusd=request.configuration.cost_ceiling_microusd,
             repetition_configuration=repeated_configuration,
+            check_deadline=check_deadline,
         )
     rankings = _rankings(repeated_by_variant)
     cohort_findings = _cohort_findings(request, repeated_by_variant)
-    behavioral_diagnostics = _run_behavioral_diagnostics(request)
+    check_deadline()
+    behavioral_diagnostics = _run_behavioral_diagnostics(request, check_deadline=check_deadline)
     synthetic_observations = _synthetic_observations(repeated_by_variant)
     variant_results = tuple(
         CampaignLabVariantResult(
@@ -1455,6 +1472,7 @@ def run_campaign_lab_simulation(
         "synthetic_observations": [item.model_dump(mode="json") for item in synthetic_observations],
     }
     checksum = sha256(canonical_json_dumps(payload)).hexdigest()
+    check_deadline()
     return CampaignLabSimulationResult(
         campaign_id=request.campaign_id,
         methodology_version=methodology_version,

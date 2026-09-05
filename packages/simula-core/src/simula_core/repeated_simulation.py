@@ -7,7 +7,7 @@ presented as human evidence without observed-survey comparison or backtesting.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from hashlib import sha256
 from math import fsum, sqrt
 from typing import Literal, Self
@@ -277,11 +277,13 @@ def run_repeated_methodology(
     methodology_version: Key,
     cost_ceiling_microusd: int,
     repetition_configuration: RepeatedSimulationConfiguration,
+    check_deadline: Callable[[], None] = lambda: None,
 ) -> RepeatedMethodologyResult:
     """Run one frozen input repeatedly with derived seeds and summarize dispersion."""
 
     runs: list[MethodologyRunResult] = []
     for repetition_index in range(repetition_configuration.repetition_count):
+        check_deadline()
         seed = _derived_seed(repetition_configuration.base_seed, repetition_index)
         run_configuration = configuration.model_copy(update={"seed": seed})
         runs.append(
@@ -296,6 +298,7 @@ def run_repeated_methodology(
             )
         )
 
+    check_deadline()
     metric_keys: tuple[RepeatMetricKey, ...] = (
         "clarity",
         "relevance",

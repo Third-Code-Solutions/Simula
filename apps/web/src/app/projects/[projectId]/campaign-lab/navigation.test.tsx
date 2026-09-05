@@ -1,12 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
-import {
-  CampaignLabCalibrationUnavailable,
-  CampaignLabHistoricalBacktestUnavailable,
-  CampaignLabReportUnavailable,
-  CampaignLabSelectionNotice,
-} from "./workspace";
+import { BoundBacktest } from "./bound-backtest";
+import { BoundCalibration } from "./bound-calibration";
+
+import { CampaignLabSelectionNotice } from "./workspace";
 
 afterEach(() => {
   cleanup();
@@ -41,58 +39,36 @@ describe("Campaign Lab navigation anchors", () => {
     }
   });
 
-  it("suppresses historical outcome submission until immutable binding exists", () => {
-    render(<CampaignLabHistoricalBacktestUnavailable />);
-
+  it("offers a sequenced historical workflow without caller-authored predictions", () => {
+    render(<BoundBacktest campaignId="one" />);
     expect(
       screen.getByRole("heading", {
-        name: "Historical backtesting is unavailable",
+        name: "Freeze predictions before admitting outcomes",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/immutably bound to its admitted registry artifact/i),
+      screen.queryByLabelText(/predictions are blind/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Choose historical evidence" }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /backtest/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText(/held-out outcomes/i),
-    ).not.toBeInTheDocument();
   });
 
-  it("suppresses calibration submission until immutable import binding exists", () => {
-    render(<CampaignLabCalibrationUnavailable />);
-
+  it("accepts saved evidence references instead of caller-authored scientific inputs", () => {
+    render(<BoundCalibration campaignId="one" />);
     expect(
       screen.getByRole("heading", {
-        name: "Survey calibration is unavailable",
+        name: "Compare a saved test with a survey",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/derived from an admitted immutable survey import/i),
+      screen.getByText(/does not establish reliable predictions/),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /calibration/i }),
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText(/synthetic observations/i),
     ).not.toBeInTheDocument();
-  });
-
-  it("suppresses report submission until immutable evidence binding exists", () => {
-    render(<CampaignLabReportUnavailable />);
-
     expect(
-      screen.getByRole("heading", {
-        name: "Evidence report creation is unavailable",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/one immutable evidence manifest/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /report/i }),
+      screen.queryByRole("button", { name: "Compare saved evidence" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/approval state/i)).not.toBeInTheDocument();
   });
 });

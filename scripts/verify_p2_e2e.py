@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import secrets
@@ -310,17 +311,73 @@ def response_is_ok(url: str) -> bool:
         return False
 
 
+def local_dependency_diagnostics() -> dict[str, bool] | str:
+    """Retain only allowlisted readiness gauges from the loopback-only API."""
+
+    try:
+        with urlopen("http://127.0.0.1:8000/internal/metrics", timeout=2) as response:
+            payload = response.read(256 * 1024).decode("utf-8", errors="replace")
+    except TimeoutError, URLError:
+        return "metrics_unavailable"
+    readiness: dict[str, bool] = {}
+    for line in payload.splitlines():
+        match = re.fullmatch(
+            r'simula_api_dependency_ready\{dependency="'
+            r'(auth|database|queue|rate_limit|run_admission)"\} ([01](?:\.0)?)',
+            line,
+        )
+        if match is not None:
+            readiness[match.group(1)] = float(match.group(2)) == 1
+    return readiness
+
+
 def wait_for_runtime(processes: Sequence[subprocess.Popen[bytes]]) -> None:
-    """Require both listener health checks before browser tests may use the ports."""
+    """Record the individual listener/process state before failing admission."""
 
     deadline = time.monotonic() + START_TIMEOUT_SECONDS
+    state: dict[str, object] = {}
     while time.monotonic() < deadline:
-        if any(process.poll() is not None for process in processes):
-            raise BrowserGateError("a local browser-gate service exited before readiness")
-        if response_is_ok(API_URL) and response_is_ok(WEB_URL):
+        exits = {
+            name: process.poll()
+            for name, process in zip(("api", "worker", "web"), processes, strict=True)
+        }
+        ready = {"api": response_is_ok(API_URL), "web": response_is_ok(WEB_URL)}
+        state = {"process_exit_codes": exits, "ready": ready}
+        if any(code is not None for code in exits.values()):
+            break
+        if all(ready.values()):
             return
         time.sleep(0.25)
-    raise BrowserGateError("local browser-gate services did not become ready")
+    state["api_dependencies"] = local_dependency_diagnostics()
+    log_directory = ROOT / ".playwright-cli"
+    log_directory.mkdir(exist_ok=True)
+    (log_directory / "p2-readiness.json").write_text(json.dumps(state, indent=2) + "\n")
+    raise BrowserGateError(f"local browser-gate services did not become ready: {state}")
+
+
+def redact_service_logs(environments: Sequence[Mapping[str, str]]) -> None:
+    """Remove runtime credentials before the fixed child logs become CI artifacts."""
+
+    sensitive_values = {
+        value
+        for environment in environments
+        for key, value in environment.items()
+        if value
+        and len(value) >= 8
+        and any(
+            marker in key.upper()
+            for marker in ("SECRET", "PASSWORD", "TOKEN", "KEY", "DATABASE_URL", "DSN")
+        )
+    }
+    for path in (ROOT / ".playwright-cli").glob("p2-*.log"):
+        content = path.read_text(errors="replace")
+        for value in sorted(sensitive_values, key=len, reverse=True):
+            content = content.replace(value, "[REDACTED]")
+        content = re.sub(r"(postgres(?:ql)?://)[^\s/@]+:[^\s/@]+@", r"\1[REDACTED]@", content)
+        content = re.sub(
+            r"eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", "[REDACTED_JWT]", content
+        )
+        path.write_text(content)
 
 
 def main() -> None:
@@ -394,6 +451,7 @@ def main() -> None:
     finally:
         for process in reversed(processes):
             stop_process(process)
+        redact_service_logs((api_environment, worker_environment, web_environment))
 
     print("Phase 2 local browser gate passed")
 

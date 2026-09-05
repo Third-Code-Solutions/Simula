@@ -2,13 +2,42 @@
 title: SIMULA Project State
 status: active
 created: 2026-07-17
-updated: 2026-07-30
+updated: 2026-09-05
 owner: Principal program and engineering lead
 classification: OBSERVED
 source_of_truth: true
 ---
 
 # SIMULA Project State
+
+
+## Production release verified - 5 September 2026, 11:30 UTC
+
+This section supersedes earlier application-release-pending statements while preserving their historical evidence. All seven application components now run source eb0ea931a180f1912f690be5648a6fb4a6557ab0: web, admin, API, control plane, dispatcher, worker and private engine. Required CI33961708123 and signed release33961707670 passed. Three release migrations are applied through20260905104327; V4 readiness remains available for rollback compatibility. Both canonical Vercel domains were promoted after protected-candidate checks.
+
+The production smoke receipt passes52 assertions: exact public service SHA/health and frontend security headers; fresh synthetic owner/editor/viewer/nonmember sessions; application invitation acceptance; editor/viewer reads; viewer mutation, editor owner-only action, nonmember and platform-admin denials; signed-out API/browser boundaries; actual browser campaign submission, worker success, exact run restoration and visible Synthetic-only limits. A separate real behavioral run completed in about5 seconds with same-command durable ID replay, saved experimental deterministic result and artifact checksum. Six protected-candidate desktop/mobile checks and production result1440/390 checks had zero Axe violations, document overflow and page errors.
+
+This is bounded production verification, not every route/role or scientific validity. Report/calibration/backtest complex lifecycle evidence remains local synthetic engineering proof; registry approval remains a separate administrator process. Hosted superadmin pagination beyond100, production recovery/load/retention and approved legal/privacy/terms text remain unverified or unresolved. Direct private SSH health checks were blocked by unavailable authorized keys; startup/config/image identities and an actual behavioral job provide fallback evidence, not direct private-endpoint coverage. Immediate publication means that job alone does not attribute dispatch to the dispatcher.
+
+Evidence: production-smoke-verification.json, production-backend-promotion.json and production-frontend-promotion.json in docs/audit/2026-09-05, plus the release result and protected-candidate receipt. Promotion receipts retain the initial frontend failure and subsequent recovery; they are not a claim of an uninterrupted first attempt. Synthetic fixture records are retained by UUID, not existing-user replacements.
+
+## Current checkpoint - 5 September 2026
+
+This checkpoint supersedes the historical July snapshots below. Active plan: [005 UX and production remediation](../plans/active/005-ux-and-production-remediation.md). The new application has NOT been promoted; existing production application identities remain unchanged.
+
+- Local UX now includes redesigned public/auth/workspace/admin views, contextual navigation, retry/error states, bounded polling and real admin server pagination. Public responsive checks and real local owner creation, worker success and result restoration pass; the route/role ledger records remaining gaps.
+- Local survey/calibration bindings and bound report lifecycle are implemented. Real synthetic engineering fixtures pass persistence, rejected self-review, independent approval, export, revocation and source-rights denial. These prove mechanics, not predictive validity. Six bounded backtest routes/UI now pass a real local preregistration, later independent source admission, custodian file upload, bound result and refresh flow. Revoked source denies both bound and legacy result reads with422. All six report/calibration/backtest desktop/mobile checks have zero Axe, overflow and page errors. Registry approval is a separate administrator process; no scientific validity claim is established.
+- Runtime process isolation bounds deadline/cancellation and capacity. Local integration30 passed, fresh replay441 pgTAP assertions passed before subsequent scoped changes. Queue crash/recovery and isolated alert delivery evidence do not establish hosted recovery or named on-call acceptance.
+- Hosted controls verified: Auth leaked-password protection; four required CI checks/PR on main; main-only production environment branches; five Railway Git triggers and two Vercel Git links disabled with restoration inputs. Existing Redis8.2.7 auth/persistence/noeviction and structural key checks passed, with backup/rollback inputs. No hosted staging or production restore is established.
+- Signed baseline f984244/run33958761514 passed and downloaded artifact verification succeeded. Newer585d633/run33960462851 failed a health assertion; exact response fix passes17 tests. History's18 matches were repeated Redis digests;9b52dde exact digest/path/rule recognition passes297-commit scan and negative probes. Final fixes require a new successful immutable gate before release. A newly found rollout blocker is that the existing emergency pause latch does not cover Campaign Lab admission; an atomic guard and new migration are being implemented and must pass before promotion.
+- Report-review20260905095036 and readinessV520260905095453 remain local pending migrations; the earlier hosted dry-run listed those two. Emergency-pause remediation now requires an additional migration; refresh the final migration set before release. Preserved V4 readiness supports the previous head. Migration and rollback compatibility remain release-owned.
+- Current setup pins: Node24.18.1, pnpm11.13.1, full Python3.14.7, uv0.11.19, Supabase CLI2.109.1, Redis8.2.7-alpine. Follow [README](../README.md), not historical patch versions below.
+
+Evidence: [tracker](../docs/audit/2026-09-05/REMEDIATION_TRACKER.md), [runtime](../docs/audit/2026-09-05/REMEDIATION_RUNTIME.md), [routes](../docs/audit/2026-09-05/REMEDIATION_ROUTES.md), [targets](../docs/audit/2026-09-05/RELEASE_TARGETS.md). Legal/privacy/retention commitments and independent research validation remain open decisions.
+
+## Historical phase and repository snapshots
+
+The following dated records are preserved for traceability and do not override the current checkpoint.
 
 ## Current phase
 
@@ -837,3 +866,19 @@ See [[RISK_REGISTER|Risk Register]]. Critical themes: false precision/representa
 - Human/design-partner evidence remains absent. It does not block an explicitly experimental local walking skeleton; it blocks Phase 6 staging acceptance/customer-facing release.
 - Hosted Supabase migrations through version `20260720083000` are applied and history-aligned. Before future hosted changes, inspect `db push --linked --dry-run`, reset/test the ordered migration locally, apply only checked-in migrations, and verify linked history/lint. Do not apply `seed.sql` or customer data.
 - R-020: ARQ maintenance-only status requires exact Phase 2 proof and a tested Phase 5 exit decision before Phase 6.
+
+
+## UX remediation in progress — 2026-09-05
+
+Current branch codex/ux-remediation implements the authorized whole-product UX refactor and confirmed runtime fixes. Prior production-green claims are superseded by the September audit. Local verification and production release remain separate. See [[../plans/active/005-ux-and-production-remediation]] and [[../docs/audit/2026-09-05/REMEDIATION_RUNTIME]].
+
+## Verified local UX refactor â€” 2026-09-05
+
+Public/account pages, contextual mobile navigation, organization/project
+workspaces, Campaign Lab editors/history/results and admin pagination were
+refactored. A real disposable Auth-to-API-to-worker simulation flow passes,
+including result recovery after reload. Root check, fresh uncached build and
+SCA pass. See [[../docs/audit/2026-09-05/REMEDIATION_VERIFICATION]] for counts,
+platform skips and failed-then-fixed checks. All disposable infrastructure was
+cleaned up. Production unchanged; signed promotion/rollback and original audit
+acceptance remain open. Do not infer scientific validation from this evidence.

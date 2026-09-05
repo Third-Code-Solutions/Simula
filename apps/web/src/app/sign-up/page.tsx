@@ -12,11 +12,11 @@ export default function SignUpPage() {
     <main className="centered-main" id="main-content" tabIndex={-1}>
       <AuthContext />
       <section className="auth-card" aria-labelledby="page-title">
-        <p className="eyebrow">Authorized prototype access</p>
+        <p className="eyebrow">Get started</p>
         <h1 id="page-title">Create account</h1>
         <p className="lede">
-          Create an authorized SIMULA account. You may need to confirm your
-          email before signing in.
+          Create your SIMULA account. You may need to confirm your email before
+          signing in.
         </p>
         <SignUpForm />
       </section>

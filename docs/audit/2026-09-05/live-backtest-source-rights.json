@@ -1,0 +1,15 @@
+{
+  "engineeringFixture": true,
+  "realApi": true,
+  "sourceRestored": true,
+  "checks": [
+    {
+      "pathKind": "bound",
+      "status": 422
+    },
+    {
+      "pathKind": "legacy",
+      "status": 422
+    }
+  ]
+}

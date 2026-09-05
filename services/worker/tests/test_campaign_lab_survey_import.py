@@ -70,6 +70,45 @@ def test_campaign_lab_survey_import_is_worker_only_and_aggregate() -> None:
     assert provenance["authorized_for_calibration"] is True
     assert "payload" not in result
 
+    from simula_core.survey_binding import survey_import_binding
+    from simula_core.survey_imports import (
+        SurveyImportFieldMap,
+        SurveyImportMetadata,
+        import_survey,
+    )
+
+    metadata = SurveyImportMetadata.model_validate(claim.request["metadata"])
+    field_map = SurveyImportFieldMap.model_validate(claim.request["field_map"])
+    imported = import_survey(
+        survey_payload, import_format="csv", metadata=metadata, field_map=field_map
+    )
+    binding = survey_import_binding(
+        imported,
+        import_format="csv",
+        metadata=metadata,
+        field_map=field_map,
+        source_version_id=None,
+    )
+    bound = replace(claim, request={**claim.request, "evidence_binding": binding})
+    assert evaluate_campaign_lab_claim(bound)["evidence_binding"] == binding
+    for field in (
+        "raw_payload_sha256",
+        "transform_sha256",
+        "aggregate_sha256",
+        "source_version_id",
+    ):
+        with pytest.raises(ValueError, match="evidence binding"):
+            evaluate_campaign_lab_claim(
+                replace(
+                    bound,
+                    request={
+                        **bound.request,
+                        "evidence_binding": {**binding, field: "tampered"},
+                    },
+                )
+            )
+    assert result["evidence_binding"] is None
+
     with pytest.raises(ValueError, match="approved source checksum"):
         evaluate_campaign_lab_claim(
             replace(

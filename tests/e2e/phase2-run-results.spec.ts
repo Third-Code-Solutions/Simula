@@ -188,7 +188,7 @@ async function createTerminalRun(page: Page): Promise<void> {
     "section[aria-labelledby='audience-disclosure-title']",
   );
   await expect(audienceDisclosure).toContainText("Required pre-run disclosure");
-  await expect(audienceDisclosure).toContainText("authored_demo");
+  await expect(audienceDisclosure).toContainText("authored demo");
   await expect(audienceDisclosure).toContainText("version 2");
   await expect(audienceDisclosure).toContainText("non-representative");
   await expect(audienceDisclosure).toContainText("Estimates nobody");

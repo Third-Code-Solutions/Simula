@@ -11,6 +11,8 @@ vi.mock("@/lib/supabase/client", () => ({
 
 import {
   appendStimulusVersion,
+  createCampaignLabSimulation,
+  getCampaignLabSimulationStatus,
   createBehavioralDemoRun,
   createOrganization,
   createSurveyCalibration,
@@ -146,6 +148,138 @@ function visualProfileResponse(content: Uint8Array) {
 }
 
 describe("SIMULA domain API client", () => {
+  it("preserves a logical campaign command key across uncertain retries", async () => {
+    vi.mocked(fetch).mockRejectedValueOnce(new TypeError("network failure"));
+    await expect(
+      createCampaignLabSimulation(
+        "campaign-1",
+        { label: "demo" },
+        "same-command",
+      ),
+    ).rejects.toMatchObject({ code: "api_unavailable" });
+    vi.mocked(fetch).mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: "queued", run_id: "run-1" }), {
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    await createCampaignLabSimulation(
+      "campaign-1",
+      { label: "demo" },
+      "same-command",
+    );
+    for (const [, options] of vi.mocked(fetch).mock.calls) {
+      expect(new Headers(options?.headers).get("Idempotency-Key")).toBe(
+        "same-command",
+      );
+    }
+  });
+
+  it("passes navigation cancellation to the transport and reports cancellation", async () => {
+    const controller = new AbortController();
+    vi.mocked(fetch).mockImplementation(async (_url, options) => {
+      controller.abort();
+      expect(options?.signal?.aborted).toBe(true);
+      throw new DOMException("Aborted", "AbortError");
+    });
+    await expect(
+      getCampaignLabSimulationStatus("run-1", controller.signal),
+    ).rejects.toMatchObject({ status: 499, code: "request_cancelled" });
+  });
+
+  it("reports a deadline as an uncertain outcome", async () => {
+    const controller = new AbortController();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(controller.signal);
+    vi.mocked(fetch).mockImplementation(async () => {
+      controller.abort();
+      throw new DOMException("Timed out", "TimeoutError");
+    });
+    try {
+      await expect(
+        createCampaignLabSimulation("campaign-1", {}, "same-command"),
+      ).rejects.toMatchObject({ status: 504, code: "request_timeout" });
+      expect(timeout).toHaveBeenCalledWith(30_000);
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
+  it("bounds a pending authentication refresh before starting transport", async () => {
+    const controller = new AbortController();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(controller.signal);
+    getSession.mockReturnValue(new Promise(() => {}));
+    const pending = listOrganizations();
+    await vi.waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({
+      status: 504,
+      code: "request_timeout",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+    timeout.mockRestore();
+  });
+
+  it("cancels a caller waiting on authentication without starting transport", async () => {
+    getSession.mockReturnValue(new Promise(() => {}));
+    const controller = new AbortController();
+    const pending = getCampaignLabSimulationStatus("run-1", controller.signal);
+    await vi.waitFor(() => expect(getSession).toHaveBeenCalledTimes(1));
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({
+      status: 499,
+      code: "request_cancelled",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("bounds binary report transport even when a transport ignores cancellation", async () => {
+    const controller = new AbortController();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(controller.signal);
+    vi.mocked(fetch).mockReturnValue(new Promise(() => {}));
+    const pending = downloadReportExport("export-1");
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({
+      status: 504,
+      code: "request_timeout",
+    });
+    timeout.mockRestore();
+  });
+
+  it("bounds a private asset response body that never finishes", async () => {
+    const controller = new AbortController();
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockReturnValue(controller.signal);
+    const bytes = new Uint8Array([1, 2, 3]);
+    const asset = stimulusAsset("available", bytes);
+    const response = new Response(new ReadableStream(), {
+      headers: {
+        "content-type": "image/png",
+        "content-length": "3",
+        etag: `"${asset.content_sha256}"`,
+        "content-disposition": `inline; filename="${asset.filename}"`,
+        "cache-control": "private, no-store",
+        "content-security-policy": "sandbox",
+        "x-content-type-options": "nosniff",
+      },
+    });
+    vi.mocked(fetch).mockResolvedValue(response);
+    const pending = downloadStimulusAsset(asset);
+    await vi.waitFor(() => expect(response.bodyUsed).toBe(true));
+    controller.abort();
+    await expect(pending).rejects.toMatchObject({
+      status: 504,
+      code: "request_timeout",
+    });
+    timeout.mockRestore();
+  });
+
   beforeEach(() => {
     process.env.NEXT_PUBLIC_SIMULA_API_URL = "http://127.0.0.1:8000";
     delete process.env.NEXT_PUBLIC_SIMULA_API_V1_URL;

@@ -14,11 +14,11 @@ export function AuthContext() {
         SIMULA
       </Link>
       <div>
-        <p className="eyebrow">Decision rehearsal, with receipts</p>
-        <h2>Bring a draft. Find the weak spots.</h2>
+        <p className="eyebrow">Campaign research workspace</p>
+        <h2>A clearer next step for your campaign.</h2>
         <p>
-          Private project workspaces, immutable text versions, bounded demo
-          runs, and inspectable provenance.
+          Save your drafts, compare modeled findings, and prepare better
+          questions for research with people.
         </p>
         <div className={styles.proofRail}>
           <p className={styles.supportLine}>
@@ -30,19 +30,20 @@ export function AuthContext() {
           >
             <li className={styles.proofCard}>
               <span className={styles.proofNumber}>01</span>
-              <span className={styles.proofLabel}>Versioned</span>
+              <span className={styles.proofLabel}>Saved drafts</span>
             </li>
             <li className={styles.proofCard}>
               <span className={styles.proofNumber}>02</span>
-              <span className={styles.proofLabel}>Bounded</span>
+              <span className={styles.proofLabel}>Visible limits</span>
             </li>
             <li className={styles.proofCard}>
               <span className={styles.proofNumber}>03</span>
-              <span className={styles.proofLabel}>Traceable</span>
+              <span className={styles.proofLabel}>Run history</span>
             </li>
           </ul>
         </div>
       </div>
+      <Link href="/data-use">Data and access</Link>
     </section>
   );
 }

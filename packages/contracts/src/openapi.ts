@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaign-lab/backtests/bound/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bound Backtest */
+        get: operations["get_bound_backtest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaign-lab/calibrations/{run_id}": {
         parameters: {
             query?: never;
@@ -159,6 +176,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/backtests/admissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Admit Bound Backtest Outcomes */
+        post: operations["admit_bound_backtest_outcomes"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/backtests/commitments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Bound Backtest Commitment */
+        post: operations["create_bound_backtest_commitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/backtests/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bound Backtests */
+        get: operations["list_bound_backtests"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/backtests/inputs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bound Backtest Inputs */
+        get: operations["list_bound_backtest_inputs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/backtests/sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bound Backtest Sources */
+        get: operations["list_bound_backtest_sources"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaign-lab/campaigns/{campaign_id}/calibrations": {
         parameters: {
             query?: never;
@@ -170,6 +272,24 @@ export interface paths {
         put?: never;
         /** Create Calibration */
         post: operations["create_campaign_lab_calibration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/calibrations/from-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bound Calibrations */
+        get: operations["list_campaign_lab_bound_calibrations"];
+        put?: never;
+        /** Create Calibration From Runs */
+        post: operations["create_campaign_lab_calibration_from_runs"];
         delete?: never;
         options?: never;
         head?: never;
@@ -299,6 +419,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/reports/from-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Bound Reports */
+        get: operations["list_campaign_lab_bound_reports"];
+        put?: never;
+        /** Create Bound Report */
+        post: operations["create_campaign_lab_bound_report"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/campaign-lab/campaigns/{campaign_id}/research": {
         parameters: {
             query?: never;
@@ -311,6 +449,23 @@ export interface paths {
         put?: never;
         /** Create Research */
         post: operations["create_campaign_lab_research"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Campaign Runs */
+        get: operations["list_campaign_lab_runs"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -397,6 +552,23 @@ export interface paths {
         put?: never;
         /** Import Survey */
         post: operations["import_campaign_lab_survey"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/campaigns/{campaign_id}/surveys/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Survey */
+        post: operations["preview_campaign_lab_survey"];
         delete?: never;
         options?: never;
         head?: never;
@@ -503,6 +675,57 @@ export interface paths {
         get: operations["get_campaign_lab_report"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/reports/bound/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Bound Report */
+        get: operations["get_campaign_lab_bound_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/reports/bound/runs/{run_id}/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Export Bound Report */
+        get: operations["export_campaign_lab_bound_report"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/campaign-lab/reports/bound/runs/{run_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Review Bound Report */
+        post: operations["review_campaign_lab_bound_report"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1539,6 +1762,23 @@ export interface components {
             /** Recorded */
             recorded: boolean;
         };
+        /** BacktestCommitmentCreate */
+        BacktestCommitmentCreate: {
+            /** Development Run Ids */
+            development_run_ids: string[];
+            /** Holdout Run Ids */
+            holdout_run_ids: string[];
+            /**
+             * Minimum Campaigns
+             * @default 2
+             */
+            minimum_campaigns: number;
+            /**
+             * Outcome Metric
+             * @enum {string}
+             */
+            outcome_metric: "clarity" | "relevance" | "trust" | "persuasiveness" | "consideration";
+        };
         /** BacktestCreate */
         BacktestCreate: {
             /** Baseline Prediction Set */
@@ -1587,6 +1827,43 @@ export interface components {
              */
             validation_status: "experimental" | "benchmarked" | "human_reviewed" | "unknown";
         };
+        /** BoundBacktestAdmissionCreate */
+        BoundBacktestAdmissionCreate: {
+            /**
+             * Commitment Run Id
+             * Format: uuid
+             */
+            commitment_run_id: string;
+            /** Secret Payload */
+            secret_payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * Source Version Id
+             * Format: uuid
+             */
+            source_version_id: string;
+        };
+        /** BoundReportCreate */
+        BoundReportCreate: {
+            /** Calibration Run Id */
+            calibration_run_id?: string | null;
+            /**
+             * Simulation Run Id
+             * Format: uuid
+             */
+            simulation_run_id: string;
+        };
+        /** BoundReportReviewCreate */
+        BoundReportReviewCreate: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "approved_experimental" | "rejected" | "revoked";
+            /** Rationale */
+            rationale: string;
+        };
         /** CalibrationCreate */
         CalibrationCreate: {
             /** Baseline Calibration */
@@ -1625,6 +1902,24 @@ export interface components {
             synthetic_observations: {
                 [key: string]: unknown;
             }[];
+        };
+        /** CalibrationFromRunsCreate */
+        CalibrationFromRunsCreate: {
+            /**
+             * Calibration Version
+             * @default calibration_v1
+             */
+            calibration_version: string;
+            /**
+             * Simulation Run Id
+             * Format: uuid
+             */
+            simulation_run_id: string;
+            /**
+             * Survey Import Run Id
+             * Format: uuid
+             */
+            survey_import_run_id: string;
         };
         /** CampaignCreate */
         CampaignCreate: {
@@ -4273,6 +4568,278 @@ export interface operations {
             };
         };
     };
+    get_bound_backtest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
     get_campaign_lab_calibration: {
         parameters: {
             query?: never;
@@ -6505,6 +7072,1384 @@ export interface operations {
             };
         };
     };
+    admit_bound_backtest_outcomes: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoundBacktestAdmissionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    create_bound_backtest_commitment: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BacktestCommitmentCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    list_bound_backtests: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    list_bound_backtest_inputs: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    list_bound_backtest_sources: {
+        parameters: {
+            query?: {
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
     create_campaign_lab_calibration: {
         parameters: {
             query?: never;
@@ -6519,6 +8464,559 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["CalibrationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    list_campaign_lab_bound_calibrations: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    create_campaign_lab_calibration_from_runs: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CalibrationFromRunsCreate"];
             };
         };
         responses: {
@@ -8989,6 +11487,559 @@ export interface operations {
             };
         };
     };
+    list_campaign_lab_bound_reports: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    create_campaign_lab_bound_report: {
+        parameters: {
+            query?: never;
+            header: {
+                "Idempotency-Key": string;
+            };
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoundReportCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
     list_campaign_lab_research: {
         parameters: {
             query?: {
@@ -9283,6 +12334,281 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    list_campaign_lab_runs: {
+        parameters: {
+            query?: {
+                limit?: number;
+                offset?: number;
+            };
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -10944,6 +14270,282 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    preview_campaign_lab_survey: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                campaign_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SurveyImportCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12984,6 +16586,824 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    get_campaign_lab_bound_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    export_campaign_lab_bound_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request exceeds the API body limit. */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request is invalid or outside the supported scope. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A durable quota or rate limit was reached. */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description A required dependency is temporarily unavailable. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+        };
+    };
+    review_campaign_lab_bound_report: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BoundReportReviewCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Authentication is missing, expired, or invalid. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The authenticated role cannot perform this action. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The resource is absent or not visible to the caller. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": {
+                        /** @enum {string} */
+                        code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
+                        /**
+                         * Correlation Id
+                         * Format: uuid
+                         */
+                        correlation_id: string;
+                        /** Detail */
+                        detail: string;
+                        /** Errors */
+                        errors?: {
+                            [key: string]: string;
+                        }[] | null;
+                        /** Instance */
+                        instance: string;
+                        /** Status */
+                        status: number;
+                        /** Title */
+                        title: string;
+                        /** Type */
+                        type: string;
+                    };
+                };
+            };
+            /** @description The request conflicts with current durable state. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
                     "application/problem+json": {
                         /** @enum {string} */
                         code: "dependency_unavailable" | "forbidden" | "idempotency_key_reused" | "internal_error" | "invalid_request" | "method_not_allowed" | "not_found" | "queue_backpressure" | "quota_exceeded" | "rate_limited" | "request_deadline_exceeded" | "request_too_large" | "run_not_cancelable" | "unauthenticated" | "unsupported_media_type" | "unsupported_scope" | "validation_error" | "version_conflict";
@@ -21398,6 +25818,7 @@ export interface operations {
         parameters: {
             query?: {
                 organization_limit?: number;
+                organization_offset?: number;
             };
             header?: never;
             path?: never;

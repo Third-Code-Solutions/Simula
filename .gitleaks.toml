@@ -1,5 +1,22 @@
 title = "SIMULA history-aware secret scanning"
 
+# These six values are SHA-256 hashes of Redis key names, not key values or
+# credentials. Scope the exception to exact reviewed digests and evidence paths;
+# other high-entropy values in the same files must continue to fail scanning.
+[[allowlists]]
+description = "Reviewed Redis name digests in 2026-09-05 structural recovery evidence"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "secret"
+regexes = [
+  '''^(?:31343d7cff4beeca8a63646ee1d561c7d13b3c6e4ed5fe513fdff46b5355a2fc|4873d34c030d08986f71542863a77c5c478cd93f594ceba959fcf224f17c1f6d|5cb7e3b7f10f990573a760bca33b1290fbf9ec1d2ac2c6e1cc45a63f224f5f30|76d0e4e9202ed846fbb06c6788263c1a40eac44443be1bd61dda3bc641a85c11|ad72cd868983dc25667e78da0522986719991645018aa8693f23dab64e85c946|d566bc17f00688b4062a8f960e2854aa3494696a884af7a5033aef3b25046a74)$''',
+]
+paths = [
+  '''^docs/audit/2026-09-05/redis-pre-alignment\.json$''',
+  '''^docs/audit/2026-09-05/redis-post-alignment\.json$''',
+  '''^docs/audit/2026-09-05/redis-post-auth-verification\.json$''',
+]
+
 [extend]
 useDefault = true
 
@@ -34,3 +51,27 @@ paths = [
   '''^apps/api/src/rate-limits/domain-rate-limiter\.spec\.ts$''',
   '''^apps/api/test/database/organization-gateway\.database-int\.ts$''',
 ]
+
+
+[[allowlists]]
+description = "Exact reviewed signed-source checksums in production promotion receipts"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+regexes = [
+  '''^\s*"railway\.api\.json": "0e094518ff9a4ff582159851436613d318623891c46ff5c7904ad3bec955f611",?\s*$''',
+  '''^\s*"20260718041000_revoke_command_api_create\.sql": "efbbe977f6f1936ef77e88fd93015286dd55538e297f089271ad0db66e04d07e",?\s*$''',
+  '''^\s*"20260802063625_campaign_lab_api_wrappers\.sql": "93f487f0192d46022f264b60ed21df7f7a5187c00932135d3faef8df269db1d8",?\s*$''',
+]
+paths = [
+  '''^docs/audit/2026-09-05/production-backend-promotion\.json$''',
+  '''^docs/audit/2026-09-05/production-frontend-promotion\.json$''',
+]
+
+[[allowlists]]
+description = "Exact previous deployed Git commit in migration verification"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+regexes = ['''^\s*"previous_api_sha": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",?\s*$''']
+paths = ['''^docs/audit/2026-09-05/production-migration-receipt\.json$''']

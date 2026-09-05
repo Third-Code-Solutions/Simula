@@ -7,7 +7,7 @@ async function expectLandingQuality(page: Page): Promise<void> {
   await expect(page).toHaveTitle(/SIMULA/);
   await expect(
     page.getByRole("heading", {
-      name: "Rehearse the decision. Keep the doubt.",
+      name: /Test your message.*Know what to ask next/,
     }),
   ).toBeVisible();
   await expect(
@@ -18,18 +18,16 @@ async function expectLandingQuality(page: Page): Promise<void> {
     page.getByRole("heading", { name: /One decision.*Five inspectable moves/ }),
   ).toBeVisible();
 
-  const frameStep = page.getByRole("button", { name: "Frame", exact: true });
-  if (await frameStep.isVisible()) {
-    await expect(frameStep).toHaveAttribute("aria-current", "step");
-    await page.getByRole("button", { name: "Rehearse", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: "Rehearse", exact: true }),
-    ).toHaveAttribute("aria-current", "step");
-    await page.getByRole("button", { name: "Decide", exact: true }).click();
-    await expect(
-      page.getByRole("button", { name: "Decide", exact: true }),
-    ).toHaveAttribute("aria-current", "step");
-  }
+  const frameStep = page.getByRole("button", { name: "01 Frame", exact: true });
+  await expect(frameStep).toHaveAttribute("aria-current", "step");
+  await page.getByRole("button", { name: "03 Rehearse", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "03 Rehearse", exact: true }),
+  ).toHaveAttribute("aria-current", "step");
+  await page.getByRole("button", { name: "05 Decide", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "05 Decide", exact: true }),
+  ).toHaveAttribute("aria-current", "step");
 
   const width = await page.evaluate(() => ({
     client: document.documentElement.clientWidth,
@@ -88,4 +86,30 @@ test("sign-in shell is responsive and accessible", async ({ page }) => {
 
   const accessibility = await new AxeBuilder({ page }).analyze();
   expect(accessibility.violations).toEqual([]);
+});
+
+test("data and access page discloses experimental and unresolved boundaries", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/");
+  await page.getByRole("link", { name: "Data and access" }).click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: "Data and access" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(/not a privacy policy, terms of service/),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: "Retention and deletion have unresolved limits",
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Open your workspaces" }),
+  ).toHaveAttribute("href", "/organizations");
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(390);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
 });

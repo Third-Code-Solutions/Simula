@@ -223,7 +223,7 @@ export function EvidenceLibrary() {
 
         <div
           aria-describedby="evidence-library-description"
-          aria-label="Evidence cards. Scroll horizontally to inspect all five objects."
+          aria-label="Evidence retained with each rehearsal."
           className={styles.scroller}
           tabIndex={0}
         >

@@ -1,0 +1,21 @@
+{
+  "scanner": "gitleaks 8.30.1",
+  "synthetic_fixture": true,
+  "cases": [
+    {
+      "case": "exact_digest_exact_path",
+      "expected_exit": 0,
+      "actual_exit": 0
+    },
+    {
+      "case": "different_digest_same_path",
+      "expected_exit": 1,
+      "actual_exit": 1
+    },
+    {
+      "case": "same_digest_different_path",
+      "expected_exit": 1,
+      "actual_exit": 1
+    }
+  ]
+}

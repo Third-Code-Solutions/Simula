@@ -260,3 +260,61 @@ async def test_worker_runs_shutdown_hook_on_sigterm() -> None:
                 await task
         await clean_test_owned_state(pool)
         await pool.aclose()
+
+
+async def test_active_sigterm_redelivers_once_and_preserves_durable_effect() -> None:
+    from arq.jobs import Job
+
+    pool = await create_pool(
+        redis_settings(),
+        default_queue_name=TEST_QUEUE_NAME,
+        job_deserializer=canonical_json_loads,
+        job_serializer=canonical_json_dumps,
+    )
+    shutdown_called = False
+
+    async def shutdown(_: dict[Any, Any]) -> None:
+        nonlocal shutdown_called
+        shutdown_called = True
+
+    job_id = CRASH_JOB_ID + "-graceful"
+    probe_id = CRASH_PROBE_ID + "-graceful"
+    worker = ProbeWorker(
+        cast(WorkerCoroutine, crash_probe),
+        redis_pool=pool,
+        burst=False,
+        on_shutdown=cast(WorkerCoroutine, shutdown),
+    )
+    task: asyncio.Task[None] | None = None
+    try:
+        await clean_test_owned_state(pool, job_ids=(job_id,), probe_ids=(probe_id,))
+        assert await pool.enqueue_job("crash_probe", probe_id, _job_id=job_id) is not None
+        task = asyncio.create_task(worker.async_run())
+        await wait_for_key(
+            pool, redis_test_state_key("started", probe_id), present=True, deadline_seconds=5
+        )
+        worker.handle_sig(signal.SIGTERM)
+        with suppress(asyncio.CancelledError):
+            await asyncio.wait_for(task, 5)
+        await worker.close()
+        assert shutdown_called
+        pool = await create_pool(
+            redis_settings(),
+            default_queue_name=TEST_QUEUE_NAME,
+            job_deserializer=canonical_json_loads,
+            job_serializer=canonical_json_dumps,
+        )
+        await wait_for_key(
+            pool, in_progress_key_prefix + job_id, present=False, deadline_seconds=12
+        )
+        await ProbeWorker(cast(WorkerCoroutine, crash_probe), redis_pool=pool).async_run()
+        result = await Job(job_id, pool, TEST_QUEUE_NAME, canonical_json_loads).result(timeout=2)
+        assert result == {"delivery": 2, "first_effect": False, "token": probe_id}
+        assert await pool.get(redis_test_state_key("effect", probe_id)) == b"once"
+        assert int(await pool.get(redis_test_state_key("delivery", probe_id))) == 2
+    finally:
+        if task is not None and not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+        await clean_test_owned_state(pool, job_ids=(job_id,), probe_ids=(probe_id,))
+        await pool.aclose()

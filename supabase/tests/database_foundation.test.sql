@@ -42,6 +42,7 @@ select extensions.is(
     'api.campaign_lab_artifacts',
     'api.campaign_lab_campaigns',
     'api.campaign_lab_events',
+    'api.campaign_lab_report_reviews',
     'api.campaign_lab_runs',
     'api.context_graph_versions',
     'api.evaluation_runs',
@@ -204,6 +205,8 @@ select extensions.is(
     'campaign_lab_events_command_insert',
     'campaign_lab_events_command_select',
     'campaign_lab_events_worker_insert',
+    'campaign_lab_report_reviews_insert',
+    'campaign_lab_report_reviews_read',
     'campaign_lab_runs_api_select',
     'campaign_lab_runs_command_insert',
     'campaign_lab_runs_command_select',
@@ -492,7 +495,7 @@ select extensions.ok(
 -- 16
 select extensions.ok(
   (
-    select pg_catalog.count(*) = 48
+    select pg_catalog.count(*) = 49
     from pg_catalog.pg_class as relations
     join pg_catalog.pg_namespace as namespaces on namespaces.oid = relations.relnamespace
     where namespaces.nspname = 'api'
@@ -507,7 +510,7 @@ select extensions.ok(
       and relations.relkind = 'r'
       and pg_catalog.has_table_privilege('simula_api', relations.oid, 'SELECT')
   ),
-  'API role reads exactly the forty-eight named API tables'
+  'API role reads exactly the forty-nine named API tables'
 );
 
 -- 17
@@ -581,6 +584,7 @@ select extensions.is(
     'simula_api|api.campaign_lab_artifacts|SELECT',
     'simula_api|api.campaign_lab_campaigns|SELECT',
     'simula_api|api.campaign_lab_events|SELECT',
+    'simula_api|api.campaign_lab_report_reviews|SELECT',
     'simula_api|api.campaign_lab_runs|SELECT',
     'simula_api|api.context_graph_versions|SELECT',
     'simula_api|api.evaluation_runs|SELECT',
@@ -639,6 +643,8 @@ select extensions.is(
     'simula_command_owner|api.campaign_lab_campaigns|UPDATE',
     'simula_command_owner|api.campaign_lab_events|INSERT',
     'simula_command_owner|api.campaign_lab_events|SELECT',
+    'simula_command_owner|api.campaign_lab_report_reviews|INSERT',
+    'simula_command_owner|api.campaign_lab_report_reviews|SELECT',
     'simula_command_owner|api.campaign_lab_runs|INSERT',
     'simula_command_owner|api.campaign_lab_runs|SELECT',
     'simula_command_owner|api.campaign_lab_runs|UPDATE',
@@ -841,6 +847,7 @@ select extensions.ok(
     where namespaces.nspname in ('api', 'private')
       and pg_catalog.has_function_privilege('simula_worker', functions.oid, 'EXECUTE')
   ) = array[
+    'private.bound_report_schema_present_v1()',
     'private.claim_campaign_evidence_runs(integer)',
     'private.claim_campaign_lab_runs(integer)',
     'private.claim_due_run_outbox_v2(integer)',
@@ -876,10 +883,12 @@ select extensions.ok(
     'private.runtime_observability_snapshot_v2()',
     'private.runtime_observability_snapshot_v3()',
     'private.runtime_observability_snapshot_v4()',
+    'private.runtime_observability_snapshot_v5()',
     'private.runtime_observability_snapshot()',
     'private.runtime_schema_readiness_v2()',
     'private.runtime_schema_readiness_v3()',
     'private.runtime_schema_readiness_v4()',
+    'private.runtime_schema_readiness_v5()',
     'private.runtime_schema_readiness()',
     'private.update_bullmq_run_pressure(integer,numeric,numeric)',
     'private.update_campaign_evidence_progress(uuid,uuid,text,smallint,text)',
@@ -944,6 +953,7 @@ select extensions.is(
     'api.request_organization_deletion(uuid,text,text,text,uuid)',
     'api.request_run_cancel(uuid,uuid)',
     'api.request_stimulus_asset_deletion(uuid,text,text,uuid)',
+    'api.review_campaign_lab_bound_report(uuid,text,text,jsonb,text,text,uuid)',
     'api.revoke_report_share_grant(uuid,text,text,uuid)',
     'api.search_context_nodes(uuid,text,text,vector,integer,double precision)',
     'api.set_feature_flag(uuid,text,boolean,text,text,text,uuid)',
@@ -952,6 +962,7 @@ select extensions.is(
     'private.accept_organization_invitation_atomic(text,text,text,uuid)',
     'private.access_shared_report_atomic(text,uuid)',
     'private.append_stimulus_version_atomic(uuid,text,text,text,text,uuid)',
+    'private.bound_report_schema_present_v1()',
     'private.cancel_campaign_evidence_run_atomic(uuid,uuid)',
     'private.cancel_campaign_lab_run_atomic(uuid,text,text,uuid)',
     'private.confirm_organization_deletion_atomic(uuid,uuid)',
@@ -996,14 +1007,17 @@ select extensions.is(
     'private.request_organization_deletion_atomic(uuid,text,text,text,uuid)',
     'private.request_run_cancel_atomic(uuid,uuid)',
     'private.request_stimulus_asset_deletion_atomic(uuid,text,text,uuid)',
+    'private.review_campaign_lab_bound_report_atomic(uuid,text,text,jsonb,text,text,uuid)',
     'private.revoke_report_share_grant_atomic(uuid,text,text,uuid)',
     'private.runtime_observability_snapshot_v2()',
     'private.runtime_observability_snapshot_v3()',
     'private.runtime_observability_snapshot_v4()',
+    'private.runtime_observability_snapshot_v5()',
     'private.runtime_observability_snapshot()',
     'private.runtime_schema_readiness_v2()',
     'private.runtime_schema_readiness_v3()',
     'private.runtime_schema_readiness_v4()',
+    'private.runtime_schema_readiness_v5()',
     'private.runtime_schema_readiness()',
     'private.search_context_nodes(uuid,text,text,vector,integer,double precision)',
     'private.set_feature_flag_atomic(uuid,text,boolean,text,text,text,uuid)',
@@ -1251,6 +1265,7 @@ select extensions.is(
     'behavioral_result_payload_public_summary',
     'campaign_evidence_outcome_project_scope_guard',
     'campaign_evidence_runs_scope_guard',
+    'campaign_lab_runs_atomic_admission',
     'evidence_source_versions_scope_guard',
     'observed_outcome_sets_rights_guard',
     'population_frame_versions_scope_guard',
@@ -1300,6 +1315,8 @@ select extensions.is(
     'campaign_lab_events_artifact_foreign_key',
     'campaign_lab_events_campaign_foreign_key',
     'campaign_lab_events_run_foreign_key',
+    'campaign_lab_report_reviews_organization_id_campaign_id_fkey',
+    'campaign_lab_report_reviews_organization_id_run_id_fkey',
     'campaign_lab_runs_campaign_foreign_key',
     'campaign_lab_secrets_artifact_foreign_key',
     'campaign_lab_secrets_run_foreign_key',

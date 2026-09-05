@@ -125,6 +125,9 @@ class BehavioralEngineHttpClient:
         token: str,
         transport: httpx.BaseTransport | None = None,
     ) -> None:
+        self._base_url = base_url
+        self._token = token
+        self._transport = transport
         self._client = httpx.Client(
             base_url=base_url,
             follow_redirects=False,
@@ -137,6 +140,15 @@ class BehavioralEngineHttpClient:
             timeout=httpx.Timeout(connect=2.0, read=31.0, write=5.0, pool=2.0),
             transport=transport,
             trust_env=False,
+        )
+
+    def __getstate__(self) -> tuple[str, str, httpx.BaseTransport | None]:
+        # Spawn transfers configuration in private IPC, never an open HTTP socket.
+        return self._base_url, self._token, self._transport
+
+    def __setstate__(self, state: tuple[str, str, httpx.BaseTransport | None]) -> None:
+        BehavioralEngineHttpClient.__init__(
+            self, base_url=state[0], token=state[1], transport=state[2]
         )
 
     def close(self) -> None:

@@ -1,0 +1,40 @@
+{
+  "backupId": "da2dce84-c47b-4a3b-a78b-c6760521f4b6",
+  "targetImage": "redis:8.2.7-alpine@sha256:223b183cbc49f5ff48728e1fc52ccf101f05072decad2bd9867281a3c9bf75fd",
+  "observedAt": "2026-09-05T10:02:25.9530605Z",
+  "environmentId": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+  "rollbackImage": "redis:8.2.1@sha256:5fa2edb1e408fa8235e6db8fab01d1afaaae96c9403ba67b70feceb8661e8621",
+  "safeStartCommand": "/bin/sh -c \"exec docker-entrypoint.sh redis-server --requirepass $REDIS_PASSWORD --save 60 1 --dir $RAILWAY_VOLUME_MOUNT_PATH\"",
+  "previousDeploymentId": "ccfab734-23c5-49de-8f8f-f82caaee0660",
+  "originalCommandSha256": "38dbff10a7f6f9e3fbe227158c7ed6efd59e01b64dae4303ba937fd72e5f9df9",
+  "serviceId": "12141225-de94-4a2e-ac9e-6d0bc0585348",
+  "postVerification": {
+    "safeCommandUnchanged": true,
+    "configurationMatches": true,
+    "keyInventoryMatches": true,
+    "imageDigest": "sha256:223b183cbc49f5ff48728e1fc52ccf101f05072decad2bd9867281a3c9bf75fd",
+    "verifiedAt": "2026-09-05T10:03:34.8741879Z",
+    "deploymentId": "1f7117fe-67cd-4e2d-ac31-b703dfa0fe8d",
+    "deploymentStatus": "SUCCESS",
+    "health": [
+      {
+        "status": 200,
+        "body": {
+          "environment": "production",
+          "release_sha": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",
+          "service": "api",
+          "status": "ready"
+        },
+        "url": "https://api-production-5931.up.railway.app/health/ready"
+      },
+      {
+        "status": 200,
+        "body": {
+          "status": "ready"
+        },
+        "url": "https://control-plane-production-ddbb.up.railway.app/health/ready"
+      }
+    ],
+    "image": "redis:8.2.7-alpine@sha256:223b183cbc49f5ff48728e1fc52ccf101f05072decad2bd9867281a3c9bf75fd"
+  }
+}

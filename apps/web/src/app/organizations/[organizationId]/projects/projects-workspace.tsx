@@ -28,6 +28,7 @@ export function ProjectsWorkspace({
   organizationId,
 }: Readonly<{ organizationId: string }>) {
   const router = useRouter();
+  const [search, setSearch] = useState("");
   const [items, setItems] = useState<Project[]>([]);
   const [dashboard, setDashboard] = useState<OrganizationDashboard>();
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -139,8 +140,8 @@ export function ProjectsWorkspace({
           <p className="eyebrow">Organization workspace</p>
           <h1 id="page-title">Projects</h1>
           <p className="lede">
-            This Phase 2 slice supports English campaign-message projects for
-            the Philippines only.
+            Keep related messages, research, and results together. Projects
+            currently support English campaign messages for the Philippines.
           </p>
         </div>
         {dashboard?.permissions.can_create_projects ? (
@@ -204,15 +205,41 @@ export function ProjectsWorkspace({
             No projects yet. Create the first project for this organization.
           </p>
         ) : null}
+        {items.length > 0 ? (
+          <label className="directory-search">
+            Find a project
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search loaded projects"
+            />
+          </label>
+        ) : null}
+        {items.length > 0 &&
+        !items.some((item) =>
+          item.name.toLowerCase().includes(search.trim().toLowerCase()),
+        ) ? (
+          <p className="empty-state" role="status">
+            No matching projects in this list. Try another name
+            {nextCursor ? " or load more projects" : ""}.
+          </p>
+        ) : null}
         <ul className="resource-list">
-          {items.map((project) => (
-            <li key={project.id}>
-              <Link href={`/projects/${project.id}`}>
-                <span>{project.name}</span>
-                <span className="resource-meta">Version {project.version}</span>
-              </Link>
-            </li>
-          ))}
+          {items
+            .filter((item) =>
+              item.name.toLowerCase().includes(search.trim().toLowerCase()),
+            )
+            .map((project) => (
+              <li key={project.id}>
+                <Link href={`/projects/${project.id}`}>
+                  <span>{project.name}</span>
+                  <span className="resource-meta">
+                    Version {project.version}
+                  </span>
+                </Link>
+              </li>
+            ))}
         </ul>
         {nextCursor ? (
           <button

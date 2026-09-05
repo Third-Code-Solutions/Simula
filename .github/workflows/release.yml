@@ -256,6 +256,7 @@ jobs:
           cp -R release/security release/stage/security
           cp -R release/wheels release/stage/wheels
           printf '%s\n' "$GITHUB_SHA" > release/stage/RELEASE_SHA
+          uv run --frozen python -m scripts.release_manifest
           tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
             --format=posix --pax-option=delete=atime,delete=ctime \
             -C release/stage -cf - . \
@@ -300,3 +301,17 @@ jobs:
             release/SIGSTORE_BUNDLE_SHA256
           if-no-files-found: error
           retention-days: 30
+
+      - name: Preserve failed browser gate evidence
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-gate-failure-${{ github.sha }}
+          path: |
+            .playwright-cli/p2-*.log
+            .playwright-cli/p2-readiness.json
+            test-results/
+            playwright-report/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14

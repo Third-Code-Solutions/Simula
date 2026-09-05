@@ -109,7 +109,7 @@ describe("RunWorkspace behavioral workflow", () => {
       undefined,
       vi.fn(),
     );
-    render(
+    const { rerender } = render(
       <RunWorkspace
         behavioralExperienceEnabled
         pollers={pollers}
@@ -132,5 +132,32 @@ describe("RunWorkspace behavioral workflow", () => {
     expect(getOrganizationDashboard).toHaveBeenCalledWith(
       BEHAVIORAL_ORGANIZATION_ID,
     );
+    expect(
+      screen.getByRole("link", { name: "Back to project" }),
+    ).toHaveAttribute("href", `/projects/${BEHAVIORAL_PROJECT_ID}`);
+    expect(screen.getByRole("link", { name: "Read findings" })).toHaveAttribute(
+      "href",
+      "#behavioral-result-title",
+    );
+    expect(
+      screen.getByRole("link", { name: "Refine and retest" }),
+    ).toHaveAttribute("href", "#behavioral-refinement-title");
+    rerender(
+      <RunWorkspace
+        behavioralExperienceEnabled
+        resultExperienceEnabled={false}
+        pollers={pollers}
+        runId={BEHAVIORAL_RUN_ID}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "Read findings" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Refine and retest" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Back to project" }),
+    ).toBeInTheDocument();
   });
 });

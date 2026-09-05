@@ -1,0 +1,62 @@
+{
+  "scope": "read-only explicit previous production worker deployment logs; raw records never persisted",
+  "deployment": "2f4519f6-2a40-4ac0-81dc-b1c1149986bb",
+  "exit_code": 0,
+  "parsed_records": 11,
+  "categories": {
+    "worker_restart": 2,
+    "bad_connection": 3,
+    "rollback_error": 4,
+    "programming_error": 2,
+    "rollback_failed_literal": 2
+  },
+  "first_timestamp": "2026-08-24T16:27:12.445786679Z",
+  "last_timestamp": "2026-09-04T04:41:00.905228102Z",
+  "matched_events": [
+    {
+      "timestamp": "2026-08-24T16:27:12.445786679Z",
+      "categories": ["worker_restart"]
+    },
+    {
+      "timestamp": "2026-08-24T16:27:13.207748Z",
+      "categories": ["worker_restart"]
+    },
+    {
+      "timestamp": "2026-08-28T17:41:37.337965129Z",
+      "categories": ["bad_connection"]
+    },
+    {
+      "timestamp": "2026-08-29T21:19:33.383381134Z",
+      "categories": ["rollback_error"]
+    },
+    {
+      "timestamp": "2026-08-29T21:19:33.383390982Z",
+      "categories": [
+        "rollback_error",
+        "programming_error",
+        "rollback_failed_literal"
+      ]
+    },
+    {
+      "timestamp": "2026-08-29T21:19:33.383395930Z",
+      "categories": ["bad_connection"]
+    },
+    {
+      "timestamp": "2026-09-04T04:41:00.905151796Z",
+      "categories": ["rollback_error"]
+    },
+    {
+      "timestamp": "2026-09-04T04:41:00.905171142Z",
+      "categories": [
+        "rollback_error",
+        "programming_error",
+        "rollback_failed_literal"
+      ]
+    },
+    {
+      "timestamp": "2026-09-04T04:41:00.905228102Z",
+      "categories": ["bad_connection"]
+    }
+  ],
+  "attribution": "Not established by lexical event correlation alone; local fault tests do not establish the historical hosted cause."
+}

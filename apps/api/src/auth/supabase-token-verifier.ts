@@ -18,6 +18,7 @@ import type { IdentityVerifier, VerifiedIdentity } from "./identity";
 
 const ALGORITHMS = new Set(["ES256", "RS256"]);
 const JWKS_TTL_MS = 600_000;
+const JWKS_REFRESH_COOLDOWN_MS = 10_000;
 const MAX_RESPONSE_BYTES = 64 * 1024;
 const MAX_TOKEN_BYTES = 8 * 1024;
 const FETCH_TIMEOUT_MS = 2_000;
@@ -75,6 +76,7 @@ async function readBoundedJson(response: Response): Promise<unknown> {
 export class SupabaseTokenVerifier implements IdentityVerifier {
   private keys = new Map<string, { algorithm: string; key: KeyObject }>();
   private keysExpireAt = 0;
+  private nextForcedRefreshAt = 0;
   private refreshPromise: Promise<void> | null = null;
 
   constructor(
@@ -207,6 +209,12 @@ export class SupabaseTokenVerifier implements IdentityVerifier {
     if (this.refreshPromise !== null) {
       await this.refreshPromise;
       return;
+    }
+    if (force) {
+      const now = Date.now();
+      if (now < this.nextForcedRefreshAt) return;
+      // Bound distinct attacker-selected IDs, including failed upstream calls.
+      this.nextForcedRefreshAt = now + JWKS_REFRESH_COOLDOWN_MS;
     }
     this.refreshPromise = this.fetchKeys();
     try {

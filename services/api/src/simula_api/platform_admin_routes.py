@@ -41,6 +41,7 @@ async def platform_admin_dashboard(
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
     organization_limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    organization_offset: Annotated[int, Query(ge=0, le=1_000_000)] = 0,
 ) -> PlatformAdminDashboardResponse:
     """Return bounded platform metrics and cross-tenant organization inventory."""
 
@@ -118,12 +119,12 @@ async def platform_admin_dashboard(
                 from api.organizations as organizations
                 where organizations.status <> 'deleted'
                 order by organizations.updated_at desc, organizations.id desc
-                limit %s
+                limit %s offset %s
               ) as inventory
             ), '[]'::jsonb),
             'generated_at', pg_catalog.statement_timestamp()
           ) as payload
         """,
-        parameters=(organization_limit,),
+        parameters=(organization_limit, organization_offset),
     )
     return PlatformAdminDashboardResponse.model_validate(payload)

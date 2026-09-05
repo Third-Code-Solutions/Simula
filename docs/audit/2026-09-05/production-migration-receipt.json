@@ -1,0 +1,19 @@
+{
+  "observed_at": "2026-09-05T11:12:26.9919692Z",
+  "project_id": "ywiwmczccktwzqyhzhiz",
+  "source_sha": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+  "signed_release_run": "33961707670",
+  "migration_head": "20260905104327",
+  "applied_versions": [
+    "20260905095036",
+    "20260905095453",
+    "20260905104327"
+  ],
+  "report_and_admission_present": true,
+  "admission_enabled": true,
+  "v4_old_head_preserved": true,
+  "v5_new_head_present": true,
+  "campaign_lab_nonterminal": 0,
+  "previous_api_ready_after_migration": true,
+  "previous_api_sha": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a"
+}

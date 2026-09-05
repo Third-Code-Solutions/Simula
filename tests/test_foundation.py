@@ -1,4 +1,8 @@
+import json
+import time
+from pathlib import Path
 from subprocess import CompletedProcess
+from typing import Any, Self, cast
 
 import pytest
 from simula_api.app import app
@@ -78,3 +82,63 @@ def test_integration_redis_target_is_fixed_and_namespaced() -> None:
     assert settings.password is None
     assert TEST_QUEUE_NAME.startswith("simula:test:foundation:")
     assert TEST_STATE_PREFIX.startswith("simula:test:foundation:")
+
+
+def test_readiness_failure_identifies_service_and_retains_state(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    class Process:
+        def poll(self) -> int | None:
+            return None
+
+    ticks = iter([0.0, 0.0, 200.0])
+    monkeypatch.setattr(browser_gate, "ROOT", tmp_path)
+    monkeypatch.setattr(browser_gate, "local_dependency_diagnostics", lambda: {"database": False})
+    monkeypatch.setattr(time, "monotonic", lambda: next(ticks))
+    monkeypatch.setattr(time, "sleep", lambda _: None)
+    monkeypatch.setattr(browser_gate, "response_is_ok", lambda url: url == browser_gate.WEB_URL)
+    with pytest.raises(browser_gate.BrowserGateError, match="'api': False"):
+        browser_gate.wait_for_runtime(cast(Any, [Process(), Process(), Process()]))
+    state = json.loads((tmp_path / ".playwright-cli/p2-readiness.json").read_text())
+    assert state["ready"] == {"api": False, "web": True}
+    assert state["process_exit_codes"] == {"api": None, "worker": None, "web": None}
+
+
+def test_service_artifacts_redact_credentials(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setattr(browser_gate, "ROOT", tmp_path)
+    directory = tmp_path / ".playwright-cli"
+    directory.mkdir()
+    log = directory / "p2-api.log"
+    log.write_text("postgresql://user:private-password@localhost/db secret-value eyJabc.def.ghi")
+    browser_gate.redact_service_logs(({"SIMULA_CURSOR_SECRET": "secret-value"},))
+    content = log.read_text()
+    assert "private-password" not in content
+    assert "secret-value" not in content
+    assert "eyJabc" not in content
+    assert "localhost/db" in content
+
+
+def test_local_dependency_diagnostics_only_retains_readiness_gauges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Response:
+        def __enter__(self) -> Self:
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+        def read(self, limit: int) -> bytes:
+            assert limit == 256 * 1024
+            return (
+                b'simula_api_dependency_ready{dependency="database"} 0.0\n'
+                b'simula_api_dependency_ready{dependency="auth"} 1.0\n'
+                b'simula_api_dependency_ready{dependency="untrusted"} 1.0\n'
+                b'other_metric{secret="must-not-be-retained"} 1.0\n'
+            )
+
+    monkeypatch.setattr(browser_gate, "urlopen", lambda *args, **kwargs: Response())
+    assert browser_gate.local_dependency_diagnostics() == {"database": False, "auth": True}

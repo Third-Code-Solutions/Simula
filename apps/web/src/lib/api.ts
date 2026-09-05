@@ -344,9 +344,81 @@ async function accessToken(): Promise<string> {
 
 type RequestOptions = Readonly<{
   body?: object;
+  signal?: AbortSignal;
   headers?: HeadersInit;
   method?: "DELETE" | "GET" | "PATCH" | "POST" | "PUT";
 }>;
+
+function requestDeadline(callerSignal?: AbortSignal | null) {
+  const timeout = AbortSignal.timeout(30_000);
+  const signal = callerSignal
+    ? AbortSignal.any([timeout, callerSignal])
+    : timeout;
+  const problem = () =>
+    new ApiProblem(
+      timeout.aborted ? 504 : 499,
+      timeout.aborted ? "request_timeout" : "request_cancelled",
+      timeout.aborted
+        ? "The request timed out. Its outcome is not confirmed. Retry to check or resume the same action."
+        : "Request cancelled because you left this view.",
+    );
+  function wait<T>(action: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      if (signal.aborted) {
+        reject(problem());
+        return;
+      }
+      const abort = () => {
+        signal.removeEventListener("abort", abort);
+        reject(problem());
+      };
+      signal.addEventListener("abort", abort, { once: true });
+      // Auth refresh is shared by the SDK; bound this caller's wait without
+      // cancelling another view's session refresh.
+      void Promise.resolve()
+        .then(() => {
+          if (signal.aborted) throw problem();
+          return action();
+        })
+        .then(
+          (value) => {
+            signal.removeEventListener("abort", abort);
+            if (signal.aborted) reject(problem());
+            else resolve(value);
+          },
+          (error: unknown) => {
+            signal.removeEventListener("abort", abort);
+            reject(signal.aborted ? problem() : error);
+          },
+        );
+    });
+  }
+  return { signal, wait };
+}
+
+async function authenticatedFetch(path: string, init: RequestInit) {
+  const deadline = requestDeadline(init.signal);
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${await deadline.wait(accessToken)}`);
+  try {
+    const response = await deadline.wait(() =>
+      fetch(`${apiOrigin(path)}${path}`, {
+        ...init,
+        cache: "no-store",
+        headers,
+        signal: deadline.signal,
+      }),
+    );
+    return { response, deadline };
+  } catch (error) {
+    if (error instanceof ApiProblem) throw error;
+    throw new ApiProblem(
+      503,
+      "api_unavailable",
+      "SIMULA API is temporarily unavailable. Retry shortly.",
+    );
+  }
+}
 
 async function request<T>(
   path: string,
@@ -354,45 +426,15 @@ async function request<T>(
 ): Promise<T> {
   const headers = new Headers(options.headers);
   headers.set("Accept", "application/json, application/problem+json");
-  headers.set("Authorization", `Bearer ${await accessToken()}`);
-  if (options.body) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(`${apiOrigin(path)}${path}`, {
-      body: options.body ? JSON.stringify(options.body) : undefined,
-      cache: "no-store",
-      headers,
-      method: options.method ?? "GET",
-    });
-  } catch {
-    throw new ApiProblem(
-      503,
-      "api_unavailable",
-      "SIMULA API is temporarily unavailable. Retry shortly.",
-    );
-  }
-
-  const contentType = response.headers.get("content-type") ?? "";
-  const payload: unknown =
-    contentType.includes("application/json") ||
-    contentType.includes("application/problem+json")
-      ? await response.json().catch(() => undefined)
-      : undefined;
-  if (!response.ok) {
-    const problem = asProblem(payload);
-    throw new ApiProblem(
-      response.status,
-      problem?.code ?? "request_failed",
-      problem?.detail ?? "SIMULA could not complete that request.",
-      problem?.correlation_id ||
-        response.headers.get("x-correlation-id") ||
-        undefined,
-      retryAfterSeconds(response.headers.get("retry-after")),
-    );
-  }
+  if (options.body) headers.set("Content-Type", "application/json");
+  const { response, deadline } = await authenticatedFetch(path, {
+    body: options.body ? JSON.stringify(options.body) : undefined,
+    headers,
+    method: options.method ?? "GET",
+    signal: options.signal,
+  });
+  const payload = await deadline.wait(() => responsePayload(response));
+  if (!response.ok) throw responseProblem(response, payload);
   if (payload === undefined) {
     throw new ApiProblem(
       502,
@@ -448,31 +490,19 @@ async function assetFetch(
     contentType?: StimulusAssetMediaType;
     idempotencyKey?: string;
     method: "GET" | "PUT";
+    signal?: AbortSignal;
   }>,
-): Promise<Response> {
+) {
   const headers = new Headers();
   headers.set("Accept", init.accept);
-  headers.set("Authorization", `Bearer ${await accessToken()}`);
-  if (init.contentType) {
-    headers.set("Content-Type", init.contentType);
-  }
-  if (init.idempotencyKey) {
-    headers.set("Idempotency-Key", init.idempotencyKey);
-  }
-  try {
-    return await fetch(`${apiOrigin(path)}${path}`, {
-      body: init.body,
-      cache: "no-store",
-      headers,
-      method: init.method,
-    });
-  } catch {
-    throw new ApiProblem(
-      503,
-      "api_unavailable",
-      "SIMULA API is temporarily unavailable. Retry shortly.",
-    );
-  }
+  if (init.contentType) headers.set("Content-Type", init.contentType);
+  if (init.idempotencyKey) headers.set("Idempotency-Key", init.idempotencyKey);
+  return authenticatedFetch(path, {
+    body: init.body,
+    headers,
+    method: init.method,
+    signal: init.signal,
+  });
 }
 
 function assetIdentity(
@@ -563,24 +593,54 @@ export function getProject(projectId: string): Promise<ProjectDetail> {
 
 export function listCampaignLabCampaigns(
   projectId: string,
+  offset = 0,
 ): Promise<CampaignLabCampaignPage> {
   return request<CampaignLabCampaignPage>(
     domainV1Path(
-      `/campaign-lab/campaigns?project_id=${encodeURIComponent(projectId)}`,
+      `/campaign-lab/campaigns?project_id=${encodeURIComponent(projectId)}${offset ? `&offset=${offset}` : ""}`,
     ),
   );
 }
 
-export function createCampaignLabCampaign(input: {
-  project_id: string;
-  name: string;
-  objective: string;
-  purpose: string;
-  decision: Record<string, unknown>;
-}): Promise<CampaignLabCommand> {
+export function getCampaignLabCampaign(
+  campaignId: string,
+): Promise<Readonly<{ campaign: CampaignLabCampaign }>> {
+  return request(
+    domainV1Path(`/campaign-lab/campaigns/${encodeURIComponent(campaignId)}`),
+  );
+}
+
+export function listCampaignLabRuns(
+  campaignId: string,
+  offset = 0,
+  signal?: AbortSignal,
+): Promise<
+  Readonly<{
+    items: ReadonlyArray<CampaignLabRunStatus>;
+    pagination: Readonly<{ limit: number; offset: number }>;
+  }>
+> {
+  return request(
+    domainV1Path(
+      `/campaign-lab/campaigns/${encodeURIComponent(campaignId)}/runs?limit=25&offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+
+export function createCampaignLabCampaign(
+  input: {
+    project_id: string;
+    name: string;
+    objective: string;
+    purpose: string;
+    decision: Record<string, unknown>;
+  },
+  idempotencyKey?: string,
+): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(domainV1Path("/campaign-lab/campaigns"), {
     body: input,
-    headers: idempotencyHeaders(),
+    headers: idempotencyHeaders(idempotencyKey),
     method: "POST",
   });
 }
@@ -604,12 +664,13 @@ export function createCampaignLabResearch(
     overlap?: number;
     secret_payload: Readonly<Record<string, unknown>>;
   }>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/research`),
     {
       body: input,
-      headers: idempotencyHeaders(),
+      headers: idempotencyHeaders(idempotencyKey),
       method: "POST",
     },
   );
@@ -617,21 +678,24 @@ export function createCampaignLabResearch(
 
 export function getCampaignLabResearchRun(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabResearchRun> {
   return request<CampaignLabResearchRun>(
     domainV1Path(`/campaign-lab/research/runs/${runId}`),
+    { signal },
   );
 }
 
 export function createCampaignLabSimulation(
   campaignId: string,
   requestBody: Record<string, unknown>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/simulations`),
     {
       body: { request: requestBody },
-      headers: idempotencyHeaders(),
+      headers: idempotencyHeaders(idempotencyKey),
       method: "POST",
     },
   );
@@ -640,12 +704,13 @@ export function createCampaignLabSimulation(
 export function createCampaignLabCulturalEvaluation(
   campaignId: string,
   suite: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/cultural-evaluations`),
     {
       body: { suite },
-      headers: idempotencyHeaders(),
+      headers: idempotencyHeaders(idempotencyKey),
       method: "POST",
     },
   );
@@ -653,57 +718,98 @@ export function createCampaignLabCulturalEvaluation(
 
 export function getCampaignLabSimulationStatus(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabRunStatus> {
   return request<CampaignLabRunStatus>(
     domainV1Path(`/campaign-lab/simulations/${runId}/status`),
+    { signal },
   );
 }
 
 export function getCampaignLabSimulationResults(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabSimulationResult> {
   return request<CampaignLabSimulationResult>(
     domainV1Path(`/campaign-lab/simulations/${runId}/results`),
+    { signal },
   );
 }
 
 export function createCampaignLabInterview(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/interviews`),
-    { body: input, headers: idempotencyHeaders(), method: "POST" },
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
   );
 }
 
 export function getCampaignLabInterviewRun(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
     domainV1Path(`/campaign-lab/interviews/runs/${runId}`),
+    { signal },
+  );
+}
+
+export type SurveyImportPreview = {
+  summary: {
+    input_response_count: number;
+    accepted_response_count: number;
+    duplicate_response_count: number;
+    low_quality_response_count: number;
+    bot_response_count: number;
+    malformed_response_count: number;
+  };
+  aggregate_group_count: number;
+  evidence_binding: Record<string, string | null>;
+  disclosure: string;
+};
+
+export function previewCampaignLabSurveyImport(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<SurveyImportPreview> {
+  return request<SurveyImportPreview>(
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/surveys/preview`),
+    { body: input, method: "POST" },
   );
 }
 
 export function createCampaignLabSurveyImport(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/surveys/import`),
-    { body: input, headers: idempotencyHeaders(), method: "POST" },
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
   );
 }
 
 export function createCampaignLabNativeSurveyForm(
   campaignId: string,
   form: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/surveys/forms`),
     {
       body: { form },
-      headers: idempotencyHeaders(),
+      headers: idempotencyHeaders(idempotencyKey),
       method: "POST",
     },
   );
@@ -713,6 +819,7 @@ export function submitCampaignLabNativeSurveyResponses(
   campaignId: string,
   formId: string,
   responses: ReadonlyArray<Readonly<Record<string, unknown>>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(
@@ -720,7 +827,7 @@ export function submitCampaignLabNativeSurveyResponses(
     ),
     {
       body: { responses },
-      headers: idempotencyHeaders(),
+      headers: idempotencyHeaders(idempotencyKey),
       method: "POST",
     },
   );
@@ -728,45 +835,149 @@ export function submitCampaignLabNativeSurveyResponses(
 
 export function getCampaignLabSurveyImportRun(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
     domainV1Path(`/campaign-lab/surveys/runs/${runId}`),
+    { signal },
+  );
+}
+
+export function createCampaignLabCalibrationFromRuns(
+  campaignId: string,
+  input: {
+    simulation_run_id: string;
+    survey_import_run_id: string;
+    calibration_version: string;
+  },
+  idempotencyKey: string,
+): Promise<CampaignLabCommand> {
+  return request(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/calibrations/from-runs`,
+    ),
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
+  );
+}
+
+export function listCampaignLabBoundCalibrations(
+  campaignId: string,
+  offset = 0,
+  signal?: AbortSignal,
+): ReturnType<typeof listCampaignLabRuns> {
+  return request(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/calibrations/from-runs?limit=25&offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+
+export type BoundCampaignReport = CampaignLabDurableRun & {
+  review?: Readonly<Record<string, unknown>> | null;
+};
+
+export function createCampaignLabBoundReport(
+  campaignId: string,
+  input: { simulation_run_id: string; calibration_run_id?: string },
+  key: string,
+): Promise<CampaignLabCommand> {
+  return request(
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/reports/from-runs`),
+    { body: input, headers: idempotencyHeaders(key), method: "POST" },
+  );
+}
+export function listCampaignLabBoundReports(
+  campaignId: string,
+  offset = 0,
+  signal?: AbortSignal,
+): ReturnType<typeof listCampaignLabRuns> {
+  return request(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/reports/from-runs?limit=25&offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+export function getCampaignLabBoundReport(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<BoundCampaignReport> {
+  return request(domainV1Path(`/campaign-lab/reports/bound/runs/${runId}`), {
+    signal,
+  });
+}
+export function reviewCampaignLabBoundReport(
+  runId: string,
+  input: {
+    decision: "approved_experimental" | "rejected" | "revoked";
+    rationale: string;
+  },
+): Promise<Readonly<Record<string, unknown>>> {
+  return request(
+    domainV1Path(`/campaign-lab/reports/bound/runs/${runId}/review`),
+    { body: input, method: "POST" },
+  );
+}
+export function exportCampaignLabBoundReport(
+  runId: string,
+): Promise<BoundCampaignReport> {
+  return request(
+    domainV1Path(`/campaign-lab/reports/bound/runs/${runId}/export`),
   );
 }
 
 export function createCampaignLabCalibration(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/calibrations`),
-    { body: input, headers: idempotencyHeaders(), method: "POST" },
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
   );
 }
 
 export function getCampaignLabCalibrationRun(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
     domainV1Path(`/campaign-lab/calibrations/${runId}`),
+    { signal },
   );
 }
 
 export function createCampaignLabBacktest(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/backtests`),
-    { body: input, headers: idempotencyHeaders(), method: "POST" },
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
   );
 }
 
 export function getCampaignLabBacktestRun(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
     domainV1Path(`/campaign-lab/backtests/${runId}`),
+    { signal },
   );
 }
 
@@ -781,57 +992,78 @@ export function listCampaignLabForecastDatasets(): Promise<
 export function createCampaignLabAggregateForecast(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/forecasts`),
-    { body: input, headers: idempotencyHeaders(), method: "POST" },
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
   );
 }
 
 export function getCampaignLabAggregateForecastRun(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
     domainV1Path(`/campaign-lab/forecasts/${runId}`),
+    { signal },
   );
 }
 
 export function createCampaignLabComplianceReview(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/compliance/reviews`),
-    { body: input, headers: idempotencyHeaders(), method: "POST" },
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
   );
 }
 
 export function getCampaignLabComplianceRun(
   campaignId: string,
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
     domainV1Path(
       `/campaign-lab/campaigns/${campaignId}/compliance/runs/${runId}`,
     ),
+    { signal },
   );
 }
 
 export function createCampaignLabReport(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
+  idempotencyKey?: string,
 ): Promise<CampaignLabCommand> {
   return request<CampaignLabCommand>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/reports`),
-    { body: input, headers: idempotencyHeaders(), method: "POST" },
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
   );
 }
 
 export function getCampaignLabReportRun(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabDurableRun> {
   return request<CampaignLabDurableRun>(
     domainV1Path(`/campaign-lab/reports/runs/${runId}`),
+    { signal },
   );
 }
 
@@ -924,6 +1156,7 @@ export async function uploadStimulusAsset(
   asset: StimulusAsset,
   bytes: ArrayBuffer,
   idempotencyKey = crypto.randomUUID(),
+  signal?: AbortSignal,
 ): Promise<StimulusAsset> {
   const expected = parseStimulusAsset(asset);
   const actualSha256 = Array.from(
@@ -942,17 +1175,18 @@ export async function uploadStimulusAsset(
       "The selected file does not match its active upload reservation.",
     );
   }
-  const response = await assetFetch(
+  const { response, deadline } = await assetFetch(
     `/api/v2/stimulus-assets/${expected.asset_id}/content`,
     {
       accept: "application/json, application/problem+json",
       body: bytes,
       contentType: expected.media_type,
       idempotencyKey,
+      signal,
       method: "PUT",
     },
   );
-  const payload = await responsePayload(response);
+  const payload = await deadline.wait(() => responsePayload(response));
   if (!response.ok) {
     throw responseProblem(response, payload);
   }
@@ -968,6 +1202,7 @@ export async function uploadStimulusAsset(
 
 export async function downloadStimulusAsset(
   asset: StimulusAsset,
+  signal?: AbortSignal,
 ): Promise<StimulusAssetDownload> {
   const expected = parseStimulusAsset(asset);
   if (
@@ -982,15 +1217,19 @@ export async function downloadStimulusAsset(
       "The private campaign asset is not available for verified access.",
     );
   }
-  const response = await assetFetch(
+  const { response, deadline } = await assetFetch(
     `/api/v2/stimulus-assets/${expected.asset_id}/content`,
     {
       accept: STIMULUS_ASSET_MEDIA_TYPES.join(", "),
+      signal,
       method: "GET",
     },
   );
   if (!response.ok) {
-    throw responseProblem(response, await responsePayload(response));
+    throw responseProblem(
+      response,
+      await deadline.wait(() => responsePayload(response)),
+    );
   }
   const contentType = response.headers.get("content-type")?.toLowerCase();
   const rawLength = response.headers.get("content-length");
@@ -1018,10 +1257,12 @@ export async function downloadStimulusAsset(
       "SIMULA API returned an unsafe private campaign asset.",
     );
   }
-  const blob = await response.blob();
-  const bytes = await blob.arrayBuffer();
+  const blob = await deadline.wait(() => response.blob());
+  const bytes = await deadline.wait(() => blob.arrayBuffer());
   const actualSha256 = Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+    new Uint8Array(
+      await deadline.wait(() => crypto.subtle.digest("SHA-256", bytes)),
+    ),
     (value) => value.toString(16).padStart(2, "0"),
   ).join("");
   if (
@@ -1483,42 +1724,22 @@ export function getRunReport(
 
 export async function downloadReportExport(
   exportId: string,
+  signal?: AbortSignal,
 ): Promise<ReportExportDownload> {
-  const headers = new Headers();
-  headers.set("Accept", "application/json, text/csv, application/problem+json");
-  headers.set("Authorization", `Bearer ${await accessToken()}`);
-
-  let response: Response;
-  const path = domainPath(`/exports/${exportId}`);
-  try {
-    response = await fetch(`${apiOrigin(path)}${path}`, {
-      cache: "no-store",
-      headers,
+  const { response, deadline } = await authenticatedFetch(
+    domainPath(`/exports/${exportId}`),
+    {
+      headers: {
+        Accept: "application/json, text/csv, application/problem+json",
+      },
       method: "GET",
-    });
-  } catch {
-    throw new ApiProblem(
-      503,
-      "api_unavailable",
-      "SIMULA API is temporarily unavailable. Retry shortly.",
-    );
-  }
+      signal,
+    },
+  );
   if (!response.ok) {
-    const contentType = response.headers.get("content-type") ?? "";
-    const payload: unknown =
-      contentType.includes("application/json") ||
-      contentType.includes("application/problem+json")
-        ? await response.json().catch(() => undefined)
-        : undefined;
-    const problem = asProblem(payload);
-    throw new ApiProblem(
-      response.status,
-      problem?.code ?? "request_failed",
-      problem?.detail ?? "SIMULA could not complete that request.",
-      problem?.correlation_id ||
-        response.headers.get("x-correlation-id") ||
-        undefined,
-      retryAfterSeconds(response.headers.get("retry-after")),
+    throw responseProblem(
+      response,
+      await deadline.wait(() => responsePayload(response)),
     );
   }
 
@@ -1548,10 +1769,12 @@ export async function downloadReportExport(
       "SIMULA API returned an unsafe report export.",
     );
   }
-  const blob = await response.blob();
-  const bytes = await blob.arrayBuffer();
+  const blob = await deadline.wait(() => response.blob());
+  const bytes = await deadline.wait(() => blob.arrayBuffer());
   const actualSha256 = Array.from(
-    new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+    new Uint8Array(
+      await deadline.wait(() => crypto.subtle.digest("SHA-256", bytes)),
+    ),
     (value) => value.toString(16).padStart(2, "0"),
   ).join("");
   if (
@@ -1657,5 +1880,96 @@ export function getOrganizationAudit(
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
     `/api/v1/organizations/${organizationId}/audit`,
+  );
+}
+
+export type BacktestSavedRun = {
+  id: string;
+  campaign_id: string;
+  campaign_name?: string;
+  created_at: string;
+  status?: string;
+  phase?: string;
+};
+export function listBoundBacktestInputs(
+  campaignId: string,
+  signal?: AbortSignal,
+  offset = 0,
+) {
+  return request<{ items: BacktestSavedRun[]; next_offset?: number | null }>(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/backtests/inputs?offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+export function listBoundBacktests(
+  campaignId: string,
+  signal?: AbortSignal,
+  offset = 0,
+) {
+  return request<{ items: BacktestSavedRun[]; next_offset?: number | null }>(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/backtests/history?offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+export function createBoundBacktestCommitment(
+  campaignId: string,
+  input: {
+    development_run_ids: string[];
+    holdout_run_ids: string[];
+    outcome_metric: string;
+    minimum_campaigns: number;
+  },
+  key: string,
+) {
+  return request<{ run_id: string }>(
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/backtests/commitments`),
+    { method: "POST", body: input, headers: { "Idempotency-Key": key } },
+  );
+}
+export function admitBoundBacktestOutcomes(
+  campaignId: string,
+  input: {
+    commitment_run_id: string;
+    source_version_id: string;
+    secret_payload: Record<string, unknown>;
+  },
+  key: string,
+) {
+  return request<{ run_id: string }>(
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/backtests/admissions`),
+    { method: "POST", body: input, headers: { "Idempotency-Key": key } },
+  );
+}
+export function getBoundBacktest(runId: string, signal?: AbortSignal) {
+  return request<CampaignLabDurableRun>(
+    domainV1Path(`/campaign-lab/backtests/bound/runs/${runId}`),
+    { signal },
+  );
+}
+
+export function listBoundBacktestSources(
+  campaignId: string,
+  signal?: AbortSignal,
+  offset = 0,
+) {
+  return request<{
+    next_offset?: number | null;
+    items: {
+      id: string;
+      source_key: string;
+      source_version: string;
+      created_at: string;
+    }[];
+  }>(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/backtests/sources?offset=${offset}`,
+    ),
+    {
+      signal,
+    },
   );
 }

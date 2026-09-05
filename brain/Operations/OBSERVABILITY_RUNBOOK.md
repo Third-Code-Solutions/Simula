@@ -2,13 +2,19 @@
 title: SIMULA Observability Alert Runbook
 status: approved-for-staging
 created: 2026-07-29
-updated: 2026-07-29
+updated: 2026-09-05
 owner: SRE lead
 classification: PROPOSED
 source_of_truth: true
 ---
 
 # SIMULA Observability Alert Runbook
+
+## Verification checkpoint - 5 September 2026
+
+An isolated Prometheus3.14.0/Alertmanager0.34.0/fake-webhook drill delivered one dependency alert and recovery in8.31s/2.16s. Only the copied hold was shortened; no external receiver was contacted. This proves local delivery, not every alert or named on-call acknowledgement. See [runtime evidence](../../docs/audit/2026-09-05/REMEDIATION_RUNTIME.md).
+
+Local process-capacity and queue recovery tests passed. Historical hosted worker rollback/bad-connection clusters do not establish shutdown causation. New-release private readiness/SHA and production smoke remain pending. Keep all acceptance requirements below; an emitted structured event alone is not delivery proof.
 
 ## Safety boundary
 

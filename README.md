@@ -8,7 +8,21 @@ does not predict candidates, parties, individual voters, or causal persuasion,
 and it does not replace human research.
 
 The Obsidian vault in `brain/` is the product and architecture source of truth.
-The active execution plan is `plans/active/002-phase-2-walking-skeleton.md`.
+The active remediation plan is
+`plans/active/005-ux-and-production-remediation.md`. Current local capabilities,
+hosted controls and pending release gates are recorded in
+`brain/PROJECT_STATE.md` and `docs/audit/2026-09-05/REMEDIATION_TRACKER.md`.
+
+## Current release
+
+Production web/admin and five backend components are verified on source
+`eb0ea931a180f1912f690be5648a6fb4a6557ab0` as of 5 September 2026. The signed
+release and required CI passed; bounded production smoke verifies 52 assertions
+including role denials, a persisted campaign run and a real experimental
+behavioral run. This does not establish every route, hosted recovery or
+scientific validity. See
+[production evidence](docs/audit/2026-09-05/production-smoke-verification.json)
+and [remaining acceptance](docs/audit/2026-09-05/REMEDIATION_TRACKER.md).
 
 ## Exact local toolchain
 
@@ -30,6 +44,24 @@ pnpm check
 Install Python `3.14.7` from the signed PSF distribution or
 `uv python install 3.14.7` when the pinned uv catalog supports that patch. Put
 the exact interpreter on `PATH`; `pnpm toolchain:check` fails on drift.
+
+On the configured Windows workstation, isolate the pinned tools from ambient
+versions before running gates:
+
+```powershell
+$simulaTools = Join-Path $env:USERPROFILE '.codex/toolchains'
+$env:PATH = "$simulaTools/node-v24.18.1-win-x64;$simulaTools/uv-0.11.19;$simulaTools/bin;$env:PATH"
+$env:UV = "$simulaTools/uv-0.11.19/uv.exe"
+.venv/Scripts/python.exe -m scripts.check_toolchain
+```
+
+Use the complete PSF Python distribution, including `venv`, for a new
+development environment. A version check alone does not establish
+standard-library completeness. The dependency audit also supports the Windows
+embedded distribution: it exports all frozen packages/groups and scans them
+using an isolated full Python runtime with the locked pip-audit version. This
+fallback does not change the project interpreter requirement or omit packages
+from the audit.
 
 Start the local queue with `pnpm redis:up`. Supabase is managed separately with
 `pnpm supabase:start`; no hosted project is linked or mutated by these commands.
@@ -62,10 +94,13 @@ content.
 
 ## Services
 
-- `apps/web`: Next.js Auth/domain UI begins in P2-03.
+- `apps/web`: Next.js account, organization/project, Campaign Lab and result UI.
+- `apps/admin`: restricted platform administration UI.
+- `apps/api`: NestJS control plane and durable outbox dispatcher.
 - `services/api`: FastAPI public authority for M2 organization/project/stimulus
   commands; browser credentials never reach application Data API schemas.
-- `services/worker`: private worker lifecycle shell; no domain jobs in P2-01.
+- `services/worker`: private durable simulation and Campaign Lab job execution.
+- `services/ai-engine`: private bounded behavioral and methodology execution.
 - `packages/contracts`: generated OpenAPI, application, and database TypeScript
   contracts.
 - `packages/simula-core`: shared runtime and safe serialization primitives.
@@ -74,3 +109,26 @@ content.
   stimulus command helpers for P2-03.
 
 External deployment and hosted resource mutation require explicit authorization.
+
+## UX refactor verification — 2026-09-05
+
+Current implementation and its evidence are tracked in
+[the active remediation plan](plans/active/005-ux-and-production-remediation.md)
+and [the remediation tracker](docs/audit/2026-09-05/REMEDIATION_TRACKER.md). The
+refactor covers public/account pages, contextual mobile navigation,
+organization/project workspaces, Campaign Lab forms/history, results, and admin
+pagination. It retains experimental labels and permission boundaries.
+
+Build tasks currently run without Turbo artifact caching. Windows builds contain
+runtime module links that Turbo could not archive reliably; restoring partial
+outputs is not safe. This trades build speed for complete, freshly generated
+artifacts until cache round-trip verification supports re-enabling it.
+Development output and caches are also excluded from the declared release
+outputs. Local passing checks do not establish hosted release or scientific
+validation.
+
+Git-triggered application deployments are disabled. Release through the signed
+source promotion boundary described in
+[the promotion procedure](docs/audit/2026-09-05/PROMOTION_PROCEDURE.md), using
+explicit existing provider targets and retained rollback identities. Provider
+SUCCESS alone does not establish application health or completed verification.

@@ -27,6 +27,7 @@ from simula_core.arq_codec import (
 from simula_core.behavioral_demo import authored_demo_behavioral_command
 from simula_core.behavioral_engine import BehavioralRunCommand, BehavioralRunResult
 from simula_core.bullmq_codec import BullMqBindingError, bind_bullmq_delivery
+from simula_core.isolated_evaluation import EvaluationLeaseLost, evaluate_with_lease
 from simula_core.queue_runtime import create_queue_client
 from simula_core.runtime import RuntimeMetadata
 from simula_core.simulation import (
@@ -650,7 +651,7 @@ async def _heartbeat_execution(
     attempt_id: UUID,
     lease_token: UUID,
     *,
-    checkpoint: Literal["before_provider"],
+    checkpoint: Literal["before_provider", "during_provider"],
     telemetry: WorkerTelemetry | None,
 ) -> bool:
     current = await database.heartbeat_execution(run_id, attempt_id, lease_token)
@@ -812,7 +813,24 @@ async def _process_claimed_behavioral_run(
             deterministic_seed=deterministic_seed,
             runtime_release_sha=runtime_release_sha,
         )
-        result = await asyncio.to_thread(behavioral_engine.execute, command)
+        result = await evaluate_with_lease(
+            behavioral_engine.execute,
+            command,
+            renew_lease=lambda: _heartbeat_execution(
+                database,
+                run_id,
+                attempt_id,
+                lease_token,
+                checkpoint="during_provider",
+                telemetry=telemetry,
+            ),
+            timeout_seconds=min(float(command.engine_configuration.deadline_seconds), 300.0),
+            safe_error_types=(
+                BehavioralEngineRateLimitedError,
+                BehavioralEngineUnavailableError,
+                BehavioralEngineRejectedError,
+            ),
+        )
         ended_at = datetime.now(UTC)
         canonical_artifact, receipt = serialize_behavioral_result(
             result,
@@ -822,6 +840,9 @@ async def _process_claimed_behavioral_run(
         )
         if telemetry is not None:
             telemetry.observe_provider("completed")
+    except EvaluationLeaseLost:
+        observation.outcome = "lease_rejected"
+        return
     except asyncio.CancelledError:
         raise
     except (
@@ -958,7 +979,20 @@ async def _process_claimed_run(
         if telemetry is not None and not isinstance(provider, DeterministicMockProvider):
             telemetry.observe_external_provider_call()
         provider_called = True
-        provider_response = provider.run(request)
+        provider_response = await evaluate_with_lease(
+            provider.run,
+            request,
+            renew_lease=lambda: _heartbeat_execution(
+                database,
+                run_id,
+                attempt_id,
+                lease_token,
+                checkpoint="during_provider",
+                telemetry=telemetry,
+            ),
+            timeout_seconds=max(0.001, (request.deadline_at - datetime.now(UTC)).total_seconds()),
+            safe_error_types=(ProviderPreflightUnavailableError, ProviderRateLimitedError),
+        )
         provider_ended_at = datetime.now(UTC)
         result = provider_response.result
         artifact = result.model_dump(mode="json")
@@ -970,6 +1004,9 @@ async def _process_claimed_run(
         )
         if telemetry is not None:
             telemetry.observe_provider("completed")
+    except EvaluationLeaseLost:
+        observation.outcome = "lease_rejected"
+        return
     except asyncio.CancelledError:
         raise
     except (

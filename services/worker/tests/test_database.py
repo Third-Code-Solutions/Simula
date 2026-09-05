@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 from types import TracebackType
 from typing import Any, Self, cast
 from uuid import UUID
 
+import pytest
+import simula_worker.database as database_module
 from simula_worker.database import WorkerDatabase
 
 
@@ -223,3 +226,79 @@ async def test_worker_database_uses_the_separate_behavioral_completion_function(
         b'{"schema_version":1}',
     )
     assert database._database_operation(query) == "complete_behavioral_execution"
+
+
+@pytest.mark.parametrize("during_entry", [True, False])
+async def test_canceled_transaction_discards_connection_before_pool_cleanup(
+    during_entry: bool,
+) -> None:
+    events: list[str] = []
+
+    class CanceledTransaction(_Transaction):
+        async def __aenter__(self) -> Self:
+            if during_entry:
+                raise asyncio.CancelledError
+            return self
+
+    class CanceledConnection(_Connection):
+        def transaction(self) -> _Transaction:
+            return CanceledTransaction()
+
+        async def close(self) -> None:
+            events.append("closed")
+
+        async def execute(
+            self, query: str, parameters: tuple[object, ...] | None = None
+        ) -> _Cursor:
+            raise asyncio.CancelledError
+
+    class CheckedContext(_ConnectionContext):
+        async def __aexit__(self, *args: object) -> None:
+            assert events == ["closed"]
+            events.append("released")
+
+    class CheckedPool(_Pool):
+        def connection(self, *, timeout: float) -> _ConnectionContext:
+            return CheckedContext(self._connection)
+
+    database = WorkerDatabase.__new__(WorkerDatabase)
+    database._pool = cast(Any, CheckedPool(CanceledConnection()))
+    database._telemetry = None
+    with pytest.raises(asyncio.CancelledError):
+        async with database._transaction():
+            pytest.fail("Canceled transaction must never yield")
+    assert events == ["closed", "released"]
+
+
+async def test_transaction_deadline_discards_unresponsive_connection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+
+    class HungConnection(_Connection):
+        async def execute(
+            self, query: str, parameters: tuple[object, ...] | None = None
+        ) -> _Cursor:
+            await asyncio.Event().wait()
+            raise AssertionError("unreachable")
+
+        async def close(self) -> None:
+            events.append("closed")
+
+    class CheckedContext(_ConnectionContext):
+        async def __aexit__(self, *args: object) -> None:
+            assert events == ["closed"]
+            events.append("released")
+
+    class CheckedPool(_Pool):
+        def connection(self, *, timeout: float) -> _ConnectionContext:
+            return CheckedContext(self._connection)
+
+    monkeypatch.setattr(database_module, "_TRANSACTION_TIMEOUT_SECONDS", 0.01)
+    database = WorkerDatabase.__new__(WorkerDatabase)
+    database._pool = cast(Any, CheckedPool(HungConnection()))
+    database._telemetry = None
+    with pytest.raises(TimeoutError):
+        async with database._transaction():
+            pytest.fail("timed-out setup must never yield")
+    assert events == ["closed", "released"]

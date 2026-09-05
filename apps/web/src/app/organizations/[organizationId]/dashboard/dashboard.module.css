@@ -3,14 +3,14 @@
   grid-template-columns: minmax(0, 1.5fr) minmax(17rem, 0.5fr);
   gap: clamp(2rem, 6vw, 5rem);
   align-items: end;
-  padding-top: clamp(2.5rem, 7vw, 5rem);
+  padding-top: 2.5rem;
   padding-bottom: 2.5rem;
   border-bottom: 1px solid var(--edge);
 }
 
 .hero h1 {
-  max-width: 13ch;
-  font-size: clamp(3rem, 6vw, 6rem);
+  max-width: 30ch;
+  font-size: clamp(1.8rem, 3vw, 2.65rem);
   overflow-wrap: anywhere;
 }
 
@@ -68,7 +68,7 @@
 }
 
 .primaryAction {
-  background: var(--ink);
+  background: var(--forest);
   color: var(--white);
 }
 
@@ -95,7 +95,7 @@
 .metrics article {
   display: grid;
   gap: 1.5rem;
-  min-height: 9.5rem;
+  min-height: 7rem;
   padding: 1.25rem;
   border-left: 1px solid var(--edge);
 }
@@ -112,8 +112,8 @@
 .metrics strong,
 .rate {
   align-self: end;
-  font-family: var(--font-display);
-  font-size: clamp(2.5rem, 4vw, 4rem);
+  font-family: var(--font-ui);
+  font-size: clamp(1.8rem, 3vw, 2.65rem);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.04em;
   line-height: 0.85;
@@ -133,8 +133,9 @@
 }
 
 .runHealth {
-  background: var(--ink);
-  color: var(--white);
+  background: var(--white);
+  color: var(--ink);
+  border: 1px solid var(--edge);
 }
 
 .runHealth h2,
@@ -146,7 +147,7 @@
 .runHealth label {
   display: block;
   margin-top: 2rem;
-  color: rgb(255 255 255 / 68%);
+  color: var(--stone);
   font-size: 0.72rem;
 }
 
@@ -157,12 +158,12 @@
   overflow: hidden;
   border: 0;
   border-radius: 0;
-  background: rgb(255 255 255 / 14%);
+  background: var(--paper);
   accent-color: var(--teal);
 }
 
 .runHealth progress::-webkit-progress-bar {
-  background: rgb(255 255 255 / 14%);
+  background: var(--paper);
 }
 
 .runHealth progress::-webkit-progress-value {
@@ -204,11 +205,11 @@
   display: grid;
   gap: 0.2rem;
   padding-top: 0.75rem;
-  border-top: 1px solid rgb(255 255 255 / 20%);
+  border-top: 1px solid var(--edge);
 }
 
 .healthBreakdown dt {
-  color: rgb(255 255 255 / 60%);
+  color: var(--stone);
   font-size: 0.68rem;
 }
 
@@ -220,7 +221,7 @@
 }
 
 .runHealth .inlineEmpty {
-  color: rgb(255 255 255 / 68%);
+  color: var(--stone);
 }
 
 .workflowStatus {
@@ -228,7 +229,7 @@
   align-content: space-between;
   border-top: 3px solid var(--teal);
   background: var(--white);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 .workflowStatus dl {
@@ -284,7 +285,7 @@
   padding: 1.25rem;
   border-top: 2px solid var(--ink);
   background: var(--white);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 .projectList,
@@ -469,7 +470,7 @@
   padding: clamp(1.25rem, 3vw, 2rem);
   border-top: 2px solid var(--ink);
   background: var(--white);
-  box-shadow: var(--shadow-card);
+  box-shadow: none;
 }
 
 .adminPanel > header {
@@ -719,7 +720,7 @@
 
 @media (max-width: 560px) {
   .hero h1 {
-    font-size: clamp(2.6rem, 15vw, 4.5rem);
+    font-size: clamp(1.8rem, 3vw, 2.65rem);
   }
 
   .metrics article {

@@ -1,0 +1,24 @@
+{
+  "syntheticEngineeringData": true,
+  "realApi": true,
+  "realWorker": true,
+  "realSupabaseSessions": true,
+  "refreshRestored": true,
+  "authorSelfApprovalDenied": true,
+  "independentApproval": true,
+  "exportBound": true,
+  "revocation": true,
+  "errors": [],
+  "results": [
+    {
+      "width": 1440,
+      "overflow": false,
+      "violations": []
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "violations": []
+    }
+  ]
+}

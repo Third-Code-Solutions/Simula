@@ -20,6 +20,7 @@ from simula_core.historical_backtesting import (
     HistoricalOutcomeDataset,
     evaluate_historical_backtest,
 )
+from simula_core.isolated_evaluation import evaluate_isolated
 from simula_core.survey_calibration import (
     SurveyDataset,
     SyntheticVariantObservation,
@@ -137,13 +138,14 @@ async def _evaluate_with_lease_heartbeat(
             except TimeoutError:
                 pass
             try:
-                lease_current = await database.update_campaign_evidence_progress(
-                    claim.evidence_id,
-                    claim.lease_token,
-                    "evaluating",
-                    55,
-                    "Computing deterministic evidence metrics.",
-                )
+                async with asyncio.timeout(10.0):
+                    lease_current = await database.update_campaign_evidence_progress(
+                        claim.evidence_id,
+                        claim.lease_token,
+                        "evaluating",
+                        55,
+                        "Computing deterministic evidence metrics.",
+                    )
             except Exception as error:
                 lease_current = False
                 logger.warning(
@@ -156,34 +158,23 @@ async def _evaluate_with_lease_heartbeat(
 
     heartbeat_task = asyncio.create_task(heartbeat())
     evaluation_task = asyncio.create_task(
-        asyncio.to_thread(evaluate_campaign_evidence_claim, claim)
+        evaluate_isolated(evaluate_campaign_evidence_claim, claim, timeout_seconds=600.0)
     )
     try:
-        result = await asyncio.shield(evaluation_task)
-    except asyncio.CancelledError:
-        # The thread remains live after coroutine cancellation. Continue
-        # renewing the lease until the computation exits, then propagate the
-        # cancellation without persisting its now-abandoned result.
-        while not evaluation_task.done():
-            try:
-                await asyncio.shield(evaluation_task)
-            except asyncio.CancelledError:
-                continue
-            except BaseException:
-                break
-        if evaluation_task.done() and not evaluation_task.cancelled():
-            evaluation_error = evaluation_task.exception()
-            if evaluation_error is not None:
-                logger.warning(
-                    "campaign_evidence_evaluation_failed",
-                    evidence_id=str(claim.evidence_id),
-                    error_type=type(evaluation_error).__name__,
-                )
-        raise
+        done, _ = await asyncio.wait(
+            {evaluation_task, heartbeat_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+        if heartbeat_task in done and not lease_current:
+            evaluation_task.cancel()
+            await asyncio.gather(evaluation_task, return_exceptions=True)
+            return {}, False
+        return await evaluation_task, lease_current
     finally:
+        if not evaluation_task.done():
+            evaluation_task.cancel()
         stop_heartbeat.set()
-        await heartbeat_task
-    return result, lease_current
+        heartbeat_task.cancel()
+        await asyncio.gather(evaluation_task, heartbeat_task, return_exceptions=True)
 
 
 async def process_campaign_evidence_claim(
@@ -194,21 +185,21 @@ async def process_campaign_evidence_claim(
 ) -> str:
     """Run a leased evidence job and persist a bounded terminal disposition."""
 
-    if not await database.update_campaign_evidence_progress(
-        claim.evidence_id,
-        claim.lease_token,
-        "validating",
-        15,
-        "Validating provenance, aggregate inputs, and the blind boundary.",
-    ):
-        return (
-            "canceled"
-            if await database.finalize_canceled_campaign_evidence_run(
-                claim.evidence_id, claim.lease_token
-            )
-            else "stale"
-        )
     try:
+        if not await database.update_campaign_evidence_progress(
+            claim.evidence_id,
+            claim.lease_token,
+            "validating",
+            15,
+            "Validating provenance, aggregate inputs, and the blind boundary.",
+        ):
+            return (
+                "canceled"
+                if await database.finalize_canceled_campaign_evidence_run(
+                    claim.evidence_id, claim.lease_token
+                )
+                else "stale"
+            )
         if not await database.update_campaign_evidence_progress(
             claim.evidence_id,
             claim.lease_token,
@@ -281,9 +272,9 @@ async def process_campaign_evidence_claim(
             return await database.fail_campaign_evidence_run(
                 claim.evidence_id,
                 claim.lease_token,
-                "evidence_worker_error",
+                "evidence_timeout" if isinstance(error, TimeoutError) else "evidence_worker_error",
                 "The evidence evaluator failed before producing a report.",
-                True,
+                not isinstance(error, TimeoutError),
             )
         except Exception:
             logger.warning(

@@ -206,3 +206,11 @@ Release verification for E-5032: commits `d912b21` and `5ab8f6c` are pushed to `
 - UNKNOWN: Whether available Philippine data supports every needed intersection under suitable rights and acceptable sparse-cell risk.
 - UNKNOWN: Achievable SIMULA predictive validity until held-out human or outcome evaluation exists.
 - UNKNOWN: Final production legal roles, lawful bases, regions, retention periods, incident duties, and real-provider terms until concrete hosted use, contracts, and providers are fixed. These block production, not the no-egress local prototype.
+
+
+## 2026-09-05 — local remediation evidence
+
+Runtime exact commands and limitations: [[../docs/audit/2026-09-05/REMEDIATION_RUNTIME]]. UI checks, initial failures, screenshots and pending reruns: [[../docs/audit/2026-09-05/REMEDIATION_UX]]. Route inventory is coverage planning, not execution proof: [[../docs/audit/2026-09-05/REMEDIATION_ROUTES]].
+
+- 2026-09-05 OBSERVED: Final local quality and disposable runtime evidence in
+  [[../docs/audit/2026-09-05/REMEDIATION_VERIFICATION]]; production unchanged.

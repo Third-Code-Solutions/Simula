@@ -1,0 +1,117 @@
+{
+  "startedAt": "2026-09-05T11:27:59.610Z",
+  "protected": true,
+  "authAccountsCreated": false,
+  "results": [
+    {
+      "app": "web",
+      "deploymentId": "dpl_AzpLsWJmcimpe3HExVv8UbxDni41",
+      "route": "/",
+      "width": 1440,
+      "status": 200,
+      "expectedRoute": true,
+      "heading": "Test your message.\nKnow what to ask next.",
+      "overflow": false,
+      "violations": [],
+      "pageErrors": 0,
+      "headers": {
+        "nosniff": true,
+        "deny": true,
+        "cspFrameAncestors": true,
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      }
+    },
+    {
+      "app": "web",
+      "deploymentId": "dpl_AzpLsWJmcimpe3HExVv8UbxDni41",
+      "route": "/",
+      "width": 390,
+      "status": 200,
+      "expectedRoute": true,
+      "heading": "Test your message.\nKnow what to ask next.",
+      "overflow": false,
+      "violations": [],
+      "pageErrors": 0,
+      "headers": {
+        "nosniff": true,
+        "deny": true,
+        "cspFrameAncestors": true,
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      }
+    },
+    {
+      "app": "web",
+      "deploymentId": "dpl_AzpLsWJmcimpe3HExVv8UbxDni41",
+      "route": "/sign-in",
+      "width": 1440,
+      "status": 200,
+      "expectedRoute": true,
+      "heading": "Sign in",
+      "overflow": false,
+      "violations": [],
+      "pageErrors": 0,
+      "headers": {
+        "nosniff": true,
+        "deny": true,
+        "cspFrameAncestors": true,
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      }
+    },
+    {
+      "app": "web",
+      "deploymentId": "dpl_AzpLsWJmcimpe3HExVv8UbxDni41",
+      "route": "/sign-in",
+      "width": 390,
+      "status": 200,
+      "expectedRoute": true,
+      "heading": "Sign in",
+      "overflow": false,
+      "violations": [],
+      "pageErrors": 0,
+      "headers": {
+        "nosniff": true,
+        "deny": true,
+        "cspFrameAncestors": true,
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      }
+    },
+    {
+      "app": "admin",
+      "deploymentId": "dpl_6mZfv3Xi5VbrmssSu5SCFpbtud4f",
+      "route": "/sign-in",
+      "width": 1440,
+      "status": 200,
+      "expectedRoute": true,
+      "heading": "Sign in",
+      "overflow": false,
+      "violations": [],
+      "pageErrors": 0,
+      "headers": {
+        "nosniff": true,
+        "deny": true,
+        "cspFrameAncestors": true,
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      }
+    },
+    {
+      "app": "admin",
+      "deploymentId": "dpl_6mZfv3Xi5VbrmssSu5SCFpbtud4f",
+      "route": "/sign-in",
+      "width": 390,
+      "status": 200,
+      "expectedRoute": true,
+      "heading": "Sign in",
+      "overflow": false,
+      "violations": [],
+      "pageErrors": 0,
+      "headers": {
+        "nosniff": true,
+        "deny": true,
+        "cspFrameAncestors": true,
+        "referrerPolicy": "strict-origin-when-cross-origin"
+      }
+    }
+  ],
+  "status": "passed",
+  "completedAt": "2026-09-05T11:28:30.951Z"
+}

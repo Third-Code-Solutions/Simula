@@ -8,6 +8,7 @@ from contextlib import AsyncExitStack, asynccontextmanager
 from copy import deepcopy
 from datetime import UTC, datetime, timedelta
 from math import ceil
+from pathlib import Path
 from time import perf_counter
 from typing import Protocol, cast
 from uuid import UUID, uuid4
@@ -1195,37 +1196,53 @@ async def test_p2_cancellation_is_authorized_durable_and_cancel_wins_completion(
 
 
 class _TimeoutProvider:
-    def __init__(self) -> None:
-        self.calls = 0
+    def __init__(self, call_log: Path) -> None:
+        self.call_log = call_log
+
+    @property
+    def calls(self) -> int:
+        return len(self.call_log.read_text().splitlines()) if self.call_log.exists() else 0
 
     def run(self, request: ProviderRequest) -> ProviderResponse:
         del request
-        self.calls += 1
+        with self.call_log.open("a") as log:
+            log.write("called\n")
         raise TimeoutError
 
 
 class _PreflightUnavailableProvider:
-    def __init__(self) -> None:
-        self.calls = 0
+    def __init__(self, call_log: Path) -> None:
+        self.call_log = call_log
+
+    @property
+    def calls(self) -> int:
+        return len(self.call_log.read_text().splitlines()) if self.call_log.exists() else 0
 
     def run(self, request: ProviderRequest) -> ProviderResponse:
         del request
-        self.calls += 1
+        with self.call_log.open("a") as log:
+            log.write("called\n")
         raise ProviderPreflightUnavailableError
 
 
 class _RateLimitedProvider:
-    def __init__(self) -> None:
-        self.calls = 0
+    def __init__(self, call_log: Path) -> None:
+        self.call_log = call_log
+
+    @property
+    def calls(self) -> int:
+        return len(self.call_log.read_text().splitlines()) if self.call_log.exists() else 0
 
     def run(self, request: ProviderRequest) -> ProviderResponse:
         del request
-        self.calls += 1
+        with self.call_log.open("a") as log:
+            log.write("called\n")
         raise ProviderRateLimitedError
 
 
 class _RetryableFailureProvider(Protocol):
-    calls: int
+    @property
+    def calls(self) -> int: ...
 
     def run(self, request: ProviderRequest) -> ProviderResponse: ...
 
@@ -1242,7 +1259,8 @@ class _RetryableFailureProvider(Protocol):
 @pytest.mark.integration
 async def test_p2_retryable_provider_failures_use_database_backoff_then_exhaust(
     monkeypatch: pytest.MonkeyPatch,
-    provider_factory: Callable[[], _RetryableFailureProvider],
+    provider_factory: Callable[[Path], _RetryableFailureProvider],
+    tmp_path: Path,
     expected_failure_code: str,
 ) -> None:
     local_supabase = _local_supabase()
@@ -1282,7 +1300,7 @@ async def test_p2_retryable_provider_failures_use_database_backoff_then_exhaust(
         run_id = UUID(created_run.json()["id"])
         job_id = job_id_for(run_id, generation=1)
         queue = create_queue_client(LOCAL_REDIS_URL, max_connections=4)
-        provider = provider_factory()
+        provider = provider_factory(tmp_path / "provider-calls")
         try:
             async with _worker_database(monkeypatch) as worker_database:
                 dispatcher = RunDispatcher(

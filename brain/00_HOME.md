@@ -95,3 +95,7 @@ source_of_truth: true
 - [[Operations/INCIDENT_RESPONSE|Incident response]]
 - [[Operations/RUNBOOK_RUN_CREATION_DISABLED|Run creation disabled runbook]]
 - [[Operations/BACKUP_AND_RESTORE|Backup and restore]]
+
+- [[../plans/active/005-ux-and-production-remediation|September UX and production remediation]]
+
+- [[../docs/audit/2026-09-05/REMEDIATION_VERIFICATION|UX remediation verification]]

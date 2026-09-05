@@ -1,4 +1,5 @@
-import venv
+import importlib
+from types import SimpleNamespace
 
 import pytest
 
@@ -14,7 +15,7 @@ def test_embedded_python_fallback_audits_a_frozen_export(
         commands.append(command)
         return 0
 
-    monkeypatch.delattr(venv, "EnvBuilder", raising=False)
+    monkeypatch.setattr(importlib, "import_module", lambda _: SimpleNamespace())
     monkeypatch.setenv("UV", "/toolchains/uv-0.11.19/uv")
     monkeypatch.setattr(
         audit_python_dependencies,
@@ -40,3 +41,21 @@ def test_embedded_python_fallback_audits_a_frozen_export(
     ]
     assert "--no-deps" in commands[1]
     assert "--disable-pip" in commands[1]
+
+
+def test_missing_venv_module_uses_export_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    commands: list[list[str]] = []
+
+    def missing_module(name: str) -> None:
+        raise ModuleNotFoundError("No module named venv", name=name)
+
+    def record(command: list[str]) -> int:
+        commands.append(command)
+        return 0
+
+    monkeypatch.setattr(importlib, "import_module", missing_module)
+    monkeypatch.setattr(audit_python_dependencies, "_run", record)
+    assert audit_python_dependencies.main() == 0
+    assert "export" in commands[0]
+    assert "--frozen" in commands[0]
+    assert "--no-deps" in commands[1]

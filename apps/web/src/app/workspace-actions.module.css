@@ -1,0 +1,26 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--edge);
+  border-bottom: 1px solid var(--edge);
+}
+.toolbar a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--forest, #245b47);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.25em;
+}
+.toolbar a:hover {
+  color: var(--ink);
+}
+.toolbar a:focus-visible {
+  outline: 3px solid var(--forest, #245b47);
+  outline-offset: 3px;
+}

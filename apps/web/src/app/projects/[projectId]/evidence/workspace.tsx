@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { WorkspaceSidebar } from "@/app/workspace-sidebar";
-import { getProject } from "@/lib/api";
+import { ApiProblem, getProject } from "@/lib/api";
 
 import { SignOutButton } from "../../../sign-out-button";
 
@@ -13,20 +13,21 @@ export function CampaignEvidenceUnavailableInputs() {
     <section className="evidence-grid" aria-label="Evidence inputs">
       <section className="panel form-stack" id="surveys">
         <p className="eyebrow">01 · Surveys / calibration</p>
-        <h2 id="calibration">Survey calibration is unavailable</h2>
+        <h2 id="calibration">Use saved Campaign Lab evidence for comparison</h2>
         <p className="methodology-warning" role="status">
-          Evidence calibration is paused until the admitted raw survey,
-          server-side transform, and resulting aggregate dataset share an
-          immutable checksum binding. No survey dataset can be submitted here.
+          Direct caller-authored calibration inputs remain unavailable here.
+          Campaign Lab can compare a completed simulation with an admitted,
+          fingerprint-bound survey import. This descriptive comparison does not
+          establish independent scientific validation.
         </p>
       </section>
       <section className="panel form-stack" id="backtesting">
         <p className="eyebrow">02 · Historical backtesting</p>
         <h2>Historical backtesting is unavailable</h2>
         <p className="methodology-warning" role="status">
-          Evidence backtesting is paused until the exact held-out outcome
-          envelope is immutably bound to its admitted registry artifact,
-          protocol, and checksum. No outcome payload can be submitted here.
+          Backtesting requires independently held-out outcomes linked to an
+          approved source and test protocol. That verified link is not available
+          yet, so historical outcomes cannot be submitted here.
         </p>
       </section>
     </section>
@@ -37,20 +38,30 @@ export function CampaignEvidenceWorkspace({
   projectId,
 }: Readonly<{ projectId: string }>) {
   const [organizationId, setOrganizationId] = useState<string>();
+  const [contextError, setContextError] = useState<string>();
+  const [revision, setRevision] = useState(0);
 
   useEffect(() => {
     let active = true;
     void getProject(projectId)
       .then((project) => {
-        if (active) setOrganizationId(project.organization_id);
+        if (active) {
+          setOrganizationId(project.organization_id);
+          setContextError(undefined);
+        }
       })
-      .catch(() => {
-        // Navigation may still render without a transient project-context read.
+      .catch((error: unknown) => {
+        if (active)
+          setContextError(
+            error instanceof ApiProblem
+              ? error.message
+              : "Could not load project access. Retry to restore workspace navigation.",
+          );
       });
     return () => {
       active = false;
     };
-  }, [projectId]);
+  }, [projectId, revision]);
 
   return (
     <main
@@ -75,6 +86,17 @@ export function CampaignEvidenceWorkspace({
         <span>Evidence lab</span>
       </nav>
 
+      {contextError ? (
+        <div className="problem" role="alert">
+          <p>{contextError}</p>
+          <button
+            type="button"
+            onClick={() => setRevision((value) => value + 1)}
+          >
+            Retry project access
+          </button>
+        </div>
+      ) : null}
       <section
         className="methodology-hero evidence-hero"
         aria-labelledby="page-title"
@@ -107,6 +129,28 @@ export function CampaignEvidenceWorkspace({
       </nav>
 
       <CampaignEvidenceUnavailableInputs />
+      <p>
+        <Link
+          className="primary-link"
+          href={`/projects/${projectId}/campaign-lab#calibration`}
+        >
+          Compare saved Campaign Lab evidence
+        </Link>
+      </p>
+      <section className="panel evidence-next-action">
+        <h2>Continue with supported research tasks</h2>
+        <p className="lede">
+          Campaign Lab lets you organize sources and review experimental message
+          tests. Each workflow explains its evidence requirements before you
+          submit.
+        </p>
+        <Link
+          className="primary-link"
+          href={`/projects/${projectId}/campaign-lab#research-upload`}
+        >
+          Open campaign research
+        </Link>
+      </section>
 
       <section className="panel" id="compliance">
         <p className="eyebrow">03 · Compliance boundary</p>

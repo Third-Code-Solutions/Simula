@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-09-05T11:32:00.4141801Z",
+  "project_id": "ywiwmczccktwzqyhzhiz",
+  "synthetic_run_id": "d6918fe8-423d-4bf6-80ad-21e5b44e63ec",
+  "status": "dispatched",
+  "generation_count": 1,
+  "confirmed_count": 1,
+  "first_confirmed_at": "2026-09-05 11:29:54.213919+00",
+  "maximum_dispatch_attempts": 1,
+  "query_read_only": true,
+  "source": "private.run_outbox exact synthetic run UUID",
+  "limits": "Durable confirmation with candidate dispatcher startup and BullMQ worker configuration; not distributed tracing."
+}

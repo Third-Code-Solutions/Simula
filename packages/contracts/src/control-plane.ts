@@ -7077,6 +7077,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        releaseSha?: string;
                         /** @enum {string} */
                         status: "alive";
                     };
@@ -7099,6 +7100,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        releaseSha?: string;
                         /** @enum {string} */
                         status: "ready";
                     };
@@ -7110,6 +7112,7 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        releaseSha?: string;
                         /** @enum {string} */
                         status: "not_ready";
                     };
