@@ -51,3 +51,27 @@ paths = [
   '''^apps/api/src/rate-limits/domain-rate-limiter\.spec\.ts$''',
   '''^apps/api/test/database/organization-gateway\.database-int\.ts$''',
 ]
+
+
+[[allowlists]]
+description = "Exact reviewed signed-source checksums in production promotion receipts"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+regexes = [
+  '''^\s*"railway\.api\.json": "0e094518ff9a4ff582159851436613d318623891c46ff5c7904ad3bec955f611",?\s*$''',
+  '''^\s*"20260718041000_revoke_command_api_create\.sql": "efbbe977f6f1936ef77e88fd93015286dd55538e297f089271ad0db66e04d07e",?\s*$''',
+  '''^\s*"20260802063625_campaign_lab_api_wrappers\.sql": "93f487f0192d46022f264b60ed21df7f7a5187c00932135d3faef8df269db1d8",?\s*$''',
+]
+paths = [
+  '''^docs/audit/2026-09-05/production-backend-promotion\.json$''',
+  '''^docs/audit/2026-09-05/production-frontend-promotion\.json$''',
+]
+
+[[allowlists]]
+description = "Exact previous deployed Git commit in migration verification"
+targetRules = ["generic-api-key"]
+condition = "AND"
+regexTarget = "line"
+regexes = ['''^\s*"previous_api_sha": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",?\s*$''']
+paths = ['''^docs/audit/2026-09-05/production-migration-receipt\.json$''']

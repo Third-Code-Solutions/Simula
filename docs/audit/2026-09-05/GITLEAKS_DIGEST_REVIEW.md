@@ -27,3 +27,20 @@ Windows binary archive SHA256:
 against the official versioned release checksums before extraction/execution.
 The original hosted failure remains recorded; the next source commit must pass
 the hosted gate with this reviewed configuration.
+
+## Final production-receipt review
+
+The post-release evidence commit0f82e00246bdc053500390ff9bb16fad71ffceed produced
+seven generic-api-key findings in the three production promotion/migration
+receipts. They are three file SHA256 values repeated across the frontend/backend
+manifests and the previous deployed API Git commit. The file values were independently
+rehashed from the verified signed source and matched its manifest; the previous
+SHA resolves to an actual Git commit and matches the recorded live pre-migration
+health response. No finding was an authentication credential.
+
+New exceptions require the exact JSON field, exact known value, exact evidence
+path and generic-api-key rule. Different values, fields and paths continue to fail.
+Eight real synthetic Git/scanner cases passed; full300-commit history scanned
+21.35MB with no findings after the configuration change. No commits were skipped
+or rewritten, and the original failed scan is retained in the task history.
+Proof: gitleaks-release-digest-proof.json and gitleaks-release-digest-scope.json.

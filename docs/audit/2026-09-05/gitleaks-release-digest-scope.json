@@ -1,0 +1,46 @@
+{
+  "scanner": "gitleaks 8.30.1",
+  "synthetic_fixture": true,
+  "cases": [
+    {
+      "case": "source_exact",
+      "expected_exit": 0,
+      "actual_exit": 0
+    },
+    {
+      "case": "source_changed_digest",
+      "expected_exit": 1,
+      "actual_exit": 1
+    },
+    {
+      "case": "source_wrong_field",
+      "expected_exit": 1,
+      "actual_exit": 1
+    },
+    {
+      "case": "source_wrong_path",
+      "expected_exit": 1,
+      "actual_exit": 1
+    },
+    {
+      "case": "commit_exact",
+      "expected_exit": 0,
+      "actual_exit": 0
+    },
+    {
+      "case": "commit_changed_digest",
+      "expected_exit": 1,
+      "actual_exit": 1
+    },
+    {
+      "case": "commit_wrong_field",
+      "expected_exit": 1,
+      "actual_exit": 1
+    },
+    {
+      "case": "commit_wrong_path",
+      "expected_exit": 1,
+      "actual_exit": 1
+    }
+  ]
+}

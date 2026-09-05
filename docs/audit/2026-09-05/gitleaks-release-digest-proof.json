@@ -1,0 +1,25 @@
+{
+  "source_sha": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+  "reviewed_non_credentials": [
+    {
+      "file": "railway.api.json",
+      "sha256": "0e094518ff9a4ff582159851436613d318623891c46ff5c7904ad3bec955f611",
+      "matches_verified_signed_source": true
+    },
+    {
+      "file": "20260718041000_revoke_command_api_create.sql",
+      "sha256": "efbbe977f6f1936ef77e88fd93015286dd55538e297f089271ad0db66e04d07e",
+      "matches_verified_signed_source": true
+    },
+    {
+      "file": "20260802063625_campaign_lab_api_wrappers.sql",
+      "sha256": "93f487f0192d46022f264b60ed21df7f7a5187c00932135d3faef8df269db1d8",
+      "matches_verified_signed_source": true
+    },
+    {
+      "field": "previous_api_sha",
+      "sha": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",
+      "git_object_type": "commit"
+    }
+  ]
+}
