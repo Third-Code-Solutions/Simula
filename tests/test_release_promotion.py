@@ -6,7 +6,9 @@ import hashlib
 import io
 import json
 import subprocess
+import sys
 import tarfile
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +19,53 @@ from scripts.release_manifest import REPOSITORY, WORKFLOW
 
 SHA = "a" * 40
 REF = "refs/tags/v1.0.0-test"
+
+
+def test_cleanup_lock_preserves_original_promotion_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    plan = tmp_path / "plan.json"
+    plan.write_text("{}", encoding="utf-8")
+    original_error = ValueError("vercel deploy failed (exit 1)")
+    cleanup_calls: list[bool] = []
+
+    def locked_cleanup(path: str, ignore_errors: bool = False, **kwargs: Any) -> None:
+        assert Path(path) == source
+        cleanup_calls.append(ignore_errors)
+        if not ignore_errors:
+            raise PermissionError(32, "Synthetic Windows file lock")
+
+    def failed_verification(*args: Any, **kwargs: Any) -> None:
+        raise original_error
+
+    monkeypatch.setattr(tempfile, "mkdtemp", lambda *args, **kwargs: str(source))
+    monkeypatch.setattr(tempfile.TemporaryDirectory, "_rmtree", staticmethod(locked_cleanup))
+    monkeypatch.setattr(promotion, "verify_release", failed_verification)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "promote_release",
+            "--artifact-directory",
+            str(tmp_path),
+            "--sha",
+            SHA,
+            "--ref",
+            REF,
+            "--run-id",
+            "123",
+            "--plan",
+            str(plan),
+            "--receipt",
+            str(tmp_path / "receipt.json"),
+        ],
+    )
+    with pytest.raises(ValueError) as raised:
+        promotion.main()
+    assert raised.value is original_error
+    assert cleanup_calls == [True]
 
 
 def test_vercel_command_cannot_inherit_a_different_project(monkeypatch: pytest.MonkeyPatch) -> None:

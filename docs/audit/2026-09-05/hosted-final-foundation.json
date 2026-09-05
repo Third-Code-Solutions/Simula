@@ -1,0 +1,20 @@
+{
+  "source_sha": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+  "run_id": "33961708123",
+  "job_id": "101294600723",
+  "conclusion": "success",
+  "python_root": {
+    "skipped": 2,
+    "integration_deselected": 31,
+    "passed": 720
+  },
+  "python_integration": {
+    "passed": 31
+  },
+  "web_tests": 184,
+  "admin_tests": 23,
+  "nest_tests": 262,
+  "browser_tests": 12,
+  "provider_application_deployed": false,
+  "source": "completed GitHub Actions Foundation gate log"
+}

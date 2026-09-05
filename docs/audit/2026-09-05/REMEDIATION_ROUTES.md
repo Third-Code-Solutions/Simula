@@ -6,29 +6,69 @@ checked-in OpenAPI documents. Every API operation below is NOT RUN by this UX
 subtask. Earlier production snapshots in routes.json and roles.json describe the
 earlier audited deployment, not this local refactor.
 
+## Production release verified - 5 September 2026, 11:30 UTC
+
+This section supersedes earlier application-release-pending statements while
+preserving their historical evidence. All seven application components now run
+source eb0ea931a180f1912f690be5648a6fb4a6557ab0: web, admin, API, control plane,
+dispatcher, worker and private engine. Required CI33961708123 and signed
+release33961707670 passed. Three release migrations are applied
+through20260905104327; V4 readiness remains available for rollback
+compatibility. Both canonical Vercel domains were promoted after
+protected-candidate checks.
+
+The production smoke receipt passes52 assertions: exact public service
+SHA/health and frontend security headers; fresh synthetic
+owner/editor/viewer/nonmember sessions; application invitation acceptance;
+editor/viewer reads; viewer mutation, editor owner-only action, nonmember and
+platform-admin denials; signed-out API/browser boundaries; actual browser
+campaign submission, worker success, exact run restoration and visible
+Synthetic-only limits. A separate real behavioral run completed in about5
+seconds with same-command durable ID replay, saved experimental deterministic
+result and artifact checksum. Six protected-candidate desktop/mobile checks and
+production result1440/390 checks had zero Axe violations, document overflow and
+page errors.
+
+This is bounded production verification, not every route/role or scientific
+validity. Report/calibration/backtest complex lifecycle evidence remains local
+synthetic engineering proof; registry approval remains a separate administrator
+process. Hosted superadmin pagination beyond100, production
+recovery/load/retention and approved legal/privacy/terms text remain unverified
+or unresolved. Direct private SSH health checks were blocked by unavailable
+authorized keys; startup/config/image identities and an actual behavioral job
+provide fallback evidence, not direct private-endpoint coverage. Immediate
+publication means that job alone does not attribute dispatch to the dispatcher.
+
+Evidence: production-smoke-verification.json, production-backend-promotion.json
+and production-frontend-promotion.json in docs/audit/2026-09-05, plus the
+release result and protected-candidate receipt. Promotion receipts retain the
+initial frontend failure and subsequent recovery; they are not a claim of an
+uninterrupted first attempt. Synthetic fixture records are retained by UUID, not
+existing-user replacements.
+
 ## Browser pages
 
-| App / route                                     | Authentication and role boundary from source                                                       | UX verification in this remediation                                                                                                        |
-| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Web `/`                                         | Public                                                                                             | PASSED local desktop/mobile Axe, overflow, workflow/skip focus and final public suite                                                      |
-| Web `/data-use`                                 | Public operating information; no legal promises                                                    | PASSED final public navigation/evidence-limit suite                                                                                        |
-| Web `/sign-in`                                  | Public login; Supabase credentials required to establish session                                   | PASSED desktop/mobile shell and real disposable Supabase owner login                                                                       |
-| Web `/sign-up`                                  | Public registration; Supabase availability/policy controls completion                              | PASSED desktop/mobile shell; registration completion NOT RUN                                                                               |
-| Web `/forgot-password`                          | Public recovery request                                                                            | PASSED desktop/mobile shell; email delivery NOT RUN                                                                                        |
-| Web `/reset-password`                           | Recovery session required for successful password update                                           | PASSED desktop/mobile shell; successful password update NOT RUN                                                                            |
-| Web `/organizations`                            | `requireAuthenticatedPage`; API returns caller-visible organizations                               | PASSED real disposable owner organization creation/navigation; other roles NOT RUN                                                         |
-| Web `/organizations/[organizationId]/dashboard` | Authenticated; API dashboard permissions gate owner controls                                       | PASSED real owner navigation; synthetic render evidence separate; other roles NOT RUN                                                      |
-| Web `/organizations/[organizationId]/projects`  | Authenticated; `can_create_projects` gates creation                                                | PASSED real owner project creation; other roles NOT RUN                                                                                    |
-| Web `/projects/[projectId]`                     | Authenticated; tenant-visible project; dashboard permissions gate modifications/runs               | Source reviewed; owner/editor/viewer runtime NOT RUN                                                                                       |
-| Web `/projects/[projectId]/methodology`         | Authenticated; `can_create_runs` gates builders/run forms                                          | Source reviewed; owner/editor/viewer runtime NOT RUN                                                                                       |
-| Web `/projects/[projectId]/evidence`            | Authenticated page; project lookup; protected evidence submissions visibly unavailable             | Source reviewed; owner/editor/viewer runtime NOT RUN                                                                                       |
-| Web `/projects/[projectId]/campaign-lab`        | Authenticated; API tenant/permission checks remain authoritative                                   | PASSED real local owner campaign/simulation/refresh plus bound report independent review/export/revocation at1440/390; other roles NOT RUN |
-| Web `/runs/[runId]`                             | Invalid IDs 404; otherwise authenticated; permission checks gate refinement                        | Source reviewed; owner/editor/viewer runtime NOT RUN                                                                                       |
-| Admin `/`                                       | Supabase verified user/session; platform API 401→sign-in and 403→unauthorized; superadmin expected | PASSED component tests with fixtures; real superadmin/non-admin runtime NOT RUN                                                            |
-| Admin `/sign-in`                                | Public login shell                                                                                 | PASSED component link/origin tests; browser/credentials NOT RUN                                                                            |
-| Admin `/unauthorized`                           | Public denial page                                                                                 | NOT RUN                                                                                                                                    |
-| Web `/api/health`                               | Public health handler                                                                              | NOT RUN by this subtask                                                                                                                    |
-| Admin `/api/health`                             | Public health handler                                                                              | PASSED existing unit test in admin suite; live HTTP NOT RUN                                                                                |
+| App / route                                     | Authentication and role boundary from source                                                       | UX verification in this remediation                                                                                                                  |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web `/`                                         | Public                                                                                             | PRODUCTION candidate desktop/mobile PASSED; canonical exact-SHA health/header checks PASSED                                                          |
+| Web `/data-use`                                 | Public operating information; no legal promises                                                    | PASSED final public navigation/evidence-limit suite                                                                                                  |
+| Web `/sign-in`                                  | Public login; Supabase credentials required to establish session                                   | PRODUCTION candidate desktop/mobile and fresh owner/editor/viewer normal login PASSED                                                                |
+| Web `/sign-up`                                  | Public registration; Supabase availability/policy controls completion                              | PASSED desktop/mobile shell; registration completion NOT RUN                                                                                         |
+| Web `/forgot-password`                          | Public recovery request                                                                            | PASSED desktop/mobile shell; email delivery NOT RUN                                                                                                  |
+| Web `/reset-password`                           | Recovery session required for successful password update                                           | PASSED desktop/mobile shell; successful password update NOT RUN                                                                                      |
+| Web `/organizations`                            | `requireAuthenticatedPage`; API returns caller-visible organizations                               | PRODUCTION synthetic owner organization creation PASSED; other directory cases not exhaustive                                                        |
+| Web `/organizations/[organizationId]/dashboard` | Authenticated; API dashboard permissions gate owner controls                                       | PRODUCTION synthetic owner creation/navigation PASSED; full dashboard role matrix NOT RUN                                                            |
+| Web `/organizations/[organizationId]/projects`  | Authenticated; `can_create_projects` gates creation                                                | PRODUCTION synthetic owner project creation PASSED                                                                                                   |
+| Web `/projects/[projectId]`                     | Authenticated; tenant-visible project; dashboard permissions gate modifications/runs               | Source reviewed; owner/editor/viewer runtime NOT RUN                                                                                                 |
+| Web `/projects/[projectId]/methodology`         | Authenticated; `can_create_runs` gates builders/run forms                                          | Source reviewed; owner/editor/viewer runtime NOT RUN                                                                                                 |
+| Web `/projects/[projectId]/evidence`            | Authenticated page; project lookup; protected evidence submissions visibly unavailable             | Source reviewed; owner/editor/viewer runtime NOT RUN                                                                                                 |
+| Web `/projects/[projectId]/campaign-lab`        | Authenticated; API tenant/permission checks remain authoritative                                   | PRODUCTION owner creation/simulation/reload and editor/viewer reads PASSED; selected API role denials PASSED; complex evidence lifecycles local only |
+| Web `/runs/[runId]`                             | Invalid IDs 404; otherwise authenticated; permission checks gate refinement                        | Source reviewed; owner/editor/viewer runtime NOT RUN                                                                                                 |
+| Admin `/`                                       | Supabase verified user/session; platform API 401→sign-in and 403→unauthorized; superadmin expected | PASSED component tests with fixtures; real superadmin/non-admin runtime NOT RUN                                                                      |
+| Admin `/sign-in`                                | Public login shell                                                                                 | PRODUCTION protected candidate desktop/mobile shell PASSED; local real superadmin login PASSED                                                       |
+| Admin `/unauthorized`                           | Public denial page                                                                                 | NOT RUN                                                                                                                                              |
+| Web `/api/health`                               | Public health handler                                                                              | PRODUCTION canonical exact source SHA200 and security headers PASSED                                                                                 |
+| Admin `/api/health`                             | Public health handler                                                                              | PRODUCTION canonical exact source SHA200 and security headers PASSED                                                                                 |
 
 ## Role coverage
 
@@ -38,15 +78,15 @@ membership. Source review observed gates such as `can_create_projects`,
 `can_create_runs`, `can_manage_team`, and `can_manage_settings`; it does not
 prove production enforcement.
 
-| Role/state              | Intended boundary observed                                      | Current remediation runtime                                                                           |
-| ----------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Signed out              | Public pages; protected page redirect to sign-in                | Public pages verified; all protected redirects NOT RUN by this subtask                                |
-| Owner                   | API-granted project/run/team/settings capabilities              | PASSED bounded real local organization/project/campaign and report review flows; not every capability |
-| Editor                  | API-granted editing/run capabilities, no assumed owner controls | NOT RUN                                                                                               |
-| Viewer                  | Read access; mutating controls depend on false permission flags | NOT RUN                                                                                               |
-| Nonmember               | Resource visibility and access rejected by API                  | NOT RUN                                                                                               |
-| Superadmin              | Dedicated platform dashboard via role-registry API              | NOT RUN; fixture component test only                                                                  |
-| Expired/invalid session | Redirect/rejection; no assumed access from client state         | NOT RUN                                                                                               |
+| Role/state              | Intended boundary observed                                      | Current remediation runtime                                                                                                                     |
+| ----------------------- | --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signed out              | Public pages; protected page redirect to sign-in                | PRODUCTION protected page redirect and campaign API401 PASSED; public candidate shells checked                                                  |
+| Owner                   | API-granted project/run/team/settings capabilities              | PRODUCTION synthetic organization/project/campaign creation, worker result/reload and behavioral run PASSED; full owner controls not exhaustive |
+| Editor                  | API-granted editing/run capabilities, no assumed owner controls | PRODUCTION shared campaign API/browser read PASSED; owner-only invitation denied                                                                |
+| Viewer                  | Read access; mutating controls depend on false permission flags | PRODUCTION shared campaign API/browser read PASSED; campaign mutation denied                                                                    |
+| Nonmember               | Resource visibility and access rejected by API                  | PRODUCTION fresh authenticated nonmember campaign access denied                                                                                 |
+| Superadmin              | Dedicated platform dashboard via role-registry API              | LOCAL actual admin pagination beyond100 PASSED; production large-directory role journey NOT RUN                                                 |
+| Expired/invalid session | Redirect/rejection; no assumed access from client state         | NOT RUN                                                                                                                                         |
 
 ## API contract route inventory
 

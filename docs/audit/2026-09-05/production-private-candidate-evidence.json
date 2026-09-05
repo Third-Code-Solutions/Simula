@@ -1,0 +1,131 @@
+{
+  "observed_at": "2026-09-05T11:30:59.027845+00:00",
+  "expected_sha": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+  "services": {
+    "engine": {
+      "deployment_id": "f99b6929-32fd-49d6-8468-ae0ed9ddd4cf",
+      "status": "SUCCESS",
+      "created_at": "2026-09-05T11:12:42.521Z",
+      "commit_sha": null,
+      "image_digest": "sha256:06e28d14c1503b575c2b9eb0fac358be7483f3c556662e732f22e9ce7f7ab80b",
+      "meta_fields": [
+        "buildOnly",
+        "cliAgentSessionId",
+        "cliCaller",
+        "cliMessage",
+        "configFile",
+        "fileServiceManifest",
+        "imageDigest",
+        "logsV2",
+        "nixpacksProviders",
+        "propertyFileMapping",
+        "reason",
+        "rootDirectory",
+        "runtime",
+        "serviceManifest",
+        "volumeMounts"
+      ],
+      "healthcheck_path": "/health/ready",
+      "service_configuration": {
+        "SIMULA_RELEASE_SHA": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+        "SIMULA_ENVIRONMENT": "production",
+        "SIMULA_WORKER_QUEUE_TRANSPORT": null,
+        "SIMULA_BEHAVIORAL_ENGINE_TRANSPORT": null
+      },
+      "configured_sha_matches": true,
+      "events": [],
+      "log_error_record_count": 0,
+      "parsed_log_count": 2
+    },
+    "worker": {
+      "deployment_id": "c4179c52-13d1-4def-a884-a5d86fd6aeb7",
+      "status": "SUCCESS",
+      "created_at": "2026-09-05T11:13:29.284Z",
+      "commit_sha": null,
+      "image_digest": "sha256:143d86c4f0e2ab12b42368984def070ffcc6c6ac58ae908e0db9a189ffe283e8",
+      "meta_fields": [
+        "buildOnly",
+        "cliAgentSessionId",
+        "cliCaller",
+        "cliMessage",
+        "configFile",
+        "fileServiceManifest",
+        "imageDigest",
+        "logsV2",
+        "nixpacksProviders",
+        "propertyFileMapping",
+        "reason",
+        "rootDirectory",
+        "runtime",
+        "serviceManifest",
+        "volumeMounts"
+      ],
+      "healthcheck_path": null,
+      "service_configuration": {
+        "SIMULA_RELEASE_SHA": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+        "SIMULA_ENVIRONMENT": "production",
+        "SIMULA_WORKER_QUEUE_TRANSPORT": "bullmq",
+        "SIMULA_BEHAVIORAL_ENGINE_TRANSPORT": "private_http"
+      },
+      "configured_sha_matches": true,
+      "events": [
+        {
+          "event": "service_started",
+          "timestamp": "2026-09-05T11:14:01.659329Z",
+          "release_sha": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+          "payload_contract": "run_v2"
+        }
+      ],
+      "log_error_record_count": 0,
+      "parsed_log_count": 3
+    },
+    "dispatcher": {
+      "deployment_id": "86b1d6b7-5175-40cb-8df0-3e5f38f357af",
+      "status": "SUCCESS",
+      "created_at": "2026-09-05T11:14:09.684Z",
+      "commit_sha": null,
+      "image_digest": "sha256:6787f7a5546d9dc345c8f17b82a4dcac3d1053f33e931422d757f56c3194fed1",
+      "meta_fields": [
+        "buildOnly",
+        "cliAgentSessionId",
+        "cliCaller",
+        "cliMessage",
+        "configFile",
+        "fileServiceManifest",
+        "imageDigest",
+        "logsV2",
+        "nixpacksProviders",
+        "propertyFileMapping",
+        "reason",
+        "rootDirectory",
+        "runtime",
+        "serviceManifest",
+        "volumeMounts"
+      ],
+      "healthcheck_path": "/health/ready",
+      "service_configuration": {
+        "SIMULA_RELEASE_SHA": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+        "SIMULA_ENVIRONMENT": "production",
+        "SIMULA_WORKER_QUEUE_TRANSPORT": null,
+        "SIMULA_BEHAVIORAL_ENGINE_TRANSPORT": null
+      },
+      "configured_sha_matches": true,
+      "events": [
+        {
+          "event": "dispatcher_started",
+          "timestamp": "2026-09-05T11:15:24.179999496Z"
+        },
+        {
+          "event": "dispatcher_pass",
+          "timestamp": "2026-09-05T11:29:55.317990718Z",
+          "claimed": 1,
+          "confirmed": 1,
+          "recovered": 0,
+          "poisoned": 0
+        }
+      ],
+      "log_error_record_count": 0,
+      "parsed_log_count": 3
+    }
+  }
+}

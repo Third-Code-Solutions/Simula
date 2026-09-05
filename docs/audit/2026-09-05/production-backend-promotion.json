@@ -1,0 +1,278 @@
+{
+  "manifest": {
+    "build_inputs": {
+      "pnpm-lock.yaml": "cb296511255cfa5417741d941a0185aef1ca1bcd9b35d6db06f823ffba00e6e0",
+      "railway.ai-engine.json": "d8b62fed1c34174e3e89039641bb66c0e96e2c85dcaaedf40680775d33c3f20a",
+      "railway.api.json": "0e094518ff9a4ff582159851436613d318623891c46ff5c7904ad3bec955f611",
+      "railway.control-plane.json": "6aa3a57fb0db52335edb9bd283f2675846dcb678df1381736e735df80327764c",
+      "railway.dispatcher.json": "a8698ce0d918262f0bf881d6ecc68fa30109e8599f715a0dc2ab1f6b1f6bb7d3",
+      "railway.web.json": "709c86d9a36b0944afc6d3a46f8b45359b1d2ddb7672b2c8a1df80777b65d597",
+      "railway.worker.json": "33ff7a01301288dca1d45088b77ea41fd7172a24457886467bb6da1ecc6128ea",
+      "uv.lock": "d7bc72ac4ca1af0489a3f8318fa218e62a730817a71de8d3ca779423b548654e"
+    },
+    "deployment_mode": "provider-build-from-verified-source",
+    "migration_head": "20260905104327",
+    "migrations": {
+      "20260717000100_phase2_database_foundation.sql": "b806ea383fd9e0980c27b88e3dbe444e2bc1598668c88dfe56dfd58c462d6768",
+      "20260717025314_phase2_project_stimulus_commands.sql": "e47e53ce0a8c68d957403eb24feda6c20dd2f7a67a947064e6c96f638f787c0f",
+      "20260718000000_phase2_audit_and_rate_hardening.sql": "15d15d6a88a4200bcbb4a0df685e42b8e6fa115bf8727d2f8af7c00fe4c0aa03",
+      "20260718010000_phase2_runs_and_worker.sql": "e4d1d4ce2851eecda6c5289eee227c589ce51d0fce95d0ea47c55bd3762d39c7",
+      "20260718020000_fix_run_fixture_lock.sql": "03abea9741f819a30f28e93afa2430aed19570c5cfadfac25a9f51e300a81549",
+      "20260718020100_fix_run_failure_enum.sql": "19d94e504de3afddfde6aab6b5c0323e2378f407d58e1a4467964dbe850c6406",
+      "20260718020200_grant_runtime_extension_usage.sql": "b2c12205b125ae5aa207a5f16320c9bc3db84cd997fc47fb5a1469a0bc3d2a8f",
+      "20260718020300_fix_worker_organization_lock.sql": "1ce6b932ce57f0ae4c8d3c0221887660848b3cc74c65dba3d84e93e41ba1f92b",
+      "20260718020400_fix_completion_result_lock.sql": "e76a3fd110b29c8e956be456cb950840ab8960aa136bf1aa434ca1cf85f42ebd",
+      "20260718030000_phase2_provenance_snapshot.sql": "ca7bff06798001546342a040da8775402e37ce673f0f0ab6788821b9834c4890",
+      "20260718030100_phase2_private_schema_grant_cleanup.sql": "c4d3673af0d0e7f975902baed6919421e7d01b85377eafd955b2ce9072f3c31f",
+      "20260718040000_phase2_cancellation.sql": "12fb8c778127179357798563dbab47c2893d609c1b7f8f24c3a46f9fc263a699",
+      "20260718041000_revoke_command_api_create.sql": "efbbe977f6f1936ef77e88fd93015286dd55538e297f089271ad0db66e04d07e",
+      "20260718050000_phase2_retry_backoff.sql": "1707f66fec13d26242647117e52e25dfa067f0e1964c9b1092d0b812ce437515",
+      "20260718060000_phase2_stale_dispatch_recovery.sql": "1c8f0fd49711c40e42b8b802ce47f9b416874fb7304140e47a02fb955f7840f9",
+      "20260718070000_phase2_poison_dispatch.sql": "ef532af77e5181b0fae1aaef220c467c6fa2b3b38cb8876a5e15cedc9a57993e",
+      "20260718093135_phase2_global_run_backpressure.sql": "6943ee87fea690989e7fefac66b52d5016dba0a99d8e771dc9a5c68e85e0b821",
+      "20260718094407_revoke_hosted_rls_auto_enable.sql": "e374317bf3021dd7fc3f3d96468df73c80ac8d2978d8234edf9ebbeb4c3bdc02",
+      "20260718113445_20260718111531_phase2_lease_attempt_hardening.sql": "76696a947624acbe24eea104544659eded8e100d71de27fd76888b7968f900b9",
+      "20260718122048_20260718120823_phase2_result_contract_boundary.sql": "55b4051b457253d5f270b856728f244bb5909de6ae395d377bcd255c7b8fe62d",
+      "20260718160000_phase2_audience_governance.sql": "1f37c4042ec99708182a6cf83101e5b474fa284c0ae4089b9a1d57596f687088",
+      "20260718161000_phase2_run_support_and_replay.sql": "a7bb19f6c33bd006b38748dc253f05902537a22e3ea1e3dc840e86649993713b",
+      "20260719000000_phase2_deletion_graph.sql": "101e79fd860ca09bf436d30a7606b7e1261d4a607bca7ea4e04c984a076b3628",
+      "20260719010000_phase2_trace_and_sign_in_audit.sql": "3d8ba925c482de97228182495af58345b6ced91e4fbcce539d94e46bf89b69cb",
+      "20260719020000_phase2_operational_run_control.sql": "447baf02bda7fbb0aeaf002a171d79044cd726bf9a584bf5f860bf34d5d5d00e",
+      "20260719030000_phase2_release_configuration_binding.sql": "179b9483502dad94990d1380610fb7cc6e0146422e6757a94d167d54e0415ced",
+      "20260719040000_phase2_runtime_observability_snapshot.sql": "a3a1e619254a44da7e6336465813a8c17d7e53f1c747469a2b051814b8a66980",
+      "20260719050000_phase2_audience_v2_immutability.sql": "bc8ab0679f8fe2fbb3e3605f4350cd9e748bf558ad5c5564d6d87bf227814f3e",
+      "20260720063411_phase2_exit_database_invariants.sql": "4f5df46440326a44109a1c42d84285d93747ec97bc4ac9df8cfb7b800f0160e2",
+      "20260720070010_phase2_provider_success_receipts.sql": "69f58426c25f19049c4a84917a5c7873ddd7a56ac1fd2bae33c774cb6875a7fb",
+      "20260720072350_phase2_provider_receipt_fk_index.sql": "901e7f72e450859c936baacfe59bf70c9f12c635b4db1a1525e8d2d3ab2935ed",
+      "20260720083000_phase2_operator_run_control.sql": "26202ba3a8e6102eabc51e0accfec7749716644fc5beaa8440d5447fb219a6a0",
+      "20260720095228_phase3_methodology_registry.sql": "7655b6cf8cf1649082dfd9eeb34df1c512611e34c341bf55e7b8b3da47f7d7f0",
+      "20260720100002_phase4_mvp_product.sql": "4cfae390f23e517a271e309601e3cbd8099b035b364aa0a92ed31da93c41346b",
+      "20260720110000_phase4_sharing_and_team_acceptance.sql": "1bb0ad2c9f8ec3c0c94bd486cbc870e078ae431a703c4994939836c98bbe2741",
+      "20260722033736_platform_superadmin.sql": "14546f159f2eb1d93812145334135ddc313b24a8649d142354aeb913a968d37d",
+      "20260722033952_platform_superadmin_granted_by_index.sql": "96d0430f424064bd10d0fa72d0a61454cc97b5a32c96fee5ca3a03f8b121a40f",
+      "20260729090000_bullmq_v2_worker_binding.sql": "7d7091bad140178e7c92e90e5d112133aa644cc6afa06d7376788557f2daae33",
+      "20260729094522_behavioral_engine_artifacts.sql": "24623b664343cd8bc1cb3cf17d2e9c6e173f749aaa48255faf0258435e527e3c",
+      "20260729102512_m5_governed_behavioral_data.sql": "6b4d1cc339578c6493f98c2c99d80e7e69a76f94f1b45f5f839659bd0fc42d46",
+      "20260729103220_m5_evidence_outcomes_private_assets.sql": "e4068e15c5c8e86f82274a9c366a6f0f99079969249e5b8716e6d9e067b1feaf",
+      "20260729103629_m5_behavioral_evaluation_registry.sql": "9a70a4b7beec6234f4e7e3b6529e5058a04141e82dd6a246dd6b32401b863b11",
+      "20260729110611_m6_behavioral_public_summaries.sql": "8114d086a40dccbf9ee10f4b04210b1494522bbd9d1fe6d74ad2dc9a116bfb90",
+      "20260729113000_m6_run_audit_history.sql": "f9158ff6671b4a88239a931281b41bf119eb098ee3f9900f83d75c6ffc309f0b",
+      "20260729132200_m7_governed_context_embeddings.sql": "6452a17b4958b3929b0ae88f0902db731e82604b07d0c3027114cf7ac0459a57",
+      "20260729151639_m6_private_stimulus_asset_pipeline.sql": "f9bbdfe69b1fdd98fe22ce9a8882f6dabade3555ace088ec23e1d6a232d96b8f",
+      "20260730123000_m6_visual_stimulus_profiles.sql": "4153e083865538d3dd66550b80a47945b4c8600cd206a87133290633b36ce1f1",
+      "20260730160000_fix_behavioral_demo_active_audience.sql": "98324d38df83690d20f58f590917964f311649c5d922839f4fd2bf34b8c0a3f0",
+      "20260730170000_fix_behavioral_run_delete_cascade.sql": "de8cdc3a8997b75bee4c25a3832c7cc5b64000f34f309587bb63dc84910165d6",
+      "20260730180000_m3_bullmq_queue_pressure.sql": "cb5143afd90d73ea69ed1bac8cb941cce0ff9417e7a706678595956cb664a55b",
+      "20260730190000_m3_queue_transport_fence.sql": "f12ee7d10a4f4d4207fd71a9a70a6e23e82dc9af022535fd095a7b153e2b311b",
+      "20260730200000_m2_organization_deletion_orchestration.sql": "17029c1c98888eab342be083c55fdd5880e7a46166e4ad477f3a473265a905c1",
+      "20260730210000_m6_visual_profile_pillow_12_3.sql": "89c8e9bcd5afa2a34b13353eea3f1d48350be7594eb72d60def419c4e656b3d4",
+      "20260730220000_m2_organization_deletion_recovery.sql": "cce97f9865682d1584c01d41bf3111c78bd8852b2cb5d13ec58ec6d273bfbe1c",
+      "20260730230000_m7_runtime_production_admission.sql": "4d6da121e2c679ac25d752578eeaca648583e5bfc2ea6902805291955c311b50",
+      "20260801111007_campaign_simulation_report_evidence.sql": "7312c57b145a0097a4dfb895ed53232cd687fb4c960e7b7a0545c06b2b8b09e2",
+      "20260801112745_campaign_simulation_security_cleanup.sql": "5cf781e584933802a948d449b8e3bc212011e476d36da0e3db884b38f84889a0",
+      "20260801113233_campaign_simulation_security_revoke.sql": "a520c48a2dd990c84e0aa98bf7d4f08ad913a5a7e4b9b239600d2e29551f14f3",
+      "20260801121240_campaign_lab_evidence_jobs.sql": "25dad4f7dd1ba3466bc115056e79ed416ba77c42af4d25bb85a93b58ffa57647",
+      "20260801124952_campaign_lab_evidence_cancel_finalize.sql": "371cb2a2e3cd782e47d1d50d078eb620c9ae01150fe82e3e3593eb9e584897f9",
+      "20260801125632_campaign_lab_evidence_project_retention.sql": "cf2d19e0928d2913c5ec6e9f35458d56d156e68a5d2302fad85aa87db316f5f7",
+      "20260801135222_campaign_lab_runtime_head.sql": "7ebdc98723cd4a6e4fd063ba57cc85f533ca8084628cdf207afa4887f343a99c",
+      "20260801150000_m6_visual_profile_fk_privilege.sql": "5099354f65bd3c4f24b607a8db4744cf55b7bf66f55bafd853755575f78f0271",
+      "20260801150001_campaign_lab_runtime_head.sql": "85a05a470dccb2f27b98af9ccccae499a7e320d3bba61e91be63ce5c4c404373",
+      "20260801185129_phase4_command_scope_repair.sql": "7c3c76381d02698a8c106304098792763d9666d6b8980d5a9244b12e86b395d2",
+      "20260802060315_campaign_simulation_lab.sql": "4441af13bc9ca1044f176aeb5c196dcee6cd110b1fa701cbf734f2b4f2d9df5d",
+      "20260802063625_campaign_lab_api_wrappers.sql": "93f487f0192d46022f264b60ed21df7f7a5187c00932135d3faef8df269db1d8",
+      "20260802090954_campaign_lab_cultural_evaluation.sql": "f80926512a468145630af0bc70159c3784e1ecf46489b1e357c21c1f860f2454",
+      "20260802105930_campaign_lab_mutation_idempotency.sql": "80c83a48f097097a154d2bd522fe79de8ed9c6572a23f78515e0b2a53d817d27",
+      "20260802131842_campaign_lab_durable_workflows.sql": "e57aa4e96cc8469647f96c69ad76158e60ec8c7453332fd82c0596498d2786c6",
+      "20260802150729_campaign_lab_survey_import_workflow.sql": "34b3b7062038b1420b5b77f91efda4ead26671ba6b0c6657f5351a7098b4e3d8",
+      "20260803020312_campaign_lab_retention_cleanup.sql": "5f0aefd964f90de9326036d2dbaf0ea515f981e58941fbccbd3ce919cdf57c44",
+      "20260804124631_psa_2020_regional_population_frame.sql": "86f77c1faaee56a9fc211778d5a50ab28fed5089749aa65361dce4c88d6c75aa",
+      "20260806093913_campaign_lab_native_survey_forms.sql": "450d7791d26fa18b8b9da492c0890c5ffdde493ad424455f5c83e7043d140f9b",
+      "20260807100937_aggregate_forecast_registry.sql": "6634487fe0a607be27f83b77e91e84244c5cbe7ad14d93e9748ee280ef53c1a5",
+      "20260807104033_official_comelec_national_turnout.sql": "dc09a73eaa0a2b07c15401beb35c02e928eddfa928d0fbd5490084b941da4b33",
+      "20260807190000_campaign_lab_v3_command_owner.sql": "80d072e6702cd43ea2b8223d46a76cc65b628c100999fe5d609b932ea8b9f087",
+      "20260807200000_worker_failure_audit_outcome.sql": "302ba5dac93b82b7efe2e539f724d9f719763539dbf20a2d4e887279d437ebe1",
+      "20260815100000_fix_campaign_lab_mutation_idempotency.sql": "4b4b2d0f70e4d527202a794755ab5414157766d523b788838216c7a6b40e49ca",
+      "20260824010000_report_artifact_authorization.sql": "5ed2634d502803e53080bb83bbe9475185169c3996b40ecbcb99a0e6bb4979b0",
+      "20260824020000_consolidate_permissive_policies.sql": "35992beefd785508f6d82364f0766cd1753b5a90ec31d34e9ecddff06796a24b",
+      "20260905095036_campaign_lab_bound_report_review.sql": "df6fbbad37832f545467a64d54a5c455c3224c8608f25a693b31f474a13c077f",
+      "20260905095453_report_runtime_readiness_v5.sql": "c3451f1efc0da02f6390256971dce7ae80d67d7b2fb3d420bc3a494e2fa0e158",
+      "20260905104327_campaign_lab_atomic_admission.sql": "d4a90e136be3999dd2c9406fa80ff29d2ba5737043393c8f7872d80bf6c3eaa2"
+    },
+    "ref": "refs/tags/v0.0.0-remediation.20260905.4",
+    "repository": "kurtgav/Simula",
+    "run_id": "33961707670",
+    "sha": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+    "source_sha256": "4266fe4080c7463cadd038029888f4c6a646093340645edb819a8020f9571266",
+    "version": 1,
+    "workflow": ".github/workflows/release.yml",
+    "bundle_sha256": "c3dc7c529c55f23eff19a3156919df4d22f59dfde0e230db875ef4e15e489322",
+    "sigstore_sha256": "eb0f1b8011649f367fd6cf9203a519afce1b14e3ca18cad2e7069cbc23e08eaf"
+  },
+  "targets": [
+    {
+      "provider": "railway",
+      "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+      "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+      "service": "3d245c7f-da8e-42c2-9bc2-ae0632d499dc",
+      "rollback_deployment": "8408695d-100a-49d6-acf7-f2a16207c6c2"
+    },
+    {
+      "provider": "railway",
+      "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+      "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+      "service": "10a8f62f-f56c-44ce-86ce-dac6cbc8c757",
+      "rollback_deployment": "2f4519f6-2a40-4ac0-81dc-b1c1149986bb"
+    },
+    {
+      "provider": "railway",
+      "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+      "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+      "service": "042a83d1-75e6-4cda-918b-33918f02e2df",
+      "rollback_deployment": "432ede92-9ded-43ef-a1e6-82585d659d70"
+    },
+    {
+      "provider": "railway",
+      "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+      "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+      "service": "9062c34b-9d5f-45a6-afa4-cd3dac15c954",
+      "rollback_deployment": "f981b928-03fd-4f7e-a91c-e609483d61d2"
+    },
+    {
+      "provider": "railway",
+      "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+      "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+      "service": "182f55ae-a10f-4fc7-8f36-54b529be2711",
+      "rollback_deployment": "badca981-9907-450e-9c6d-04b5cd65c13b"
+    },
+    {
+      "provider": "vercel",
+      "project": "prj_mE6A7XyuiBjb7j5OFPfa79wQR94v",
+      "scope": "pavi-2e9809a4",
+      "rollback_deployment": "dpl_5YTotbDvyCkuEteSgtyF9LdAipiR"
+    },
+    {
+      "provider": "vercel",
+      "project": "prj_tZ7PcEL9GAnhuMNqJCC7tCFvf8RO",
+      "scope": "pavi-2e9809a4",
+      "rollback_deployment": "dpl_6o5gweJUTbTSxquD2SgaUyF7UbPw"
+    }
+  ],
+  "rollout_id": "4c77af6d-e93c-42c1-a791-8cb9521dc7ba",
+  "results": [
+    {
+      "target": {
+        "provider": "railway",
+        "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+        "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+        "service": "3d245c7f-da8e-42c2-9bc2-ae0632d499dc",
+        "rollback_deployment": "8408695d-100a-49d6-acf7-f2a16207c6c2"
+      },
+      "status": "provider_success; application verification pending",
+      "previous_release_environment": {
+        "SIMULA_RELEASE_SHA": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",
+        "SIMULA_DATABASE_MIGRATION_HEAD": "20260824020000",
+        "SIMULA_PRODUCTION_ADMISSION_ENABLED": "true",
+        "SIMULA_PRODUCTION_ROLLOUT_ID": "a5e1e318-b5b9-478e-8227-898b08442547",
+        "SIMULA_RELEASE_BUNDLE_SHA256": "c39a85a77d6121839611441f185ef6279271537dddc7a0bf9af3ed54f57f63da",
+        "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": "e3875851eb44e807b6b4e60d03fff73d5660c47ee8e09051334fa1a390f0f388",
+        "SIMULA_RELEASE_PROVENANCE_URL": "https://github.com/kurtgav/Simula/actions/runs/32748764203"
+      },
+      "id": "f99b6929-32fd-49d6-8468-ae0ed9ddd4cf",
+      "health_verified": false
+    },
+    {
+      "target": {
+        "provider": "railway",
+        "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+        "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+        "service": "10a8f62f-f56c-44ce-86ce-dac6cbc8c757",
+        "rollback_deployment": "2f4519f6-2a40-4ac0-81dc-b1c1149986bb"
+      },
+      "status": "provider_success; application verification pending",
+      "previous_release_environment": {
+        "SIMULA_RELEASE_SHA": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",
+        "SIMULA_DATABASE_MIGRATION_HEAD": "20260824020000",
+        "SIMULA_PRODUCTION_ADMISSION_ENABLED": "true",
+        "SIMULA_PRODUCTION_ROLLOUT_ID": "a5e1e318-b5b9-478e-8227-898b08442547",
+        "SIMULA_RELEASE_BUNDLE_SHA256": "c39a85a77d6121839611441f185ef6279271537dddc7a0bf9af3ed54f57f63da",
+        "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": "e3875851eb44e807b6b4e60d03fff73d5660c47ee8e09051334fa1a390f0f388",
+        "SIMULA_RELEASE_PROVENANCE_URL": "https://github.com/kurtgav/Simula/actions/runs/32748764203"
+      },
+      "id": "c4179c52-13d1-4def-a884-a5d86fd6aeb7",
+      "health_verified": false
+    },
+    {
+      "target": {
+        "provider": "railway",
+        "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+        "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+        "service": "042a83d1-75e6-4cda-918b-33918f02e2df",
+        "rollback_deployment": "432ede92-9ded-43ef-a1e6-82585d659d70"
+      },
+      "status": "provider_success; application verification pending",
+      "previous_release_environment": {
+        "SIMULA_RELEASE_SHA": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",
+        "SIMULA_DATABASE_MIGRATION_HEAD": "20260824020000",
+        "SIMULA_PRODUCTION_ADMISSION_ENABLED": "true",
+        "SIMULA_PRODUCTION_ROLLOUT_ID": "a5e1e318-b5b9-478e-8227-898b08442547",
+        "SIMULA_RELEASE_BUNDLE_SHA256": "c39a85a77d6121839611441f185ef6279271537dddc7a0bf9af3ed54f57f63da",
+        "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": "e3875851eb44e807b6b4e60d03fff73d5660c47ee8e09051334fa1a390f0f388",
+        "SIMULA_RELEASE_PROVENANCE_URL": "https://github.com/kurtgav/Simula/actions/runs/32748764203"
+      },
+      "id": "86b1d6b7-5175-40cb-8df0-3e5f38f357af",
+      "health_verified": false
+    },
+    {
+      "target": {
+        "provider": "railway",
+        "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+        "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+        "service": "9062c34b-9d5f-45a6-afa4-cd3dac15c954",
+        "rollback_deployment": "f981b928-03fd-4f7e-a91c-e609483d61d2"
+      },
+      "status": "provider_success; application verification pending",
+      "previous_release_environment": {
+        "SIMULA_RELEASE_SHA": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",
+        "SIMULA_DATABASE_MIGRATION_HEAD": "20260824020000",
+        "SIMULA_PRODUCTION_ADMISSION_ENABLED": "true",
+        "SIMULA_PRODUCTION_ROLLOUT_ID": "a5e1e318-b5b9-478e-8227-898b08442547",
+        "SIMULA_RELEASE_BUNDLE_SHA256": "c39a85a77d6121839611441f185ef6279271537dddc7a0bf9af3ed54f57f63da",
+        "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": "e3875851eb44e807b6b4e60d03fff73d5660c47ee8e09051334fa1a390f0f388",
+        "SIMULA_RELEASE_PROVENANCE_URL": "https://github.com/kurtgav/Simula/actions/runs/32748764203"
+      },
+      "id": "9a24c030-21c0-4490-ae1d-e42d431caee9",
+      "health_verified": false
+    },
+    {
+      "target": {
+        "provider": "railway",
+        "project": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+        "environment": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+        "service": "182f55ae-a10f-4fc7-8f36-54b529be2711",
+        "rollback_deployment": "badca981-9907-450e-9c6d-04b5cd65c13b"
+      },
+      "status": "provider_success; application verification pending",
+      "previous_release_environment": {
+        "SIMULA_RELEASE_SHA": "4b17ba4a85a010ff6ae0575de227b3672eaf6b1a",
+        "SIMULA_DATABASE_MIGRATION_HEAD": "20260824020000",
+        "SIMULA_PRODUCTION_ADMISSION_ENABLED": "true",
+        "SIMULA_PRODUCTION_ROLLOUT_ID": "a5e1e318-b5b9-478e-8227-898b08442547",
+        "SIMULA_RELEASE_BUNDLE_SHA256": "c39a85a77d6121839611441f185ef6279271537dddc7a0bf9af3ed54f57f63da",
+        "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": "e3875851eb44e807b6b4e60d03fff73d5660c47ee8e09051334fa1a390f0f388",
+        "SIMULA_RELEASE_PROVENANCE_URL": "https://github.com/kurtgav/Simula/actions/runs/32748764203"
+      },
+      "id": "41008d68-a16a-423f-a483-e5f725f433ca",
+      "health_verified": false
+    },
+    {
+      "target": {
+        "provider": "vercel",
+        "project": "prj_mE6A7XyuiBjb7j5OFPfa79wQR94v",
+        "scope": "pavi-2e9809a4",
+        "rollback_deployment": "dpl_5YTotbDvyCkuEteSgtyF9LdAipiR"
+      },
+      "status": "failed; inspect provider state before retry"
+    }
+  ],
+  "executed": false
+}

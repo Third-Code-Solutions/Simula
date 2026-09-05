@@ -13,6 +13,17 @@ The active remediation plan is
 hosted controls and pending release gates are recorded in
 `brain/PROJECT_STATE.md` and `docs/audit/2026-09-05/REMEDIATION_TRACKER.md`.
 
+## Current release
+
+Production web/admin and five backend components are verified on source
+`eb0ea931a180f1912f690be5648a6fb4a6557ab0` as of 5 September 2026. The signed
+release and required CI passed; bounded production smoke verifies 52 assertions
+including role denials, a persisted campaign run and a real experimental
+behavioral run. This does not establish every route, hosted recovery or
+scientific validity. See
+[production evidence](docs/audit/2026-09-05/production-smoke-verification.json)
+and [remaining acceptance](docs/audit/2026-09-05/REMEDIATION_TRACKER.md).
+
 ## Exact local toolchain
 
 - Node.js `24.18.1`

@@ -1,0 +1,22 @@
+{
+  "source_sha": "eb0ea931a180f1912f690be5648a6fb4a6557ab0",
+  "failed_deployment": "dpl_72tJ7Joi1xVn5zyumNmwfm5eG1nq",
+  "failure": "Default pnpm 11.22.0 rejected repository pin 11.13.1",
+  "setting": "ENABLE_EXPERIMENTAL_COREPACK",
+  "old_value": null,
+  "new_value": "1",
+  "target": "production",
+  "projects": [
+    {
+      "environment_variable_id": "mwdb3Nc2U9WG4ePT",
+      "project_id": "prj_mE6A7XyuiBjb7j5OFPfa79wQR94v"
+    },
+    {
+      "environment_variable_id": "58V0QgVsrtBCT1bX",
+      "project_id": "prj_tZ7PcEL9GAnhuMNqJCC7tCFvf8RO"
+    }
+  ],
+  "retry_build_pnpm": "11.13.1",
+  "retry_install_passed": true,
+  "documentation": "https://vercel.com/docs/package-managers"
+}

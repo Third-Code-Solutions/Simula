@@ -398,7 +398,11 @@ def main() -> None:
     parser.add_argument("--execute", action="store_true")
     args = parser.parse_args()
     plan = json.loads(args.plan.read_text(encoding="utf-8"))
-    with tempfile.TemporaryDirectory(prefix="simula-verified-promotion-") as temporary:
+    # Provider subprocesses can retain Windows file handles after a failed build.
+    # Cleanup must not replace the actionable deployment exception.
+    with tempfile.TemporaryDirectory(
+        prefix="simula-verified-promotion-", ignore_cleanup_errors=True
+    ) as temporary:
         source = Path(temporary)
         manifest = verify_release(
             args.artifact_directory.resolve(),

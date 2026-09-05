@@ -173,3 +173,117 @@ types byte-check passed. Independent source review found no blocker. Linked
 Supabase dry-run PASSED and lists exactly the three new migrations; no DDL applied.
 Root57 deployment/restore/promotion and11 Nest admission tests passed, along with
 formatting, generated contracts, claims and859-file tracked secret checks.
+
+## Final hosted release dispatched (10:50 UTC)
+
+Source eb0ea931a180f1912f690be5648a6fb4a6557ab0 is committed/pushed with all49
+final changed files. Immutable tag v0.0.0-remediation.20260905.4 dispatched signed
+release33961707670. PR CI33961704707 and exact-branch manual CI33961708123 are
+running; no success presumed. Final seven-target plan tmp/promotion-final-plan.json
+binds this SHA and104327 head. No application deployment or production DDL yet.
+Executable tmp/release-smoke.cjs passed46 real local assertions; production mode
+requires exact canonical identities before creating fresh confirmed synthetic
+accounts, keeps credentials memory-only and performs role/worker/browser checks.
+Runtime agent is preparing separate private behavioral/dispatcher verification.
+
+Hosted follow-up: exact-branch CI33961708123 Windows and history gates PASSED;
+Foundation root gate and signed release33961707670 still running. No failure
+reported. Private SSH probe is BLOCKED by no configured SSH keys; no key/access
+change made. Read-only provider fallback collected old image/startup evidence in
+tmp/private-provider-evidence.json. Re-run helper after release. Production smoke
+now accepts --behavioral; helper keeps owner credentials in memory and persists
+partial stimulus/run IDs before later failures. Both syntax checks pass; actual
+production behavior NOT RUN. Read tmp/private-runtime-verification-README.md for
+outbox confirmation query and limits. Secondary57322 fixture stopped; main/ERP
+preserved. Approved legal policy remains pending.
+
+Hosted Foundation33961708123 completed SUCCESS. Its actual log reports27files/
+458 pgTAP assertions,720 root Python passed/2skipped/31deselected, all31 integrations
+passed,12 browser checks,184web/23admin/262Nest tests. Windows and history also
+passed. Images built; container/SBOM checks and final signing remain running.
+Seven current rollback targets refreshed and passed availability preflight. Safe
+receipt docs/audit/2026-09-05/hosted-final-foundation.json; raw log ignoredtmp only.
+
+## Production rollout started
+
+Signed release33961707670 and allfour latest exact-SHA CI checks PASSED.
+Artifact downloaded to tmp/release-remediation-33961707670; independent Cosign,
+source hash,84migration checksums and configurations verified. Exact archive
+extracted tmp/verified-source-eb0ea93, linked onlyywiwmczccktwzqyhzhiz. CLI dryrun
+showedexact3pending; all3applied successfully. Livehead104327/report+guardtrue,
+V4oldheadpreserved,V5newheadpresent,nonterminal0; previousAPIstillready4b17ba4.
+Receipt docs/audit/2026-09-05/production-migration-receipt.json.
+
+Primary promotion command RUNNING execsession57546; receipt
+ tmp/promotion-final-33961707670.json. Engine candidate
+f99b6929-32fd-49d6-8468-ae0ed9ddd4cf providerSUCCESS; worker submissionstarted.
+It sequentially deploys engine,worker,dispatcher,control-plane,API,web,admin from
+verifiedsource; Vercel candidates use skip-domain. Do not double-submit: inspect
+receipt and exactproviderstate if commandfails. No canonicalVercelpromotion yet.
+
+## Vercel package-manager mismatch and scoped retry
+
+Primary57546 ended after allfive Railway services reachedSUCCESS. API candidate
+41008d68-a16a-423f-a483-e5f725f433ca andCP9a24c030-21c0-4490-ae1d-e42d431caee9
+serve ready with exacteb0ea931 SHA. Webattempt dpl_72tJ7Joi1xVn5zyumNmwfm5eG1nq
+(simula-8fvvmvlc3-pavi-2e9809a4.vercel.app) ERROR: defaultVercelpnpm11.22.0 rejected
+repositorypin11.13.1. Canonicals unchanged. No blindretry: exactfailedID/buildlog
+inspected. TemporaryDirectory cleanup thenhitWindowslockedparent; failure receipt
+was already persisted. Do not recursivelyremove unknown tempfiles.
+
+OfficialVercelCorepackdocs support ENABLE_EXPERIMENTAL_COREPACK=1. Bothconfirmed
+productionprojects lacked this flag. Added onlyplainproductionflag via supported
+API: webenvIDmwdb3Nc2U9WG4ePT,admin58V0QgVsrtBCT1bX; oldvalueabsent. No version
+validationbypass or sourceedit. RetryonlyVercel uses ignoredhelper
+ tmp/promote-vercel-final.py with freshsignedverifiedsource
+ tmp/verified-vercel-eb0ea93; preservesoriginalrolloutID and rechecksSigstore/CI.
+RUNNINGsession66272; receipt tmp/promotion-vercel-final-33961707670.json. NoVercel
+canonicalpromotion yet. Inspect receipt/providerstate iffailure, neverrerunallfive
+backenddeployments. Privatecandidate receipt copied production-private-candidate-
+evidence.json; exactworkerstartSHA,dispatcherstartready,0samplederrors,imagedigests.
+
+Vercel retry66272 failed before any newprojectdeploymentappeared; originalgeneric
+CLIoutputnotretained. CLI sourcefindRepoRoot can traverse ancestorGit metadata,
+so next diagnostic retry uses freshverifiedsource outsideworkingrepo at
+C:/Users/MSI/.codex/verified-releases/eb0ea93-vercel. No sourcechanges. RUNNING
+session54561; receipt tmp/promotion-vercel-final-33961707670-v2.json. Private
+failureoutputis retainedonlyifneeded tmp/vercel-deploy-diagnostic-private.log.
+Candidate simula-o4zc71pi1-pavi-2e9809a4.vercel.app nowBUILDING. Actualbuildlogs
+confirmCorepackselectedpnpm11.13.1, dependenciesinstalled8s. Canonicalsunchanged.
+Postreleaseonlytoolfix currentlyuncommitted: TemporaryDirectoryignore_cleanup_errors
+preventsWindowscleanupmasking originalfailure;29tests+Ruff+mypyPASS. Donotretagor
+mistakepostreleaseworkingtree for deployedsource.
+
+## Canonicals promoted; real production smoke running
+
+Both Vercel candidates READY. AuthenticatedCLIhealth exactSHA forweb/admin;
+Vercelcurl must useURL (IDlookupfailed) and processenvproject/org for correct
+bypass; --scope mistakenlyforwarded tocurl inCLI54.7.1. Protectedcandidate actual
+browser sixviews1440/390 passed200/securityheaders/Axe0/overflow0/errors0 with
+memoryonlybypasscookies, no protectionchanges. Receipt copied production-protected-
+candidate-verification.json. Web dpl_AzpLsWJmcimpe3HExVv8UbxDni41 andadmin
+ dpl_6mZfv3Xi5VbrmssSu5SCFpbtud4f promoted successfully via explicitscopeCLI.
+
+Production smoke RUNNINGsession60513, exactcommand
+node tmp/release-smoke.cjs --target production --execute --sha
+ eb0ea931a180f1912f690be5648a6fb4a6557ab0 --behavioral.
+Receipt tmp/release-smoke-production-48efa060-5e40-42a7-924c-fa3800245e9a.json.
+48assertionspassedsofar, last1440pxnooverflow. Fresh4confirmedAuthaccountscreated
+(noemails), IDsreceipt, credentialsmemoryonly. Campaignworkerterminal+reload and
+rolechecks passed; behavioralstepstillpending. Do notrerun blindly ifuncertain;
+inspect partialfixtureIDs, preserve records, no existinguserchanges.
+
+## Production verification complete
+
+Production smoke60513 PASSED52assertions. Behavioralrun
+ d6918fe8-423d-4bf6-80ad-21e5b44e63ec succeeded inabout5s, exactidempotentreplay,
+persistedexperimentalzero-costdeterministicresult/checksum. Readonlyoutboxquery:
+1dispatchedgeneration,1confirmation,1dispatchattempt. Postsmokeexactdispatcherlog
+has dispatcher_pass11:29:55.317990718Z claimed1/confirmed1/recovered0/poisoned0.
+Allthreecandidateprivate servicesSUCCESS with0classifiedsamplederrors. Updated
+production-private-candidate-evidence.json. Allsafe receipts copieddatedaudit.
+RootRELEASE_RESULT.md written; publicagent updatingcurrentdocs/tracker toactual
+verifiedscope. No pendingapplicationdeployment. Remaining externallegalpolicy,
+scientificvalidation, directSSHhealth and unexercisedrollback boundariesexplicit.
+Postreleasepromotioncleanup-toolregression29PASS; tooling/docscommitpending,
+applicationreleasedSHA remains eb0ea931 regardlesslaterauditcommit.
