@@ -542,7 +542,7 @@ describe("PgOrganizationGateway", () => {
 
     await expect(gateway.isReady()).resolves.toBe(true);
     expect(pool.query).toHaveBeenCalledWith(
-      expect.stringContaining("private.runtime_schema_readiness_v4()"),
+      expect.stringContaining("private.runtime_schema_readiness_v5()"),
     );
 
     (pool.query as unknown as jest.Mock).mockResolvedValueOnce({

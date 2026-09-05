@@ -1,0 +1,79 @@
+{
+  "started_at": "2026-09-05T09:54:46.924936+00:00",
+  "scope": "network-none synthetic RDB compatibility; not a production restore or queue recovery proof",
+  "volume": "simula-redis-upgrade-drill-20260905-9c605fe5-data",
+  "container": "simula-redis-upgrade-drill-20260905-9c605fe5-redis",
+  "stages": [
+    {
+      "stage": "seed_old",
+      "image_ref": "redis:8.2.1@sha256:5fa2edb1e408fa8235e6db8fab01d1afaaae96c9403ba67b70feceb8661e8621",
+      "image_id": "sha256:5fa2edb1e408fa8235e6db8fab01d1afaaae96c9403ba67b70feceb8661e8621",
+      "redis_version": "8.2.1",
+      "startup_seconds": 0.923,
+      "save_seconds": 0.235,
+      "rdb_sha256": "48458ee8caed6d58247990ac42b92d6e623f06af211a77bbe83e62b135babb4a",
+      "key_count": 2,
+      "list_count": 3,
+      "payload_exact": true,
+      "list_exact": true,
+      "network": "none",
+      "published_ports": false,
+      "stop_seconds": 0.449
+    },
+    {
+      "stage": "restart_old",
+      "image_ref": "redis:8.2.1@sha256:5fa2edb1e408fa8235e6db8fab01d1afaaae96c9403ba67b70feceb8661e8621",
+      "image_id": "sha256:5fa2edb1e408fa8235e6db8fab01d1afaaae96c9403ba67b70feceb8661e8621",
+      "redis_version": "8.2.1",
+      "startup_seconds": 0.897,
+      "save_seconds": 0.245,
+      "rdb_sha256": "1bfe3e41446d315a85466820ac29b901af95724f3ea982f2e74b74cbce9d28f5",
+      "key_count": 2,
+      "list_count": 3,
+      "payload_exact": true,
+      "list_exact": true,
+      "network": "none",
+      "published_ports": false,
+      "stop_seconds": 0.486
+    },
+    {
+      "stage": "upgrade_and_save",
+      "image_ref": "redis:8.2.7-alpine@sha256:223b183cbc49f5ff48728e1fc52ccf101f05072decad2bd9867281a3c9bf75fd",
+      "image_id": "sha256:223b183cbc49f5ff48728e1fc52ccf101f05072decad2bd9867281a3c9bf75fd",
+      "redis_version": "8.2.7",
+      "startup_seconds": 0.884,
+      "save_seconds": 0.227,
+      "rdb_sha256": "d04b4691d3139730fce829c96784ca2778faaaa22ca7ed5491d7526eaa6373e3",
+      "key_count": 2,
+      "list_count": 3,
+      "payload_exact": true,
+      "list_exact": true,
+      "network": "none",
+      "published_ports": false,
+      "stop_seconds": 0.435
+    },
+    {
+      "stage": "rollback_read",
+      "image_ref": "redis:8.2.1@sha256:5fa2edb1e408fa8235e6db8fab01d1afaaae96c9403ba67b70feceb8661e8621",
+      "image_id": "sha256:5fa2edb1e408fa8235e6db8fab01d1afaaae96c9403ba67b70feceb8661e8621",
+      "redis_version": "8.2.1",
+      "startup_seconds": 0.84,
+      "save_seconds": 0.217,
+      "rdb_sha256": "ff6f7e4b41857b78341919c7b56896db22c6c4859e3ef7f6c60733fd5bf0ee77",
+      "key_count": 2,
+      "list_count": 3,
+      "payload_exact": true,
+      "list_exact": true,
+      "network": "none",
+      "published_ports": false,
+      "stop_seconds": 0.454
+    }
+  ],
+  "status": "PASSED",
+  "cleanup": {
+    "container_removed": true,
+    "volume_removed": true
+  },
+  "elapsed_seconds": 13.483,
+  "completed_at": "2026-09-05T09:55:00.408320+00:00"
+}

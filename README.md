@@ -80,10 +80,13 @@ content.
 
 ## Services
 
-- `apps/web`: Next.js Auth/domain UI begins in P2-03.
+- `apps/web`: Next.js account, organization/project, Campaign Lab and result UI.
+- `apps/admin`: restricted platform administration UI.
+- `apps/api`: NestJS control plane and durable outbox dispatcher.
 - `services/api`: FastAPI public authority for M2 organization/project/stimulus
   commands; browser credentials never reach application Data API schemas.
-- `services/worker`: private worker lifecycle shell; no domain jobs in P2-01.
+- `services/worker`: private durable simulation and Campaign Lab job execution.
+- `services/ai-engine`: private bounded behavioral and methodology execution.
 - `packages/contracts`: generated OpenAPI, application, and database TypeScript
   contracts.
 - `packages/simula-core`: shared runtime and safe serialization primitives.
@@ -109,3 +112,9 @@ artifacts until cache round-trip verification supports re-enabling it.
 Development output and caches are also excluded from the declared release
 outputs. Local passing checks do not establish hosted release or scientific
 validation.
+
+Git-triggered application deployments are disabled. Release through the signed
+source promotion boundary described in
+[the promotion procedure](docs/audit/2026-09-05/PROMOTION_PROCEDURE.md), using
+explicit existing provider targets and retained rollback identities. Provider
+SUCCESS alone does not establish application health or completed verification.

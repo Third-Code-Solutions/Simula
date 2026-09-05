@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import threading
 from collections.abc import Mapping
 from uuid import UUID
 
@@ -80,111 +79,83 @@ class _Database:
         return "failed"
 
 
-async def test_campaign_evidence_evaluation_runs_off_the_asyncio_event_loop(
+async def test_campaign_evidence_evaluation_uses_isolated_boundary(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    event_loop_thread = threading.get_ident()
-    evaluator_threads: list[int] = []
-
-    def evaluate(claim: CampaignEvidenceClaim) -> Mapping[str, object]:
-        del claim
-        evaluator_threads.append(threading.get_ident())
+    async def evaluate(
+        function: object, claim: object, *, timeout_seconds: float
+    ) -> Mapping[str, object]:
+        assert function is campaign_evidence.evaluate_campaign_evidence_claim
+        assert claim == _claim()
+        assert timeout_seconds == 600.0
         return {"status": "ok"}
 
-    monkeypatch.setattr(campaign_evidence, "evaluate_campaign_evidence_claim", evaluate)
+    monkeypatch.setattr(campaign_evidence, "evaluate_isolated", evaluate)
     database = _Database()
-
-    state = await campaign_evidence.process_campaign_evidence_claim(database, _claim())
-
-    assert state == "completed"
-    assert evaluator_threads and evaluator_threads[0] != event_loop_thread
+    assert (
+        await campaign_evidence.process_campaign_evidence_claim(database, _claim()) == "completed"
+    )
     assert database.completed == {"status": "ok"}
 
 
-async def test_campaign_evidence_heartbeat_discards_result_after_lease_loss(
+async def test_campaign_evidence_heartbeat_terminates_evaluation_after_lease_loss(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    evaluation_started = threading.Event()
-    release_evaluation = threading.Event()
+    terminated = asyncio.Event()
 
-    def evaluate(claim: CampaignEvidenceClaim) -> Mapping[str, object]:
-        del claim
-        evaluation_started.set()
-        if not release_evaluation.wait(timeout=2):
-            raise RuntimeError("test evaluation was not released")
-        return {"status": "must-not-persist"}
+    async def evaluate(
+        function: object, claim: object, *, timeout_seconds: float
+    ) -> Mapping[str, object]:
+        del function, claim, timeout_seconds
+        try:
+            await asyncio.Event().wait()
+            return {}
+        finally:
+            terminated.set()
 
-    monkeypatch.setattr(campaign_evidence, "evaluate_campaign_evidence_claim", evaluate)
+    monkeypatch.setattr(campaign_evidence, "evaluate_isolated", evaluate)
     database = _Database(progress_results=[True, True, False])
-
-    processing = asyncio.create_task(
+    state = await asyncio.wait_for(
         campaign_evidence.process_campaign_evidence_claim(
-            database,
-            _claim(),
-            heartbeat_seconds=0.01,
-        )
+            database, _claim(), heartbeat_seconds=0.01
+        ),
+        1.0,
     )
-    for _ in range(100):
-        if evaluation_started.is_set():
-            break
-        await asyncio.sleep(0.001)
-    assert evaluation_started.is_set()
-    await asyncio.sleep(0.03)
-    release_evaluation.set()
-
-    state = await processing
-
     assert state == "stale"
-    assert database.progress[:3] == [
-        ("validating", 15),
-        ("evaluating", 55),
-        ("evaluating", 55),
-    ]
+    assert terminated.is_set()
     assert database.completed is None
     assert database.failed == []
 
 
-async def test_campaign_evidence_cancellation_keeps_heartbeat_until_thread_exits(
+async def test_campaign_evidence_cancellation_reaps_evaluator_before_returning(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    evaluation_started = threading.Event()
-    release_evaluation = threading.Event()
+    started = asyncio.Event()
+    terminated = asyncio.Event()
 
-    def evaluate(claim: CampaignEvidenceClaim) -> Mapping[str, object]:
-        del claim
-        evaluation_started.set()
-        if not release_evaluation.wait(timeout=2):
-            raise RuntimeError("test evaluation was not released")
-        return {"status": "must-not-persist"}
+    async def evaluate(
+        function: object, claim: object, *, timeout_seconds: float
+    ) -> Mapping[str, object]:
+        del function, claim, timeout_seconds
+        started.set()
+        try:
+            await asyncio.Event().wait()
+            return {}
+        finally:
+            terminated.set()
 
-    monkeypatch.setattr(campaign_evidence, "evaluate_campaign_evidence_claim", evaluate)
+    monkeypatch.setattr(campaign_evidence, "evaluate_isolated", evaluate)
     database = _Database()
     processing = asyncio.create_task(
         campaign_evidence.process_campaign_evidence_claim(
-            database,
-            _claim(),
-            heartbeat_seconds=0.01,
+            database, _claim(), heartbeat_seconds=0.01
         )
     )
-    try:
-        for _ in range(100):
-            if evaluation_started.is_set() and len(database.progress) >= 2:
-                break
-            await asyncio.sleep(0.001)
-        assert evaluation_started.is_set()
-        assert len(database.progress) >= 2
-        heartbeats_before_cancel = len(database.progress)
-
-        processing.cancel()
-        await asyncio.sleep(0.03)
-
-        assert not processing.done()
-        assert len(database.progress) > heartbeats_before_cancel
-    finally:
-        release_evaluation.set()
-
+    await asyncio.wait_for(started.wait(), 1.0)
+    processing.cancel()
     with pytest.raises(asyncio.CancelledError):
-        await processing
+        await asyncio.wait_for(processing, 1.0)
+    assert terminated.is_set()
     assert database.completed is None
     assert database.failed == []
 
@@ -243,3 +214,19 @@ async def test_campaign_evidence_initial_database_failure_is_contained(
     assert database.completed is None
     if failure != "failure_write":
         assert database.failed == [("evidence_worker_error", True)]
+
+
+async def test_campaign_evidence_hard_timeout_is_terminal_and_does_not_persist_result(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def expired(
+        function: object, claim: object, *, timeout_seconds: float
+    ) -> Mapping[str, object]:
+        del function, claim, timeout_seconds
+        raise TimeoutError
+
+    monkeypatch.setattr(campaign_evidence, "evaluate_isolated", expired)
+    database = _Database()
+    assert await campaign_evidence.process_campaign_evidence_claim(database, _claim()) == "failed"
+    assert database.failed == [("evidence_timeout", False)]
+    assert database.completed is None

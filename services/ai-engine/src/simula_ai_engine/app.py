@@ -8,10 +8,10 @@ from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from functools import partial
 from hashlib import sha256
 from hmac import compare_digest
-from threading import Event
-from typing import Annotated, Literal
+from typing import Annotated, Literal, cast
 from uuid import UUID
 
 import structlog
@@ -25,6 +25,7 @@ from simula_core.behavioral_engine import (
     BehavioralRunResult,
     execute_behavioral_run,
 )
+from simula_core.isolated_evaluation import evaluate_isolated
 from simula_core.methodology import (
     AudienceDefinitionVersion,
     DeterministicCohortProvider,
@@ -367,20 +368,56 @@ async def require_internal_authority(
         )
 
 
-async def _monitor_disconnect(
+async def _run_request_evaluation[Argument, Result](
     request: Request,
+    function: Callable[[Argument], Result],
+    argument: Argument,
     *,
-    cancellation: Event,
-    stopped: asyncio.Event,
-) -> None:
-    while not stopped.is_set():
-        if await request.is_disconnected():
-            cancellation.set()
-            return
+    timeout_seconds: float,
+    cancellation_code: str = "execution_cancelled",
+) -> Result:
+    slots = cast(asyncio.Semaphore, request.app.state.execution_slots)
+    if slots.locked():
+        raise EngineProblem(
+            status=429,
+            code="execution_capacity_exceeded",
+            title="Execution capacity exceeded",
+            detail="The private engine has no available execution slot.",
+        )
+
+    stopped = asyncio.Event()
+
+    async def disconnected() -> None:
+        while not stopped.is_set():
+            if await request.is_disconnected():
+                return
+            try:
+                await asyncio.wait_for(stopped.wait(), timeout=0.05)
+            except TimeoutError:
+                continue
+
+    async with slots:
+        evaluation = asyncio.create_task(
+            evaluate_isolated(function, argument, timeout_seconds=timeout_seconds)
+        )
+        monitor = asyncio.create_task(disconnected())
         try:
-            await asyncio.wait_for(stopped.wait(), timeout=0.05)
-        except TimeoutError:
-            continue
+            done, _ = await asyncio.wait({evaluation, monitor}, return_when=asyncio.FIRST_COMPLETED)
+            if monitor in done:
+                await monitor
+                raise EngineProblem(
+                    status=409,
+                    code=cancellation_code,
+                    title="Execution cancelled",
+                    detail="The client disconnected before execution completed.",
+                )
+            return await evaluation
+        finally:
+            stopped.set()
+            for task in (evaluation, monitor):
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(evaluation, monitor, return_exceptions=True)
 
 
 def _health(app: FastAPI, status: Literal["ok", "ready", "not_ready"]) -> HealthResponse:
@@ -401,6 +438,76 @@ def _health(app: FastAPI, status: Literal["ok", "ready", "not_ready"]) -> Health
         release_sha="invalid",
         admitted_provider_count=0,
         admitted_visual_provider_count=0,
+    )
+
+
+def _evaluate_methodology_preview(command: MethodologyPreviewCommand) -> MethodologyPreviewResult:
+    engine = MethodologyEngine(DeterministicCohortProvider())
+    repeated = None
+    if command.repetition_configuration is None:
+        result = engine.run(
+            run_id=command.run_id,
+            stimulus=command.stimulus,
+            population=command.population,
+            audience=command.audience,
+            configuration=command.configuration,
+            methodology_version=command.methodology_version,
+            cost_ceiling_microusd=command.cost_ceiling_microusd,
+        )
+    else:
+        repeated = run_repeated_methodology(
+            engine,
+            run_group_id=command.run_id,
+            stimulus=command.stimulus,
+            population=command.population,
+            audience=command.audience,
+            configuration=command.configuration,
+            methodology_version=command.methodology_version,
+            cost_ceiling_microusd=command.cost_ceiling_microusd,
+            repetition_configuration=command.repetition_configuration,
+        )
+        # The report is bound to the durable command/group id. The
+        # internal repetition ids remain in the reproducibility receipt.
+        result = repeated.runs[0].model_copy(update={"run_id": command.run_id})
+    report = build_complete_report(
+        result,
+        report_id=command.report.report_id,
+        project_id=command.report.project_id,
+        stimulus_version_id=command.report.stimulus_version_id,
+        variant_key=command.report.variant_key,
+        variant_label=command.report.variant_label,
+        created_at=command.report.created_at,
+        repeated_simulation=repeated,
+    )
+    return MethodologyPreviewResult(
+        methodology_result=result,
+        report=report,
+        repeated_methodology_result=repeated,
+    )
+
+
+def _evaluate_comparison(command: VariantComparisonCommand) -> VariantComparisonResult:
+    baseline = command.reports[0]
+    return VariantComparisonResult(
+        items=tuple(
+            VariantComparisonItem(
+                baseline_variant_key=baseline.variant_key,
+                candidate_variant_key=candidate.variant_key,
+                comparison=compare_variants(baseline.artifact, candidate.artifact),
+            )
+            for candidate in command.reports[1:]
+        )
+    )
+
+
+def _evaluate_export(command: ReportExportCommand) -> ReportExportResult:
+    exported = export_report(command.report, command.format)
+    return ReportExportResult(
+        format=exported.format,
+        media_type=exported.media_type,
+        filename=exported.filename,
+        content_base64=base64.b64encode(exported.content).decode("ascii"),
+        content_sha256=exported.content_sha256,
     )
 
 
@@ -442,6 +549,7 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.engine_services = services
+    app.state.execution_slots = asyncio.Semaphore(4)
     app.add_middleware(
         CommandRequestPolicyMiddleware,
         services_getter=lambda: app.state.engine_services,
@@ -497,31 +605,34 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
             return _health(app, "not_ready")
         return _health(app, "ready")
 
+    @app.exception_handler(TimeoutError)
+    async def execution_deadline_handler(_request: Request, _error: TimeoutError) -> JSONResponse:
+        return _problem_response(
+            status=504,
+            code="execution_deadline_exceeded",
+            title="Execution deadline exceeded",
+            detail="The private execution exceeded its bounded processing time.",
+        )
+
     @app.post(
         EXECUTION_PATH,
         response_model=BehavioralRunResult,
         dependencies=[Depends(require_internal_authority)],
     )
     async def execute(command: BehavioralRunCommand, request: Request) -> BehavioralRunResult:
-        cancellation = Event()
-        monitor_stopped = asyncio.Event()
-        monitor = asyncio.create_task(
-            _monitor_disconnect(
-                request,
-                cancellation=cancellation,
-                stopped=monitor_stopped,
-            ),
-            name="behavioral-engine-client-disconnect",
-        )
         try:
             admitted = _services(request).registry.resolve(command.provider)
             with get_observability_runtime("ai-engine").span("behavioral.execute"):
-                return await asyncio.to_thread(
-                    execute_behavioral_run,
+                return await _run_request_evaluation(
+                    request,
+                    partial(
+                        execute_behavioral_run,
+                        provider=admitted.provider,
+                        synthesizer=admitted.synthesizer,
+                    ),
                     command,
-                    provider=admitted.provider,
-                    synthesizer=admitted.synthesizer,
-                    should_cancel=cancellation.is_set,
+                    timeout_seconds=float(command.engine_configuration.deadline_seconds),
+                    cancellation_code="behavioral_run_cancelled",
                 )
         except ProviderNotAdmittedError as error:
             raise EngineProblem(
@@ -551,10 +662,6 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
                 title="Behavioral run rejected",
                 detail=str(error),
             ) from error
-        finally:
-            monitor_stopped.set()
-            monitor.cancel()
-            await asyncio.gather(monitor, return_exceptions=True)
 
     @app.post(
         VISUAL_PROFILE_PATH,
@@ -613,11 +720,11 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
             )
             admitted = services.visual_registry.resolve(command.provider)
             with get_observability_runtime("ai-engine").span("visual.profile"):
-                return await asyncio.to_thread(
-                    execute_visual_analysis,
+                return await _run_request_evaluation(
+                    request,
+                    partial(execute_visual_analysis, content=content, provider=admitted),
                     command,
-                    content,
-                    provider=admitted,
+                    timeout_seconds=30.0,
                 )
         except VisualProviderNotAdmittedError as error:
             raise EngineProblem(
@@ -641,52 +748,12 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
     )
     async def execute_methodology_preview(
         command: MethodologyPreviewCommand,
+        request: Request,
     ) -> MethodologyPreviewResult:
         try:
             with get_observability_runtime("ai-engine").span("methodology.preview"):
-                engine = MethodologyEngine(DeterministicCohortProvider())
-                repeated = None
-                if command.repetition_configuration is None:
-                    result = await asyncio.to_thread(
-                        engine.run,
-                        run_id=command.run_id,
-                        stimulus=command.stimulus,
-                        population=command.population,
-                        audience=command.audience,
-                        configuration=command.configuration,
-                        methodology_version=command.methodology_version,
-                        cost_ceiling_microusd=command.cost_ceiling_microusd,
-                    )
-                else:
-                    repeated = await asyncio.to_thread(
-                        run_repeated_methodology,
-                        engine,
-                        run_group_id=command.run_id,
-                        stimulus=command.stimulus,
-                        population=command.population,
-                        audience=command.audience,
-                        configuration=command.configuration,
-                        methodology_version=command.methodology_version,
-                        cost_ceiling_microusd=command.cost_ceiling_microusd,
-                        repetition_configuration=command.repetition_configuration,
-                    )
-                    # The report is bound to the durable command/group id. The
-                    # internal repetition ids remain in the reproducibility receipt.
-                    result = repeated.runs[0].model_copy(update={"run_id": command.run_id})
-                report = build_complete_report(
-                    result,
-                    report_id=command.report.report_id,
-                    project_id=command.report.project_id,
-                    stimulus_version_id=command.report.stimulus_version_id,
-                    variant_key=command.report.variant_key,
-                    variant_label=command.report.variant_label,
-                    created_at=command.report.created_at,
-                    repeated_simulation=repeated,
-                )
-                return MethodologyPreviewResult(
-                    methodology_result=result,
-                    report=report,
-                    repeated_methodology_result=repeated,
+                return await _run_request_evaluation(
+                    request, _evaluate_methodology_preview, command, timeout_seconds=300.0
                 )
         except ValueError as error:
             raise EngineProblem(
@@ -703,22 +770,13 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
     )
     async def compare_methodology_reports(
         command: VariantComparisonCommand,
+        request: Request,
     ) -> VariantComparisonResult:
-        baseline = command.reports[0]
         try:
             with get_observability_runtime("ai-engine").span("methodology.compare"):
-                items = tuple(
-                    VariantComparisonItem(
-                        baseline_variant_key=baseline.variant_key,
-                        candidate_variant_key=candidate.variant_key,
-                        comparison=compare_variants(
-                            baseline.artifact,
-                            candidate.artifact,
-                        ),
-                    )
-                    for candidate in command.reports[1:]
+                return await _run_request_evaluation(
+                    request, _evaluate_comparison, command, timeout_seconds=30.0
                 )
-            return VariantComparisonResult(items=items)
         except ValueError as error:
             raise EngineProblem(
                 status=409,
@@ -734,16 +792,12 @@ def create_app(*, services: EngineServices | None = None) -> FastAPI:
     )
     async def render_report_export(
         command: ReportExportCommand,
+        request: Request,
     ) -> ReportExportResult:
         with get_observability_runtime("ai-engine").span("report.export"):
-            exported = export_report(command.report, command.format)
-        return ReportExportResult(
-            format=exported.format,
-            media_type=exported.media_type,
-            filename=exported.filename,
-            content_base64=base64.b64encode(exported.content).decode("ascii"),
-            content_sha256=exported.content_sha256,
-        )
+            return await _run_request_evaluation(
+                request, _evaluate_export, command, timeout_seconds=30.0
+            )
 
     get_observability_runtime("ai-engine").instrument_fastapi(app)
     return app

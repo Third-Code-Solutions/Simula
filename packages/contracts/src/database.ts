@@ -1037,6 +1037,60 @@ export type Database = {
           },
         ]
       }
+      campaign_lab_report_reviews: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          decision: string
+          id: string
+          manifest_sha256: string
+          organization_id: string
+          rationale: string
+          report_sha256: string
+          reviewer_id: string
+          run_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          decision: string
+          id?: string
+          manifest_sha256: string
+          organization_id: string
+          rationale: string
+          report_sha256: string
+          reviewer_id: string
+          run_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          decision?: string
+          id?: string
+          manifest_sha256?: string
+          organization_id?: string
+          rationale?: string
+          report_sha256?: string
+          reviewer_id?: string
+          run_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_lab_report_reviews_organization_id_campaign_id_fkey"
+            columns: ["organization_id", "campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_lab_campaigns"
+            referencedColumns: ["organization_id", "id"]
+          },
+          {
+            foreignKeyName: "campaign_lab_report_reviews_organization_id_run_id_fkey"
+            columns: ["organization_id", "run_id"]
+            isOneToOne: false
+            referencedRelation: "campaign_lab_runs"
+            referencedColumns: ["organization_id", "id"]
+          },
+        ]
+      }
       campaign_lab_runs: {
         Row: {
           attempt_count: number
@@ -3162,6 +3216,18 @@ export type Database = {
         }
         Returns: Json
       }
+      review_campaign_lab_bound_report: {
+        Args: {
+          requested_correlation_id: string
+          requested_decision: string
+          requested_manifest_sha256: string
+          requested_rationale: string
+          requested_report_sha256: string
+          requested_result: Json
+          requested_run_id: string
+        }
+        Returns: Json
+      }
       revoke_report_share_grant: {
         Args: {
           requested_correlation_id: string
@@ -4313,6 +4379,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      bound_report_schema_present_v1: { Args: never; Returns: boolean }
       cancel_campaign_evidence_run_atomic: {
         Args: { requested_correlation_id: string; requested_run_id: string }
         Returns: Json
@@ -5244,6 +5311,18 @@ export type Database = {
         Args: { requested_transport: string }
         Returns: boolean
       }
+      review_campaign_lab_bound_report_atomic: {
+        Args: {
+          requested_correlation_id: string
+          requested_decision: string
+          requested_manifest_sha256: string
+          requested_rationale: string
+          requested_report_sha256: string
+          requested_result: Json
+          requested_run_id: string
+        }
+        Returns: Json
+      }
       revoke_report_share_grant_atomic: {
         Args: {
           requested_correlation_id: string
@@ -5317,6 +5396,22 @@ export type Database = {
           succeeded_count: number
         }[]
       }
+      runtime_observability_snapshot_v5: {
+        Args: never
+        Returns: {
+          cancel_requested_count: number
+          canceled_count: number
+          failed_count: number
+          migration_version: number
+          oldest_cancel_requested_age_seconds: number
+          queued_count: number
+          retrying_count: number
+          rls_force_enabled: boolean
+          running_count: number
+          stuck_lease_count: number
+          succeeded_count: number
+        }[]
+      }
       runtime_schema_readiness: {
         Args: never
         Returns: {
@@ -5339,6 +5434,13 @@ export type Database = {
         }[]
       }
       runtime_schema_readiness_v4: {
+        Args: never
+        Returns: {
+          migration_version: number
+          rls_force_enabled: boolean
+        }[]
+      }
+      runtime_schema_readiness_v5: {
         Args: never
         Returns: {
           migration_version: number

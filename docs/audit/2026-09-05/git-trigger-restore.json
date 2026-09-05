@@ -1,0 +1,131 @@
+{
+  "vercel": [
+    {
+      "productionBranch": "main",
+      "createDeployments": "enabled",
+      "repo": "kurtgav/Simula",
+      "rootDirectory": "apps/web",
+      "project": "prj_mE6A7XyuiBjb7j5OFPfa79wQR94v"
+    },
+    {
+      "productionBranch": "main",
+      "createDeployments": "enabled",
+      "repo": "kurtgav/Simula",
+      "rootDirectory": "apps/admin",
+      "project": "prj_tZ7PcEL9GAnhuMNqJCC7tCFvf8RO"
+    }
+  ],
+  "railway": [
+    {
+      "deployment": "432ede92-9ded-43ef-a1e6-82585d659d70",
+      "name": "dispatcher",
+      "triggers": [
+        {
+          "baseEnvironmentOverrideId": null,
+          "branch": "main",
+          "checkSuites": false,
+          "environmentId": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+          "id": "5633b59b-c7ff-4de0-b0fc-f1f9532373cd",
+          "projectId": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+          "provider": "github",
+          "repository": "kurtgav/Simula",
+          "serviceId": "042a83d1-75e6-4cda-918b-33918f02e2df"
+        }
+      ],
+      "serviceManifestSha256": "54c35da0a8b32f1c354144d8a232901fa555bf75679d4429282e6f8cb6e67a45",
+      "source": {
+        "image": null,
+        "repo": "kurtgav/Simula"
+      }
+    },
+    {
+      "deployment": "2f4519f6-2a40-4ac0-81dc-b1c1149986bb",
+      "name": "worker",
+      "triggers": [
+        {
+          "baseEnvironmentOverrideId": null,
+          "branch": "main",
+          "checkSuites": false,
+          "environmentId": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+          "id": "de485b60-d108-468f-bffb-65c1211ac2e2",
+          "projectId": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+          "provider": "github",
+          "repository": "kurtgav/Simula",
+          "serviceId": "10a8f62f-f56c-44ce-86ce-dac6cbc8c757"
+        }
+      ],
+      "serviceManifestSha256": "7a1feb6c4fd3176be4032b554f9f8db2f51e065052970b80f3a1886d36a695dc",
+      "source": {
+        "image": null,
+        "repo": "kurtgav/Simula"
+      }
+    },
+    {
+      "deployment": "badca981-9907-450e-9c6d-04b5cd65c13b",
+      "name": "api",
+      "triggers": [
+        {
+          "baseEnvironmentOverrideId": null,
+          "branch": "main",
+          "checkSuites": false,
+          "environmentId": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+          "id": "9672a5ef-c270-4ec7-b92b-497b702ec464",
+          "projectId": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+          "provider": "github",
+          "repository": "kurtgav/Simula",
+          "serviceId": "182f55ae-a10f-4fc7-8f36-54b529be2711"
+        }
+      ],
+      "serviceManifestSha256": "c7c0f92251fa722bf78d87e768842dae39996cc612e46efe95d5c148858f0b90",
+      "source": {
+        "image": null,
+        "repo": "kurtgav/Simula"
+      }
+    },
+    {
+      "deployment": "8408695d-100a-49d6-acf7-f2a16207c6c2",
+      "name": "ai-engine",
+      "triggers": [
+        {
+          "baseEnvironmentOverrideId": null,
+          "branch": "main",
+          "checkSuites": false,
+          "environmentId": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+          "id": "03e18418-1b4f-4616-8e34-18da4f0991f3",
+          "projectId": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+          "provider": "github",
+          "repository": "kurtgav/Simula",
+          "serviceId": "3d245c7f-da8e-42c2-9bc2-ae0632d499dc"
+        }
+      ],
+      "serviceManifestSha256": "a8cad7c28dd20f591efa4e6276e6235f2cf6f297a14166c962ff24163a73f6e8",
+      "source": {
+        "image": null,
+        "repo": "kurtgav/Simula"
+      }
+    },
+    {
+      "deployment": "f981b928-03fd-4f7e-a91c-e609483d61d2",
+      "name": "control-plane",
+      "triggers": [
+        {
+          "baseEnvironmentOverrideId": null,
+          "branch": "main",
+          "checkSuites": false,
+          "environmentId": "2e8d5d3f-2127-4d8c-808c-607cbeecd332",
+          "id": "b4411d6c-779f-4a0d-b4c4-e5011147693b",
+          "projectId": "f25b8598-d3cc-4e9d-a63d-0413a4035d22",
+          "provider": "github",
+          "repository": "kurtgav/Simula",
+          "serviceId": "9062c34b-9d5f-45a6-afa4-cd3dac15c954"
+        }
+      ],
+      "serviceManifestSha256": "ca448c171b248f9a3fa2b51ee05f309b51c03477e85a4889ec3d17ca8ae41b79",
+      "source": {
+        "image": null,
+        "repo": "kurtgav/Simula"
+      }
+    }
+  ],
+  "observedAt": "2026-09-05T09:52:51.5053427Z"
+}

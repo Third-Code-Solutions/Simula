@@ -25,6 +25,7 @@ from simula_worker.config import WorkerSettings
 from simula_worker.telemetry import WorkerTelemetry
 
 DatabaseRow = dict[str, Any]
+_TRANSACTION_TIMEOUT_SECONDS = 12.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -242,7 +243,7 @@ class WorkerDatabase(WorkerExecutionGateway):
                 )
                 row = await cursor.fetchone()
                 schema_cursor = await connection.execute(
-                    "select * from private.runtime_schema_readiness_v4()"
+                    "select * from private.runtime_schema_readiness_v5()"
                 )
                 schema = await schema_cursor.fetchone()
             ready = (
@@ -254,7 +255,7 @@ class WorkerDatabase(WorkerExecutionGateway):
             )
             outcome = "success" if ready else "error"
             return ready
-        except KeyError, TypeError, ValueError, PoolTimeout, psycopg.Error:
+        except KeyError, TypeError, ValueError, TimeoutError, PoolTimeout, psycopg.Error:
             return False
         finally:
             self._observe_database("readiness", outcome, started_at)
@@ -269,7 +270,7 @@ class WorkerDatabase(WorkerExecutionGateway):
 
     async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
         row = await self._fetchone(
-            "select * from private.runtime_observability_snapshot_v4()",
+            "select * from private.runtime_observability_snapshot_v5()",
             (),
         )
         states = (
@@ -721,7 +722,10 @@ class WorkerDatabase(WorkerExecutionGateway):
 
     @asynccontextmanager
     async def _transaction(self) -> AsyncIterator[AsyncConnection[DatabaseRow]]:
-        async with self._pool.connection(timeout=2.0) as connection:
+        async with (
+            asyncio.timeout(_TRANSACTION_TIMEOUT_SECONDS),
+            self._pool.connection(timeout=2.0) as connection,
+        ):
             entered = False
             try:
                 async with connection.transaction():

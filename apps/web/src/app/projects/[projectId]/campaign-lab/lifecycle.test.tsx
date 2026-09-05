@@ -15,6 +15,8 @@ import { StructuredEditor } from "./structured-editor";
 
 const mocks = vi.hoisted(() => ({
   create: vi.fn(),
+  preview: vi.fn(),
+  importSurvey: vi.fn(),
   list: vi.fn(),
   history: vi.fn(),
   status: vi.fn(),
@@ -35,6 +37,8 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   getCampaignLabAudit: vi.fn(async () => ({ items: [] })),
   listCampaignLabCampaigns: mocks.list,
   createCampaignLabCampaign: mocks.create,
+  previewCampaignLabSurveyImport: mocks.preview,
+  createCampaignLabSurveyImport: mocks.importSurvey,
 }));
 
 beforeEach(() => {
@@ -409,4 +413,57 @@ describe("Structured evidence inputs", () => {
       screen.getByText("Advanced: edit source as JSON").parentElement,
     ).not.toHaveAttribute("open");
   });
+});
+
+it("requires a fresh preview after mapping changes before queueing a survey", async () => {
+  window.history.replaceState(null, "", "/?campaign=one#surveys");
+  mocks.list.mockResolvedValue({
+    items: [{ id: "one", name: "Survey campaign", status: "draft" }],
+  });
+  mocks.preview.mockResolvedValue({
+    summary: {
+      input_response_count: 10,
+      accepted_response_count: 8,
+      duplicate_response_count: 1,
+      low_quality_response_count: 1,
+      bot_response_count: 0,
+      malformed_response_count: 0,
+    },
+    aggregate_group_count: 2,
+    evidence_binding: { raw_payload_sha256: "abc" },
+    disclosure: "Preview only. Requires separate rights admission.",
+  });
+  mocks.importSurvey.mockResolvedValue({ run_id: "survey-run" });
+  render(<CampaignLabWorkspace projectId="project" />);
+  const upload = await screen.findByLabelText("Survey export");
+  const file = new File(["sample"], "survey.csv", { type: "text/csv" });
+  Object.defineProperty(file, "text", { value: async () => "sample" });
+  fireEvent.change(upload, { target: { files: [file] } });
+  fireEvent.change(screen.getByLabelText("Adapter"), {
+    target: { value: "csv" },
+  });
+  fireEvent.submit(upload.closest("form")!);
+  expect(
+    await screen.findByRole("status", { name: "Survey import preview" }),
+  ).toHaveTextContent("8 accepted of 10");
+  expect(mocks.importSurvey).not.toHaveBeenCalled();
+  fireEvent.change(
+    screen.getByLabelText("Approved survey source version ID (production)"),
+    { target: { value: "changed-source" } },
+  );
+  expect(
+    screen.queryByRole("status", { name: "Survey import preview" }),
+  ).not.toBeInTheDocument();
+  fireEvent.submit(upload.closest("form")!);
+  await screen.findByRole("button", {
+    name: "Confirm and queue survey import",
+  });
+  expect(mocks.preview).toHaveBeenCalledTimes(2);
+  fireEvent.submit(upload.closest("form")!);
+  await waitFor(() => expect(mocks.importSurvey).toHaveBeenCalledTimes(1));
+  expect(mocks.importSurvey).toHaveBeenCalledWith(
+    "one",
+    expect.objectContaining({ source_version_id: "changed-source" }),
+    expect.any(String),
+  );
 });

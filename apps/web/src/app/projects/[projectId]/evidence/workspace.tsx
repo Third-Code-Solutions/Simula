@@ -13,11 +13,12 @@ export function CampaignEvidenceUnavailableInputs() {
     <section className="evidence-grid" aria-label="Evidence inputs">
       <section className="panel form-stack" id="surveys">
         <p className="eyebrow">01 · Surveys / calibration</p>
-        <h2 id="calibration">Survey calibration is unavailable</h2>
+        <h2 id="calibration">Use saved Campaign Lab evidence for comparison</h2>
         <p className="methodology-warning" role="status">
-          Before a survey can calibrate a model, its original import, processing
-          steps, and aggregate dataset must be verified together. This binding
-          is not available yet, so calibration cannot be submitted here.
+          Direct caller-authored calibration inputs remain unavailable here.
+          Campaign Lab can compare a completed simulation with an admitted,
+          fingerprint-bound survey import. This descriptive comparison does not
+          establish independent scientific validation.
         </p>
       </section>
       <section className="panel form-stack" id="backtesting">
@@ -128,6 +129,14 @@ export function CampaignEvidenceWorkspace({
       </nav>
 
       <CampaignEvidenceUnavailableInputs />
+      <p>
+        <Link
+          className="primary-link"
+          href={`/projects/${projectId}/campaign-lab#calibration`}
+        >
+          Compare saved Campaign Lab evidence
+        </Link>
+      </p>
       <section className="panel evidence-next-action">
         <h2>Continue with supported research tasks</h2>
         <p className="lede">

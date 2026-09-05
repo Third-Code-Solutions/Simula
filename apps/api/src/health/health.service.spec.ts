@@ -11,6 +11,25 @@ function queueWithReadiness(isReady: boolean): SimulationQueuePort {
 }
 
 describe("HealthService", () => {
+  const originalSha = process.env.SIMULA_RELEASE_SHA;
+  beforeEach(() => {
+    delete process.env.SIMULA_RELEASE_SHA;
+  });
+  afterAll(() => {
+    if (originalSha === undefined) delete process.env.SIMULA_RELEASE_SHA;
+    else process.env.SIMULA_RELEASE_SHA = originalSha;
+  });
+  it("reports only a valid configured release identity", () => {
+    process.env.SIMULA_RELEASE_SHA = "a".repeat(40);
+    expect(new HealthService(queueWithReadiness(false)).liveness()).toEqual({
+      status: "alive",
+      releaseSha: "a".repeat(40),
+    });
+    process.env.SIMULA_RELEASE_SHA = "invalid configuration";
+    expect(new HealthService(queueWithReadiness(false)).liveness()).toEqual({
+      status: "alive",
+    });
+  });
   it("keeps liveness dependency-free", () => {
     expect(new HealthService(queueWithReadiness(false)).liveness()).toEqual({
       status: "alive",

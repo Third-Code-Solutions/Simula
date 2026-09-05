@@ -1,10 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { BoundCalibration } from "./bound-calibration";
+
 import {
-  CampaignLabCalibrationUnavailable,
   CampaignLabHistoricalBacktestUnavailable,
-  CampaignLabReportUnavailable,
   CampaignLabSelectionNotice,
 } from "./workspace";
 
@@ -60,39 +60,21 @@ describe("Campaign Lab navigation anchors", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("suppresses calibration submission until immutable import binding exists", () => {
-    render(<CampaignLabCalibrationUnavailable />);
-
+  it("accepts saved evidence references instead of caller-authored scientific inputs", () => {
+    render(<BoundCalibration campaignId="one" />);
     expect(
       screen.getByRole("heading", {
-        name: "Survey calibration is unavailable",
+        name: "Compare a saved test with a survey",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/derived from an admitted immutable survey import/i),
+      screen.getByText(/does not establish reliable predictions/),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /calibration/i }),
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByLabelText(/synthetic observations/i),
     ).not.toBeInTheDocument();
-  });
-
-  it("suppresses report submission until immutable evidence binding exists", () => {
-    render(<CampaignLabReportUnavailable />);
-
     expect(
-      screen.getByRole("heading", {
-        name: "Evidence report creation is unavailable",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/one immutable evidence manifest/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /report/i }),
+      screen.queryByRole("button", { name: "Compare saved evidence" }),
     ).not.toBeInTheDocument();
-    expect(screen.queryByLabelText(/approval state/i)).not.toBeInTheDocument();
   });
 });

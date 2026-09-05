@@ -14,6 +14,8 @@ import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 import { complianceReviewInput } from "./governance";
 import { StructuredEditor } from "./structured-editor";
 import { RunHistory } from "./run-history";
+import { BoundCalibration } from "./bound-calibration";
+import { BoundReport } from "./bound-report";
 import styles from "./workspace.module.css";
 import {
   ApiProblem,
@@ -32,6 +34,8 @@ import {
   createCampaignLabResearch,
   createCampaignLabSimulation,
   createCampaignLabSurveyImport,
+  previewCampaignLabSurveyImport,
+  type SurveyImportPreview,
   getCampaignLabAggregateForecastRun,
   getCampaignLabCampaign,
   getCampaignLabAudit,
@@ -803,46 +807,6 @@ export function CampaignLabHistoricalBacktestUnavailable() {
   );
 }
 
-export function CampaignLabCalibrationUnavailable() {
-  return (
-    <section
-      className="panel"
-      id="calibration"
-      data-step="evidence"
-      aria-labelledby="calibration-title"
-    >
-      <p className="eyebrow">07 / Survey calibration</p>
-      <h2 id="calibration-title">Survey calibration is unavailable</h2>
-      <p className="methodology-warning" role="status">
-        Production calibration is paused until every aggregate dataset is
-        derived from an admitted immutable survey import and bound to its raw
-        payload digest, source version, and import run. No caller-authored
-        survey or synthetic-observation payload can be submitted from this page.
-      </p>
-    </section>
-  );
-}
-
-export function CampaignLabReportUnavailable() {
-  return (
-    <section
-      className="panel"
-      id="reports"
-      data-step="review"
-      aria-labelledby="report-title"
-    >
-      <p className="eyebrow">11 / Evidence report</p>
-      <h2 id="report-title">Evidence report creation is unavailable</h2>
-      <p className="methodology-warning" role="status">
-        Report creation and legacy report display are paused until every source,
-        configuration, input, result, and independent approval is bound to one
-        immutable evidence manifest. No report request can be submitted from
-        this page, and legacy report artifacts remain quarantined.
-      </p>
-    </section>
-  );
-}
-
 function readCampaignSelection() {
   return new URL(window.location.href).searchParams.get("campaign") ?? "";
 }
@@ -874,6 +838,8 @@ export function CampaignLabWorkspace({
     url.searchParams.set("campaign", id);
     for (const kind of [
       "simulation",
+      "calibration",
+      "report",
       "research",
       "survey",
       "forecast",
@@ -1540,6 +1506,23 @@ function CampaignLabSession({
     }
   }
 
+  const [surveyPreview, setSurveyPreview] = useState<{
+    file: File;
+    config: string;
+    data: SurveyImportPreview;
+  }>();
+  const surveyPreviewConfig = JSON.stringify([
+    surveyImportFormat,
+    surveyMetadataJson,
+    surveyFieldMapJson,
+    surveySourceVersionId,
+  ]);
+  const currentSurveyPreview =
+    surveyPreview?.file === surveyImportFile &&
+    surveyPreview.config === surveyPreviewConfig
+      ? surveyPreview.data
+      : undefined;
+
   async function importSurvey(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
@@ -1558,6 +1541,9 @@ function CampaignLabSession({
         string,
         unknown
       >;
+      if (surveyImportFile.size > 200_000) {
+        throw new Error("Choose a survey export of at most 200 KB.");
+      }
       const rawText = await surveyImportFile.text();
       const rawPayload =
         surveyImportFormat === "csv" ? rawText : JSON.parse(rawText);
@@ -1568,6 +1554,19 @@ function CampaignLabSession({
         source_version_id: surveySourceVersionId.trim() || undefined,
         secret_payload: { payload: rawPayload },
       };
+      if (!currentSurveyPreview) {
+        const data = await previewCampaignLabSurveyImport(
+          selectedCampaignId,
+          payload,
+        );
+        if (!mounted.current) return;
+        setSurveyPreview({
+          file: surveyImportFile,
+          config: surveyPreviewConfig,
+          data,
+        });
+        return;
+      }
       const created = await createCampaignLabSurveyImport(
         selectedCampaignId,
         payload,
@@ -2232,9 +2231,9 @@ function CampaignLabSession({
           <p className="eyebrow">06 / Survey import</p>
           <h2 id="survey-title">Import a consented aggregate survey</h2>
           <p className="field-note">
-            Raw exports travel only inside the worker secret envelope. The
-            public result is an aggregate dataset with provenance and quality
-            counters.
+            Preview a CSV or JSON export up to 200 KB before queueing. Raw rows
+            are processed transiently for validation and sent in a private
+            worker envelope; only aggregate results and provenance are returned.
           </p>
           <form className="form-stack" onSubmit={importSurvey}>
             <label htmlFor="campaign-lab-survey-file">Survey export</label>
@@ -2286,10 +2285,54 @@ function CampaignLabSession({
                 onChange={setSurveyFieldMapJson}
               />
             </details>
+            {currentSurveyPreview && (
+              <div
+                className="notice"
+                role="status"
+                aria-label="Survey import preview"
+              >
+                <h3>Review the import</h3>
+                <p>
+                  {currentSurveyPreview.summary.accepted_response_count}{" "}
+                  accepted of{" "}
+                  {currentSurveyPreview.summary.input_response_count} responses
+                  across {currentSurveyPreview.aggregate_group_count} aggregate
+                  groups.
+                </p>
+                <p>
+                  Excluded:{" "}
+                  {currentSurveyPreview.summary.duplicate_response_count}{" "}
+                  duplicates,{" "}
+                  {currentSurveyPreview.summary.low_quality_response_count} low
+                  quality, {currentSurveyPreview.summary.bot_response_count}{" "}
+                  flagged as bots,{" "}
+                  {currentSurveyPreview.summary.malformed_response_count}{" "}
+                  malformed.
+                </p>
+                <p>{currentSurveyPreview.disclosure}</p>
+                <details>
+                  <summary>Verify import fingerprints</summary>
+                  <dl>
+                    {Object.entries(currentSurveyPreview.evidence_binding).map(
+                      ([key, value]) => (
+                        <div key={key}>
+                          <dt>{key.replaceAll("_", " ")}</dt>
+                          <dd style={{ overflowWrap: "anywhere" }}>
+                            {value ?? "No admitted source selected"}
+                          </dd>
+                        </div>
+                      ),
+                    )}
+                  </dl>
+                </details>
+              </div>
+            )}
             <button disabled={busyStage === "surveys"} type="submit">
               {busyStage === "surveys"
-                ? "Queueing survey…"
-                : "Queue survey import"}
+                ? "Checking survey..."
+                : currentSurveyPreview
+                  ? "Confirm and queue survey import"
+                  : "Preview survey import"}
             </button>
           </form>
           <details className="panel">
@@ -2408,7 +2451,9 @@ function CampaignLabSession({
           ) : null}
         </section>
       ) : null}
-      {selectedCampaignId ? <CampaignLabCalibrationUnavailable /> : null}
+      {selectedCampaignId ? (
+        <BoundCalibration campaignId={selectedCampaignId} />
+      ) : null}
       {selectedCampaignId ? <CampaignLabHistoricalBacktestUnavailable /> : null}
       {selectedCampaignId ? (
         <section
@@ -2554,7 +2599,9 @@ function CampaignLabSession({
           ) : null}
         </section>
       ) : null}
-      {selectedCampaignId ? <CampaignLabReportUnavailable /> : null}
+      {selectedCampaignId ? (
+        <BoundReport campaignId={selectedCampaignId} />
+      ) : null}
       {selectedCampaignId ? (
         <section
           className="panel"

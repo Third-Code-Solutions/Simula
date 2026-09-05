@@ -30,3 +30,6 @@ supabase/.temp/
 .serena/
 
 .vercel
+
+# Disposable verification fixtures, downloaded artifacts and local helper scripts.
+/tmp/

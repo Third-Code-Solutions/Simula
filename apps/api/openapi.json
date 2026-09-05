@@ -6532,6 +6532,10 @@
                       "enum": [
                         "alive"
                       ]
+                    },
+                    "releaseSha": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}$"
                     }
                   }
                 }
@@ -6566,6 +6570,10 @@
                       "enum": [
                         "ready"
                       ]
+                    },
+                    "releaseSha": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}$"
                     }
                   }
                 }
@@ -6589,6 +6597,10 @@
                       "enum": [
                         "not_ready"
                       ]
+                    },
+                    "releaseSha": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{40}$"
                     }
                   }
                 }

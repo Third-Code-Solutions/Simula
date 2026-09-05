@@ -761,6 +761,30 @@ export function getCampaignLabInterviewRun(
   );
 }
 
+export type SurveyImportPreview = {
+  summary: {
+    input_response_count: number;
+    accepted_response_count: number;
+    duplicate_response_count: number;
+    low_quality_response_count: number;
+    bot_response_count: number;
+    malformed_response_count: number;
+  };
+  aggregate_group_count: number;
+  evidence_binding: Record<string, string | null>;
+  disclosure: string;
+};
+
+export function previewCampaignLabSurveyImport(
+  campaignId: string,
+  input: Readonly<Record<string, unknown>>,
+): Promise<SurveyImportPreview> {
+  return request<SurveyImportPreview>(
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/surveys/preview`),
+    { body: input, method: "POST" },
+  );
+}
+
 export function createCampaignLabSurveyImport(
   campaignId: string,
   input: Readonly<Record<string, unknown>>,
@@ -816,6 +840,94 @@ export function getCampaignLabSurveyImportRun(
   return request<CampaignLabDurableRun>(
     domainV1Path(`/campaign-lab/surveys/runs/${runId}`),
     { signal },
+  );
+}
+
+export function createCampaignLabCalibrationFromRuns(
+  campaignId: string,
+  input: {
+    simulation_run_id: string;
+    survey_import_run_id: string;
+    calibration_version: string;
+  },
+  idempotencyKey: string,
+): Promise<CampaignLabCommand> {
+  return request(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/calibrations/from-runs`,
+    ),
+    {
+      body: input,
+      headers: idempotencyHeaders(idempotencyKey),
+      method: "POST",
+    },
+  );
+}
+
+export function listCampaignLabBoundCalibrations(
+  campaignId: string,
+  offset = 0,
+  signal?: AbortSignal,
+): ReturnType<typeof listCampaignLabRuns> {
+  return request(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/calibrations/from-runs?limit=25&offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+
+export type BoundCampaignReport = CampaignLabDurableRun & {
+  review?: Readonly<Record<string, unknown>> | null;
+};
+
+export function createCampaignLabBoundReport(
+  campaignId: string,
+  input: { simulation_run_id: string; calibration_run_id?: string },
+  key: string,
+): Promise<CampaignLabCommand> {
+  return request(
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/reports/from-runs`),
+    { body: input, headers: idempotencyHeaders(key), method: "POST" },
+  );
+}
+export function listCampaignLabBoundReports(
+  campaignId: string,
+  offset = 0,
+  signal?: AbortSignal,
+): ReturnType<typeof listCampaignLabRuns> {
+  return request(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/reports/from-runs?limit=25&offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+export function getCampaignLabBoundReport(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<BoundCampaignReport> {
+  return request(domainV1Path(`/campaign-lab/reports/bound/runs/${runId}`), {
+    signal,
+  });
+}
+export function reviewCampaignLabBoundReport(
+  runId: string,
+  input: {
+    decision: "approved_experimental" | "rejected" | "revoked";
+    rationale: string;
+  },
+): Promise<Readonly<Record<string, unknown>>> {
+  return request(
+    domainV1Path(`/campaign-lab/reports/bound/runs/${runId}/review`),
+    { body: input, method: "POST" },
+  );
+}
+export function exportCampaignLabBoundReport(
+  runId: string,
+): Promise<BoundCampaignReport> {
+  return request(
+    domainV1Path(`/campaign-lab/reports/bound/runs/${runId}/export`),
   );
 }
 

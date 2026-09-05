@@ -2,7 +2,8 @@
 
 This surface is intentionally aggregate-only. Commands write through database
 capabilities; reads use tenant-scoped projections. Raw survey rows and held-out
-outcomes are accepted only in a worker secret envelope and are never returned.
+outcomes are accepted only in a private secret envelope and are never returned.
+Survey preflight compiles rows transiently; durable execution repeats validation.
 """
 
 from __future__ import annotations
@@ -16,6 +17,8 @@ from typing import Annotated, Any, Literal, cast
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from simula_core.aggregate_forecasting import (
@@ -27,22 +30,39 @@ from simula_core.campaign_lab import (
     CampaignLabPolicyError,
     CampaignLabResearchSource,
     CampaignLabSimulationRequest,
+    CampaignLabSimulationResult,
     CampaignLabVariant,
     CampaignPurpose,
     validate_campaign_lab_population_admission,
     validate_campaign_policy,
 )
+from simula_core.campaign_report_binding import build_bound_campaign_report
 from simula_core.cultural_evaluation import (
     CulturalEvaluationSuite,
     evaluate_cultural_suite,
 )
 from simula_core.json_codec import canonical_json_dumps
 from simula_core.methodology import PopulationFrameVersion
+from simula_core.survey_binding import (
+    evidence_digest,
+    survey_import_binding,
+    verify_calibration_binding,
+)
+from simula_core.survey_calibration import SurveyDataset
 from simula_core.survey_forms import (
     NativeSurveyForm,
     NativeSurveyResponse,
     native_survey_rows,
 )
+from simula_core.survey_imports import (
+    SurveyImportFieldMap,
+    SurveyImportMetadata,
+    SurveyImportPayload,
+)
+from simula_core.survey_imports import (
+    import_survey as normalize_survey,
+)
+from starlette.concurrency import run_in_threadpool
 
 from simula_api.auth import VerifiedIdentity
 from simula_api.database import canonical_request_sha256
@@ -274,6 +294,12 @@ class CalibrationCreate(_LabModel):
         return self
 
 
+class CalibrationFromRunsCreate(_LabModel):
+    simulation_run_id: UUID
+    survey_import_run_id: UUID
+    calibration_version: str = Field(default="calibration_v1", min_length=1, max_length=120)
+
+
 class BacktestCreate(_LabModel):
     protocol: dict[str, Any]
     prediction_set: dict[str, Any]
@@ -311,6 +337,16 @@ class ComplianceCreate(_LabModel):
         if self.reviewer is not None:
             raise ValueError("reviewer identity requires a separate authenticated approval command")
         return self
+
+
+class BoundReportCreate(_LabModel):
+    simulation_run_id: UUID
+    calibration_run_id: UUID | None = None
+
+
+class BoundReportReviewCreate(_LabModel):
+    decision: Literal["approved_experimental", "rejected", "revoked"]
+    rationale: str = Field(min_length=20, max_length=2000)
 
 
 class ReportCreate(_LabModel):
@@ -610,7 +646,7 @@ async def _admitted_evidence_source(
         query="""
           select versions.id, sources.source_key, versions.source_version,
                  versions.owner_name, versions.license_name, versions.checksum_sha256,
-                 versions.allowed_uses
+                 versions.allowed_uses, versions.created_by, sources.created_by as source_created_by
           from api.evidence_source_versions as versions
           join api.evidence_sources as sources
             on sources.id = versions.evidence_source_id
@@ -1631,7 +1667,7 @@ async def create_interview(
         identity,
         operation="campaign_lab_interview_source_run",
         query="""
-          select id, campaign_id, run_type, status, request, result
+          select id, campaign_id, run_type, status, request, result, created_by
           from api.campaign_lab_runs
           where id = %s and campaign_id = %s
         """,
@@ -1756,6 +1792,65 @@ async def create_cultural_evaluation(
     return {**result, "evaluation": evaluation.model_dump(mode="json")}
 
 
+def _survey_preview(body: SurveyImportCreate) -> dict[str, Any]:
+    raw = (body.secret_payload or {}).get("payload")
+    try:
+        raw_size = (
+            len(raw.encode("utf-8")) if isinstance(raw, str) else len(canonical_json_dumps(raw))
+        )
+    except (ValueError, TypeError) as error:
+        raise _invalid(
+            "Survey exports must be valid JSON of at most 200 KB.", field="file"
+        ) from error
+    if raw_size > 200_000:
+        raise _invalid("Survey exports must be at most 200 KB.", field="file")
+    try:
+        metadata = SurveyImportMetadata.model_validate(body.metadata)
+        field_map = SurveyImportFieldMap.model_validate(body.field_map)
+        imported = normalize_survey(
+            cast(SurveyImportPayload, raw),
+            import_format=body.format,
+            metadata=metadata,
+            field_map=field_map,
+        )
+    except (ValueError, TypeError) as error:
+        # Validation exceptions can include raw respondent values. Never echo them.
+        raise _invalid(
+            "No usable survey could be compiled. Check consent and usage authorization, "
+            "required provenance, column mapping, and numeric response values.",
+            field="survey",
+        ) from error
+    binding = survey_import_binding(
+        imported,
+        import_format=body.format,
+        metadata=metadata,
+        field_map=field_map,
+        source_version_id=str(body.source_version_id) if body.source_version_id else None,
+    )
+    return {
+        "summary": imported.summary.model_dump(mode="json"),
+        "aggregate_group_count": len(imported.dataset.observations),
+        "evidence_binding": binding,
+        "disclosure": (
+            "Preview only. Import does not confer source admission or scientific validity."
+        ),
+    }
+
+
+@router.post(
+    "/campaigns/{campaign_id}/surveys/preview",
+    operation_id="preview_campaign_lab_survey",
+)
+async def preview_survey(
+    campaign_id: UUID,
+    body: SurveyImportCreate,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    await _campaign_row(request, identity, campaign_id)
+    return await run_in_threadpool(_survey_preview, body)
+
+
 @router.post(
     "/campaigns/{campaign_id}/surveys/import",
     status_code=202,
@@ -1788,6 +1883,8 @@ async def import_survey(
             )
         except CampaignLabPolicyError as error:
             raise _invalid(str(error), field="source_version_id") from error
+    await _campaign_row(request, identity, campaign_id)
+    preview = await run_in_threadpool(_survey_preview, body)
     # Survey rows must pass through the same durable lease/retry path as every
     # other long-running Campaign Lab operation. The public request contains
     # only schema/provenance metadata; the raw export remains in the worker
@@ -1803,6 +1900,7 @@ async def import_survey(
             "field_map": body.field_map,
             "source_version_id": str(body.source_version_id) if body.source_version_id else None,
             "approved_payload_checksum_sha256": approved_payload_checksum,
+            "evidence_binding": preview["evidence_binding"],
         },
         secret_payload=body.secret_payload,
         idempotency_key=idempotency_key,
@@ -1967,6 +2065,182 @@ async def get_survey_import_run(
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> dict[str, Any]:
     return await _get_campaign_lab_run(run_id, "survey_import", request, identity)
+
+
+async def _calibration_input_run(
+    request: Request,
+    identity: VerifiedIdentity,
+    campaign_id: UUID,
+    organization_id: UUID,
+    run_id: UUID,
+    run_type: str,
+) -> dict[str, Any]:
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="campaign_lab_calibration_input",
+        query="""
+          select id, campaign_id, run_type, status, request, result, created_by
+          from api.campaign_lab_runs
+          where id = %s and campaign_id = %s and organization_id = %s
+            and run_type = %s and status = 'succeeded'
+            and (retention_until is null or retention_until > pg_catalog.statement_timestamp())
+        """,
+        parameters=(run_id, campaign_id, organization_id, run_type),
+    )
+    if not rows:
+        raise _invalid("Choose a completed, retained run from this campaign.", field=run_type)
+    return rows[0]
+
+
+@router.get(
+    "/campaigns/{campaign_id}/calibrations/from-runs",
+    operation_id="list_campaign_lab_bound_calibrations",
+)
+async def list_bound_calibrations(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 25,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    organization_id = await _campaign_organization(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="list_campaign_lab_bound_calibrations",
+        query="""
+          select id, campaign_id, run_type, status, stage, progress, attempt_count,
+                 created_at, started_at, completed_at, last_error_code, retention_until
+          from api.campaign_lab_runs
+          where campaign_id = %s and organization_id = %s
+            and run_type = 'survey_calibration'
+            and request->'evidence_binding'->>'version' = 'calibration_from_runs_v1'
+          order by created_at desc, id desc limit %s offset %s
+        """,
+        parameters=(campaign_id, organization_id, limit, offset),
+    )
+    return {"items": rows, "pagination": {"limit": limit, "offset": offset}}
+
+
+@router.post(
+    "/campaigns/{campaign_id}/calibrations/from-runs",
+    status_code=202,
+    operation_id="create_campaign_lab_calibration_from_runs",
+)
+async def create_calibration_from_runs(
+    campaign_id: UUID,
+    body: CalibrationFromRunsCreate,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: IdempotencyKey,
+) -> dict[str, Any]:
+    organization_id = await _campaign_organization(request, identity, campaign_id)
+    simulation_run = await _calibration_input_run(
+        request,
+        identity,
+        campaign_id,
+        organization_id,
+        body.simulation_run_id,
+        "repeated_simulation",
+    )
+    survey_run = await _calibration_input_run(
+        request,
+        identity,
+        campaign_id,
+        organization_id,
+        body.survey_import_run_id,
+        "survey_import",
+    )
+    simulation_raw = simulation_run.get("result")
+    survey_result = survey_run.get("result")
+    survey_request = survey_run.get("request")
+    try:
+        simulation = CampaignLabSimulationResult.model_validate(simulation_raw)
+        if simulation.campaign_id != campaign_id or not simulation.synthetic_observations:
+            raise ValueError("simulation has no persisted synthetic observations")
+        if not isinstance(survey_result, Mapping) or not isinstance(survey_request, Mapping):
+            raise ValueError("survey import has no persisted result")
+        binding = survey_result.get("evidence_binding")
+        if not isinstance(binding, dict) or binding != survey_request.get("evidence_binding"):
+            raise ValueError("survey import is legacy or its binding does not match")
+        source_version_id = UUID(str(binding.get("source_version_id")))
+        survey = SurveyDataset.model_validate(survey_result.get("dataset"))
+        if evidence_digest(survey.model_dump(mode="json")) != binding.get("aggregate_sha256"):
+            raise ValueError("survey aggregate digest does not match")
+    except (ValueError, TypeError) as error:
+        raise _invalid(
+            "These runs lack verified input bindings. Re-run the simulation and import a survey "
+            "with an admitted source version before comparing them.",
+            field="input_runs",
+        ) from error
+    try:
+        source = await _admitted_evidence_source(
+            request,
+            identity,
+            campaign_id,
+            source_version_id,
+            allowed_use="calibration",
+        )
+        _assert_source_metadata(survey.provenance.model_dump(mode="json"), source)
+        if binding.get("raw_payload_sha256") != source.get("checksum_sha256"):
+            raise CampaignLabPolicyError("survey raw digest no longer matches its admitted source")
+    except CampaignLabPolicyError as error:
+        raise _invalid(str(error), field="survey_import_run_id") from error
+    synthetic = [item.model_dump(mode="json") for item in simulation.synthetic_observations]
+    survey_data = survey.model_dump(mode="json")
+    synthetic_keys = {
+        (item.variant_key, item.cohort_key) for item in simulation.synthetic_observations
+    }
+    if not any(
+        (item.variant_key, item.cohort_key) in synthetic_keys for item in survey.observations
+    ):
+        raise _invalid(
+            "Survey variant and cohort keys do not match the saved simulation.",
+            field="survey_import_run_id",
+        )
+    evidence_binding = {
+        "version": "calibration_from_runs_v1",
+        "campaign_id": str(campaign_id),
+        "configuration": {
+            "calibration_version": body.calibration_version,
+            "model_version": simulation.methodology_version,
+        },
+        "simulation_run_id": str(body.simulation_run_id),
+        "simulation_result_sha256": evidence_digest(simulation_raw),
+        "survey_import_run_id": str(body.survey_import_run_id),
+        "survey_import_result_sha256": evidence_digest(survey_result),
+        "survey_evidence_binding": binding,
+        "source_version_id": str(source_version_id),
+        "approved_payload_sha256": source["checksum_sha256"],
+        "synthetic_observations_sha256": evidence_digest(synthetic),
+        "survey_dataset_sha256": evidence_digest(survey_data),
+    }
+    verify_calibration_binding(
+        evidence_binding,
+        survey=survey_data,
+        synthetic_observations=synthetic,
+        calibration_version=body.calibration_version,
+        model_version=simulation.methodology_version,
+    )
+    payload = {
+        "synthetic_observations": synthetic,
+        "survey": survey_data,
+        "calibration_version": body.calibration_version,
+        "model_version": simulation.methodology_version,
+        "evidence_binding": evidence_binding,
+    }
+    result = await _store_run(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        run_type="survey_calibration",
+        payload=payload,
+        secret_payload=None,
+        idempotency_key=idempotency_key,
+        correlation_id=_correlation_id(request),
+    )
+    _replay_header(response, result)
+    return result
 
 
 @router.post(
@@ -2219,6 +2493,320 @@ async def campaign_audit(
           limit %s offset %s
         """,
         parameters=(campaign_id, limit, offset),
+    )
+    return {"items": rows, "pagination": {"limit": limit, "offset": offset}}
+
+
+async def _bound_report_source_admission(
+    request: Request,
+    identity: VerifiedIdentity,
+    campaign_id: UUID,
+    payload: Mapping[str, Any],
+) -> set[str]:
+    authors: set[str] = set()
+    simulation_request = CampaignLabSimulationRequest.model_validate(
+        payload.get("simulation_request")
+    )
+    await _validate_population_registry(request, identity, campaign_id, simulation_request)
+    comparison = payload.get("survey_calibration")
+    if isinstance(comparison, Mapping):
+        binding = comparison.get("evidence_binding")
+        if not isinstance(binding, Mapping):
+            raise CampaignLabPolicyError("report comparison is not bound to admitted evidence")
+        source = await _admitted_evidence_source(
+            request,
+            identity,
+            campaign_id,
+            UUID(str(binding.get("source_version_id"))),
+            allowed_use="calibration",
+        )
+        if source.get("checksum_sha256") != binding.get("approved_payload_sha256"):
+            raise CampaignLabPolicyError("report survey source checksum has changed")
+        authors.update(
+            str(source[key])
+            for key in ("created_by", "source_created_by")
+            if source.get(key) is not None
+        )
+    source_ids = [
+        source.registry_source_version_id
+        for source in (
+            *simulation_request.cohort.source_provenance,
+            *simulation_request.research_sources,
+        )
+        if source.registry_source_version_id is not None
+    ]
+    if source_ids:
+        rows = await _services(request).database.read_product_rows(
+            identity,
+            operation="bound_report_source_authors",
+            query="""select versions.id, versions.created_by,
+            sources.created_by as source_created_by
+            from api.evidence_source_versions as versions
+            join api.evidence_sources as sources on sources.id = versions.evidence_source_id
+            where versions.id = any(%s)""",
+            parameters=(source_ids,),
+        )
+        if len(rows) != len(set(source_ids)):
+            raise CampaignLabPolicyError("a report source is no longer visible")
+        authors.update(
+            str(row[key])
+            for row in rows
+            for key in ("created_by", "source_created_by")
+            if row.get(key) is not None
+        )
+    return authors
+
+
+@router.post(
+    "/campaigns/{campaign_id}/reports/from-runs",
+    status_code=202,
+    operation_id="create_campaign_lab_bound_report",
+)
+async def create_bound_report(
+    campaign_id: UUID,
+    body: BoundReportCreate,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: IdempotencyKey,
+) -> dict[str, Any]:
+    organization_id = await _campaign_organization(request, identity, campaign_id)
+    simulation = await _calibration_input_run(
+        request,
+        identity,
+        campaign_id,
+        organization_id,
+        body.simulation_run_id,
+        "repeated_simulation",
+    )
+    payload = {
+        "simulation_request": simulation["request"],
+        "simulation_result": simulation["result"],
+    }
+    manifest: dict[str, Any] = {
+        "version": "campaign_lab_report_binding_v1",
+        "campaign_id": str(campaign_id),
+        "simulation_run_id": str(body.simulation_run_id),
+        "simulation_request_sha256": evidence_digest(simulation["request"]),
+        "simulation_result_sha256": evidence_digest(simulation["result"]),
+        "calibration_run_id": str(body.calibration_run_id) if body.calibration_run_id else None,
+    }
+    authors = {str(simulation["created_by"])}
+    if body.calibration_run_id:
+        comparison = await _calibration_input_run(
+            request,
+            identity,
+            campaign_id,
+            organization_id,
+            body.calibration_run_id,
+            "survey_calibration",
+        )
+        comparison_result = comparison["result"]
+        if not isinstance(comparison_result, dict) or comparison_result.get(
+            "evidence_binding"
+        ) != comparison["request"].get("evidence_binding"):
+            raise _invalid(
+                "Comparison has no verified immutable binding.", field="calibration_run_id"
+            )
+        payload["survey_calibration"] = comparison_result
+        manifest["calibration_result_sha256"] = evidence_digest(comparison_result)
+        authors.add(str(comparison["created_by"]))
+        survey_id = comparison_result.get("evidence_binding", {}).get("survey_import_run_id")
+        if not survey_id:
+            raise _invalid("Comparison has no source survey run.", field="calibration_run_id")
+        survey = await _calibration_input_run(
+            request, identity, campaign_id, organization_id, UUID(str(survey_id)), "survey_import"
+        )
+        authors.add(str(survey["created_by"]))
+    try:
+        authors.update(
+            await _bound_report_source_admission(request, identity, campaign_id, payload)
+        )
+        manifest["input_authors"] = sorted(authors)
+        payload["evidence_binding"] = manifest
+        build_bound_campaign_report(payload)
+    except (ValueError, TypeError) as error:
+        raise _invalid(
+            "Report inputs or source admissions are not valid for this exact simulation.",
+            field="input_runs",
+        ) from error
+    result = await _store_run(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        run_type="report",
+        payload=payload,
+        secret_payload=None,
+        idempotency_key=idempotency_key,
+        correlation_id=_correlation_id(request),
+    )
+    _replay_header(response, result)
+    return result
+
+
+async def _read_bound_report(
+    run_id: UUID, request: Request, identity: VerifiedIdentity, *, check_sources: bool = True
+) -> dict[str, Any]:
+    run = await _get_run(run_id, request, identity)
+    if run.get("run_type") != "report":
+        raise _invalid("Choose a bound report run.", field="run_id")
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="bound_report_request",
+        query="""select request from api.campaign_lab_runs where id = %s
+        and (retention_until is null or retention_until > pg_catalog.statement_timestamp())""",
+        parameters=(run_id,),
+    )
+    payload = rows[0].get("request") if rows else None
+    if (
+        not isinstance(payload, Mapping)
+        or not isinstance(payload.get("evidence_binding"), Mapping)
+        or payload["evidence_binding"].get("version") != "campaign_lab_report_binding_v1"
+    ):
+        raise _invalid("Legacy reports remain quarantined.", field="run_id")
+    if run.get("status") == "succeeded":
+        result = run.get("result")
+        if (
+            not isinstance(result, Mapping)
+            or result.get("evidence_binding") != payload["evidence_binding"]
+        ):
+            raise _invalid("Report result does not match its immutable manifest.", field="run_id")
+    if check_sources:
+        try:
+            source_authors = await _bound_report_source_admission(
+                request, identity, UUID(str(run["campaign_id"])), payload
+            )
+            if not source_authors.issubset(
+                set(payload["evidence_binding"].get("input_authors", []))
+            ):
+                raise CampaignLabPolicyError("report manifest omits a source author")
+        except (ValueError, TypeError) as error:
+            raise AppProblem(
+                status=409,
+                code="invalid_request",
+                title="Report evidence unavailable",
+                detail=(
+                    "A report source is no longer admitted or visible. "
+                    "Review source rights before use."
+                ),
+            ) from error
+    reviews = await _services(request).database.read_product_rows(
+        identity,
+        operation="bound_report_reviews",
+        query="""select id, reviewer_id, decision, rationale, report_sha256,
+        manifest_sha256, created_at from api.campaign_lab_report_reviews
+        where run_id = %s order by (decision = 'revoked') desc, created_at desc limit 1""",
+        parameters=(run_id,),
+    )
+    review = reviews[0] if reviews else None
+    if (
+        review
+        and run.get("status") == "succeeded"
+        and (
+            review.get("report_sha256") != evidence_digest(run["result"])
+            or review.get("manifest_sha256") != evidence_digest(run["result"]["evidence_binding"])
+        )
+    ):
+        raise _invalid("Review does not bind the current report snapshot.", field="run_id")
+    return {**run, "review": review}
+
+
+@router.get("/reports/bound/runs/{run_id}", operation_id="get_campaign_lab_bound_report")
+async def get_bound_report(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    report = await _read_bound_report(run_id, request, identity)
+    review = report.get("review")
+    if isinstance(review, Mapping) and review.get("decision") == "revoked":
+        raise AppProblem(
+            status=409,
+            code="invalid_request",
+            title="Report revoked",
+            detail="This report was revoked and cannot be used or exported.",
+        )
+    return report
+
+
+@router.get("/reports/bound/runs/{run_id}/export", operation_id="export_campaign_lab_bound_report")
+async def export_bound_report(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> JSONResponse:
+    report = await get_bound_report(run_id, request, identity)
+    review = report.get("review")
+    if not isinstance(review, Mapping) or review.get("decision") != "approved_experimental":
+        raise AppProblem(
+            status=409,
+            code="invalid_request",
+            title="Independent review required",
+            detail=(
+                "An independent organization owner must approve this exact report before export."
+            ),
+        )
+    return JSONResponse(
+        content=jsonable_encoder(report),
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="simula-experimental-report-{run_id}.json"'
+            ),
+            "Cache-Control": "no-store",
+        },
+    )
+
+
+@router.post("/reports/bound/runs/{run_id}/review", operation_id="review_campaign_lab_bound_report")
+async def review_bound_report(
+    run_id: UUID,
+    body: BoundReportReviewCreate,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    report = await _read_bound_report(
+        run_id, request, identity, check_sources=body.decision != "revoked"
+    )
+    if report.get("status") != "succeeded" or not isinstance(report.get("result"), Mapping):
+        raise _invalid("Only completed reports can be reviewed.", field="run_id")
+    result = report["result"]
+    return await _services(request).database.execute_product_command(
+        identity,
+        operation="review_campaign_lab_bound_report",
+        query="select api.review_campaign_lab_bound_report(%s,%s,%s,%s,%s,%s,%s) as payload",
+        parameters=(
+            run_id,
+            body.decision,
+            body.rationale,
+            _json(result),
+            evidence_digest(result),
+            evidence_digest(result["evidence_binding"]),
+            _correlation_id(request),
+        ),
+    )
+
+
+@router.get(
+    "/campaigns/{campaign_id}/reports/from-runs", operation_id="list_campaign_lab_bound_reports"
+)
+async def list_bound_reports(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    limit: PageSize = 25,
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    organization_id = await _campaign_organization(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="list_campaign_lab_bound_reports",
+        query="""select id, campaign_id, run_type, status, stage, progress, attempt_count,
+        created_at, started_at, completed_at, last_error_code, retention_until
+        from api.campaign_lab_runs
+        where campaign_id=%s and organization_id=%s and run_type='report'
+          and request->'evidence_binding'->>'version'='campaign_lab_report_binding_v1'
+        order by created_at desc,id desc limit %s offset %s""",
+        parameters=(campaign_id, organization_id, limit, offset),
     )
     return {"items": rows, "pagination": {"limit": limit, "offset": offset}}
 

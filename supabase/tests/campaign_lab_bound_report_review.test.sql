@@ -1,0 +1,14 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select extensions.plan(9);
+select extensions.ok((select relrowsecurity and relforcerowsecurity from pg_catalog.pg_class where oid='api.campaign_lab_report_reviews'::regclass),'report review rows force RLS');
+select extensions.ok(not pg_catalog.has_table_privilege('authenticated','api.campaign_lab_report_reviews','SELECT,INSERT,UPDATE,DELETE'),'browser role has no report review table capability');
+select extensions.ok(not pg_catalog.has_table_privilege('simula_api','api.campaign_lab_report_reviews','INSERT,UPDATE,DELETE'),'API cannot mutate review rows directly');
+select extensions.ok(pg_catalog.has_function_privilege('simula_api','api.review_campaign_lab_bound_report(uuid,text,text,jsonb,text,text,uuid)','EXECUTE') and not pg_catalog.has_function_privilege('authenticated','api.review_campaign_lab_bound_report(uuid,text,text,jsonb,text,text,uuid)','EXECUTE'),'only trusted API can invoke review');
+select extensions.ok((select not prosecdef from pg_catalog.pg_proc where oid='api.review_campaign_lab_bound_report(uuid,text,text,jsonb,text,text,uuid)'::regprocedure),'public review wrapper is security invoker');
+select extensions.ok((select prosecdef and proconfig @> array['search_path=""','row_security=on']::text[] from pg_catalog.pg_proc where oid='private.review_campaign_lab_bound_report_atomic(uuid,text,text,jsonb,text,text,uuid)'::regprocedure),'private review mutation has explicit security context');
+select extensions.ok(pg_catalog.pg_get_functiondef('private.review_campaign_lab_bound_report_atomic(uuid,text,text,jsonb,text,text,uuid)'::regprocedure) like '%independent_report_reviewer_required%','independent reviewer enforced in database');
+select extensions.ok(pg_catalog.pg_get_functiondef('private.review_campaign_lab_bound_report_atomic(uuid,text,text,jsonb,text,text,uuid)'::regprocedure) like '%selected_run.result is distinct from requested_result%','review locks and compares exact report snapshot');
+select extensions.ok((select count(*)=2 from pg_catalog.pg_indexes where schemaname='api' and tablename='campaign_lab_report_reviews' and indexname in ('campaign_lab_report_reviews_initial_idx','campaign_lab_report_reviews_revocation_idx')),'initial decision and revocation are independently immutable');
+select * from extensions.finish();
+rollback;

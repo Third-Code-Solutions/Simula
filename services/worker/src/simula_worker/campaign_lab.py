@@ -38,16 +38,19 @@ from simula_core.campaign_lab import (
     run_campaign_lab_simulation,
     validate_campaign_lab_population_admission,
 )
+from simula_core.campaign_report_binding import build_bound_campaign_report
 from simula_core.historical_backtesting import (
     BlindBacktestPredictionSet,
     HistoricalBacktestProtocol,
     HistoricalOutcomeDataset,
     evaluate_historical_backtest,
 )
+from simula_core.isolated_evaluation import evaluate_isolated
 from simula_core.research_ingestion import (
     ResearchMediaType,
     ingest_research_document,
 )
+from simula_core.survey_binding import survey_import_binding, verify_calibration_binding
 from simula_core.survey_calibration import (
     SurveyCalibrationResult,
     SurveyDataset,
@@ -104,7 +107,20 @@ def _import_survey_payload(
         field_map=SurveyImportFieldMap.model_validate(field_map),
     )
     _assert_approved_survey_checksum(request, imported.payload_checksum_sha256)
-    return imported.model_dump(mode="json")
+    binding = survey_import_binding(
+        imported,
+        import_format=import_format,
+        metadata=SurveyImportMetadata.model_validate(metadata),
+        field_map=SurveyImportFieldMap.model_validate(field_map),
+        source_version_id=cast(str | None, request.get("source_version_id")),
+    )
+    expected_binding = request.get("evidence_binding")
+    if expected_binding is not None and expected_binding != binding:
+        raise ValueError("survey import evidence binding does not match its queued request")
+    return {
+        **imported.model_dump(mode="json"),
+        "evidence_binding": binding if expected_binding is not None else None,
+    }
 
 
 def _evaluate_calibration(
@@ -135,7 +151,17 @@ def _evaluate_calibration(
         _assert_approved_survey_checksum(request, imported.payload_checksum_sha256)
         survey = imported.dataset
     else:
-        if os.getenv("SIMULA_ENVIRONMENT", "local").strip().casefold() == "production":
+        bound_evidence = request.get("evidence_binding")
+        if bound_evidence is not None:
+            survey = SurveyDataset.model_validate(request.get("survey"))
+            verify_calibration_binding(
+                bound_evidence,
+                calibration_version=str(request.get("calibration_version", "calibration_v1")),
+                model_version=str(request.get("model_version", "unspecified")),
+                survey=survey.model_dump(mode="json"),
+                synthetic_observations=[item.model_dump(mode="json") for item in synthetic],
+            )
+        elif os.getenv("SIMULA_ENVIRONMENT", "local").strip().casefold() == "production":
             raise ValueError(
                 "direct survey calibration is unavailable without an immutable "
                 "derived-dataset binding"
@@ -196,6 +222,11 @@ def _evaluate_calibration(
         }
     return {
         **calibration.model_dump(mode="json"),
+        "evidence_binding": request.get("evidence_binding"),
+        "scientific_disclosure": (
+            "A descriptive comparison with an admitted survey, not independent validation "
+            "or approval for predictive use."
+        ),
         "drift_monitoring": drift,
         "calibration_version_history": history.model_dump(mode="json"),
     }
@@ -417,6 +448,8 @@ def _evaluate_report(request: Mapping[str, object]) -> Mapping[str, object]:
         lab_request,
         environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
     )
+    if request.get("evidence_binding") is not None:
+        return build_bound_campaign_report(request)
     lab_result = CampaignLabSimulationResult.model_validate(request.get("simulation_result"))
     survey_calibration = request.get("survey_calibration")
     historical_backtest = request.get("historical_backtest")
@@ -505,13 +538,14 @@ async def _evaluate_with_lease_heartbeat(
             except TimeoutError:
                 pass
             try:
-                lease_current = await database.update_campaign_lab_progress(
-                    claim.run_id,
-                    claim.lease_token,
-                    "evaluating",
-                    55,
-                    "Running deterministic repeated metrics or evidence comparison.",
-                )
+                async with asyncio.timeout(10.0):
+                    lease_current = await database.update_campaign_lab_progress(
+                        claim.run_id,
+                        claim.lease_token,
+                        "evaluating",
+                        55,
+                        "Running deterministic repeated metrics or evidence comparison.",
+                    )
             except Exception as error:
                 lease_current = False
                 logger.warning(
@@ -522,34 +556,31 @@ async def _evaluate_with_lease_heartbeat(
             if not lease_current:
                 return
 
+    timeout_seconds = 600.0
+    configuration = claim.request.get("configuration")
+    if claim.run_type == "repeated_simulation" and isinstance(configuration, Mapping):
+        requested_timeout = configuration.get("timeout_seconds")
+        if isinstance(requested_timeout, int) and 5 <= requested_timeout <= 600:
+            timeout_seconds = float(requested_timeout)
     heartbeat_task = asyncio.create_task(heartbeat())
-    evaluation_task = asyncio.create_task(asyncio.to_thread(evaluate_campaign_lab_claim, claim))
+    evaluation_task = asyncio.create_task(
+        evaluate_isolated(evaluate_campaign_lab_claim, claim, timeout_seconds=timeout_seconds)
+    )
     try:
-        result = await asyncio.shield(evaluation_task)
-    except asyncio.CancelledError:
-        # A thread submitted through to_thread cannot be canceled. Keep the
-        # lease heartbeat alive until that computation really exits so another
-        # worker cannot reclaim and duplicate the same claim during shutdown.
-        while not evaluation_task.done():
-            try:
-                await asyncio.shield(evaluation_task)
-            except asyncio.CancelledError:
-                continue
-            except BaseException:
-                break
-        if evaluation_task.done() and not evaluation_task.cancelled():
-            evaluation_error = evaluation_task.exception()
-            if evaluation_error is not None:
-                logger.warning(
-                    "campaign_lab_evaluation_failed",
-                    run_id=str(claim.run_id),
-                    error_type=type(evaluation_error).__name__,
-                )
-        raise
+        done, _ = await asyncio.wait(
+            {evaluation_task, heartbeat_task}, return_when=asyncio.FIRST_COMPLETED
+        )
+        if heartbeat_task in done and not lease_current:
+            evaluation_task.cancel()
+            await asyncio.gather(evaluation_task, return_exceptions=True)
+            return {}, False
+        return await evaluation_task, lease_current
     finally:
+        if not evaluation_task.done():
+            evaluation_task.cancel()
         stop_heartbeat.set()
-        await heartbeat_task
-    return result, lease_current
+        heartbeat_task.cancel()
+        await asyncio.gather(evaluation_task, heartbeat_task, return_exceptions=True)
 
 
 async def process_campaign_lab_claim(
@@ -644,9 +675,11 @@ async def process_campaign_lab_claim(
             return await database.fail_campaign_lab_run(
                 claim.run_id,
                 claim.lease_token,
-                "campaign_lab_worker_error",
+                "campaign_lab_timeout"
+                if isinstance(error, TimeoutError)
+                else "campaign_lab_worker_error",
                 "The Campaign Lab evaluator failed before producing a result.",
-                True,
+                not isinstance(error, TimeoutError),
             )
         except Exception:
             logger.warning(

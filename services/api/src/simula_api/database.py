@@ -91,6 +91,15 @@ def _database_problem(error: psycopg.Error) -> AppProblem:
             title="Authentication required",
             detail="Sign in again and retry the request.",
         )
+    if message == "independent_report_reviewer_required":
+        return AppProblem(
+            status=403,
+            code="forbidden",
+            title="Independent reviewer required",
+            detail=(
+                "An organization owner who did not author this report or its inputs must review it."
+            ),
+        )
     if message == "forbidden":
         return AppProblem(
             status=403,
@@ -114,7 +123,13 @@ def _database_problem(error: psycopg.Error) -> AppProblem:
             title="Project version conflict",
             detail="Reload the project and apply the change again.",
         )
-    if message in {"report_export_mismatch", "run_result_unavailable"}:
+    if message in {
+        "report_export_mismatch",
+        "run_result_unavailable",
+        "bound_report_unavailable",
+        "report_review_already_final",
+        "approved_report_required_for_revocation",
+    }:
         return AppProblem(
             status=409,
             code="version_conflict",
@@ -195,11 +210,11 @@ class DatabaseGateway:
                     cursor = await connection.execute("select 1 as ready")
                     row = await cursor.fetchone()
                     snapshot_cursor = await connection.execute(
-                        "select * from private.runtime_observability_snapshot_v4()"
+                        "select * from private.runtime_observability_snapshot_v5()"
                     )
                     snapshot = await snapshot_cursor.fetchone()
                     schema_cursor = await connection.execute(
-                        "select * from private.runtime_schema_readiness_v4()"
+                        "select * from private.runtime_schema_readiness_v5()"
                     )
                     schema = await schema_cursor.fetchone()
             ready = (

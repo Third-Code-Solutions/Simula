@@ -1,4 +1,9 @@
+import asyncio
+import multiprocessing
+import os
 from collections.abc import Mapping
+from pathlib import Path
+from time import sleep
 from typing import cast
 from uuid import UUID
 
@@ -142,11 +147,15 @@ class RateLimitedProvider:
 
 
 class RecordingBehavioralEngine:
-    def __init__(self) -> None:
+    def __init__(self, command_log: Path | None = None) -> None:
+        self.command_log = command_log
         self.commands: list[BehavioralRunCommand] = []
 
     def execute(self, command: BehavioralRunCommand) -> BehavioralRunResult:
         self.commands.append(command)
+        if self.command_log is not None:
+            with self.command_log.open("a") as log:
+                log.write(f"{command.run_id}\n")
         return execute_behavioral_run(
             command,
             provider=DeterministicTieredProvider(),
@@ -380,10 +389,10 @@ async def test_bullmq_worker_completes_a_claimed_deterministic_run() -> None:
     assert database.completions[0][3]["run_id"] == str(run_id)
 
 
-async def test_bullmq_worker_completes_a_claimed_behavioral_run() -> None:
+async def test_bullmq_worker_completes_a_claimed_behavioral_run(tmp_path: Path) -> None:
     run_id, claim = _claimed_behavioral_run()
     database = RecordingDatabase(claim)
-    engine = RecordingBehavioralEngine()
+    engine = RecordingBehavioralEngine(command_log=tmp_path / "commands")
     legacy_provider = RecordingProvider()
     job_id = f"run-{run_id}-generation-1"
 
@@ -402,8 +411,7 @@ async def test_bullmq_worker_completes_a_claimed_behavioral_run() -> None:
     )
 
     assert database.claim_v2_calls == [(run_id, 1, job_id)]
-    assert len(engine.commands) == 1
-    assert engine.commands[0].run_id == run_id
+    assert (tmp_path / "commands").read_text().splitlines() == [str(run_id)]
     assert legacy_provider.requests == []
     assert database.completions == []
     assert len(database.behavioral_completions) == 1
@@ -678,3 +686,41 @@ async def test_worker_defers_only_database_authorized_safe_provider_failures(
     assert database.failures == [
         (run_id, claim.attempt_id, claim.lease_token, safe_error_code, True)
     ]
+
+
+class BlockingProvider:
+    def __init__(self, marker: Path) -> None:
+        self.marker = marker
+
+    def run(self, request: ProviderRequest) -> ProviderResponse:
+        del request
+        self.marker.write_text(str(os.getpid()))
+        while True:
+            sleep(0.05)
+
+
+async def test_cancel_running_v1_reaps_child_before_releasing_attempt(tmp_path: Path) -> None:
+    run_id, claim = _claimed_run()
+    database = RecordingDatabase(claim)
+    marker = tmp_path / "running-provider"
+    processing = asyncio.create_task(
+        process_run_v1(
+            {"job_id": f"run:{run_id}:dispatch:1"},
+            {"schema_version": 1, "run_id": str(run_id)},
+            database=database,
+            provider=BlockingProvider(marker),
+        )
+    )
+    async with asyncio.timeout(10):
+        while not marker.exists():
+            if processing.done():
+                await processing
+                pytest.fail("provider did not start")
+            await asyncio.sleep(0.01)
+    child_pid = int(marker.read_text())
+    processing.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(processing, 5)
+    assert child_pid not in {child.pid for child in multiprocessing.active_children()}
+    assert database.completions == []
+    assert database.failures == []

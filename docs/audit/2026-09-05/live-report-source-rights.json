@@ -1,0 +1,11 @@
+{
+  "engineeringFixture": true,
+  "realApi": true,
+  "approvedExportPassed": true,
+  "revokedSourceContentStatuses": [
+    409,
+    409
+  ],
+  "sourceRestored": true,
+  "reportRevoked": true
+}

@@ -12,7 +12,7 @@ def test_restore_drill_tracks_the_exact_repository_migration_head() -> None:
     )
 
     assert _repository_migration_head() == expected
-    assert expected == "20260824020000"
+    assert expected == "20260905095453"
 
 
 def test_restore_drill_counts_every_current_application_table() -> None:

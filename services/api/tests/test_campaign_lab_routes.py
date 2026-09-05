@@ -332,6 +332,10 @@ async def test_production_survey_routes_freeze_the_exact_approved_payload_checks
         captured.update(kwargs)
         return {"run_id": UUID(int=1), "replayed": False}
 
+    monkeypatch.setattr(campaign_lab_routes, "_campaign_row", admitted_source)
+    monkeypatch.setattr(
+        campaign_lab_routes, "_survey_preview", lambda body: {"evidence_binding": {}}
+    )
     monkeypatch.setattr(campaign_lab_routes, "_is_production", lambda: True)
     monkeypatch.setattr(campaign_lab_routes, "_admitted_evidence_source", admitted_source)
     monkeypatch.setattr(campaign_lab_routes, "_store_run", store_run)

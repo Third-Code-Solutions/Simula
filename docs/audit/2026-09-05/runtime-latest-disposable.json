@@ -1,0 +1,41 @@
+{
+  "source_state": "modified working tree",
+  "scope": "disposable local synthetic fixture; alternate ports",
+  "source_sha": "f9842444518679866916da1ea917df5ffefddc2c",
+  "database_port": 56322,
+  "api_port": 8017,
+  "checks": {
+    "readiness_http": 200,
+    "/health/live": {
+      "status": 200,
+      "body": {
+        "environment": "local",
+        "release_sha": "f9842444518679866916da1ea917df5ffefddc2c",
+        "service": "api",
+        "status": "ok"
+      }
+    },
+    "/health/ready": {
+      "status": 200,
+      "body": {
+        "environment": "local",
+        "release_sha": "f9842444518679866916da1ea917df5ffefddc2c",
+        "service": "api",
+        "status": "ready"
+      }
+    },
+    "dependencies": [
+      "simula_api_dependency_ready{dependency=\"auth\"} 1.0",
+      "simula_api_dependency_ready{dependency=\"database\"} 1.0",
+      "simula_api_dependency_ready{dependency=\"queue\"} 1.0",
+      "simula_api_dependency_ready{dependency=\"rate_limit\"} 1.0",
+      "simula_api_dependency_ready{dependency=\"run_admission\"} 1.0"
+    ],
+    "owner_auth_status": 200,
+    "owner_organizations_status": 200,
+    "viewer_auth_status": 200,
+    "viewer_organizations_status": 200,
+    "other_tenant_owner_auth_status": 200,
+    "other_tenant_owner_organizations_status": 200
+  }
+}

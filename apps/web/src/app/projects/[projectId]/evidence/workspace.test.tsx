@@ -12,7 +12,7 @@ describe("CampaignEvidenceUnavailableInputs", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: "Survey calibration is unavailable",
+        name: "Use saved Campaign Lab evidence for comparison",
       }),
     ).toBeInTheDocument();
     expect(

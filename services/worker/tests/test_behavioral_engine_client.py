@@ -217,3 +217,62 @@ def test_private_engine_client_rejects_unsafe_response_boundaries(
     ) as client:
         with pytest.raises(BehavioralEngineUnavailableError):
             client.execute(_command())
+
+
+@pytest.mark.parametrize("stall", [False, True])
+async def test_spawned_http_client_has_a_total_deadline_and_preserves_binding(stall: bool) -> None:
+    import asyncio
+    import json
+    import threading
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+    from secrets import token_urlsafe
+
+    from simula_worker.isolated_evaluation import evaluate_isolated
+
+    stop = threading.Event()
+    accepted = threading.Event()
+    payload = json.dumps(_result_json()).encode()
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, _format: str, *args: object) -> None:
+            pass
+
+        def do_POST(self) -> None:
+            self.rfile.read(int(self.headers["Content-Length"]))
+            accepted.set()
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(1_000_000 if stall else len(payload)))
+            self.end_headers()
+            try:
+                if stall:
+                    while not stop.wait(0.05):
+                        self.wfile.write(b" ")
+                        self.wfile.flush()
+                else:
+                    self.wfile.write(payload)
+            except BrokenPipeError, ConnectionResetError, ConnectionAbortedError:
+                pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    server.daemon_threads = True
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        with BehavioralEngineHttpClient(
+            base_url=f"http://127.0.0.1:{server.server_port}", token=token_urlsafe(32)
+        ) as client:
+            task = evaluate_isolated(client.execute, _command(), timeout_seconds=3 if stall else 10)
+            if stall:
+                with pytest.raises(TimeoutError):
+                    await asyncio.wait_for(task, 10)
+            else:
+                result = await asyncio.wait_for(task, 15)
+                assert result.run_id == _command().run_id
+                assert result.model_dump(mode="json") == _result_json()
+        assert accepted.is_set()
+    finally:
+        stop.set()
+        await asyncio.to_thread(server.shutdown)
+        server.server_close()
+        thread.join(timeout=2)

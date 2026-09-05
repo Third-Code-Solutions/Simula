@@ -11,25 +11,89 @@ import argparse
 import hashlib
 import io
 import json
+import os
 import re
 import subprocess
 import tarfile
 import tempfile
+import time
 import uuid
 from pathlib import Path
 from shutil import which
 from typing import Any
+from urllib.parse import urlsplit
 
 from scripts.release_manifest import REPOSITORY, WORKFLOW, digest
+
+REQUIRED_CHECKS = frozenset(
+    {
+        "History secret gate",
+        "Windows quality gate",
+        "Foundation gate",
+        "Non-root container gate",
+    }
+)
+
+
+class DeploymentResponseError(ValueError):
+    """Preserve a validated submission ID when later response validation fails."""
+
+    def __init__(self, deployment_id: str) -> None:
+        super().__init__(
+            "provider deployment URL invalid; inspect submitted deployment before retry"
+        )
+        self.deployment_id = deployment_id
+
+
+def vercel_deployment_url(value: object, deployment_id: str) -> str:
+    if not isinstance(value, str):
+        raise DeploymentResponseError(deployment_id)
+    candidate = value if "://" in value else f"https://{value}"
+    try:
+        parsed = urlsplit(candidate)
+    except ValueError as error:
+        raise DeploymentResponseError(deployment_id) from error
+    if (
+        parsed.scheme != "https"
+        or not re.fullmatch(r"[A-Za-z0-9-]+\.vercel\.app", parsed.netloc)
+        or parsed.path not in {"", "/"}
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise DeploymentResponseError(deployment_id)
+    return f"https://{parsed.netloc}"
+
+
+def verify_quality_checks(sha: str) -> None:
+    response = json.loads(
+        command(["gh", "api", f"repos/{REPOSITORY}/commits/{sha}/check-runs?per_page=100"])
+    )
+    for name in REQUIRED_CHECKS:
+        matches = [
+            item
+            for item in response.get("check_runs", [])
+            if item.get("name") == name
+            and item.get("head_sha") == sha
+            and item.get("app", {}).get("id") == 15368
+        ]
+        latest: dict[str, Any] = max(matches, key=lambda item: item["id"], default={})
+        if latest.get("status") != "completed" or latest.get("conclusion") != "success":
+            raise ValueError(f"required source check is not successful: {name}")
 
 
 def command(arguments: list[str], *, cwd: Path | None = None) -> str:
     executable = which(arguments[0])
     if not executable:
         raise ValueError(f"required executable unavailable: {arguments[0]}")
+    environment = os.environ.copy()
+    if arguments[0] == "vercel":
+        # CLI ambient linking IDs override --project; the reviewed plan owns scope.
+        for key in ("VERCEL_ORG_ID", "VERCEL_PROJECT_ID", "NOW_ORG_ID", "NOW_PROJECT_ID"):
+            environment.pop(key, None)
     result = subprocess.run(  # noqa: S603 - explicit executable/argument list, never shell.
         [executable, *arguments[1:]],
         cwd=cwd,
+        env=environment,
         text=True,
         capture_output=True,
         check=False,
@@ -213,13 +277,33 @@ def release_environment(manifest: dict[str, Any], rollout: str) -> dict[str, str
     }
 
 
+def previous_release_environment(target: dict[str, Any]) -> dict[str, str | None]:
+    """Retain only validated public release metadata, never arbitrary provider values."""
+    patterns = {
+        "SIMULA_RELEASE_SHA": r"[0-9a-f]{40}",
+        "SIMULA_DATABASE_MIGRATION_HEAD": r"[0-9]{14}",
+        "SIMULA_PRODUCTION_ADMISSION_ENABLED": r"true|false",
+        "SIMULA_PRODUCTION_ROLLOUT_ID": r"[0-9a-f-]{36}",
+        "SIMULA_RELEASE_BUNDLE_SHA256": r"[0-9a-f]{64}",
+        "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": r"[0-9a-f]{64}",
+        "SIMULA_RELEASE_PROVENANCE_URL": r"https://github\.com/kurtgav/Simula/actions/runs/[0-9]+",
+    }
+    raw = json.loads(command(["railway", "variable", "list", *railway_scope(target), "--json"]))
+    previous: dict[str, str | None] = {}
+    for key, pattern in patterns.items():
+        value = raw.get(key)
+        if value is not None and (not isinstance(value, str) or not re.fullmatch(pattern, value)):
+            raise ValueError(f"existing {key} requires manual review before safe rollback capture")
+        previous[key] = value
+    return previous
+
+
 def deploy(
     target: dict[str, Any], source: Path, manifest: dict[str, Any], rollout: str
 ) -> dict[str, Any]:
     values = release_environment(manifest, rollout)
     if target["provider"] == "railway":
         scope = railway_scope(target)
-        previous = {item["id"] for item in railway_deployments(target)}
         command(
             [
                 "railway",
@@ -230,24 +314,29 @@ def deploy(
                 *[f"{key}={value}" for key, value in values.items()],
             ]
         )
-        command(
-            [
-                "railway",
-                "up",
-                str(source),
-                "--path-as-root",
-                "--ci",
-                *scope,
-                "--message",
-                f"verified-release:{manifest['sha']}",
-            ],
-            cwd=source,
+        response = json.loads(
+            command(
+                [
+                    "railway",
+                    "up",
+                    str(source),
+                    "--path-as-root",
+                    "--detach",
+                    "--json",
+                    *scope,
+                    "--message",
+                    f"verified-release:{manifest['sha']}:{rollout}",
+                ],
+                cwd=source,
+            )
         )
-        created = [item for item in railway_deployments(target) if item["id"] not in previous]
-        return {
-            "deployments": [{"id": item["id"], "status": item["status"]} for item in created],
-            "health_verified": False,
-        }
+        try:
+            deployment_id = str(uuid.UUID(response["deploymentId"]))
+        except (ValueError, KeyError, TypeError, AttributeError) as error:
+            raise ValueError(
+                "provider did not return a deployment identity; inspect before retry"
+            ) from error
+        return {"id": deployment_id, "status": "queued", "health_verified": False}
     arguments = [
         "vercel",
         "deploy",
@@ -265,13 +354,37 @@ def deploy(
     ]
     for key, value in values.items():
         arguments.extend(["--env", f"{key}={value}", "--build-env", f"{key}={value}"])
-    result = json.loads(command(arguments, cwd=source))
+    response = json.loads(command(arguments, cwd=source))
+    result = response.get("deployment", response)
+    if not isinstance(result, dict) or not re.fullmatch(
+        r"dpl_[A-Za-z0-9]+", str(result.get("id", ""))
+    ):
+        raise ValueError("provider did not return a deployment identity; inspect before retry")
+    deployment_url = vercel_deployment_url(result.get("url"), result["id"])
     return {
         "id": result.get("id"),
-        "url": result.get("url"),
+        "url": deployment_url,
         "domains_promoted": False,
         "health_verified": False,
     }
+
+
+def wait_for_railway(target: dict[str, Any], deployment_id: str) -> None:
+    deadline = time.monotonic() + 1800
+    while time.monotonic() < deadline:
+        deployment = next(
+            (item for item in railway_deployments(target) if item["id"] == deployment_id), None
+        )
+        if deployment:
+            status = deployment.get("status")
+            if status == "SUCCESS":
+                return
+            if status in {"FAILED", "CRASHED", "REMOVED", "CANCELED", "SKIPPED"}:
+                raise ValueError(f"Railway deployment {deployment_id} ended {status}")
+        time.sleep(5)
+    raise ValueError(
+        f"Railway deployment {deployment_id} did not become successful within 30 minutes"
+    )
 
 
 def main() -> None:
@@ -294,6 +407,8 @@ def main() -> None:
             ref=args.ref,
             run_id=args.run_id,
         )
+        if args.execute:
+            verify_quality_checks(args.sha)
         if plan.get("migration_head") != manifest["migration_head"]:
             raise ValueError("target schema head is not the verified release schema")
         if plan.get("release_sha") != args.sha:
@@ -314,12 +429,20 @@ def main() -> None:
         if args.execute:
             for target in plan["targets"]:
                 outcome = {"target": target, "status": "started"}
+                if target["provider"] == "railway":
+                    outcome["previous_release_environment"] = previous_release_environment(target)
                 receipt["results"].append(outcome)
                 args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
                 try:
                     outcome.update(deploy(target, source, manifest, receipt["rollout_id"]))
                     outcome["status"] = "submitted"
-                except Exception:
+                    args.receipt.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
+                    if target["provider"] == "railway":
+                        wait_for_railway(target, outcome["id"])
+                        outcome["status"] = "provider_success; application verification pending"
+                except Exception as error:
+                    if isinstance(error, DeploymentResponseError):
+                        outcome["id"] = error.deployment_id
                     outcome["status"] = "failed; inspect provider state before retry"
                     raise
                 finally:

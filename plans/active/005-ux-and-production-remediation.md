@@ -14,10 +14,10 @@ Keep existing frameworks, authentication, scientific boundaries and data.
 ## Sequence and acceptance
 
 1. ACTIVE â€” establish source/toolchain baseline, route coverage and defects.
-2. IMPLEMENTED, verification active — refactor shared workspace navigation/layout, landing/account and admin UI.
+2. IMPLEMENTED, verification active â€” refactor shared workspace navigation/layout, landing/account and admin UI.
    Acceptance: clear entry/return paths, no inaccessible navigation wall on mobile,
    visible focus, loading/error/empty states, no unsupported claims.
-3. IMPLEMENTED, regression/browser verification active — repair Campaign Lab command/state lifecycle and structured forms.
+3. IMPLEMENTED, regression/browser verification active â€” repair Campaign Lab command/state lifecycle and structured forms.
    Acceptance: same logical retries retain keys, stale responses cannot replace
    selection, polling is bounded, supported tasks don't require default JSON.
 4. Repair confirmed runtime/security/release failures with regression evidence.
@@ -50,7 +50,7 @@ actual preceding provider artifact before promotion; do not infer compatibility.
 - No release, hosted mutation, whole-suite pass or scientific validation claimed.
 - Next: implement contextual navigation and shared workspace visual hierarchy.
 
-## Checkpoint — resumed after user requested continuation
+## Checkpoint â€” resumed after user requested continuation
 
 - Local UX: contextual collapsible navigation; compact shared type/neutral palette;
   searchable organization/project inventories; recent work precedes dashboard
@@ -110,3 +110,62 @@ services/data/networks were removed; unrelated ERP and user files preserved.
 No production deployment or signed artifact promotion. Current active step is
 release/governance closure; open acceptance is tracked explicitly in
 REMEDIATION_TRACKER.md and final evidence in REMEDIATION_VERIFICATION.md.
+
+## Release continuation â€” 2026-09-05
+
+User requested all remaining work immediately. Active step: close release gates
+and remaining evidence/runtime workflows before application promotion.
+
+- LIVE VERIFIED: Supabase leaked-password protection enabled; advisor cleared.
+- LIVE VERIFIED: main requires four CI checks and a PR (zero approvals for solo
+  owner); production GitHub environments restrict deployment branches to main.
+- Production inventory: all81 migration versions/head20260824020000 match;
+  no nonterminal durable runs at09:42UTC. Exact migration source-byte equivalence
+  and Redis persistence recovery remain unverified. See RELEASE_TARGETS.md.
+- Signed run33958326577 FAILED browser assertion expecting internal authored_demo
+  token after intentional readable-copy refactor. Eleven neighboring browser
+  cases passed. Corrected expectation preserves all scientific disclosures.
+- Commit f984244 adds signed source/config manifest, verified provider upload
+  boundary, partial-attempt receipts and12passing admission unit tests. Diagnostic
+  run33958761514 is active; no application deployment.
+- Worker killable evaluator/deadline and preview/import binding changes are
+  locally tested; broader legacy-provider and calibration binding work continues.
+- Next: inspect second signed run, integrate remaining slices, regenerate
+  contracts and run gates, then commit/release the final source. Deploy only
+  successful signed source with current rollback targets and post-release checks.
+
+
+## F16/F17 follow-up: survey preflight and immutable import binding
+
+Scope: authorized Campaign Lab preflight uses the same core adapters as the
+worker for CSV, generic JSON, Formbricks and ODK. Uniform export budget is
+200 KB within the existing 256 KiB queue codec. Preflight returns aggregate
+quality counters and fingerprints only; raw input and validation exception
+values are never echoed. No raw data is persisted by preview.
+
+Queue admission independently recomputes an immutable binding of raw payload,
+validated metadata/mapping/format, aggregate dataset, and optional admitted
+source version in the durable run request. Worker execution checks exact binding
+and includes it in its result; legacy unbound runs explicitly return null.
+No database migration or approval bypass is introduced. Scientific calibration,
+held-out backtesting and report approval remain quarantined pending the full
+cross-run protocol and independent approval lifecycle.
+
+UI requires review before queue; changing file, format, provenance, mapping or
+source invalidates preview. Focused API/worker checks pass 56 tests. Synthetic
+actual-component browser verification at 1440 and 390 px passes preview and
+invalidation, with no Axe violations, horizontal overflow or page errors;
+artifacts: output/playwright/campaign-lab-harness/survey-preview-*.png and
+survey-preview-verification.json. This is not authenticated dependency E2E.
+
+### Bound experimental reports (local continuation, 2026-09-05)
+
+Implemented an authenticated campaign-scoped report workflow using persisted simulation and optional matching comparison run IDs. API derives immutable input snapshots, configuration/source/result digests and input authors. Worker recomputes bindings and leaves scientific status Synthetic-only and needs_human_review. Legacy report paths remain quarantined. No historical validation is inferred from a survey comparison or owner approval.
+
+Independent organization owners can approve/reject exact report snapshots; authors of the report, input runs, or registry source cannot self-approve. Append-only revocation immediately blocks full report GET and export. Both content endpoints revalidate source admission and report retention. History exposes metadata only. Frontend supports saved drafts, URL recovery, rationale entry, explicit experimental approval and export with a fresh server authorization check.
+
+Database migration: `20260905095036_campaign_lab_bound_report_review.sql`; parent-managed readiness migration `20260905095453_report_runtime_readiness_v5.sql` preserves v4 for previous-binary rollback. Direct review UPDATE/DELETE is denied; actual disposable transaction test proves deletion through the parent artifact cascades its reviews. The reviewer auth-user foreign key uses RESTRICT, consistent with existing registry authorship references. Future account deletion/anonymization needs an approved policy and corresponding engineering; this change does not invent legal retention requirements.
+
+Verified locally: focused report API14 tests; combined new report/calibration/preview/import34 tests; core/API mypy3files; Ruff; web typecheck and campaign ESLint; report/navigation7 frontend tests. Synthetic actual-component browser at1440/390 passed Axe, overflow, refresh, review and revocation checks; screenshots inspected. Browser fixture is not real dependency E2E or scientific evidence. Runtime agent independently reports clean migration replay,25pgTAP files/433 assertions, adversarial transaction pass and generated database type byte comparison.
+
+Remaining: parent-owned real disposable report API-worker-browser lifecycle, full repository gates/contracts/build, hosted promotion. Historical backtest remains quarantined: existing historical model accepts caller blind flag but has no campaign pre-outcome prediction registration. Existing behavioral protocol registry belongs to another engine contract; do not repurpose it silently. Next slice requires immutable campaign protocol plus prediction commitment before admitted outcomes, independent evidence custodian review, source/transform/outcome checksums and scoped result binding. Native survey saved-form recovery remains pending. No real human/historical dataset or independent scientific approval was invented.
