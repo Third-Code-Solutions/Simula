@@ -256,6 +256,7 @@ jobs:
           cp -R release/security release/stage/security
           cp -R release/wheels release/stage/wheels
           printf '%s\n' "$GITHUB_SHA" > release/stage/RELEASE_SHA
+          uv run --frozen python -m scripts.release_manifest
           tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner \
             --format=posix --pax-option=delete=atime,delete=ctime \
             -C release/stage -cf - . \
