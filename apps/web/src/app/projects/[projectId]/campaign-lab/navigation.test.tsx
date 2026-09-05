@@ -1,12 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { BoundBacktest } from "./bound-backtest";
 import { BoundCalibration } from "./bound-calibration";
 
-import {
-  CampaignLabHistoricalBacktestUnavailable,
-  CampaignLabSelectionNotice,
-} from "./workspace";
+import { CampaignLabSelectionNotice } from "./workspace";
 
 afterEach(() => {
   cleanup();
@@ -41,23 +39,19 @@ describe("Campaign Lab navigation anchors", () => {
     }
   });
 
-  it("suppresses historical outcome submission until immutable binding exists", () => {
-    render(<CampaignLabHistoricalBacktestUnavailable />);
-
+  it("offers a sequenced historical workflow without caller-authored predictions", () => {
+    render(<BoundBacktest campaignId="one" />);
     expect(
       screen.getByRole("heading", {
-        name: "Historical backtesting is unavailable",
+        name: "Freeze predictions before admitting outcomes",
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/immutably bound to its admitted registry artifact/i),
+      screen.queryByLabelText(/predictions are blind/i),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Choose historical evidence" }),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: /backtest/i }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText(/held-out outcomes/i),
-    ).not.toBeInTheDocument();
   });
 
   it("accepts saved evidence references instead of caller-authored scientific inputs", () => {

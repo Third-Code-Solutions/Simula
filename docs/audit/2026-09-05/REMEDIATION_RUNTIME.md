@@ -327,3 +327,87 @@ The secondary Supabase project, its owned database/storage volumes, Redis
 container and its identified anonymous data volume, and unique Docker network
 were removed after verification. The main browser fixture and ERP remain
 running; no unrelated containers or volumes were pruned.
+
+## Post-checkpoint runtime fault acceptance and local alert delivery
+
+At checkpoint 585d633 plus the following two test additions, the selected
+runtime fault suite passed **42 tests in 21.73 seconds**. The engine-capacity
+test starts four actual blocked child processes, verifies the fifth request
+receives 429, cancels and reaps one process, confirms its three siblings remain
+active, and successfully executes new work through the released slot. Its final
+focused suite passed **5 tests in 9.37 seconds**; Ruff and mypy passed both
+touched test files.
+
+A unique Redis 8.2.7 instance on port 6389 exercised **5 queue tests in 13.90
+seconds**. Actual worker hard-kill recovery took 11.037 seconds; active-job
+SIGTERM-handler recovery took 0.127 seconds. Each case asserts exactly two
+deliveries and one synthetic durable Redis effect. The active case also verifies
+the shutdown hook. Windows calls the handler directly rather than delivering a
+POSIX signal. These results do not establish production database-interruption
+recovery or a hosted capacity envelope. Detailed timings and limits are in
+[runtime-fault-acceptance.json](runtime-fault-acceptance.json).
+
+[Local alert evidence](local-alert-delivery.json) records actual Prometheus
+3.14.0 and Alertmanager 0.34.0 containers, using versions listed by the
+[official download page](https://prometheus.io/download/). A synthetic readiness
+metric drove the repository's unchanged dependency-alert expression to an
+internal-network fake webhook receiver. Only the copied rule's five-minute hold
+was shortened to zero for the drill. Firing delivery took 8.31 seconds from
+startup; recovery delivery took 2.16 seconds. The original runbook annotation
+survived both notifications. No ports were published and no external receiver
+was contacted. This proves one local alert path, not every alert, named on-call
+delivery or human acknowledgement. The initial attempt received no notification
+within55seconds; the synthetic endpoint lacked the required metrics
+content-type. After fixing that fixture header, the same bounded drill passed.
+
+[Historical hosted log correlation](hosted-worker-log-correlation.json) contains
+only allowlisted categories and timestamps from an explicit read-only request
+for deployment 2f4519f6-2a40-4ac0-81dc-b1c1149986bb. Eleven records were
+returned. Rollback errors, ProgrammingError and bad-connection events cluster on
+August29 and September4; no returned shutdown/cancellation event establishes
+causation. Raw logs were neither printed nor persisted. Local fixes and tests do
+not prove why those historical hosted events occurred.
+
+Owned Redis/drill containers, their data and the internal alert network were
+removed. The main browser fixture and ERP were preserved. No hosted settings or
+production runtime were changed by this verification.
+
+## Atomic Campaign Lab admission and rollback pause
+
+New CLI-authored migration `20260905104327_campaign_lab_atomic_admission.sql`
+adds a BEFORE INSERT guard shared by all existing Campaign Lab command versions.
+It preserves the existing operator latch and pressure semantics and serializes
+new submissions using the global admission advisory lock. A shared lock on the
+control row makes an operator pause wait for in-flight admissions to finish;
+once pause completes, new admissions fail. Missing control state fails closed.
+
+The global limit is 100 nonterminal Campaign Lab runs across tenants, including
+queued, running, retrying and cancel-requested work. The bounded indexed count
+uses the existing worker-owner read policies; runtime roles gain no direct
+function or table privileges. Terminal work frees capacity. Successful
+idempotent replay returns before INSERT and stays available during pause or
+capacity pressure; conflicting key reuse still fails. Existing API error mapping
+returns queue_backpressure as HTTP503 with a30second retry delay.
+
+Fresh disposable replay passed. Fourteen dedicated pgTAP assertions verify
+pause/report/backtest denial, replay and conflict behavior, pressure and missing
+control, cross-tenant capacity and recovery. The full database suite passed **27
+files / 458 assertions** after adding the one new trigger to the exact
+foundation inventory. Database types independently regenerated without drift. V5
+readiness now requires the enabled exact trigger and reports the new head; the
+prior V4 contract remains unchanged.
+
+[Concurrency evidence](campaign-lab-admission-concurrency.json) records actual
+separate service sessions at READ COMMITTED: with99pending rows, submissions
+from two distinct tenants raced; exactly one committed and the other received
+P0001/queue_backpressure, leaving exactly100nonterminal rows. An operator pause
+blocked behind an uncommitted admission, then completed after its commit;
+subsequent work was denied. The measured probe took0.399seconds. This verifies
+local database serialization, not production rollout completion. Main fixture
+and hosted databases were not changed during this check.
+
+Logs: `tmp/runtime-admission-clean-replay.log` and
+`tmp/runtime-readiness-v5-pgtap.log`. The first replay caught trigger-creation
+EXECUTE ordering; the migration now temporarily grants it only to its creator
+and revokes it immediately afterward. The first full suite caught the expected
+new trigger inventory entry; exact assertions were extended rather than relaxed.

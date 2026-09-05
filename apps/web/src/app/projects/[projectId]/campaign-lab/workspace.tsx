@@ -15,6 +15,7 @@ import { complianceReviewInput } from "./governance";
 import { StructuredEditor } from "./structured-editor";
 import { RunHistory } from "./run-history";
 import { BoundCalibration } from "./bound-calibration";
+import { BoundBacktest } from "./bound-backtest";
 import { BoundReport } from "./bound-report";
 import styles from "./workspace.module.css";
 import {
@@ -784,25 +785,6 @@ export function CampaignLabSelectionNotice() {
       {CAMPAIGN_LAB_STAGE_ANCHORS.map(([id]) => (
         <span id={id} key={id} aria-hidden="true" />
       ))}
-    </section>
-  );
-}
-
-export function CampaignLabHistoricalBacktestUnavailable() {
-  return (
-    <section
-      className="panel"
-      id="backtesting"
-      data-step="evidence"
-      aria-labelledby="backtest-title"
-    >
-      <p className="eyebrow">08 / Historical backtesting</p>
-      <h2 id="backtest-title">Historical backtesting is unavailable</h2>
-      <p className="methodology-warning" role="status">
-        Production backtests are paused until each held-out outcome envelope is
-        immutably bound to its admitted registry artifact, checksum, protocol,
-        and source run. No outcome payload can be submitted from this page.
-      </p>
     </section>
   );
 }
@@ -2454,7 +2436,9 @@ function CampaignLabSession({
       {selectedCampaignId ? (
         <BoundCalibration campaignId={selectedCampaignId} />
       ) : null}
-      {selectedCampaignId ? <CampaignLabHistoricalBacktestUnavailable /> : null}
+      {selectedCampaignId ? (
+        <BoundBacktest campaignId={selectedCampaignId} />
+      ) : null}
       {selectedCampaignId ? (
         <section
           className="panel"

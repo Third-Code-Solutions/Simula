@@ -1882,3 +1882,94 @@ export function getOrganizationAudit(
     `/api/v1/organizations/${organizationId}/audit`,
   );
 }
+
+export type BacktestSavedRun = {
+  id: string;
+  campaign_id: string;
+  campaign_name?: string;
+  created_at: string;
+  status?: string;
+  phase?: string;
+};
+export function listBoundBacktestInputs(
+  campaignId: string,
+  signal?: AbortSignal,
+  offset = 0,
+) {
+  return request<{ items: BacktestSavedRun[]; next_offset?: number | null }>(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/backtests/inputs?offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+export function listBoundBacktests(
+  campaignId: string,
+  signal?: AbortSignal,
+  offset = 0,
+) {
+  return request<{ items: BacktestSavedRun[]; next_offset?: number | null }>(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/backtests/history?offset=${offset}`,
+    ),
+    { signal },
+  );
+}
+export function createBoundBacktestCommitment(
+  campaignId: string,
+  input: {
+    development_run_ids: string[];
+    holdout_run_ids: string[];
+    outcome_metric: string;
+    minimum_campaigns: number;
+  },
+  key: string,
+) {
+  return request<{ run_id: string }>(
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/backtests/commitments`),
+    { method: "POST", body: input, headers: { "Idempotency-Key": key } },
+  );
+}
+export function admitBoundBacktestOutcomes(
+  campaignId: string,
+  input: {
+    commitment_run_id: string;
+    source_version_id: string;
+    secret_payload: Record<string, unknown>;
+  },
+  key: string,
+) {
+  return request<{ run_id: string }>(
+    domainV1Path(`/campaign-lab/campaigns/${campaignId}/backtests/admissions`),
+    { method: "POST", body: input, headers: { "Idempotency-Key": key } },
+  );
+}
+export function getBoundBacktest(runId: string, signal?: AbortSignal) {
+  return request<CampaignLabDurableRun>(
+    domainV1Path(`/campaign-lab/backtests/bound/runs/${runId}`),
+    { signal },
+  );
+}
+
+export function listBoundBacktestSources(
+  campaignId: string,
+  signal?: AbortSignal,
+  offset = 0,
+) {
+  return request<{
+    next_offset?: number | null;
+    items: {
+      id: string;
+      source_key: string;
+      source_version: string;
+      created_at: string;
+    }[];
+  }>(
+    domainV1Path(
+      `/campaign-lab/campaigns/${campaignId}/backtests/sources?offset=${offset}`,
+    ),
+    {
+      signal,
+    },
+  );
+}

@@ -83,3 +83,54 @@ async def test_engine_capacity_rejects_before_starting_another_process(tmp_path:
     assert error.value.code == "execution_capacity_exceeded"
     assert not marker.exists()
     assert before == {child.pid for child in multiprocessing.active_children()}
+
+
+def _value(value: int) -> int:
+    return value
+
+
+async def test_actual_capacity_keeps_siblings_running_and_reuses_reaped_slot(
+    tmp_path: Path,
+) -> None:
+    markers = [tmp_path / f"provider-{index}" for index in range(4)]
+    request = _Request(markers[0], disconnect=False, slots=4)
+    tasks = [
+        asyncio.create_task(
+            _run_request_evaluation(
+                cast(Request, request), _blocked, str(marker), timeout_seconds=30
+            )
+        )
+        for marker in markers
+    ]
+    try:
+        async with asyncio.timeout(15):
+            while not all(marker.exists() for marker in markers):
+                for task in tasks:
+                    if task.done():
+                        await task
+                await asyncio.sleep(0.01)
+        pids = {int(marker.read_text()) for marker in markers}
+        assert len(pids) == 4
+        with pytest.raises(EngineProblem) as error:
+            await _run_request_evaluation(cast(Request, request), _value, 5, timeout_seconds=10)
+        assert error.value.status == 429
+        assert pids <= {child.pid for child in multiprocessing.active_children()}
+        tasks[0].cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(tasks[0], 5)
+        assert int(markers[0].read_text()) not in {
+            child.pid for child in multiprocessing.active_children()
+        }
+        assert all(not task.done() for task in tasks[1:])
+        assert (
+            await _run_request_evaluation(cast(Request, request), _value, 42, timeout_seconds=10)
+            == 42
+        )
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+    assert not (
+        {int(marker.read_text()) for marker in markers}
+        & {child.pid for child in multiprocessing.active_children()}
+    )

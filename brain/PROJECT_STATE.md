@@ -2,13 +2,31 @@
 title: SIMULA Project State
 status: active
 created: 2026-07-17
-updated: 2026-07-30
+updated: 2026-09-05
 owner: Principal program and engineering lead
 classification: OBSERVED
 source_of_truth: true
 ---
 
 # SIMULA Project State
+
+## Current checkpoint - 5 September 2026
+
+This checkpoint supersedes the historical July snapshots below. Active plan: [005 UX and production remediation](../plans/active/005-ux-and-production-remediation.md). The new application has NOT been promoted; existing production application identities remain unchanged.
+
+- Local UX now includes redesigned public/auth/workspace/admin views, contextual navigation, retry/error states, bounded polling and real admin server pagination. Public responsive checks and real local owner creation, worker success and result restoration pass; the route/role ledger records remaining gaps.
+- Local survey/calibration bindings and bound report lifecycle are implemented. Real synthetic engineering fixtures pass persistence, rejected self-review, independent approval, export, revocation and source-rights denial. These prove mechanics, not predictive validity. Six bounded backtest routes/UI now pass a real local preregistration, later independent source admission, custodian file upload, bound result and refresh flow. Revoked source denies both bound and legacy result reads with422. All six report/calibration/backtest desktop/mobile checks have zero Axe, overflow and page errors. Registry approval is a separate administrator process; no scientific validity claim is established.
+- Runtime process isolation bounds deadline/cancellation and capacity. Local integration30 passed, fresh replay441 pgTAP assertions passed before subsequent scoped changes. Queue crash/recovery and isolated alert delivery evidence do not establish hosted recovery or named on-call acceptance.
+- Hosted controls verified: Auth leaked-password protection; four required CI checks/PR on main; main-only production environment branches; five Railway Git triggers and two Vercel Git links disabled with restoration inputs. Existing Redis8.2.7 auth/persistence/noeviction and structural key checks passed, with backup/rollback inputs. No hosted staging or production restore is established.
+- Signed baseline f984244/run33958761514 passed and downloaded artifact verification succeeded. Newer585d633/run33960462851 failed a health assertion; exact response fix passes17 tests. History's18 matches were repeated Redis digests;9b52dde exact digest/path/rule recognition passes297-commit scan and negative probes. Final fixes require a new successful immutable gate before release. A newly found rollout blocker is that the existing emergency pause latch does not cover Campaign Lab admission; an atomic guard and new migration are being implemented and must pass before promotion.
+- Report-review20260905095036 and readinessV520260905095453 remain local pending migrations; the earlier hosted dry-run listed those two. Emergency-pause remediation now requires an additional migration; refresh the final migration set before release. Preserved V4 readiness supports the previous head. Migration and rollback compatibility remain release-owned.
+- Current setup pins: Node24.18.1, pnpm11.13.1, full Python3.14.7, uv0.11.19, Supabase CLI2.109.1, Redis8.2.7-alpine. Follow [README](../README.md), not historical patch versions below.
+
+Evidence: [tracker](../docs/audit/2026-09-05/REMEDIATION_TRACKER.md), [runtime](../docs/audit/2026-09-05/REMEDIATION_RUNTIME.md), [routes](../docs/audit/2026-09-05/REMEDIATION_ROUTES.md), [targets](../docs/audit/2026-09-05/RELEASE_TARGETS.md). Legal/privacy/retention commitments and independent research validation remain open decisions.
+
+## Historical phase and repository snapshots
+
+The following dated records are preserved for traceability and do not override the current checkpoint.
 
 ## Current phase
 

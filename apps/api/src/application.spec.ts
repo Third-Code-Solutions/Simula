@@ -5,14 +5,19 @@ import { createApplication } from "./application";
 
 describe("NestJS control-plane foundation", () => {
   let app: INestApplication;
+  const originalReleaseSha = process.env.SIMULA_RELEASE_SHA;
+  const releaseSha = "a".repeat(40);
 
   beforeAll(async () => {
+    process.env.SIMULA_RELEASE_SHA = releaseSha;
     app = await createApplication({});
     await app.init();
   });
 
   afterAll(async () => {
     await app.close();
+    if (originalReleaseSha === undefined) delete process.env.SIMULA_RELEASE_SHA;
+    else process.env.SIMULA_RELEASE_SHA = originalReleaseSha;
   });
 
   it("serves dependency-free liveness with correlation", async () => {
@@ -20,7 +25,7 @@ describe("NestJS control-plane foundation", () => {
       .get("/health/live")
       .expect(200);
 
-    expect(response.body).toEqual({ status: "alive" });
+    expect(response.body).toEqual({ status: "alive", releaseSha });
     expect(response.headers["x-correlation-id"]).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     );
@@ -174,7 +179,7 @@ describe("NestJS control-plane foundation", () => {
       .get("/health/ready")
       .expect(503);
 
-    expect(response.body).toEqual({ status: "not_ready" });
+    expect(response.body).toEqual({ status: "not_ready", releaseSha });
     expect(JSON.stringify(response.body)).not.toMatch(/redis|secret|url/i);
   });
 

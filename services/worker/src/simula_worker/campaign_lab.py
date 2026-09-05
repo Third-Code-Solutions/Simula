@@ -22,6 +22,7 @@ from simula_core.aggregate_forecasting import (
     AggregateForecastRequest,
     forecast_aggregate_election,
 )
+from simula_core.backtest_binding import evaluate_bound_backtest
 from simula_core.calibration_monitoring import (
     build_calibration_version_history,
     monitor_calibration_drift,
@@ -286,6 +287,8 @@ def _evaluate_native_survey_import(
 def _evaluate_backtest(
     request: Mapping[str, object], secret_payload: Mapping[str, object] | None
 ) -> Mapping[str, object]:
+    if request.get("phase") in {"preregister", "evaluate_bound"}:
+        return evaluate_bound_backtest(request, secret_payload)
     if os.getenv("SIMULA_ENVIRONMENT", "local").strip().lower() == "production":
         raise ValueError(
             "production historical backtest lacks an immutable admitted outcome binding"

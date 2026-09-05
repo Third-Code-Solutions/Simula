@@ -1,0 +1,41 @@
+{
+  "scope": "local synthetic metric -> real Prometheus rule -> real Alertmanager -> local fake sink",
+  "hold_override": "5m -> 0s only in copied drill rule",
+  "external_receiver_contacted": false,
+  "started_at": 1788603931.8909986,
+  "images": {
+    "node:22-bookworm": "sha256:8a34c4ab3ea2c5cd194f07e317b2a8f09461d3c8b05c4e34c8ccd56d56024c4d",
+    "prom/alertmanager:v0.34.0": "sha256:690c7b525f4367aa91f73e2f91c632206d32e97c6384bdbf2fb7a861b420340d",
+    "prom/prometheus:v3.14.0": "sha256:5ce7540c3c00ef4ab0c9d2c995c6a5b9c421f44b4a115d97a2c7af3b1c21cbb0"
+  },
+  "fault_delivery_seconds": 8.31141471862793,
+  "recovery_delivery_seconds": 2.156151900000623,
+  "receipts": [
+    {
+      "received": "2026-09-05T10:25:39.934Z",
+      "status": "firing",
+      "receiver": "local-fake-sink",
+      "alerts": [
+        {
+          "name": "SimulaRequiredDependencyUnavailable",
+          "status": "firing",
+          "runbook": "brain/Operations/OBSERVABILITY_RUNBOOK.md#required-dependency-unavailable"
+        }
+      ]
+    },
+    {
+      "received": "2026-09-05T10:25:41.935Z",
+      "status": "resolved",
+      "receiver": "local-fake-sink",
+      "alerts": [
+        {
+          "name": "SimulaRequiredDependencyUnavailable",
+          "status": "resolved",
+          "runbook": "brain/Operations/OBSERVABILITY_RUNBOOK.md#required-dependency-unavailable"
+        }
+      ]
+    }
+  ],
+  "status": "PASS",
+  "finished_at": 1788603944.7640862
+}

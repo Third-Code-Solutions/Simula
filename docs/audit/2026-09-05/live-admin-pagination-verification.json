@@ -1,0 +1,201 @@
+{
+  "realSupabase": true,
+  "realApi": true,
+  "serverRenderedAdmin": true,
+  "syntheticOrganizations": 121,
+  "baselineOrganizations": 20,
+  "total": 141,
+  "nextReachedOffset100": true,
+  "reloadPreserved": true,
+  "noMatchKeepsNext": true,
+  "nextOffset120": true,
+  "previousOffset100": true,
+  "errors": [],
+  "views": [
+    {
+      "width": 1440,
+      "overflow": false,
+      "violations": [],
+      "layout": [
+        {
+          "tag": "HTML",
+          "class": "playfair_display_c3078811-module__yiNw_G__variable public_sans_607be6a9-module__Vq5lUq__variable ibm_plex_mono_908b82c2-module__hYRQaq__variable",
+          "width": 1440,
+          "scroll": 1440,
+          "overflow": "visible",
+          "position": "static"
+        },
+        {
+          "tag": "BODY",
+          "class": "",
+          "width": 1440,
+          "scroll": 1440,
+          "overflow": "visible",
+          "position": "static"
+        },
+        {
+          "tag": "DIV",
+          "class": "admin-shell",
+          "width": 1440,
+          "scroll": 1440,
+          "overflow": "clip",
+          "position": "static"
+        },
+        {
+          "tag": "MAIN",
+          "class": "admin-main",
+          "width": 1184,
+          "scroll": 1184,
+          "overflow": "visible",
+          "position": "static"
+        },
+        {
+          "tag": "SECTION",
+          "class": "inventory-section",
+          "width": 1184,
+          "scroll": 1184,
+          "overflow": "visible",
+          "position": "static"
+        },
+        {
+          "tag": "DIV",
+          "class": "table-frame",
+          "width": 1184,
+          "scroll": 1182,
+          "overflow": "auto",
+          "position": "relative"
+        }
+      ],
+      "wideElements": []
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "violations": [],
+      "layout": [
+        {
+          "tag": "HTML",
+          "class": "playfair_display_c3078811-module__yiNw_G__variable public_sans_607be6a9-module__Vq5lUq__variable ibm_plex_mono_908b82c2-module__hYRQaq__variable",
+          "width": 390,
+          "scroll": 390,
+          "overflow": "visible",
+          "position": "static"
+        },
+        {
+          "tag": "BODY",
+          "class": "",
+          "width": 390,
+          "scroll": 390,
+          "overflow": "visible",
+          "position": "static"
+        },
+        {
+          "tag": "DIV",
+          "class": "admin-shell",
+          "width": 390,
+          "scroll": 390,
+          "overflow": "clip",
+          "position": "static"
+        },
+        {
+          "tag": "MAIN",
+          "class": "admin-main",
+          "width": 358,
+          "scroll": 358,
+          "overflow": "visible",
+          "position": "static"
+        },
+        {
+          "tag": "SECTION",
+          "class": "inventory-section",
+          "width": 358,
+          "scroll": 358,
+          "overflow": "visible",
+          "position": "static"
+        },
+        {
+          "tag": "DIV",
+          "class": "table-frame",
+          "width": 358,
+          "scroll": 1056,
+          "overflow": "auto",
+          "position": "relative"
+        }
+      ],
+      "wideElements": [
+        {
+          "tag": "TABLE",
+          "class": "",
+          "width": 1056,
+          "right": 1073
+        },
+        {
+          "tag": "THEAD",
+          "class": "",
+          "width": 1056,
+          "right": 1073
+        },
+        {
+          "tag": "TR",
+          "class": "",
+          "width": 1056,
+          "right": 1073
+        },
+        {
+          "tag": "TH",
+          "class": "",
+          "width": 89.65625,
+          "right": 418.84375
+        },
+        {
+          "tag": "TH",
+          "class": "",
+          "width": 88.296875,
+          "right": 507.140625
+        },
+        {
+          "tag": "TH",
+          "class": "",
+          "width": 81.84375,
+          "right": 588.984375
+        },
+        {
+          "tag": "TH",
+          "class": "",
+          "width": 62.484375,
+          "right": 651.46875
+        },
+        {
+          "tag": "TH",
+          "class": "",
+          "width": 79.5,
+          "right": 730.96875
+        },
+        {
+          "tag": "TH",
+          "class": "",
+          "width": 174.109375,
+          "right": 905.078125
+        },
+        {
+          "tag": "TH",
+          "class": "",
+          "width": 167.921875,
+          "right": 1073
+        },
+        {
+          "tag": "SPAN",
+          "class": "sr-only",
+          "width": 1,
+          "right": 921.078125
+        },
+        {
+          "tag": "TBODY",
+          "class": "",
+          "width": 1056,
+          "right": 1073
+        }
+      ]
+    }
+  ]
+}

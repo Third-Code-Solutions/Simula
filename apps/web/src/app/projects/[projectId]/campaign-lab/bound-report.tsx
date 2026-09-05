@@ -225,7 +225,7 @@ export function BoundReport({ campaignId }: { campaignId: string }) {
   const approved = report?.review?.decision === "approved_experimental";
   return (
     <section
-      className="panel"
+      className="panel lab-evidence-panel"
       id="reports"
       data-step="review"
       aria-labelledby="report-title"
@@ -358,7 +358,7 @@ export function BoundReport({ campaignId }: { campaignId: string }) {
         </p>
       )}
       {report?.status === "succeeded" && result && (
-        <div>
+        <div className="lab-result">
           <h3>Experimental report draft</h3>
           <p>
             {String(result.executive_summary ?? "Report summary unavailable")}
@@ -382,7 +382,7 @@ export function BoundReport({ campaignId }: { campaignId: string }) {
           </dl>
           <details>
             <summary>Read full report and evidence fingerprints</summary>
-            <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+            <pre className="lab-result-source">
               {JSON.stringify(result, null, 2)}
             </pre>
           </details>

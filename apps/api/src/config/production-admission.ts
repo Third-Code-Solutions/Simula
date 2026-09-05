@@ -1,6 +1,6 @@
 import type { RuntimeEnvironment } from "./redis-connection";
 
-export const REQUIRED_DATABASE_MIGRATION_HEAD = "20260905095453";
+export const REQUIRED_DATABASE_MIGRATION_HEAD = "20260905104327";
 
 export interface ProductionAdmission {
   readonly rolloutId: string;

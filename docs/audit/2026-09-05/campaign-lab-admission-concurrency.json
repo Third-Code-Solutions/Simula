@@ -1,0 +1,18 @@
+{
+  "scope": "disposable DB57322 actual concurrent service sessions",
+  "cross_tenant_concurrent_results": [
+    {
+      "accepted": true
+    },
+    {
+      "accepted": false,
+      "sqlstate": "P0001",
+      "backpressure": true
+    }
+  ],
+  "nonterminal_count_after_race": 100,
+  "operator_pause_waited_for_admission_commit": true,
+  "new_work_after_completed_pause_rejected": true,
+  "elapsed_seconds": 0.399,
+  "status": "PASS"
+}

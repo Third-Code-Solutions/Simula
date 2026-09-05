@@ -61,6 +61,15 @@ Use the recorded provider rollback deployment through its supported rollback
 operation when application recovery requires it. A prior deployment ID alone
 does not restore modified service variables or database state.
 
+Before restoring a previous worker binary, pause new submissions through the
+existing run-admission control and let jobs using the newly introduced bound
+report/backtest payloads reach a durable terminal state on the new worker. Inspect
+both queue transports and durable nonterminal/outbox counts before changing the
+worker version. The additive schema preserves V4 readiness for old binaries;
+that does not make old binaries understand new command payloads. If the new worker
+cannot drain safely, retain admission closure and repair its bounded processing
+path before proceeding with that rollback step. Preserve all durable job records.
+
 For Vercel, retain the previous READY deployment until canonical-domain smoke
 checks succeed; use the provider's rollback/promotion operation for that exact
 deployment if recovery is needed. Database and Redis backups are separate

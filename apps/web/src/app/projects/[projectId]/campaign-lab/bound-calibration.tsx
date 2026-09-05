@@ -169,7 +169,7 @@ export function BoundCalibration({ campaignId }: { campaignId: string }) {
   const result = run?.result;
   return (
     <section
-      className="panel"
+      className="panel lab-evidence-panel"
       id="calibration"
       data-step="evidence"
       aria-labelledby="calibration-title"
@@ -307,7 +307,7 @@ export function BoundCalibration({ campaignId }: { campaignId: string }) {
             </p>
           )}
           {run?.status === "succeeded" && result && (
-            <div>
+            <div className="lab-result">
               <h3>Survey comparison result</h3>
               <dl>
                 <dt>Matched message variants</dt>
@@ -329,9 +329,7 @@ export function BoundCalibration({ campaignId }: { campaignId: string }) {
               </p>
               <details>
                 <summary>Methodology and evidence fingerprints</summary>
-                <pre
-                  style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}
-                >
+                <pre className="lab-result-source">
                   {JSON.stringify(result, null, 2)}
                 </pre>
               </details>

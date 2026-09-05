@@ -1,0 +1,42 @@
+{
+  "scope": "local runtime fault acceptance; Redis8.2.7 isolated6389; no mainfixture or hostedmutation",
+  "fault_suite": {
+    "passed": 42,
+    "seconds": 21.73,
+    "junit": "tmp/runtime-fault-acceptance.xml"
+  },
+  "queue_suite": {
+    "passed": 5,
+    "seconds": 13.9,
+    "cases": [
+      {
+        "name": "test_exact_arq_redis_startup_enqueue_retry_and_result",
+        "seconds": 0.106
+      },
+      {
+        "name": "test_hard_crash_redelivers_without_duplicate_durable_effect",
+        "seconds": 11.037
+      },
+      {
+        "name": "test_worker_runs_shutdown_hook_on_sigterm",
+        "seconds": 0.074
+      },
+      {
+        "name": "test_active_sigterm_redelivers_once_and_preserves_durable_effect",
+        "seconds": 0.127
+      },
+      {
+        "name": "test_python_bullmq_worker_redelivers_a_database_deferred_job",
+        "seconds": 1.11
+      }
+    ]
+  },
+  "engine_capacity": "four real spawned blocked evaluators; fifth429; one canceled/reaped; three siblings stayactive; nextresult42; cleanup reapsall",
+  "durable_effect": "hardkill and activeSIGTERMhandler each assert exactly2deliveries and1syntheticRedisNXeffect",
+  "limits": [
+    "SIGTERM handler invoked directly under Windows, not POSIX OS signal delivery",
+    "Queue durability proof uses synthetic Redis idempotency effect, not production database interruption",
+    "Local four-slot admission proof is not a hosted maximum-load capacity guarantee"
+  ],
+  "owned_resources_removed": true
+}

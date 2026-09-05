@@ -647,6 +647,7 @@ button:disabled {
 }
 
 .table-frame {
+  position: relative;
   overflow-x: auto;
   border-top: 3px solid var(--ink);
   background: var(--white);

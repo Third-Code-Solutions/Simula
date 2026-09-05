@@ -2,13 +2,29 @@
 title: SIMULA Feature Catalog
 status: active
 created: 2026-07-17
-updated: 2026-07-17
+updated: 2026-09-05
 owner: Product lead
 classification: PROPOSED
 source_of_truth: true
 ---
 
 # SIMULA Feature Catalog
+
+## Implementation checkpoint - 5 September 2026
+
+The original scope table below is historical planning, not a deployment inventory. See [current project state](../PROJECT_STATE.md) and [finding tracker](../../docs/audit/2026-09-05/REMEDIATION_TRACKER.md).
+
+| Capability | Current evidence | Remaining boundary |
+| --- | --- | --- |
+| Public/auth/workspace UX | Local redesigned routes and real owner navigation | Full role matrix and new production smoke pending |
+| Campaign simulation/history | Real local API/worker success and refresh restoration | Synthetic-only; no population prediction |
+| Survey/calibration bindings | Saved immutable source/payload/run bindings used by real local report flow | Rights and independent research validity remain separate |
+| Bound reports | Local independent approval/export/revocation and self-review denial verified | Migration/application not live; engineering fixtures only |
+| Held-out backtests | Real local preregistration, later independent source, custodian upload, bound result/refresh; revoked-source bound and legacy reads denied422 | Registry approval separate; synthetic scoped comparison, no scientific accuracy or deployment claim |
+| Admin inventory | Real local Auth/API/admin pagination beyond100, filter/reload and mobile checks pass | Hosted large-directory pagination remains unverified |
+| Runtime recovery | Local process deadlines/capacity and queue crash drills | Hosted load/recovery and shutdown attribution pending |
+
+## Original planned scope
 
 | Module | Capability | Phase | Status | Gate |
 |---|---|---:|---|---|

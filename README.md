@@ -8,7 +8,10 @@ does not predict candidates, parties, individual voters, or causal persuasion,
 and it does not replace human research.
 
 The Obsidian vault in `brain/` is the product and architecture source of truth.
-The active execution plan is `plans/active/002-phase-2-walking-skeleton.md`.
+The active remediation plan is
+`plans/active/005-ux-and-production-remediation.md`. Current local capabilities,
+hosted controls and pending release gates are recorded in
+`brain/PROJECT_STATE.md` and `docs/audit/2026-09-05/REMEDIATION_TRACKER.md`.
 
 ## Exact local toolchain
 

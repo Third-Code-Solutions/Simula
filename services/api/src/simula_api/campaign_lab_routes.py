@@ -11,6 +11,7 @@ from __future__ import annotations
 import os
 import re
 from collections.abc import Mapping
+from datetime import datetime
 from hashlib import sha256
 from hmac import compare_digest
 from typing import Annotated, Any, Literal, cast
@@ -25,6 +26,7 @@ from simula_core.aggregate_forecasting import (
     AggregateForecastRequest,
     AggregateForecastTarget,
 )
+from simula_core.backtest_binding import verify_backtest_commitment
 from simula_core.campaign_lab import (
     CampaignLabCohort,
     CampaignLabPolicyError,
@@ -41,6 +43,7 @@ from simula_core.cultural_evaluation import (
     CulturalEvaluationSuite,
     evaluate_cultural_suite,
 )
+from simula_core.historical_backtesting import HistoricalBacktestProtocol, HistoricalOutcomeDataset
 from simula_core.json_codec import canonical_json_dumps
 from simula_core.methodology import PopulationFrameVersion
 from simula_core.survey_binding import (
@@ -646,7 +649,8 @@ async def _admitted_evidence_source(
         query="""
           select versions.id, sources.source_key, versions.source_version,
                  versions.owner_name, versions.license_name, versions.checksum_sha256,
-                 versions.allowed_uses, versions.created_by, sources.created_by as source_created_by
+                 versions.allowed_uses, versions.created_by, versions.created_at,
+                 sources.created_by as source_created_by
           from api.evidence_source_versions as versions
           join api.evidence_sources as sources
             on sources.id = versions.evidence_source_id
@@ -1667,7 +1671,7 @@ async def create_interview(
         identity,
         operation="campaign_lab_interview_source_run",
         query="""
-          select id, campaign_id, run_type, status, request, result, created_by
+          select id, campaign_id, run_type, status, request, result, created_by, completed_at
           from api.campaign_lab_runs
           where id = %s and campaign_id = %s
         """,
@@ -2079,7 +2083,7 @@ async def _calibration_input_run(
         identity,
         operation="campaign_lab_calibration_input",
         query="""
-          select id, campaign_id, run_type, status, request, result, created_by
+          select id, campaign_id, run_type, status, request, result, created_by, completed_at
           from api.campaign_lab_runs
           where id = %s and campaign_id = %s and organization_id = %s
             and run_type = %s and status = 'succeeded'
@@ -2311,6 +2315,455 @@ async def get_calibration(
     return await _get_evidence_run(run_id, "survey_calibration", request, identity)
 
 
+class BacktestCommitmentCreate(_LabModel):
+    development_run_ids: list[UUID] = Field(min_length=1, max_length=10)
+    holdout_run_ids: list[UUID] = Field(min_length=1, max_length=10)
+    outcome_metric: Literal["clarity", "relevance", "trust", "persuasiveness", "consideration"]
+    minimum_campaigns: int = Field(default=2, ge=1, le=10)
+
+
+class BoundBacktestAdmissionCreate(_LabModel):
+    commitment_run_id: UUID
+    source_version_id: UUID
+    secret_payload: dict[str, Any] = Field(exclude=True)
+
+
+async def _backtest_project_runs(
+    request: Request,
+    identity: VerifiedIdentity,
+    campaign_id: UUID,
+    run_ids: list[UUID] | None = None,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    campaign = await _campaign_row(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="backtest_project_simulations",
+        query="""select runs.id, runs.campaign_id, campaigns.name as campaign_name,
+        runs.created_by, runs.created_at, runs.completed_at,
+        case when %s then runs.request else null end as request,
+        case when %s then runs.result else null end as result
+        from api.campaign_lab_runs as runs
+        join api.campaign_lab_campaigns as campaigns on campaigns.id = runs.campaign_id
+        where campaigns.project_id = %s and runs.status = 'succeeded'
+          and runs.run_type = 'repeated_simulation'
+          and case when jsonb_typeof(runs.result->'synthetic_observations')='array'
+            then jsonb_array_length(runs.result->'synthetic_observations') > 0 else false end
+          and (runs.retention_until is null or runs.retention_until > statement_timestamp())
+          and (%s::uuid[] is null or runs.id = any(%s::uuid[]))
+        order by runs.created_at desc, runs.id desc limit 101 offset %s""",
+        parameters=(
+            run_ids is not None,
+            run_ids is not None,
+            campaign["project_id"],
+            run_ids,
+            run_ids,
+            offset,
+        ),
+    )
+    if run_ids is not None and {str(row["id"]) for row in rows} != {str(i) for i in run_ids}:
+        raise _invalid("Choose retained completed simulations from this project.", field="run_ids")
+    return rows
+
+
+@router.get("/campaigns/{campaign_id}/backtests/inputs", operation_id="list_bound_backtest_inputs")
+async def list_bound_backtest_inputs(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    rows = await _backtest_project_runs(request, identity, campaign_id, offset=offset)
+    return {
+        "items": [
+            {
+                key: row[key]
+                for key in ("id", "campaign_id", "campaign_name", "created_at", "completed_at")
+            }
+            for row in rows[:100]
+        ],
+        "next_offset": offset + 100 if len(rows) > 100 else None,
+    }
+
+
+@router.post(
+    "/campaigns/{campaign_id}/backtests/commitments",
+    status_code=202,
+    operation_id="create_bound_backtest_commitment",
+)
+async def create_bound_backtest_commitment(
+    campaign_id: UUID,
+    body: BacktestCommitmentCreate,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: IdempotencyKey,
+) -> dict[str, Any]:
+    ids = body.development_run_ids + body.holdout_run_ids
+    if len(set(ids)) != len(ids):
+        raise _invalid("Development and holdout runs must be distinct.", field="run_ids")
+    rows = await _backtest_project_runs(request, identity, campaign_id, ids)
+    authors = {str(identity.user_id)}
+    commitments: list[dict[str, Any]] = []
+    predictions: list[dict[str, Any]] = []
+    development: set[str] = set()
+    holdout: set[str] = set()
+    model_versions: set[str] = set()
+    methodology_versions: set[str] = set()
+    for row in rows:
+        result = CampaignLabSimulationResult.model_validate(row["result"])
+        key = "campaign_" + UUID(str(row["campaign_id"])).hex
+        split = holdout if UUID(str(row["id"])) in body.holdout_run_ids else development
+        if key in split:
+            raise _invalid("Choose one simulation per campaign in each split.", field="run_ids")
+        split.add(key)
+        authors.add(str(row["created_by"]))
+        authors.update(
+            await _bound_report_source_admission(
+                request,
+                identity,
+                UUID(str(row["campaign_id"])),
+                {"simulation_request": row["request"]},
+            )
+        )
+        model_versions.add(result.configuration.simulation_engine_version)
+        methodology_versions.add(result.methodology_version)
+        commitments.append(
+            {
+                "run_id": str(row["id"]),
+                "campaign_id": str(row["campaign_id"]),
+                "request_sha256": evidence_digest(row["request"]),
+                "result_sha256": evidence_digest(row["result"]),
+            }
+        )
+        if split is holdout:
+            if not result.synthetic_observations:
+                raise _invalid(
+                    "Rerun this legacy simulation to persist comparable observations.",
+                    field="holdout_run_ids",
+                )
+            for observation in result.synthetic_observations:
+                metrics = {metric.key: metric.value for metric in observation.metrics}
+                if body.outcome_metric not in metrics:
+                    raise _invalid(
+                        "The saved simulation lacks the selected metric.", field="outcome_metric"
+                    )
+                predictions.append(
+                    {
+                        "campaign_key": key,
+                        "cohort_key": observation.cohort_key,
+                        "variant_key": observation.variant_key,
+                        "predicted_value": metrics[body.outcome_metric],
+                    }
+                )
+    if development & holdout or len(model_versions) != 1 or len(methodology_versions) != 1:
+        raise _invalid(
+            "Use disjoint campaigns with the same model and methodology.", field="run_ids"
+        )
+    if "campaign_" + campaign_id.hex not in holdout:
+        raise _invalid(
+            "The current campaign must be in the holdout split.", field="holdout_run_ids"
+        )
+    protocol = HistoricalBacktestProtocol(
+        protocol_id="protocol_" + campaign_id.hex,
+        protocol_version="saved_runs_v1",
+        model_version=next(iter(model_versions)),
+        methodology_version=next(iter(methodology_versions)),
+        outcome_metric=body.outcome_metric,
+        development_campaign_ids=tuple(sorted(development)),
+        holdout_campaign_ids=tuple(sorted(holdout)),
+        minimum_campaigns=body.minimum_campaigns,
+    ).model_dump(mode="json")
+    prediction_set = {
+        key: protocol[key]
+        for key in ("protocol_id", "protocol_version", "model_version", "methodology_version")
+    }
+    prediction_set.update(predictions=predictions)
+    payload = {
+        "phase": "preregister",
+        "protocol": protocol,
+        "prediction_set": prediction_set,
+        "evidence_binding": {
+            "version": "backtest_commitment_v1",
+            "protocol_sha256": evidence_digest(protocol),
+            "predictions_sha256": evidence_digest(prediction_set),
+            "source_runs": sorted(commitments, key=lambda item: item["run_id"]),
+            "input_authors": sorted(authors),
+        },
+    }
+    verify_backtest_commitment(payload)
+    queued = await _store_run(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        run_type="historical_backtest",
+        payload=payload,
+        secret_payload=None,
+        idempotency_key=idempotency_key,
+        correlation_id=_correlation_id(request),
+    )
+    _replay_header(response, queued)
+    return queued
+
+
+async def _validate_backtest_source_runs(
+    request: Request, identity: VerifiedIdentity, campaign_id: UUID, commitment: Mapping[str, Any]
+) -> None:
+    bindings = commitment["evidence_binding"]["source_runs"]
+    rows = await _backtest_project_runs(
+        request, identity, campaign_id, [UUID(item["run_id"]) for item in bindings]
+    )
+    indexed = {str(row["id"]): row for row in rows}
+    for item in bindings:
+        row = indexed[item["run_id"]]
+        if (
+            evidence_digest(row["request"]) != item["request_sha256"]
+            or evidence_digest(row["result"]) != item["result_sha256"]
+        ):
+            raise _invalid("A committed simulation snapshot has changed.", field="source_runs")
+        try:
+            await _bound_report_source_admission(
+                request,
+                identity,
+                UUID(str(row["campaign_id"])),
+                {"simulation_request": row["request"]},
+            )
+        except CampaignLabPolicyError as error:
+            raise _invalid(
+                "A committed simulation source is no longer admitted.", field="source_runs"
+            ) from error
+
+
+@router.post(
+    "/campaigns/{campaign_id}/backtests/admissions",
+    status_code=202,
+    operation_id="admit_bound_backtest_outcomes",
+)
+async def admit_bound_backtest_outcomes(
+    campaign_id: UUID,
+    body: BoundBacktestAdmissionCreate,
+    request: Request,
+    response: Response,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    idempotency_key: IdempotencyKey,
+) -> dict[str, Any]:
+    org = await _campaign_organization(request, identity, campaign_id)
+    run = await _calibration_input_run(
+        request, identity, campaign_id, org, body.commitment_run_id, "historical_backtest"
+    )
+    commitment = run["result"]
+    try:
+        verified = verify_backtest_commitment(commitment)
+        await _validate_backtest_source_runs(request, identity, campaign_id, commitment)
+        if run["request"].get("phase") != "preregister" or commitment["evidence_binding"] != run[
+            "request"
+        ].get("evidence_binding"):
+            raise ValueError("not a committed prediction phase")
+        source = await _admitted_evidence_source(
+            request,
+            identity,
+            campaign_id,
+            body.source_version_id,
+            allowed_use="backtest",
+        )
+        roles = await _services(request).database.read_product_rows(
+            identity,
+            operation="backtest_custodian_role",
+            query="""select role from api.organization_memberships
+            where organization_id=%s and user_id=%s and role='owner'""",
+            parameters=(org, identity.user_id),
+        )
+        if (
+            not roles
+            or str(identity.user_id) != str(source.get("created_by"))
+            or str(identity.user_id) in verified["evidence_binding"]["input_authors"]
+            or str(source.get("source_created_by")) in verified["evidence_binding"]["input_authors"]
+            or str(identity.user_id) == str(run["created_by"])
+        ):
+            raise ValueError("a separate source-owning organization owner must admit outcomes")
+        source_time = source["created_at"]
+        completed = run["completed_at"]
+        if isinstance(source_time, str):
+            source_time = datetime.fromisoformat(source_time)
+        if isinstance(completed, str):
+            completed = datetime.fromisoformat(completed)
+        if source_time <= completed:
+            raise ValueError("source version must be registered after the prediction commitment")
+        raw = body.secret_payload
+        raw_digest = evidence_digest(raw)
+        if len(canonical_json_dumps(raw)) > 200_000 or raw_digest != source["checksum_sha256"]:
+            raise ValueError("outcome payload does not match the exact admitted source")
+        allowed_keys = {
+            "outcomes",
+            "observation_period",
+            "geography",
+            "known_biases",
+            "coverage_limitations",
+        }
+        if set(raw) != allowed_keys:
+            raise ValueError("historical payload has unsupported fields")
+        outcomes = HistoricalOutcomeDataset.model_validate(
+            {
+                "outcomes": raw["outcomes"],
+                "provenance": {
+                    "source_id": source["source_key"],
+                    "source_version": source["source_version"],
+                    "owner": source["owner_name"],
+                    "license": source["license_name"],
+                    "allowed_uses": source["allowed_uses"],
+                    "observation_period": raw["observation_period"],
+                    "geography": raw["geography"],
+                    "outcome_definition": verified["protocol"]["outcome_metric"],
+                    "held_out": True,
+                    "authorized_for_evaluation": True,
+                    "checksum_sha256": raw_digest,
+                    "known_biases": raw["known_biases"],
+                    "coverage_limitations": raw["coverage_limitations"],
+                },
+            }
+        )
+        binding = {
+            "version": "bound_backtest_v1",
+            "commitment_run_id": str(body.commitment_run_id),
+            "commitment_result_sha256": evidence_digest(commitment),
+            "commitment_author_id": str(run["created_by"]),
+            "commitment_completed_at": completed.isoformat(),
+            "source_registered_at": source_time.isoformat(),
+            "source_version_id": str(body.source_version_id),
+            "approved_payload_sha256": raw_digest,
+            "outcomes_sha256": evidence_digest(outcomes.model_dump(mode="json")),
+            "custodian_id": str(identity.user_id),
+            "source_author_id": str(source.get("source_created_by")),
+            "transform_version": "historical_source_payload_v1",
+        }
+        payload = {"phase": "evaluate_bound", "commitment": commitment, "evidence_binding": binding}
+        secret = {"outcomes": outcomes.model_dump(mode="json")}
+        predicted_keys = {
+            (p["campaign_key"], p["cohort_key"], p["variant_key"])
+            for p in verified["prediction_set"]["predictions"]
+        }
+        observed_keys = {
+            (item.campaign_key, item.cohort_key, item.variant_key) for item in outcomes.outcomes
+        }
+        if predicted_keys != observed_keys or any(
+            item.outcome_metric != verified["protocol"]["outcome_metric"]
+            for item in outcomes.outcomes
+        ):
+            raise ValueError("outcomes must exactly cover committed predictions and metric")
+    except (ValueError, TypeError, KeyError) as error:
+        raise _invalid(
+            "Outcome admission requires an exact later-registered source, matching coverage, "
+            "and a separate source-owning organization owner.",
+            field="evidence",
+        ) from error
+    result = await _store_run(
+        request,
+        identity,
+        campaign_id=campaign_id,
+        run_type="historical_backtest",
+        payload=payload,
+        secret_payload=secret,
+        idempotency_key=idempotency_key,
+        correlation_id=_correlation_id(request),
+    )
+    _replay_header(response, result)
+    return result
+
+
+@router.get("/campaigns/{campaign_id}/backtests/history", operation_id="list_bound_backtests")
+async def list_bound_backtests(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    await _campaign_row(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="bound_backtest_history",
+        query="""select id,campaign_id,status,created_at,request->>'phase' as phase
+        from api.campaign_lab_runs where campaign_id=%s and run_type='historical_backtest'
+        and request->>'phase' in ('preregister','evaluate_bound')
+        order by created_at desc,id desc limit 101 offset %s""",
+        parameters=(campaign_id, offset),
+    )
+    return {"items": rows[:100], "next_offset": offset + 100 if len(rows) > 100 else None}
+
+
+@router.get(
+    "/campaigns/{campaign_id}/backtests/sources", operation_id="list_bound_backtest_sources"
+)
+async def list_bound_backtest_sources(
+    campaign_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+    offset: int = Query(default=0, ge=0, le=10_000),
+) -> dict[str, Any]:
+    org = await _campaign_organization(request, identity, campaign_id)
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="backtest_custodian_sources",
+        query="""select versions.id,sources.source_key,versions.source_version,versions.created_at
+        from api.evidence_source_versions versions join api.evidence_sources sources
+        on sources.id=versions.evidence_source_id
+        where versions.organization_id=%s and versions.created_by=%s
+          and versions.rights_status='approved'
+          and (versions.rights_expires_at is null
+               or versions.rights_expires_at>statement_timestamp())
+          and exists (select 1 from unnest(versions.allowed_uses) as use_text
+            where btrim(regexp_replace(lower(use_text),'[^a-z0-9]+',' ','g')) = any(%s))
+        order by versions.created_at desc limit 101 offset %s""",
+        parameters=(org, identity.user_id, sorted(_ALLOWED_USE_PHRASES["backtest"]), offset),
+    )
+    return {"items": rows[:100], "next_offset": offset + 100 if len(rows) > 100 else None}
+
+
+@router.get("/backtests/bound/runs/{run_id}", operation_id="get_bound_backtest")
+async def get_bound_backtest(
+    run_id: UUID,
+    request: Request,
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> dict[str, Any]:
+    run = await _get_run(run_id, request, identity)
+    if run.get("run_type") != "historical_backtest":
+        raise _invalid("Choose a bound historical comparison.", field="run_id")
+    rows = await _services(request).database.read_product_rows(
+        identity,
+        operation="bound_backtest_request",
+        query="""select request from api.campaign_lab_runs where id=%s
+        and (retention_until is null or retention_until>statement_timestamp())""",
+        parameters=(run_id,),
+    )
+    payload = rows[0]["request"] if rows else {}
+    if payload.get("phase") not in {"preregister", "evaluate_bound"}:
+        raise _invalid("Legacy or expired historical runs remain unavailable.", field="run_id")
+    if run.get("status") == "succeeded" and (
+        not isinstance(run.get("result"), Mapping)
+        or run["result"].get("evidence_binding") != payload.get("evidence_binding")
+    ):
+        raise _invalid("Historical result does not match its immutable binding.", field="run_id")
+    commitment = payload["commitment"] if payload["phase"] == "evaluate_bound" else payload
+    await _validate_backtest_source_runs(
+        request, identity, UUID(str(run["campaign_id"])), commitment
+    )
+    if payload["phase"] == "evaluate_bound":
+        try:
+            source = await _admitted_evidence_source(
+                request,
+                identity,
+                UUID(str(run["campaign_id"])),
+                UUID(payload["evidence_binding"]["source_version_id"]),
+                allowed_use="backtest",
+            )
+        except CampaignLabPolicyError as error:
+            raise _invalid(
+                "Historical source admission is no longer available.", field="source_version_id"
+            ) from error
+        if source["checksum_sha256"] != payload["evidence_binding"]["approved_payload_sha256"]:
+            raise _invalid("Historical source admission has changed.", field="source_version_id")
+    return run
+
+
 @router.post(
     "/campaigns/{campaign_id}/backtests",
     status_code=202,
@@ -2351,7 +2804,7 @@ async def get_backtest(
     request: Request,
     identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
 ) -> dict[str, Any]:
-    return await _get_evidence_run(run_id, "historical_backtest", request, identity)
+    return await get_bound_backtest(run_id, request, identity)
 
 
 @router.post(

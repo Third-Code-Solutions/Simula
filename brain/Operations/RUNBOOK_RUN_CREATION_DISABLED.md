@@ -2,13 +2,21 @@
 title: Run Creation Disabled Runbook
 status: approved-for-prototype
 created: 2026-07-18
-updated: 2026-07-20
+updated: 2026-09-05
 owner: Release on-call
 classification: OBSERVED
 source_of_truth: true
 ---
 
 # Run Creation Disabled Runbook
+
+## Verification checkpoint - 5 September 2026
+
+Local structured alerts, isolated alert delivery/recovery and worker/queue fault tests now have [runtime evidence](../../docs/audit/2026-09-05/REMEDIATION_RUNTIME.md). Named hosted on-call delivery, production DB-interruption recovery and new-release private readiness remain unproven. Existing Redis was independently upgraded with empty durable/queue checks and auth/persistence preserved; admission stayed open. This does not prove a production operator disable/enable drill. Preserve the least-privilege steps below.
+
+## Current release blocker
+
+The existing emergency pause latch was found not to cover Campaign Lab admission. An atomic admission guard and new migration are being implemented; until verified and released, do not assume a successful run-control disable blocks every Campaign Lab submission. No production pause drill or application release is claimed by this update.
 
 ## Trigger and ownership
 

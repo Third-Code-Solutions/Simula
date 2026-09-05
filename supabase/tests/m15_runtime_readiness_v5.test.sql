@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select extensions.plan(20);
+select extensions.plan(23);
 
 select extensions.ok(
   (select p.prosecdef and r.rolname = 'postgres'
@@ -37,12 +37,12 @@ set session authorization simula_api;
 select migration_version::text || ':' || rls_force_enabled::text as runtime_probe
   from private.runtime_schema_readiness_v5() \gset
 reset session authorization;
-select extensions.is(:'runtime_probe'::text, '20260905095453:true', 'API V5 reports the new ready head');
+select extensions.is(:'runtime_probe'::text, '20260905104327:true', 'API V5 reports the new ready head');
 set session authorization simula_api;
 select migration_version::text || ':' || rls_force_enabled::text as runtime_probe
   from private.runtime_observability_snapshot_v5() \gset
 reset session authorization;
-select extensions.is(:'runtime_probe'::text, '20260905095453:true', 'API V5 snapshot uses V5 readiness');
+select extensions.is(:'runtime_probe'::text, '20260905104327:true', 'API V5 snapshot uses V5 readiness');
 reset session authorization;
 
 set session authorization simula_worker;
@@ -54,12 +54,12 @@ set session authorization simula_worker;
 select migration_version::text || ':' || rls_force_enabled::text as runtime_probe
   from private.runtime_schema_readiness_v5() \gset
 reset session authorization;
-select extensions.is(:'runtime_probe'::text, '20260905095453:true', 'worker V5 reports the new ready head');
+select extensions.is(:'runtime_probe'::text, '20260905104327:true', 'worker V5 reports the new ready head');
 set session authorization simula_worker;
 select migration_version::text || ':' || rls_force_enabled::text as runtime_probe
   from private.runtime_observability_snapshot_v5() \gset
 reset session authorization;
-select extensions.is(:'runtime_probe'::text, '20260905095453:true', 'worker V5 snapshot needs no api schema grant');
+select extensions.is(:'runtime_probe'::text, '20260905104327:true', 'worker V5 snapshot needs no api schema grant');
 reset session authorization;
 
 -- Expected denials abort the statement; savepoints retain the surrounding test transaction.
@@ -148,6 +148,21 @@ select rls_force_enabled::text as runtime_probe from private.runtime_schema_read
 reset session authorization;
 select extensions.is(:'runtime_probe'::text, 'true', 'worker readiness recovers without extra schema grants');
 reset session authorization;
+
+alter table api.campaign_lab_runs disable trigger campaign_lab_runs_atomic_admission;
+set session authorization simula_api;
+select rls_force_enabled::text as runtime_probe from private.runtime_schema_readiness_v5() \gset
+reset session authorization;
+select extensions.is(:'runtime_probe'::text, 'false', 'API refuses readiness with admission disabled');
+set session authorization simula_worker;
+select rls_force_enabled::text as runtime_probe from private.runtime_schema_readiness_v5() \gset
+reset session authorization;
+select extensions.is(:'runtime_probe'::text, 'false', 'worker refuses readiness with admission disabled');
+alter table api.campaign_lab_runs enable trigger campaign_lab_runs_atomic_admission;
+set session authorization simula_api;
+select rls_force_enabled::text as runtime_probe from private.runtime_schema_readiness_v5() \gset
+reset session authorization;
+select extensions.is(:'runtime_probe'::text, 'true', 'readiness recovers after enabling admission');
 
 select * from extensions.finish();
 rollback;

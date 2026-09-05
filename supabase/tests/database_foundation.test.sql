@@ -1265,6 +1265,7 @@ select extensions.is(
     'behavioral_result_payload_public_summary',
     'campaign_evidence_outcome_project_scope_guard',
     'campaign_evidence_runs_scope_guard',
+    'campaign_lab_runs_atomic_admission',
     'evidence_source_versions_scope_guard',
     'observed_outcome_sets_rights_guard',
     'population_frame_versions_scope_guard',

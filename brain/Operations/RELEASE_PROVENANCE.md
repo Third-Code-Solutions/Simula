@@ -2,13 +2,23 @@
 title: SIMULA Release Provenance
 status: approved-for-staging
 created: 2026-07-29
-updated: 2026-07-30
+updated: 2026-09-05
 owner: Platform and security leads
 classification: PROPOSED
 source_of_truth: true
 ---
 
 # SIMULA Release Provenance
+
+## Implementation checkpoint - 5 September 2026
+
+The signed archive now includes source.tar and promotion.json binding SHA, source digest, migrations and build inputs. scripts/promote_release.py verifies the successful workflow, Sigstore identity/issuer and archive, then four required CI checks before execution. It requires exact existing target/rollback IDs and writes partial receipts plus previous public Railway release settings. Provider builds are derivatives of verified source, not byte-identical signed scanner images.
+
+Vercel uses extracted monorepo source, explicit hosted roots and withheld domains; ambient Vercel/NOW target overrides are removed. Railway structured submission IDs and exact-ID polling bind receipts. Provider success does not substitute for runtime identity, readiness and authenticated smoke. Five Railway Git triggers and two Vercel Git connections are disabled with restoration evidence; this does not claim all alternate provider API paths are cryptographically prevented.
+
+Baseline f984244 signed run33958761514 and downloaded verification passed. Newer585d633/run33960462851 failed; health expectation and exact Redis digest false-positive fixes pass bounded checks. Local backtest mechanics now pass; final source requires new immutable gates. Campaign Lab emergency-pause admission is a newly identified rollout blocker; the atomic guard and additional migration require verification before promotion. No new application promotion or pending report/readiness migration application is established. Separately verified Redis/Auth/Git changes are not application release evidence.
+
+Follow [promotion procedure](../../docs/audit/2026-09-05/PROMOTION_PROCEDURE.md) and [targets](../../docs/audit/2026-09-05/RELEASE_TARGETS.md). Remaining sections define the provenance contract; provider-plan limitations below are historical observations, not a fresh capability recheck.
 
 ## Release rule
 
