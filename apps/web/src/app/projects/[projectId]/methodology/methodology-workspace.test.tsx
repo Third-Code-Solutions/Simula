@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -120,7 +120,18 @@ describe("MethodologyWorkspace durable comparison", () => {
     expect(screen.getByText("2 ordered variants")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Compare reports" }));
 
-    expect(compareVariantReports).toHaveBeenCalledWith(GROUP_ID);
+    expect(compareVariantReports).toHaveBeenCalledWith(
+      GROUP_ID,
+      expect.any(AbortSignal),
+    );
+    expect(getProject).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.any(AbortSignal),
+    );
+    expect(listVariantGroups).toHaveBeenCalledWith(
+      PROJECT_ID,
+      expect.any(AbortSignal),
+    );
     expect(
       await screen.findByText(/Largest modeled change: trust/i),
     ).toBeInTheDocument();
@@ -203,5 +214,30 @@ describe("MethodologyWorkspace durable comparison", () => {
     expect(
       screen.getByText(/No compatible completed reports exist/i),
     ).toBeInTheDocument();
+  });
+
+  it("cancels in-flight reads on unmount without surfacing an error", async () => {
+    let captured: AbortSignal | undefined;
+    vi.mocked(getProject).mockImplementation(
+      (_projectId: string, signal?: AbortSignal) =>
+        new Promise<never>((_resolve, reject) => {
+          captured = signal;
+          signal?.addEventListener("abort", () =>
+            reject(
+              Object.assign(new Error("cancelled"), {
+                code: "request_cancelled",
+              }),
+            ),
+          );
+        }),
+    );
+
+    const { unmount } = render(<MethodologyWorkspace projectId={PROJECT_ID} />);
+    await waitFor(() => expect(captured).toBeDefined());
+
+    unmount();
+
+    expect(captured?.aborted).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

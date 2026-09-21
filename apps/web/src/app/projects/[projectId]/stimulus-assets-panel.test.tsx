@@ -291,6 +291,7 @@ describe("StimulusAssetsPanel", () => {
     ).toHaveAttribute("src", "blob:private-asset");
     expect(downloadStimulusAsset).toHaveBeenCalledWith(
       expect.objectContaining({ asset_id: ASSET_ID }),
+      expect.any(AbortSignal),
     );
 
     await user.click(screen.getByRole("button", { name: "Delete file" }));
@@ -317,6 +318,10 @@ describe("StimulusAssetsPanel", () => {
     expect(
       await screen.findByRole("button", { name: "Verify and preview" }),
     ).toBeInTheDocument();
+    expect(listStimulusAssets).toHaveBeenCalledWith(
+      STIMULUS_ID,
+      expect.any(AbortSignal),
+    );
     expect(
       screen.queryByLabelText("Attach file to Launch concept"),
     ).not.toBeInTheDocument();
@@ -360,5 +365,48 @@ describe("StimulusAssetsPanel", () => {
     expect(
       screen.getByText(/not observed human evidence/i),
     ).toBeInTheDocument();
+  });
+
+  it("cancels in-flight reads on unmount without surfacing an error", async () => {
+    const user = userEvent.setup();
+    let loadSignal: AbortSignal | undefined;
+    let downloadSignal: AbortSignal | undefined;
+    vi.mocked(listStimulusAssets).mockImplementation(
+      (_stimulusId: string, signal?: AbortSignal) => {
+        loadSignal = signal;
+        return Promise.resolve([asset("available")]);
+      },
+    );
+    vi.mocked(downloadStimulusAsset).mockImplementation(
+      (_asset, signal) =>
+        new Promise<never>((_resolve, reject) => {
+          downloadSignal = signal;
+          signal?.addEventListener("abort", () =>
+            reject(
+              Object.assign(new Error("cancelled"), {
+                code: "request_cancelled",
+              }),
+            ),
+          );
+        }),
+    );
+
+    const { unmount } = render(
+      <StimulusAssetsPanel
+        canMutate
+        stimulusId={STIMULUS_ID}
+        stimulusName="Launch concept"
+      />,
+    );
+    await user.click(
+      await screen.findByRole("button", { name: "Verify and preview" }),
+    );
+    await waitFor(() => expect(downloadSignal).toBeDefined());
+
+    unmount();
+
+    expect(loadSignal?.aborted).toBe(true);
+    expect(downloadSignal?.aborted).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

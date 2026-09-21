@@ -138,4 +138,35 @@ describe("ProvenanceDisclosure", () => {
     ).not.toBeInTheDocument();
     unmount();
   });
+
+  it("cancels an in-flight provenance read when the operator leaves the run", async () => {
+    let rejectRead: ((reason: unknown) => void) | undefined;
+    mocks.getSimulationProvenance.mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectRead = reject;
+      }),
+    );
+    const { container, unmount } = render(
+      <ProvenanceDisclosure runId={RUN_ID} />,
+    );
+    const details = container.querySelector("details");
+    if (!details) {
+      throw new Error("provenance disclosure is absent");
+    }
+    details.open = true;
+    fireEvent(details, new Event("toggle"));
+
+    const signal = mocks.getSimulationProvenance.mock.calls[0]?.[1] as
+      AbortSignal | undefined;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(signal?.aborted).toBe(true);
+    // A read cancelled by unmounting must never be surfaced as a failure.
+    rejectRead?.(new Error("read cancelled"));
+    await Promise.resolve();
+    expect(container.querySelector(".problem")).toBeNull();
+  });
 });

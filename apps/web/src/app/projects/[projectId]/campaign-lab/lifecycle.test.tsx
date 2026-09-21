@@ -291,7 +291,7 @@ describe("Campaign Lab request lifecycle", () => {
     expect(
       await screen.findByRole("button", { name: /Older saved campaign/ }),
     ).toHaveAttribute("aria-pressed", "true");
-    expect(mocks.detail).toHaveBeenCalledWith("older");
+    expect(mocks.detail).toHaveBeenCalledWith("older", expect.any(AbortSignal));
     expect(
       screen.getByRole("button", { name: /Recent campaign/ }),
     ).toHaveAttribute("aria-pressed", "false");

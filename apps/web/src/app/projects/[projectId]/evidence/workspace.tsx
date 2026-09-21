@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 import { ApiProblem, getProject } from "@/lib/api";
+import { isCancelledRequest } from "@/lib/view-request";
 
 import { SignOutButton } from "../../../sign-out-button";
 
@@ -42,8 +43,9 @@ export function CampaignEvidenceWorkspace({
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
+    const controller = new AbortController();
     let active = true;
-    void getProject(projectId)
+    void getProject(projectId, controller.signal)
       .then((project) => {
         if (active) {
           setOrganizationId(project.organization_id);
@@ -51,6 +53,7 @@ export function CampaignEvidenceWorkspace({
         }
       })
       .catch((error: unknown) => {
+        if (isCancelledRequest(error)) return;
         if (active)
           setContextError(
             error instanceof ApiProblem
@@ -60,6 +63,7 @@ export function CampaignEvidenceWorkspace({
       });
     return () => {
       active = false;
+      controller.abort();
     };
   }, [projectId, revision]);
 

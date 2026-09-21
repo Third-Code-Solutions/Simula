@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { SignOutButton } from "@/app/sign-out-button";
@@ -15,6 +15,7 @@ import {
   createStimulus,
   listOrganizations,
 } from "@/lib/api";
+import { isCancelledRequest } from "@/lib/view-request";
 
 import styles from "./organizations.module.css";
 
@@ -69,41 +70,36 @@ export function OrganizationsWorkspace() {
   const [setupStage, setSetupStage] = useState<SetupStage>("idle");
   const [guidedRunKey] = useState(() => crypto.randomUUID());
 
+  const lifetime = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => {
+      controller.abort();
+      lifetime.current = null;
+    };
+  }, []);
+
   const loadInitialPage = useCallback(async (): Promise<void> => {
+    const signal = lifetime.current?.signal;
     try {
-      const page = await listOrganizations();
+      const page = await listOrganizations(undefined, signal);
+      if (signal?.aborted) return;
       setItems(page.items);
       setNextCursor(page.next_cursor);
       setError(undefined);
     } catch (loadError) {
+      if (isCancelledRequest(loadError)) return;
       setError(problemMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    let stale = false;
-
-    async function load(): Promise<void> {
-      try {
-        const page = await listOrganizations();
-        if (stale) return;
-        setItems(page.items);
-        setNextCursor(page.next_cursor);
-        setError(undefined);
-      } catch (loadError) {
-        if (!stale) setError(problemMessage(loadError));
-      } finally {
-        if (!stale) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => {
-      stale = true;
-    };
-  }, []);
+    void loadInitialPage();
+  }, [loadInitialPage]);
 
   function retryOrganizations(): void {
     setError(undefined);
@@ -113,16 +109,19 @@ export function OrganizationsWorkspace() {
 
   async function loadMore() {
     if (!nextCursor) return;
+    const signal = lifetime.current?.signal;
     setLoading(true);
     try {
-      const page = await listOrganizations(nextCursor);
+      const page = await listOrganizations(nextCursor, signal);
+      if (signal?.aborted) return;
       setItems((current) => [...current, ...page.items]);
       setNextCursor(page.next_cursor);
       setError(undefined);
     } catch (loadError) {
+      if (isCancelledRequest(loadError)) return;
       setError(problemMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }
 

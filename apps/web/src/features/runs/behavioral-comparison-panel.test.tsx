@@ -74,6 +74,7 @@ describe("BehavioralComparisonPanel", () => {
       CANDIDATE_ID,
       BASELINE_ID,
       STUDY_ID,
+      expect.any(AbortSignal),
     );
     expect(screen.getAllByText("No winner").length).toBeGreaterThan(0);
     expect(screen.getByText("+2.0")).toBeInTheDocument();
@@ -106,5 +107,40 @@ describe("BehavioralComparisonPanel", () => {
       "Enter a different, valid baseline run ID.",
     );
     expect(loadComparison).not.toHaveBeenCalled();
+  });
+
+  it("cancels an in-flight comparison when the operator leaves the run", async () => {
+    let rejectComparison: ((reason: unknown) => void) | undefined;
+    const loadComparison = vi.fn().mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectComparison = reject;
+      }),
+    );
+    const { unmount } = render(
+      <BehavioralComparisonPanel
+        candidateRunId={CANDIDATE_ID}
+        expectedStudyId={STUDY_ID}
+        loadComparison={loadComparison}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Baseline run ID"), {
+      target: { value: BASELINE_ID },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Compare matched runs" }),
+    );
+
+    const signal = loadComparison.mock.calls[0]?.[3] as AbortSignal | undefined;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(signal?.aborted).toBe(true);
+    // A comparison cancelled by unmounting must never be surfaced as a failure.
+    rejectComparison?.(new Error("comparison cancelled"));
+    await Promise.resolve();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
