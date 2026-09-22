@@ -1,8 +1,20 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { ProjectWorkspace } from "./project-workspace";
 
 const state = vi.hoisted(() => ({ canEdit: true }));
+const reads = vi.hoisted(() => ({
+  getDemoAudience: vi.fn(),
+  getOrganizationDashboard: vi.fn(),
+  getProject: vi.fn(),
+}));
+
 afterEach(cleanup);
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("@/app/sign-out-button", () => ({
@@ -11,15 +23,20 @@ vi.mock("@/app/sign-out-button", () => ({
 vi.mock("@/app/workspace-sidebar", () => ({ WorkspaceSidebar: () => null }));
 vi.mock("@/lib/api", async (original) => ({
   ...(await original<typeof import("@/lib/api")>()),
-  getProject: async () => ({
+  ...reads,
+}));
+
+beforeEach(() => {
+  state.canEdit = true;
+  reads.getProject.mockResolvedValue({
     id: "project-1",
     organization_id: "org-1",
     name: "Campaign draft",
     objective: "Clarify the message before research.",
     version: 1,
     stimuli: [],
-  }),
-  getDemoAudience: async () => ({
+  });
+  reads.getDemoAudience.mockResolvedValue({
     name: "Authored audience",
     kind: "authored_demo",
     version: 1,
@@ -28,16 +45,13 @@ vi.mock("@/lib/api", async (original) => ({
     purpose: "Demo",
     prohibited_uses: ["Prediction"],
     checksum_sha256: "test-checksum",
-  }),
-  getOrganizationDashboard: async () => ({
+  });
+  reads.getOrganizationDashboard.mockImplementation(async () => ({
     permissions: {
       can_create_projects: state.canEdit,
       can_create_runs: state.canEdit,
     },
-  }),
-}));
-beforeEach(() => {
-  state.canEdit = true;
+  }));
 });
 
 test("keeps draft actions prominent and advanced project details closed", async () => {
@@ -56,6 +70,15 @@ test("keeps draft actions prominent and advanced project details closed", async 
     screen.getByText("Audience verification details").closest("details"),
   ).not.toHaveAttribute("open");
   expect(screen.getByText("No population estimate")).toBeVisible();
+  expect(reads.getProject).toHaveBeenCalledWith(
+    "project-1",
+    expect.any(AbortSignal),
+  );
+  expect(reads.getOrganizationDashboard).toHaveBeenCalledWith(
+    "org-1",
+    expect.any(AbortSignal),
+  );
+  expect(reads.getDemoAudience).toHaveBeenCalledWith(expect.any(AbortSignal));
 });
 
 test("gives viewers an actionable empty state without edit controls", async () => {
@@ -69,4 +92,29 @@ test("gives viewers an actionable empty state without edit controls", async () =
   expect(
     screen.queryByRole("button", { name: "Add immutable stimulus" }),
   ).not.toBeInTheDocument();
+});
+
+test("cancels an in-flight project read on unmount without an error", async () => {
+  let captured: AbortSignal | undefined;
+  reads.getProject.mockImplementation(
+    (_projectId: string, signal?: AbortSignal) =>
+      new Promise<never>((_resolve, reject) => {
+        captured = signal;
+        signal?.addEventListener("abort", () =>
+          reject(
+            Object.assign(new Error("cancelled"), {
+              code: "request_cancelled",
+            }),
+          ),
+        );
+      }),
+  );
+
+  const { unmount } = render(<ProjectWorkspace projectId="project-1" />);
+  await waitFor(() => expect(captured).toBeDefined());
+
+  unmount();
+
+  expect(captured?.aborted).toBe(true);
+  expect(screen.queryByRole("alert")).toBeNull();
 });

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SignOutButton } from "@/app/sign-out-button";
 import { WorkspaceSidebar } from "@/app/workspace-sidebar";
@@ -25,6 +25,7 @@ import {
   listSimulationConfigurations,
   listVariantGroups,
 } from "@/lib/api";
+import { isCancelledRequest } from "@/lib/view-request";
 
 function message(error: unknown): string {
   if (error instanceof ApiProblem) {
@@ -85,19 +86,33 @@ export function MethodologyWorkspace({
   const [busy, setBusy] = useState<string | undefined>("load");
   const [loadRevision, setLoadRevision] = useState(0);
 
+  const lifetime = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => {
+      controller.abort();
+      lifetime.current = null;
+    };
+  }, []);
+
   const stimuli = useMemo(
     () => (project ? latestVersions(project) : []),
     [project],
   );
 
   useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
     let stale = false;
 
     async function loadInitialState() {
       try {
-        const loadedProject = await getProject(projectId);
+        const loadedProject = await getProject(projectId, signal);
         const loadedDashboard = await getOrganizationDashboard(
           loadedProject.organization_id,
+          signal,
         );
         const [
           loadedRegistry,
@@ -105,16 +120,19 @@ export function MethodologyWorkspace({
           loadedConfigurations,
           loadedVariantGroups,
         ] = await Promise.all([
-          getMethodologyRegistry(),
-          listAudienceDefinitions(loadedProject.organization_id),
-          listSimulationConfigurations(projectId),
-          listVariantGroups(projectId),
+          getMethodologyRegistry(signal),
+          listAudienceDefinitions(loadedProject.organization_id, signal),
+          listSimulationConfigurations(projectId, signal),
+          listVariantGroups(projectId, signal),
         ]);
         const [summary, events] = loadedDashboard.permissions
           .can_manage_settings
           ? await Promise.all([
-              getOrganizationAdminSummary(loadedProject.organization_id),
-              getOrganizationAudit(loadedProject.organization_id),
+              getOrganizationAdminSummary(
+                loadedProject.organization_id,
+                signal,
+              ),
+              getOrganizationAudit(loadedProject.organization_id, signal),
             ])
           : [undefined, undefined];
         if (!stale) {
@@ -129,6 +147,7 @@ export function MethodologyWorkspace({
           setError(undefined);
         }
       } catch (loadError) {
+        if (isCancelledRequest(loadError)) return;
         if (!stale) setError(message(loadError));
       } finally {
         if (!stale) setBusy(undefined);
@@ -138,6 +157,7 @@ export function MethodologyWorkspace({
     void loadInitialState();
     return () => {
       stale = true;
+      controller.abort();
     };
   }, [loadRevision, projectId]);
 
@@ -173,11 +193,15 @@ export function MethodologyWorkspace({
         limitations:
           "Experimental and non-representative. Validate with recruited human participants.",
       });
-      const loaded = await listAudienceDefinitions(project.organization_id);
+      const loaded = await listAudienceDefinitions(
+        project.organization_id,
+        lifetime.current?.signal,
+      );
       setAudiences(loaded.items);
       setError(undefined);
       formElement.reset();
     } catch (createError) {
+      if (isCancelledRequest(createError)) return;
       setError(message(createError));
     } finally {
       setBusy(undefined);
@@ -205,10 +229,14 @@ export function MethodologyWorkspace({
         },
         cost_ceiling_microusd: 0,
       });
-      const loaded = await listSimulationConfigurations(projectId);
+      const loaded = await listSimulationConfigurations(
+        projectId,
+        lifetime.current?.signal,
+      );
       setConfigurations(loaded.items);
       setError(undefined);
     } catch (createError) {
+      if (isCancelledRequest(createError)) return;
       setError(message(createError));
     } finally {
       setBusy(undefined);
@@ -252,12 +280,16 @@ export function MethodologyWorkspace({
           label: stimulus.label,
         })),
       });
-      const loaded = await listVariantGroups(projectId);
+      const loaded = await listVariantGroups(
+        projectId,
+        lifetime.current?.signal,
+      );
       setVariantGroups(loaded.items);
       setComparison([]);
       setComparisonRequested(false);
       setError(undefined);
     } catch (variantError) {
+      if (isCancelledRequest(variantError)) return;
       setError(message(variantError));
     } finally {
       setBusy(undefined);
@@ -268,10 +300,14 @@ export function MethodologyWorkspace({
     setBusy(`compare:${variantGroupId}`);
     setComparisonRequested(true);
     try {
-      const loaded = await compareVariantReports(variantGroupId);
+      const loaded = await compareVariantReports(
+        variantGroupId,
+        lifetime.current?.signal,
+      );
       setComparison(loaded.items);
       setError(undefined);
     } catch (comparisonError) {
+      if (isCancelledRequest(comparisonError)) return;
       setComparison([]);
       setError(message(comparisonError));
     } finally {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ApiProblem,
@@ -25,22 +25,40 @@ export function ProvenanceDisclosure({ runId }: Readonly<{ runId: string }>) {
   const [error, setError] = useState<string>();
   const [loading, setLoading] = useState(false);
   const [provenance, setProvenance] = useState<SimulationProvenance>();
+  const lifetime = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    lifetime.current = new AbortController();
+    return () => {
+      lifetime.current?.abort();
+    };
+  }, []);
 
   async function load(): Promise<void> {
     if (provenance || loading) {
       return;
     }
+    const signal = lifetime.current?.signal;
     setLoading(true);
     try {
-      setProvenance(await getSimulationProvenance(runId));
+      const loaded = await getSimulationProvenance(runId, signal);
+      if (signal?.aborted) {
+        return;
+      }
+      setProvenance(loaded);
       setError(undefined);
     } catch (loadError) {
+      if (signal?.aborted) {
+        return;
+      }
       if (loadError instanceof ApiProblem) {
         recordRunUiError(loadError);
       }
       setError(problemMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }
 

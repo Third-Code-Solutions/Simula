@@ -518,9 +518,14 @@ function assetIdentity(
   return asset;
 }
 
-export function listOrganizations(cursor?: string): Promise<OrganizationPage> {
+export function listOrganizations(
+  cursor?: string,
+  signal?: AbortSignal,
+): Promise<OrganizationPage> {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
-  return request<OrganizationPage>(domainPath(`/organizations${query}`));
+  return request<OrganizationPage>(domainPath(`/organizations${query}`), {
+    signal,
+  });
 }
 
 export function createOrganization(name: string): Promise<Organization> {
@@ -533,9 +538,11 @@ export function createOrganization(name: string): Promise<Organization> {
 
 export function getOrganizationDashboard(
   organizationId: string,
+  signal?: AbortSignal,
 ): Promise<OrganizationDashboard> {
   return request<OrganizationDashboard>(
     domainPath(`/organizations/${organizationId}/dashboard`),
+    { signal },
   );
 }
 
@@ -563,10 +570,12 @@ export function recordSignIn(): Promise<AuthEvent> {
 export function listProjects(
   organizationId: string,
   cursor?: string,
+  signal?: AbortSignal,
 ): Promise<ProjectPage> {
   const query = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
   return request<ProjectPage>(
     domainPath(`/organizations/${organizationId}/projects${query}`),
+    { signal },
   );
 }
 
@@ -587,26 +596,35 @@ export function createProject(
   );
 }
 
-export function getProject(projectId: string): Promise<ProjectDetail> {
-  return request<ProjectDetail>(domainPath(`/projects/${projectId}`));
+export function getProject(
+  projectId: string,
+  signal?: AbortSignal,
+): Promise<ProjectDetail> {
+  return request<ProjectDetail>(domainPath(`/projects/${projectId}`), {
+    signal,
+  });
 }
 
 export function listCampaignLabCampaigns(
   projectId: string,
   offset = 0,
+  signal?: AbortSignal,
 ): Promise<CampaignLabCampaignPage> {
   return request<CampaignLabCampaignPage>(
     domainV1Path(
       `/campaign-lab/campaigns?project_id=${encodeURIComponent(projectId)}${offset ? `&offset=${offset}` : ""}`,
     ),
+    { signal },
   );
 }
 
 export function getCampaignLabCampaign(
   campaignId: string,
+  signal?: AbortSignal,
 ): Promise<Readonly<{ campaign: CampaignLabCampaign }>> {
   return request(
     domainV1Path(`/campaign-lab/campaigns/${encodeURIComponent(campaignId)}`),
+    { signal },
   );
 }
 
@@ -981,12 +999,12 @@ export function getCampaignLabBacktestRun(
   );
 }
 
-export function listCampaignLabForecastDatasets(): Promise<
-  Readonly<{ items: ReadonlyArray<CampaignLabForecastDataset> }>
-> {
+export function listCampaignLabForecastDatasets(
+  signal?: AbortSignal,
+): Promise<Readonly<{ items: ReadonlyArray<CampaignLabForecastDataset> }>> {
   return request<
     Readonly<{ items: ReadonlyArray<CampaignLabForecastDataset> }>
-  >(domainV1Path("/campaign-lab/forecast-datasets"));
+  >(domainV1Path("/campaign-lab/forecast-datasets"), { signal });
 }
 
 export function createCampaignLabAggregateForecast(
@@ -1069,14 +1087,18 @@ export function getCampaignLabReportRun(
 
 export function getCampaignLabAudit(
   campaignId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignLabAuditPage> {
   return request<CampaignLabAuditPage>(
     domainV1Path(`/campaign-lab/campaigns/${campaignId}/audit`),
+    { signal },
   );
 }
 
-export function getDemoAudience(): Promise<AudienceDisclosure> {
-  return request<AudienceDisclosure>(domainPath("/audiences/demo"));
+export function getDemoAudience(
+  signal?: AbortSignal,
+): Promise<AudienceDisclosure> {
+  return request<AudienceDisclosure>(domainPath("/audiences/demo"), { signal });
 }
 
 export function updateProject(
@@ -1121,16 +1143,18 @@ export function appendStimulusVersion(
 
 export function listStimulusAssets(
   stimulusId: string,
+  signal?: AbortSignal,
 ): Promise<readonly StimulusAsset[]> {
-  return request<unknown>(`/api/v2/stimuli/${stimulusId}/assets`).then(
-    (value) =>
-      parsedResponse((response) => {
-        const assets = parseStimulusAssetCollection(response);
-        for (const asset of assets) {
-          assetIdentity(asset, { stimulusId });
-        }
-        return assets;
-      }, value),
+  return request<unknown>(`/api/v2/stimuli/${stimulusId}/assets`, {
+    signal,
+  }).then((value) =>
+    parsedResponse((response) => {
+      const assets = parseStimulusAssetCollection(response);
+      for (const asset of assets) {
+        assetIdentity(asset, { stimulusId });
+      }
+      return assets;
+    }, value),
   );
 }
 
@@ -1358,10 +1382,12 @@ export function createStimulusVisualProfile(
 
 export function getStimulusVisualProfile(
   asset: StimulusAsset,
+  signal?: AbortSignal,
 ): Promise<VisualStimulusProfileRecord> {
   const expected = parseStimulusAsset(asset);
   return request<unknown>(
     `/api/v2/stimulus-assets/${expected.asset_id}/visual-profile`,
+    { signal },
   ).then((value) =>
     parsedResponse(
       (response) =>
@@ -1405,9 +1431,12 @@ export function createBehavioralDemoRun(
   ).then((value) => parsedResponse(parseSimulationRun, value));
 }
 
-export function getSimulationRun(runId: string): Promise<SimulationRun> {
-  return request<unknown>(domainPath(`/runs/${runId}`)).then((value) =>
-    parsedResponse(parseSimulationRun, value),
+export function getSimulationRun(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<SimulationRun> {
+  return request<unknown>(domainPath(`/runs/${runId}`), { signal }).then(
+    (value) => parsedResponse(parseSimulationRun, value),
   );
 }
 
@@ -1418,36 +1447,47 @@ export function cancelSimulationRun(runId: string): Promise<SimulationRun> {
   }).then((value) => parsedResponse(parseSimulationRun, value));
 }
 
-export function getSimulationResult(runId: string): Promise<SimulationResult> {
-  return request<unknown>(domainPath(`/runs/${runId}/result`)).then((value) =>
-    parsedResponse(parseSimulationResult, value),
+export function getSimulationResult(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<SimulationResult> {
+  return request<unknown>(domainPath(`/runs/${runId}/result`), { signal }).then(
+    (value) => parsedResponse(parseSimulationResult, value),
   );
 }
 
-export function getBehavioralResult(runId: string): Promise<BehavioralResult> {
-  return request<unknown>(`/api/v2/runs/${runId}/behavioral-result`).then(
-    (value) =>
-      parsedResponse(
-        (response) => parseBehavioralResult(response, runId),
-        value,
-      ),
+export function getBehavioralResult(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<BehavioralResult> {
+  return request<unknown>(`/api/v2/runs/${runId}/behavioral-result`, {
+    signal,
+  }).then((value) =>
+    parsedResponse((response) => parseBehavioralResult(response, runId), value),
   );
 }
 
 export function getBehavioralEvidence(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<BehavioralEvidence> {
-  return request<unknown>(`/api/v2/runs/${runId}/behavioral-evidence`).then(
-    (value) =>
-      parsedResponse(
-        (response) => parseBehavioralEvidence(response, runId),
-        value,
-      ),
+  return request<unknown>(`/api/v2/runs/${runId}/behavioral-evidence`, {
+    signal,
+  }).then((value) =>
+    parsedResponse(
+      (response) => parseBehavioralEvidence(response, runId),
+      value,
+    ),
   );
 }
 
-export function getRunAuditHistory(runId: string): Promise<RunAuditHistory> {
-  return request<unknown>(`/api/v2/runs/${runId}/audit-history`).then((value) =>
+export function getRunAuditHistory(
+  runId: string,
+  signal?: AbortSignal,
+): Promise<RunAuditHistory> {
+  return request<unknown>(`/api/v2/runs/${runId}/audit-history`, {
+    signal,
+  }).then((value) =>
     parsedResponse(
       (candidate) => parseRunAuditHistory(candidate, runId),
       value,
@@ -1459,10 +1499,12 @@ export function getBehavioralComparison(
   candidateRunId: string,
   baselineRunId: string,
   studyId?: string,
+  signal?: AbortSignal,
 ): Promise<BehavioralComparison> {
   const query = new URLSearchParams({ baseline_run_id: baselineRunId });
   return request<unknown>(
     `/api/v2/runs/${candidateRunId}/behavioral-comparison?${query.toString()}`,
+    { signal },
   ).then((value) =>
     parsedResponse(
       (response) =>
@@ -1478,10 +1520,11 @@ export function getBehavioralComparison(
 
 export function getSimulationProvenance(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<SimulationProvenance> {
-  return request<unknown>(domainPath(`/runs/${runId}/provenance`)).then(
-    (value) => parsedResponse(parseSimulationProvenance, value),
-  );
+  return request<unknown>(domainPath(`/runs/${runId}/provenance`), {
+    signal,
+  }).then((value) => parsedResponse(parseSimulationProvenance, value));
 }
 
 export type ProductRecord = Record<string, unknown>;
@@ -1532,8 +1575,12 @@ export type CampaignEvidenceEventCollection = Readonly<{
   items: readonly CampaignEvidenceEvent[];
 }>;
 
-export function getMethodologyRegistry(): Promise<MethodologyRegistry> {
-  return request<MethodologyRegistry>(domainPath("/methodology/registry"));
+export function getMethodologyRegistry(
+  signal?: AbortSignal,
+): Promise<MethodologyRegistry> {
+  return request<MethodologyRegistry>(domainPath("/methodology/registry"), {
+    signal,
+  });
 }
 
 export function createSurveyCalibration(
@@ -1571,17 +1618,21 @@ export function createHistoricalBacktest(
 
 export function getCampaignEvidenceRun(
   evidenceId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignEvidenceRun> {
   return request<CampaignEvidenceRun>(
     domainV2Path(`/campaign-evidence/${evidenceId}`),
+    { signal },
   );
 }
 
 export function getCampaignEvidenceEvents(
   evidenceId: string,
+  signal?: AbortSignal,
 ): Promise<CampaignEvidenceEventCollection> {
   return request<CampaignEvidenceEventCollection>(
     domainV2Path(`/campaign-evidence/${evidenceId}/events`),
+    { signal },
   );
 }
 
@@ -1596,9 +1647,11 @@ export function cancelCampaignEvidenceRun(
 
 export function listAudienceDefinitions(
   organizationId: string,
+  signal?: AbortSignal,
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
     domainPath(`/organizations/${organizationId}/audiences`),
+    { signal },
   );
 }
 
@@ -1618,9 +1671,11 @@ export function createAudienceDefinition(
 
 export function listSimulationConfigurations(
   projectId: string,
+  signal?: AbortSignal,
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
     domainPath(`/projects/${projectId}/simulation-configurations`),
+    { signal },
   );
 }
 
@@ -1668,17 +1723,21 @@ export function createVariantGroup(
 
 export function listVariantGroups(
   projectId: string,
+  signal?: AbortSignal,
 ): Promise<ControlPlaneSchemas["ProductCollectionResponseDto"]> {
   return request<ControlPlaneSchemas["ProductCollectionResponseDto"]>(
     domainPath(`/projects/${projectId}/variant-groups`),
+    { signal },
   );
 }
 
 export function compareVariantReports(
   variantGroupId: string,
+  signal?: AbortSignal,
 ): Promise<ControlPlaneSchemas["ProductCollectionResponseDto"]> {
   return request<ControlPlaneSchemas["ProductCollectionResponseDto"]>(
     domainPath(`/variant-groups/${variantGroupId}/comparison`),
+    { signal },
   );
 }
 
@@ -1694,9 +1753,11 @@ export function createFeedbackRecord(
 
 export function listFeedbackRecords(
   organizationId: string,
+  signal?: AbortSignal,
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
     `/api/v1/organizations/${organizationId}/feedback`,
+    { signal },
   );
 }
 
@@ -1716,9 +1777,11 @@ export function createRunMethodologyReport(
 
 export function getRunReport(
   runId: string,
+  signal?: AbortSignal,
 ): Promise<ControlPlaneSchemas["ProductCommandResponseDto"]> {
   return request<ControlPlaneSchemas["ProductCommandResponseDto"]>(
     domainPath(`/runs/${runId}/report`),
+    { signal },
   );
 }
 
@@ -1803,8 +1866,13 @@ export function createReportShare(
   });
 }
 
-export function listReportShares(reportId: string): Promise<ProductCollection> {
-  return request<ProductCollection>(`/api/v1/reports/${reportId}/shares`);
+export function listReportShares(
+  reportId: string,
+  signal?: AbortSignal,
+): Promise<ProductCollection> {
+  return request<ProductCollection>(`/api/v1/reports/${reportId}/shares`, {
+    signal,
+  });
 }
 
 export function accessSharedReport(token: string): Promise<ProductCommand> {
@@ -1842,9 +1910,11 @@ export function acceptOrganizationInvitation(
 
 export function listOrganizationInvitations(
   organizationId: string,
+  signal?: AbortSignal,
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
     `/api/v1/organizations/${organizationId}/invitations`,
+    { signal },
   );
 }
 
@@ -1861,25 +1931,31 @@ export function setOrganizationFeatureFlag(
 
 export function listOrganizationFeatureFlags(
   organizationId: string,
+  signal?: AbortSignal,
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
     `/api/v1/organizations/${organizationId}/feature-flags`,
+    { signal },
   );
 }
 
 export function getOrganizationAdminSummary(
   organizationId: string,
+  signal?: AbortSignal,
 ): Promise<ProductCommand> {
   return request<ProductCommand>(
     `/api/v1/organizations/${organizationId}/admin-summary`,
+    { signal },
   );
 }
 
 export function getOrganizationAudit(
   organizationId: string,
+  signal?: AbortSignal,
 ): Promise<ProductCollection> {
   return request<ProductCollection>(
     `/api/v1/organizations/${organizationId}/audit`,
+    { signal },
   );
 }
 

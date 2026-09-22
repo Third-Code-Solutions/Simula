@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -63,6 +63,7 @@ const RUN = {
 describe("RunWorkspace behavioral workflow", () => {
   beforeEach(() => {
     push.mockReset();
+    vi.clearAllMocks();
     vi.mocked(getBehavioralResult).mockResolvedValue(
       parseBehavioralResult(behavioralResultFixture(), BEHAVIORAL_RUN_ID),
     );
@@ -128,9 +129,13 @@ describe("RunWorkspace behavioral workflow", () => {
     expect(
       await screen.findByRole("heading", { name: "Refine and retest" }),
     ).toBeInTheDocument();
-    expect(getRunAuditHistory).toHaveBeenCalledWith(BEHAVIORAL_RUN_ID);
+    expect(getRunAuditHistory).toHaveBeenCalledWith(
+      BEHAVIORAL_RUN_ID,
+      expect.any(AbortSignal),
+    );
     expect(getOrganizationDashboard).toHaveBeenCalledWith(
       BEHAVIORAL_ORGANIZATION_ID,
+      expect.any(AbortSignal),
     );
     expect(
       screen.getByRole("link", { name: "Back to project" }),
@@ -159,5 +164,42 @@ describe("RunWorkspace behavioral workflow", () => {
     expect(
       screen.getByRole("link", { name: "Back to project" }),
     ).toBeInTheDocument();
+  });
+
+  it("cancels an in-flight refinement permission read when the run view closes", async () => {
+    let rejectDashboard: ((reason: unknown) => void) | undefined;
+    vi.mocked(getOrganizationDashboard).mockReturnValueOnce(
+      new Promise((_resolve, reject) => {
+        rejectDashboard = reject;
+      }) as never,
+    );
+    const pollers = new RunPollerRegistry(
+      vi.fn().mockResolvedValue(RUN),
+      undefined,
+      vi.fn(),
+    );
+    const { unmount } = render(
+      <RunWorkspace
+        behavioralExperienceEnabled
+        pollers={pollers}
+        runId={BEHAVIORAL_RUN_ID}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(getOrganizationDashboard).toHaveBeenCalled();
+    });
+    const signal = vi.mocked(getOrganizationDashboard).mock.calls[0]?.[1] as
+      AbortSignal | undefined;
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal?.aborted).toBe(false);
+
+    unmount();
+
+    expect(signal?.aborted).toBe(true);
+    // A read cancelled by unmounting must never be reported as a run UI error.
+    rejectDashboard?.(new Error("dashboard read cancelled"));
+    await Promise.resolve();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });

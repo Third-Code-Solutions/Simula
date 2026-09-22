@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -12,6 +12,7 @@ import {
   getOrganizationDashboard,
   listProjects,
 } from "@/lib/api";
+import { isCancelledRequest } from "@/lib/view-request";
 import { SignOutButton } from "@/app/sign-out-button";
 import { WorkspaceSidebar } from "@/app/workspace-sidebar";
 
@@ -37,14 +38,26 @@ export function ProjectsWorkspace({
   const [loadRevision, setLoadRevision] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
+  const lifetime = useRef<AbortController | null>(null);
+
   useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => {
+      controller.abort();
+      lifetime.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
     let stale = false;
 
     async function loadInitialPage() {
       try {
         const [page, loadedDashboard] = await Promise.all([
-          listProjects(organizationId),
-          getOrganizationDashboard(organizationId),
+          listProjects(organizationId, undefined, controller.signal),
+          getOrganizationDashboard(organizationId, controller.signal),
         ]);
         if (!stale) {
           setItems(page.items);
@@ -53,6 +66,7 @@ export function ProjectsWorkspace({
           setError(undefined);
         }
       } catch (loadError) {
+        if (isCancelledRequest(loadError)) return;
         if (!stale) {
           setError(problemMessage(loadError));
         }
@@ -66,6 +80,7 @@ export function ProjectsWorkspace({
     void loadInitialPage();
     return () => {
       stale = true;
+      controller.abort();
     };
   }, [loadRevision, organizationId]);
 
@@ -79,16 +94,19 @@ export function ProjectsWorkspace({
     if (!nextCursor) {
       return;
     }
+    const signal = lifetime.current?.signal;
     setLoading(true);
     try {
-      const page = await listProjects(organizationId, nextCursor);
+      const page = await listProjects(organizationId, nextCursor, signal);
+      if (signal?.aborted) return;
       setItems((current) => [...current, ...page.items]);
       setNextCursor(page.next_cursor);
       setError(undefined);
     } catch (loadError) {
+      if (isCancelledRequest(loadError)) return;
       setError(problemMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }
 
@@ -112,6 +130,7 @@ export function ProjectsWorkspace({
       });
       router.push(`/projects/${project.id}`);
     } catch (createError) {
+      if (isCancelledRequest(createError)) return;
       setError(problemMessage(createError));
     } finally {
       setSubmitting(false);

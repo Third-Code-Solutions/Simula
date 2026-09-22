@@ -19,6 +19,7 @@ import {
   reserveStimulusAsset,
   uploadStimulusAsset,
 } from "@/lib/api";
+import { isCancelledRequest } from "@/lib/view-request";
 
 const SAFE_FILENAME_PATTERN = /^(?!.*\.\.)[A-Za-z0-9][A-Za-z0-9_. -]{0,119}$/;
 const IMAGE_MEDIA_TYPES = new Set<StimulusAssetMediaType>([
@@ -51,10 +52,17 @@ export type StimulusAssetClient = Readonly<{
     asset: StimulusAsset,
     idempotencyKey?: string,
   ) => Promise<StimulusAsset>;
-  downloadAsset: (asset: StimulusAsset) => Promise<StimulusAssetDownload>;
-  listAssets: (stimulusId: string) => Promise<readonly StimulusAsset[]>;
+  downloadAsset: (
+    asset: StimulusAsset,
+    signal?: AbortSignal,
+  ) => Promise<StimulusAssetDownload>;
+  listAssets: (
+    stimulusId: string,
+    signal?: AbortSignal,
+  ) => Promise<readonly StimulusAsset[]>;
   getVisualProfile: (
     asset: StimulusAsset,
+    signal?: AbortSignal,
   ) => Promise<VisualStimulusProfileRecord>;
   reserveAsset: (
     stimulusId: string,
@@ -164,6 +172,16 @@ export function StimulusAssetsPanel({
   const uploadOperation = useRef<UploadOperation | undefined>(undefined);
   const deletionKeys = useRef(new Map<string, string>());
   const visualProfileKeys = useRef(new Map<string, string>());
+  const lifetime = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => {
+      controller.abort();
+      lifetime.current = null;
+    };
+  }, []);
 
   function replacePreview(next?: Preview): void {
     if (previewUrl.current) {
@@ -174,16 +192,20 @@ export function StimulusAssetsPanel({
   }
 
   useEffect(() => {
+    const controller = new AbortController();
     let stale = false;
     async function load(): Promise<void> {
       try {
-        const loaded = await client.listAssets(stimulusId);
+        const loaded = await client.listAssets(stimulusId, controller.signal);
         if (!stale) {
           setAssets(loaded);
           setObservedAt(Date.now());
           setError(undefined);
         }
       } catch (loadError) {
+        if (isCancelledRequest(loadError)) {
+          return;
+        }
         if (!stale) {
           setError(message(loadError));
         }
@@ -196,6 +218,7 @@ export function StimulusAssetsPanel({
     void load();
     return () => {
       stale = true;
+      controller.abort();
       if (previewUrl.current) {
         URL.revokeObjectURL(previewUrl.current);
         previewUrl.current = undefined;
@@ -312,11 +335,12 @@ export function StimulusAssetsPanel({
   }
 
   async function verifyAccess(asset: StimulusAsset): Promise<void> {
+    const signal = lifetime.current?.signal;
     setBusy(`access:${asset.asset_id}`);
     setError(undefined);
     setNotice(`Verifying ${asset.filename} before private access…`);
     try {
-      const downloaded = await client.downloadAsset(asset);
+      const downloaded = await client.downloadAsset(asset, signal);
       const url = URL.createObjectURL(downloaded.blob);
       if (
         IMAGE_MEDIA_TYPES.has(asset.media_type) ||
@@ -339,9 +363,14 @@ export function StimulusAssetsPanel({
         setNotice(`${asset.filename} passed verification and was downloaded.`);
       }
     } catch (accessError) {
+      if (isCancelledRequest(accessError)) {
+        return;
+      }
       setError(message(accessError));
     } finally {
-      setBusy("");
+      if (!signal?.aborted) {
+        setBusy("");
+      }
     }
   }
 
@@ -382,6 +411,7 @@ export function StimulusAssetsPanel({
     if (create) {
       visualProfileKeys.current.set(asset.asset_id, key);
     }
+    const signal = lifetime.current?.signal;
     setBusy(`profile:${asset.asset_id}`);
     setError(undefined);
     setNotice(
@@ -392,7 +422,7 @@ export function StimulusAssetsPanel({
     try {
       const result = create
         ? await client.createVisualProfile(asset, key)
-        : await client.getVisualProfile(asset);
+        : await client.getVisualProfile(asset, signal);
       visualProfileKeys.current.delete(asset.asset_id);
       setVisualProfiles((current) => {
         const next = new Map(current);
@@ -403,6 +433,9 @@ export function StimulusAssetsPanel({
         `${asset.filename} has a verified technical image-signal profile. No behavioral response was inferred.`,
       );
     } catch (profileError) {
+      if (isCancelledRequest(profileError)) {
+        return;
+      }
       setError(message(profileError));
       setNotice(
         create
@@ -410,7 +443,9 @@ export function StimulusAssetsPanel({
           : "No technical profile could be loaded.",
       );
     } finally {
-      setBusy("");
+      if (!signal?.aborted) {
+        setBusy("");
+      }
     }
   }
 

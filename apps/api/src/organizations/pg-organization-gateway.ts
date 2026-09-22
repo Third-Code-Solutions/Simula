@@ -22,6 +22,7 @@ import {
 } from "../domain/domain.constants";
 import type { EnabledDomainRuntime } from "../domain/domain-runtime";
 import { AppProblem, dependencyUnavailable } from "../domain/problem";
+import { guardPoolErrors } from "../pg/pool-error-guard";
 import type {
   BehavioralActionKind,
   BehavioralComparisonResponseDto,
@@ -288,7 +289,7 @@ export function createDomainPool(config: EnabledDomainRuntime): Pool {
           },
         }),
   };
-  return new Pool(poolConfig);
+  return guardPoolErrors(new Pool(poolConfig));
 }
 
 export function databaseClaims(identity: VerifiedIdentity): string {

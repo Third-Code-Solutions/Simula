@@ -53,6 +53,7 @@ import {
   submitCampaignLabNativeSurveyResponses,
   type MethodologyRegistry,
 } from "@/lib/api";
+import { isCancelledRequest } from "@/lib/view-request";
 
 const CAMPAIGN_LAB_STAGE_ANCHORS = [
   ["research-upload", "Research upload"],
@@ -842,12 +843,12 @@ export function CampaignLabWorkspace({
   );
 }
 
-function loadCampaignContext(projectId: string) {
+function loadCampaignContext(projectId: string, signal?: AbortSignal) {
   return Promise.all([
-    listCampaignLabCampaigns(projectId),
-    getMethodologyRegistry(),
-    getProject(projectId).catch(() => undefined),
-    listCampaignLabForecastDatasets()
+    listCampaignLabCampaigns(projectId, undefined, signal),
+    getMethodologyRegistry(signal),
+    getProject(projectId, signal).catch(() => undefined),
+    listCampaignLabForecastDatasets(signal)
       .then((page) => ({ page, error: undefined as string | undefined }))
       .catch((error: unknown) => ({
         page: { items: [] },
@@ -870,10 +871,32 @@ function CampaignLabSession({
   );
   const [historyRevision, setHistoryRevision] = useState(0);
   const mounted = useRef(true);
+  // One controller per mounted view: every read this session starts is aborted
+  // once the operator navigates away. The abort is deferred by a tick because
+  // StrictMode replays mount effects (mount -> cleanup -> mount) synchronously,
+  // and aborting eagerly there would cancel the shared initialization request
+  // that the replay is meant to reuse.
+  const lifetime = useRef<AbortController | null>(null);
+  const unmountTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function viewSignal(): AbortSignal {
+    lifetime.current ??= new AbortController();
+    return lifetime.current.signal;
+  }
   useEffect(() => {
     mounted.current = true;
+    if (unmountTimer.current) {
+      clearTimeout(unmountTimer.current);
+      unmountTimer.current = null;
+    }
     return () => {
       mounted.current = false;
+      unmountTimer.current = setTimeout(() => {
+        if (mounted.current) {
+          return;
+        }
+        lifetime.current?.abort();
+        lifetime.current = null;
+      }, 0);
     };
   }, []);
   const commandKeys = useRef(
@@ -1065,7 +1088,8 @@ function CampaignLabSession({
 
   useEffect(() => {
     let stale = false;
-    initialization.current ??= loadCampaignContext(projectId);
+    const signal = viewSignal();
+    initialization.current ??= loadCampaignContext(projectId, signal);
     void initialization.current
       .then(async ([page, registry, project, forecast]) => {
         const forecastDatasetPage = forecast.page;
@@ -1076,7 +1100,10 @@ function CampaignLabSession({
           initialCampaignId &&
           !items.some((item) => campaignId(item) === initialCampaignId)
         ) {
-          const detail = await getCampaignLabCampaign(initialCampaignId);
+          const detail = await getCampaignLabCampaign(
+            initialCampaignId,
+            signal,
+          );
           if (stale) return;
           if (detail.campaign.project_id !== projectId)
             throw new Error("Campaign does not belong to this project");
@@ -1112,6 +1139,7 @@ function CampaignLabSession({
         }
       })
       .catch((loadError: unknown) => {
+        if (isCancelledRequest(loadError)) return;
         if (!stale) setError(problemMessage(loadError));
       })
       .finally(() => {
@@ -1127,11 +1155,13 @@ function CampaignLabSession({
       return;
     }
     let stale = false;
-    void getCampaignLabAudit(selectedCampaignId)
+    const signal = viewSignal();
+    void getCampaignLabAudit(selectedCampaignId, signal)
       .then((nextAudit) => {
         if (!stale) setAudit(nextAudit);
       })
       .catch((auditError: unknown) => {
+        if (isCancelledRequest(auditError)) return;
         if (!stale) setError(problemMessage(auditError));
       });
     return () => {
@@ -1157,6 +1187,7 @@ function CampaignLabSession({
           if (!stale && saved.campaign_id === selectedCampaignId) update(saved);
         })
         .catch((restoreError: unknown) => {
+          if (isCancelledRequest(restoreError)) return;
           if (!stale) setError(problemMessage(restoreError));
         });
     };
@@ -1175,7 +1206,11 @@ function CampaignLabSession({
   async function loadMoreCampaigns() {
     setLoadingMoreCampaigns(true);
     try {
-      const page = await listCampaignLabCampaigns(projectId, campaignOffset);
+      const page = await listCampaignLabCampaigns(
+        projectId,
+        campaignOffset,
+        viewSignal(),
+      );
       if (!mounted.current) return;
       setCampaigns((current) => [
         ...current,
@@ -1189,6 +1224,7 @@ function CampaignLabSession({
       setCampaignOffset((offset) => offset + page.items.length);
       setMoreCampaigns(page.items.length >= page.pagination.limit);
     } catch (loadError) {
+      if (isCancelledRequest(loadError)) return;
       if (mounted.current) setError(problemMessage(loadError));
     } finally {
       if (mounted.current) setLoadingMoreCampaigns(false);

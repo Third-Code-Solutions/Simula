@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -146,6 +147,18 @@ describe("OrganizationDashboardWorkspace", () => {
     );
     expect(listOrganizationFeatureFlags).toHaveBeenCalledTimes(1);
     expect(getOrganizationAudit).toHaveBeenCalledTimes(1);
+    expect(listOrganizationInvitations).toHaveBeenCalledWith(
+      baseDashboard.organization_id,
+      expect.any(AbortSignal),
+    );
+    expect(listOrganizationFeatureFlags).toHaveBeenCalledWith(
+      baseDashboard.organization_id,
+      expect.any(AbortSignal),
+    );
+    expect(getOrganizationAudit).toHaveBeenCalledWith(
+      baseDashboard.organization_id,
+      expect.any(AbortSignal),
+    );
   });
 
   it("creates an owner invitation and reveals its one-time token", async () => {
@@ -316,5 +329,57 @@ describe("OrganizationDashboardWorkspace", () => {
     );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(getOrganizationDashboard).toHaveBeenCalledTimes(2);
+    expect(getOrganizationDashboard).toHaveBeenCalledWith(
+      baseDashboard.organization_id,
+      expect.any(AbortSignal),
+    );
+  });
+
+  it("treats a cancelled dashboard read as routine instead of an error", async () => {
+    vi.mocked(getOrganizationDashboard).mockRejectedValue(
+      Object.assign(
+        new Error("Request cancelled because you left this view."),
+        {
+          code: "request_cancelled",
+        },
+      ),
+    );
+
+    render(
+      <OrganizationDashboardWorkspace
+        organizationId={baseDashboard.organization_id}
+      />,
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(getOrganizationDashboard).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(
+      screen.queryByRole("heading", { name: "Dashboard unavailable" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("aborts the dashboard read when the operator leaves the view", async () => {
+    vi.mocked(getOrganizationDashboard).mockImplementation(
+      () => new Promise<never>(() => {}),
+    );
+
+    const view = render(
+      <OrganizationDashboardWorkspace
+        organizationId={baseDashboard.organization_id}
+      />,
+    );
+
+    const signal = vi.mocked(getOrganizationDashboard).mock.calls[0]?.[1];
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    view.unmount();
+
+    expect(signal?.aborted).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

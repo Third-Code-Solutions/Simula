@@ -15,13 +15,15 @@ overrides:
   "brace-expansion@1": 1.1.18
   "brace-expansion@2": 2.1.4
   "brace-expansion@5": 5.0.9
+  baseline-browser-mapping: 2.11.25
   browserslist: 4.28.7
   fast-uri: 3.1.6
+  js-yaml: 4.3.2
+  multer: 2.4.0
   qs: 6.16.0
-  js-yaml: 4.3.1
   nanoid: 3.3.18
   postcss: 8.5.23
-  sharp: 0.35.0
+  sharp: 0.35.4
   undici: 7.29.0
 
 allowBuilds:
@@ -65,7 +67,7 @@ minimumReleaseAgeExclude:
   - browserslist@4.28.7
   - fast-uri@3.1.6
   - qs@6.16.0
-  - js-yaml@4.3.1
+  - js-yaml@4.3.2
   - nanoid@3.3.18
   - postcss@8.5.23
   - undici@7.29.0

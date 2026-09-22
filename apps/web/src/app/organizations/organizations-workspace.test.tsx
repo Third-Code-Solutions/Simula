@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -61,6 +62,10 @@ describe("OrganizationsWorkspace", () => {
     expect(
       await screen.findByRole("heading", { name: "No workspace yet" }),
     ).toBeInTheDocument();
+    expect(listOrganizations).toHaveBeenCalledWith(
+      undefined,
+      expect.any(AbortSignal),
+    );
     expect(screen.getByText("Name the workspace")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Create guided rehearsal" }),
@@ -181,5 +186,43 @@ describe("OrganizationsWorkspace", () => {
     expect(router.push).toHaveBeenCalledWith(
       "/runs/00000000-0000-4000-8000-000000000006",
     );
+  });
+
+  it("treats a cancelled organization read as routine instead of an error", async () => {
+    vi.mocked(listOrganizations).mockRejectedValue(
+      Object.assign(
+        new Error("Request cancelled because you left this view."),
+        {
+          code: "request_cancelled",
+        },
+      ),
+    );
+
+    render(<OrganizationsWorkspace />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("aborts the organization read when the operator leaves the view", async () => {
+    let capturedSignal: AbortSignal | undefined;
+    vi.mocked(listOrganizations).mockImplementation(
+      (_cursor, requestSignal) =>
+        new Promise<never>(() => {
+          capturedSignal = requestSignal;
+        }),
+    );
+
+    const view = render(<OrganizationsWorkspace />);
+    await waitFor(() => expect(capturedSignal).toBeInstanceOf(AbortSignal));
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    view.unmount();
+
+    expect(capturedSignal?.aborted).toBe(true);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 });

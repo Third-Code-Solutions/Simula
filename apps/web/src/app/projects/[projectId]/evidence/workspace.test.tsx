@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import {
@@ -58,4 +64,32 @@ it("makes a transient project-context failure visible and recoverable", async ()
   expect(
     screen.getByRole("link", { name: "Open campaign research" }),
   ).toHaveAttribute("href", "/projects/project-1/campaign-lab#research-upload");
+  expect(getProject).toHaveBeenCalledWith("project-1", expect.any(AbortSignal));
+});
+
+it("cancels an in-flight project-context read on unmount", async () => {
+  let captured: AbortSignal | undefined;
+  vi.mocked(getProject).mockImplementation(
+    (_projectId: string, signal?: AbortSignal) =>
+      new Promise<never>((_resolve, reject) => {
+        captured = signal;
+        signal?.addEventListener("abort", () =>
+          reject(
+            Object.assign(new Error("cancelled"), {
+              code: "request_cancelled",
+            }),
+          ),
+        );
+      }),
+  );
+
+  const { unmount } = render(
+    <CampaignEvidenceWorkspace projectId="project-1" />,
+  );
+  await waitFor(() => expect(captured).toBeDefined());
+
+  unmount();
+
+  expect(captured?.aborted).toBe(true);
+  expect(screen.queryByRole("alert")).toBeNull();
 });

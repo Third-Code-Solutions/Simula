@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SignOutButton } from "@/app/sign-out-button";
 import { WorkspaceSidebar } from "@/app/workspace-sidebar";
@@ -18,6 +18,7 @@ import {
   listOrganizationInvitations,
   setOrganizationFeatureFlag,
 } from "@/lib/api";
+import { isCancelledRequest } from "@/lib/view-request";
 
 import { DashboardOverview } from "./dashboard-overview";
 import styles from "./dashboard.module.css";
@@ -55,12 +56,25 @@ export function OrganizationDashboardWorkspace({
   const [refreshing, setRefreshing] = useState(false);
   const [busy, setBusy] = useState<string>();
 
+  const lifetime = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => {
+      controller.abort();
+      lifetime.current = null;
+    };
+  }, []);
+
   const loadOwnerData = useCallback(async (): Promise<void> => {
+    const signal = lifetime.current?.signal;
     const [loadedInvitations, loadedFlags, loadedAudit] = await Promise.all([
-      listOrganizationInvitations(organizationId),
-      listOrganizationFeatureFlags(organizationId),
-      getOrganizationAudit(organizationId),
+      listOrganizationInvitations(organizationId, signal),
+      listOrganizationFeatureFlags(organizationId, signal),
+      getOrganizationAudit(organizationId, signal),
     ]);
+    if (signal?.aborted) return;
     setInvitations(loadedInvitations.items);
     setFlags(loadedFlags.items);
     setAudit(loadedAudit.items);
@@ -68,8 +82,13 @@ export function OrganizationDashboardWorkspace({
   }, [organizationId]);
 
   const loadDashboard = useCallback(async (): Promise<void> => {
+    const signal = lifetime.current?.signal;
     try {
-      const loadedDashboard = await getOrganizationDashboard(organizationId);
+      const loadedDashboard = await getOrganizationDashboard(
+        organizationId,
+        signal,
+      );
+      if (signal?.aborted) return;
       setDashboard(loadedDashboard);
       setError(undefined);
       if (
@@ -79,6 +98,7 @@ export function OrganizationDashboardWorkspace({
         try {
           await loadOwnerData();
         } catch (ownerLoadError) {
+          if (isCancelledRequest(ownerLoadError)) return;
           setOwnerError(problemMessage(ownerLoadError));
         }
       } else {
@@ -88,18 +108,23 @@ export function OrganizationDashboardWorkspace({
         setOwnerError(undefined);
       }
     } catch (loadError) {
+      if (isCancelledRequest(loadError)) return;
       setError(problemMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [loadOwnerData, organizationId]);
 
   useEffect(() => {
+    const controller = new AbortController();
     let stale = false;
 
     async function load(): Promise<void> {
       try {
-        const loadedDashboard = await getOrganizationDashboard(organizationId);
+        const loadedDashboard = await getOrganizationDashboard(
+          organizationId,
+          controller.signal,
+        );
         if (stale) return;
         setDashboard(loadedDashboard);
         setError(undefined);
@@ -110,9 +135,9 @@ export function OrganizationDashboardWorkspace({
           try {
             const [loadedInvitations, loadedFlags, loadedAudit] =
               await Promise.all([
-                listOrganizationInvitations(organizationId),
-                listOrganizationFeatureFlags(organizationId),
-                getOrganizationAudit(organizationId),
+                listOrganizationInvitations(organizationId, controller.signal),
+                listOrganizationFeatureFlags(organizationId, controller.signal),
+                getOrganizationAudit(organizationId, controller.signal),
               ]);
             if (stale) return;
             setInvitations(loadedInvitations.items);
@@ -120,10 +145,12 @@ export function OrganizationDashboardWorkspace({
             setAudit(loadedAudit.items);
             setOwnerError(undefined);
           } catch (ownerLoadError) {
+            if (isCancelledRequest(ownerLoadError)) return;
             if (!stale) setOwnerError(problemMessage(ownerLoadError));
           }
         }
       } catch (loadError) {
+        if (isCancelledRequest(loadError)) return;
         if (!stale) setError(problemMessage(loadError));
       } finally {
         if (!stale) setLoading(false);
@@ -133,6 +160,7 @@ export function OrganizationDashboardWorkspace({
     void load();
     return () => {
       stale = true;
+      controller.abort();
     };
   }, [organizationId]);
 
@@ -173,6 +201,7 @@ export function OrganizationDashboardWorkspace({
       await loadOwnerData();
       formElement.reset();
     } catch (inviteError) {
+      if (isCancelledRequest(inviteError)) return;
       setOwnerError(problemMessage(inviteError));
     } finally {
       setBusy(undefined);
@@ -196,6 +225,7 @@ export function OrganizationDashboardWorkspace({
       await loadOwnerData();
       formElement.reset();
     } catch (flagError) {
+      if (isCancelledRequest(flagError)) return;
       setOwnerError(problemMessage(flagError));
     } finally {
       setBusy(undefined);
@@ -214,6 +244,7 @@ export function OrganizationDashboardWorkspace({
       });
       await loadOwnerData();
     } catch (flagError) {
+      if (isCancelledRequest(flagError)) return;
       setOwnerError(problemMessage(flagError));
     } finally {
       setBusy(undefined);
@@ -239,6 +270,7 @@ export function OrganizationDashboardWorkspace({
       await deleteOrganization(organizationId, confirmation.trim());
       router.replace("/organizations");
     } catch (deletionError) {
+      if (isCancelledRequest(deletionError)) return;
       setOwnerError(problemMessage(deletionError));
       await loadDashboard();
     } finally {

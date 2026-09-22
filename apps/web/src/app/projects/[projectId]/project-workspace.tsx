@@ -21,6 +21,7 @@ import {
 } from "@/lib/api";
 import { SignOutButton } from "@/app/sign-out-button";
 import { WorkspaceSidebar } from "@/app/workspace-sidebar";
+import { isCancelledRequest } from "@/lib/view-request";
 
 import { BehavioralRunLauncher } from "./behavioral-run-launcher";
 import { StimulusAssetsPanel } from "./stimulus-assets-panel";
@@ -72,28 +73,43 @@ export function ProjectWorkspace({
   const [startingRunVersion, setStartingRunVersion] = useState<string>();
   const [startingBehavioralRun, setStartingBehavioralRun] = useState<string>();
 
+  const lifetime = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    lifetime.current = controller;
+    return () => {
+      controller.abort();
+      lifetime.current = null;
+    };
+  }, []);
+
   async function refreshProject() {
+    const signal = lifetime.current?.signal;
     setLoading(true);
     try {
-      setProject(await getProject(projectId));
+      setProject(await getProject(projectId, signal));
       setError(undefined);
     } catch (loadError) {
+      if (isCancelledRequest(loadError)) return;
       setError(problemMessage(loadError));
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }
 
   useEffect(() => {
+    const controller = new AbortController();
+    const signal = controller.signal;
     let stale = false;
 
     async function loadInitialProject() {
       setLoading(true);
       try {
-        const loadedProject = await getProject(projectId);
+        const loadedProject = await getProject(projectId, signal);
         const [loadedAudience, loadedDashboard] = await Promise.all([
-          getDemoAudience(),
-          getOrganizationDashboard(loadedProject.organization_id),
+          getDemoAudience(signal),
+          getOrganizationDashboard(loadedProject.organization_id, signal),
         ]);
         if (!stale) {
           setProject(loadedProject);
@@ -102,6 +118,7 @@ export function ProjectWorkspace({
           setError(undefined);
         }
       } catch (loadError) {
+        if (isCancelledRequest(loadError)) return;
         if (!stale) {
           setError(problemMessage(loadError));
         }
@@ -115,6 +132,7 @@ export function ProjectWorkspace({
     void loadInitialProject();
     return () => {
       stale = true;
+      controller.abort();
     };
   }, [projectId, loadRevision]);
 

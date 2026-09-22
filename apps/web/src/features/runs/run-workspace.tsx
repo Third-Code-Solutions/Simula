@@ -38,6 +38,7 @@ import {
 import { RunStatusPanel } from "./run-status-panel";
 import { RunAuditHistory } from "./run-audit-history";
 import { recordRunUiError } from "./run-telemetry";
+import { isCancelledRequest } from "@/lib/view-request";
 import navigationStyles from "@/app/workspace-actions.module.css";
 
 function problemMessage(error: unknown): string {
@@ -109,17 +110,24 @@ export function RunWorkspace({
       return;
     }
     const organizationId = run.organization_id;
+    const controller = new AbortController();
     let stale = false;
     async function loadRefinementPermission(): Promise<void> {
       try {
-        const dashboard = await getOrganizationDashboard(organizationId);
+        const dashboard = await getOrganizationDashboard(
+          organizationId,
+          controller.signal,
+        );
         if (!stale) {
           setRefinementAllowed(
             dashboard.permissions.can_create_projects &&
               dashboard.permissions.can_create_runs,
           );
         }
-      } catch {
+      } catch (error) {
+        if (isCancelledRequest(error)) {
+          return;
+        }
         if (!stale) {
           setRefinementAllowed(false);
         }
@@ -128,6 +136,7 @@ export function RunWorkspace({
     void loadRefinementPermission();
     return () => {
       stale = true;
+      controller.abort();
     };
   }, [
     behavioralExperienceEnabled,
@@ -146,14 +155,18 @@ export function RunWorkspace({
     ) {
       return;
     }
+    const controller = new AbortController();
     let stale = false;
     async function loadResult(): Promise<void> {
       try {
-        const loaded = await getSimulationResult(runId);
+        const loaded = await getSimulationResult(runId, controller.signal);
         if (!stale) {
           setResult(loaded);
         }
       } catch (error) {
+        if (isCancelledRequest(error)) {
+          return;
+        }
         if (error instanceof ApiProblem) {
           recordRunUiError(error);
         }
@@ -165,6 +178,7 @@ export function RunWorkspace({
     void loadResult();
     return () => {
       stale = true;
+      controller.abort();
     };
   }, [
     result,
@@ -189,13 +203,14 @@ export function RunWorkspace({
       return;
     }
     let stale = false;
+    const controller = new AbortController();
     async function loadBehavioralResult(): Promise<void> {
       try {
         const [loadedResult, loadedEvidence, loadedHistory] = await Promise.all(
           [
-            getBehavioralResult(runId),
-            getBehavioralEvidence(runId),
-            getRunAuditHistory(runId),
+            getBehavioralResult(runId, controller.signal),
+            getBehavioralEvidence(runId, controller.signal),
+            getRunAuditHistory(runId, controller.signal),
           ],
         );
         if (
@@ -214,6 +229,9 @@ export function RunWorkspace({
           setRunAuditHistory(loadedHistory);
         }
       } catch (error) {
+        if (isCancelledRequest(error)) {
+          return;
+        }
         if (error instanceof ApiProblem) {
           recordRunUiError(error);
         }
@@ -225,6 +243,7 @@ export function RunWorkspace({
     void loadBehavioralResult();
     return () => {
       stale = true;
+      controller.abort();
     };
   }, [
     behavioralEvidence,

@@ -18,6 +18,7 @@ import type {
   OrganizationDeletionResourceKind,
 } from "./organization-deletion-reconciler";
 import { REQUIRED_DATABASE_MIGRATION_HEAD } from "../config/production-admission";
+import { guardPoolErrors } from "../pg/pool-error-guard";
 
 function exactCount(value: unknown, name: string): number {
   if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
@@ -157,7 +158,7 @@ export function createDispatcherPool(config: DispatcherRuntimeConfig): Pool {
           },
         }),
   };
-  return new Pool(poolConfig);
+  return guardPoolErrors(new Pool(poolConfig));
 }
 
 export class PgRunOutboxDatabase

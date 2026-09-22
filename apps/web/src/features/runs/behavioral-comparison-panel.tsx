@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import {
   ApiProblem,
@@ -31,12 +31,21 @@ export function BehavioralComparisonPanel({
     candidateRunId: string,
     baselineRunId: string,
     studyId?: string,
+    signal?: AbortSignal,
   ) => Promise<BehavioralComparison>;
 }>) {
   const [baselineRunId, setBaselineRunId] = useState("");
   const [comparison, setComparison] = useState<BehavioralComparison>();
   const [error, setError] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
+  const lifetime = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    lifetime.current = new AbortController();
+    return () => {
+      lifetime.current?.abort();
+    };
+  }, []);
 
   async function compare(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -50,22 +59,32 @@ export function BehavioralComparisonPanel({
       setError("Enter a different, valid baseline run ID.");
       return;
     }
+    const signal = lifetime.current?.signal;
     setIsLoading(true);
     try {
       const loaded = await loadComparison(
         candidateRunId,
         baseline,
         expectedStudyId,
+        signal,
       );
+      if (signal?.aborted) {
+        return;
+      }
       setComparison(loaded);
     } catch (failure) {
+      if (signal?.aborted) {
+        return;
+      }
       setError(
         failure instanceof ApiProblem
           ? failure.message
           : "SIMULA could not verify a frozen matched design for these runs.",
       );
     } finally {
-      setIsLoading(false);
+      if (!signal?.aborted) {
+        setIsLoading(false);
+      }
     }
   }
 
