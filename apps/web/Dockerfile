@@ -37,6 +37,14 @@ ENV NODE_ENV=production
 ENV PORT=3000
 WORKDIR /app
 
+# The pinned bookworm base ships libpcre2-8-0 10.42-1, which the container gate
+# blocks as fixable High (CVE-2026-86145 / CVE-2026-89157 / CVE-2026-89161).
+# The +deb12u1 revision is published only in bookworm-security, so upgrade it
+# from there rather than relaxing the gate.
+RUN apt-get update \
+    && apt-get install --yes --only-upgrade --no-install-recommends libpcre2-8-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
     && rm -f /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack \
     /usr/local/bin/pnpm /usr/local/bin/pnpx

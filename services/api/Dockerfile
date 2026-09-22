@@ -20,6 +20,14 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
+# The pinned bookworm base ships libpcre2-8-0 10.42-1, which the container gate
+# blocks as fixable High (CVE-2026-86145 / CVE-2026-89157 / CVE-2026-89161).
+# The +deb12u1 revision is published only in bookworm-security, so upgrade it
+# from there rather than relaxing the gate.
+RUN apt-get update \
+    && apt-get install --yes --only-upgrade --no-install-recommends libpcre2-8-0 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --gid 10001 simula && useradd --uid 10001 --gid simula --no-create-home simula
 COPY --from=build --chown=simula:simula /app/.venv /app/.venv
 COPY --from=build /app/services/api/certs/supabase-prod-ca-2021.crt /etc/ssl/certs/supabase-prod-ca-2021.crt
