@@ -66,6 +66,7 @@ regexes = [
 paths = [
   '''^docs/audit/2026-09-05/production-backend-promotion\.json$''',
   '''^docs/audit/2026-09-05/production-frontend-promotion\.json$''',
+  '''^docs/audit/2026-09-22/production-backend-promotion\.json$''',
 ]
 
 [[allowlists]]
