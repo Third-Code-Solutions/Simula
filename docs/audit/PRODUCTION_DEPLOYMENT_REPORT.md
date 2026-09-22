@@ -1,8 +1,11 @@
 # Production Deployment Report
 
 > Historical snapshot retained. Local-green/no-mutation statements below
-> describe that decision only. Current new application promotion remains
-> pending; Auth/Git/Redis changes were separately verified. See
+> describe that decision only. Application promotion has since occurred: see
+> [2026-09-22 release result](2026-09-22/RELEASE_RESULT.md) for the current
+> production identities, and
+> [2026-09-05 release result](2026-09-05/RELEASE_RESULT.md) for the prior one.
+> Auth/Git/Redis changes were separately verified. See
 > [current tracker](2026-09-05/REMEDIATION_TRACKER.md) and
 > [targets](2026-09-05/RELEASE_TARGETS.md).
 

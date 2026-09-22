@@ -1,0 +1,41 @@
+{
+  "observed_at": "2026-09-22T13:53:28Z",
+  "project_id": "ywiwmczccktwzqyhzhiz",
+  "source_sha": "d4322bd95f7d90150fd68c220633a8a383617bb4",
+  "signed_release_run": "35713299509",
+  "migration_head": "20260905104327",
+  "application_method": "not applicable; head was already present in production",
+  "verification_method": "live readiness probe of the deployed API",
+  "readiness_contract": {
+    "source": "apps/api/src/organizations/pg-organization-gateway.ts (isReady)",
+    "query": "select readiness.migration_version::text, readiness.rls_force_enabled from private.runtime_schema_readiness_v5() as readiness",
+    "predicate": "exactly one row AND migration_version === REQUIRED_DATABASE_MIGRATION_HEAD AND rls_force_enabled === true",
+    "required_head_constant": {
+      "file": "apps/api/src/config/production-admission.ts",
+      "name": "REQUIRED_DATABASE_MIGRATION_HEAD",
+      "value": "20260905104327"
+    }
+  },
+  "evidence": {
+    "endpoint": "https://api-production-5931.up.railway.app/health/ready",
+    "http_status": 200,
+    "body": {
+      "environment": "production",
+      "release_sha": "d4322bd95f7d90150fd68c220633a8a383617bb4",
+      "service": "api",
+      "status": "ready"
+    }
+  },
+  "conclusions": {
+    "production_migration_version_equals_release_head": true,
+    "rls_force_enabled": true,
+    "runtime_schema_readiness_v5_present": true,
+    "migrations_needed_applying": false,
+    "promoter_migration_check_is_local_only": true
+  },
+  "caveats": [
+    "The promoter's migration check compares files inside the signed source only; it never connects to production. The claim in this receipt rests entirely on the live readiness probe, not on the promoter.",
+    "A ready API proves the schema contract its own queries depend on. It is not a claim that every migration in the source was re-applied by this rollout, and no migration was applied by this rollout.",
+    "No authenticated production journey was executed against this release."
+  ]
+}

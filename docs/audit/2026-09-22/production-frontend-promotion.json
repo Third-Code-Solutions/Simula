@@ -1,0 +1,61 @@
+{
+  "rollout_id": "d93d3a65-4b50-474c-b91a-551d82ed3738",
+  "source_sha": "d4322bd95f7d90150fd68c220633a8a383617bb4",
+  "signed_release_run": "35713299509",
+  "recorded_at": "2026-09-22T13:57:48Z",
+  "promoter_result": "submitted",
+  "promoter_set_domains_promoted": false,
+  "promoter_set_health_verified": false,
+  "canonical_promotion": {
+    "performed_by": "explicit vercel promote after manual candidate verification",
+    "reason": "the promoter does not wait for provider builds; both candidates were confirmed READY before promotion"
+  },
+  "results": [
+    {
+      "target": {
+        "provider": "vercel",
+        "project": "prj_mE6A7XyuiBjb7j5OFPfa79wQR94v",
+        "scope": "pavi-2e9809a4",
+        "rollback_deployment": "dpl_5YTotbDvyCkuEteSgtyF9LdAipiR"
+      },
+      "candidate_id": "dpl_GN1cghJnXTSPJVfBkCx6aKHsNvCa",
+      "candidate_url": "https://simula-jvxvugit0-pavi-2e9809a4.vercel.app",
+      "candidate_state": "READY",
+      "canonical_domain": "https://simula-iota.vercel.app",
+      "domains_promoted": true,
+      "health_verified": true,
+      "health_endpoint": "https://simula-iota.vercel.app/api/health",
+      "health_body": {
+        "environment": "production",
+        "releaseSha": "d4322bd95f7d90150fd68c220633a8a383617bb4",
+        "service": "web",
+        "status": "ok"
+      }
+    },
+    {
+      "target": {
+        "provider": "vercel",
+        "project": "prj_tZ7PcEL9GAnhuMNqJCC7tCFvf8RO",
+        "scope": "pavi-2e9809a4",
+        "rollback_deployment": "dpl_6o5gweJUTbTSxquD2SgaUyF7UbPw"
+      },
+      "candidate_id": "dpl_9N99CtPoj2ixZCxVvkHdfe5yUEff",
+      "candidate_url": "https://simula-admin-65xpry80y-pavi-2e9809a4.vercel.app",
+      "candidate_state": "READY",
+      "canonical_domain": "https://simula-admin.vercel.app",
+      "domains_promoted": true,
+      "health_verified": true,
+      "health_endpoint": "https://simula-admin.vercel.app/api/health",
+      "health_body": {
+        "environment": "production",
+        "release_sha": "d4322bd95f7d90150fd68c220633a8a383617bb4",
+        "service": "admin",
+        "status": "ok"
+      }
+    }
+  ],
+  "caveats": [
+    "Candidate deployments remain behind Vercel Deployment Protection. Protection was deliberately left enabled; candidates were verified with the Vercel CLI rather than by weakening access control.",
+    "No authenticated production journey was executed against the promoted web or admin canonicals."
+  ]
+}
