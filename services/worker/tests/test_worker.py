@@ -694,7 +694,9 @@ class BlockingProvider:
 
     def run(self, request: ProviderRequest) -> ProviderResponse:
         del request
-        self.marker.write_text(str(os.getpid()))
+        scratch = self.marker.with_suffix(".partial")
+        scratch.write_text(str(os.getpid()))
+        os.replace(scratch, self.marker)
         while True:
             sleep(0.05)
 
@@ -711,13 +713,17 @@ async def test_cancel_running_v1_reaps_child_before_releasing_attempt(tmp_path: 
             provider=BlockingProvider(marker),
         )
     )
-    async with asyncio.timeout(10):
-        while not marker.exists():
-            if processing.done():
-                await processing
-                pytest.fail("provider did not start")
-            await asyncio.sleep(0.01)
-    child_pid = int(marker.read_text())
+    async with asyncio.timeout(30):
+        while True:
+            try:
+                child_pid = int(marker.read_text())
+            except OSError, ValueError:
+                if processing.done():
+                    await processing
+                    pytest.fail("provider did not start")
+                await asyncio.sleep(0.01)
+            else:
+                break
     processing.cancel()
     with pytest.raises(asyncio.CancelledError):
         await asyncio.wait_for(processing, 5)

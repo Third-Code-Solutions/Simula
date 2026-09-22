@@ -14,7 +14,9 @@ from simula_ai_engine.app import EngineProblem, _run_request_evaluation
 
 
 def _blocked(marker: str) -> None:
-    Path(marker).write_text(str(os.getpid()))
+    scratch = Path(f"{marker}.partial")
+    scratch.write_text(str(os.getpid()))
+    os.replace(scratch, Path(marker))
     while True:
         sleep(0.05)
 
@@ -44,12 +46,16 @@ async def test_engine_reaps_blocked_provider_before_releasing_capacity(
             timeout_seconds=3 if reason == "deadline" else 30,
         )
     )
-    async with asyncio.timeout(10):
-        while not marker.exists():
-            if task.done():
-                await task
-            await asyncio.sleep(0.01)
-    child_pid = int(marker.read_text())
+    async with asyncio.timeout(30):
+        while True:
+            try:
+                child_pid = int(marker.read_text())
+            except OSError, ValueError:
+                if task.done():
+                    await task
+                await asyncio.sleep(0.01)
+            else:
+                break
     if reason == "cancel":
         task.cancel()
     expected = (
