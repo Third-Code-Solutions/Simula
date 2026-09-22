@@ -1,6 +1,6 @@
 # Release target and security snapshot
 
-Observed 2026-09-05, approximately 09:33–09:36 UTC; F03 remediation independently reread at 09:40 UTC. This is a point-in-time inventory before primary-agent release work, not a claim that later deployments remain unchanged. Provider reads and the F08/F03 verification below were performed against authenticated accounts. No credentials or environment values are included. Hosted changes in this subtask were limited to the explicitly authorized F08 setting and F03 branch/environment protections.
+Observed 2026-09-05, approximately 09:33–09:36 UTC; F03 remediation independently reread at 09:40 UTC. This is a point-in-time inventory before primary-agent release work, not a claim that later deployments remain unchanged. Provider reads and the F08/F03 verification below were performed against authenticated accounts. No credentials or environment values are included. Hosted changes in this subtask were limited to the explicitly authorized F08 setting and F03 branch/environment protections. Superseded for current production identities by [the 2026-09-22 release result](../2026-09-22/RELEASE_RESULT.md).
 
 ## Identities and environments
 

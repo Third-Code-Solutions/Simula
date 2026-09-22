@@ -5,6 +5,10 @@ The redesigned web and admin applications are live. Application source is
 `v0.0.0-remediation.20260905.4`. Later documentation and promotion-tool maintenance
 commits are not the deployed application source.
 
+> Superseded for current production identities by the
+> [2026-09-22 release result](../2026-09-22/RELEASE_RESULT.md). This file remains
+> the record of the 2026-09-05 release.
+
 - Web: https://simula-iota.vercel.app
 - Admin: https://simula-admin.vercel.app
 - Required CI: https://github.com/kurtgav/Simula/actions/runs/33961708123

@@ -1,0 +1,29 @@
+{
+  "recorded_at": "2026-09-22T13:57:48Z",
+  "service": "dispatcher",
+  "railway_service_id": "042a83d1-75e6-4cda-918b-33918f02e2df",
+  "source_sha": "d4322bd95f7d90150fd68c220633a8a383617bb4",
+  "deployment_id": "eb7f07a0-b373-4695-972a-81b76ae3987d",
+  "deployed_by": "railway up from the independently verified signed source",
+  "deployed_outside_promoter": true,
+  "deviation_reason": "the promoter preflight requires a successful rollback anchor in provider history; dispatcher history held one CRASHED and four FAILED deployments and no SUCCESS deployment, so no anchor was available.",
+  "previous_failed_deployment": "380fb28c-8e31-4f7c-b2d1-eca568467471",
+  "rollback_anchor": null,
+  "result": "SUCCESS",
+  "verification": {
+    "startup_log_marker": "dispatcher_started",
+    "stability_recheck": "still running after a 300s re-check",
+    "classified_error_records_after_redeploy": 0
+  },
+  "root_cause_of_prior_crash": {
+    "symptom": "dispatcher process exited with an unhandled 'error' event from a pg pool",
+    "cause": "no 'error' listener was attached to the pg pools, so an idle-client error was thrown as an uncaught exception",
+    "fix": "one shared guardPoolErrors(pool) applied at both pool factories; the guard logs the error class only",
+    "commit": "5117c09"
+  },
+  "caveats": [
+    "Because this deployment bypassed the promoter, its source binding is the verified signed source rather than a promoter-issued provider receipt.",
+    "No rollback anchor exists for this service; recovery would require a fresh railway up from a verified source.",
+    "The dispatcher's runtime behavior was observed through its own startup and stability logs, not through a production job run."
+  ]
+}
