@@ -74,6 +74,8 @@ describe("PgRunOutboxDatabase", () => {
         ca: "trusted-ca",
         rejectUnauthorized: true,
       });
+      // A dropped connection must not escape as an uncaught `error` event.
+      expect(pool.listenerCount("error")).toBeGreaterThan(0);
     } finally {
       await pool.end();
     }
