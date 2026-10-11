@@ -243,7 +243,7 @@ class WorkerDatabase(WorkerExecutionGateway):
                 )
                 row = await cursor.fetchone()
                 schema_cursor = await connection.execute(
-                    "select * from private.runtime_schema_readiness_v5()"
+                    "select * from private.runtime_schema_readiness_v6()"
                 )
                 schema = await schema_cursor.fetchone()
             ready = (
@@ -270,7 +270,7 @@ class WorkerDatabase(WorkerExecutionGateway):
 
     async def runtime_observability_snapshot(self) -> RuntimeObservabilitySnapshot:
         row = await self._fetchone(
-            "select * from private.runtime_observability_snapshot_v5()",
+            "select * from private.runtime_observability_snapshot_v6()",
             (),
         )
         states = (

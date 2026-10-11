@@ -5412,6 +5412,22 @@ export type Database = {
           succeeded_count: number
         }[]
       }
+      runtime_observability_snapshot_v6: {
+        Args: never
+        Returns: {
+          cancel_requested_count: number
+          canceled_count: number
+          failed_count: number
+          migration_version: number
+          oldest_cancel_requested_age_seconds: number
+          queued_count: number
+          retrying_count: number
+          rls_force_enabled: boolean
+          running_count: number
+          stuck_lease_count: number
+          succeeded_count: number
+        }[]
+      }
       runtime_schema_readiness: {
         Args: never
         Returns: {
@@ -5441,6 +5457,13 @@ export type Database = {
         }[]
       }
       runtime_schema_readiness_v5: {
+        Args: never
+        Returns: {
+          migration_version: number
+          rls_force_enabled: boolean
+        }[]
+      }
+      runtime_schema_readiness_v6: {
         Args: never
         Returns: {
           migration_version: number

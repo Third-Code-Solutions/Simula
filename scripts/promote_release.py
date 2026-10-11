@@ -286,7 +286,12 @@ def previous_release_environment(target: dict[str, Any]) -> dict[str, str | None
         "SIMULA_PRODUCTION_ROLLOUT_ID": r"[0-9a-f-]{36}",
         "SIMULA_RELEASE_BUNDLE_SHA256": r"[0-9a-f]{64}",
         "SIMULA_RELEASE_SIGSTORE_BUNDLE_SHA256": r"[0-9a-f]{64}",
-        "SIMULA_RELEASE_PROVENANCE_URL": r"https://github\.com/kurtgav/Simula/actions/runs/[0-9]+",
+        # Existing production predates the repository transfer; retain its public
+        # provenance URL only so a partial rollout can restore those exact settings.
+        "SIMULA_RELEASE_PROVENANCE_URL": (
+            rf"https://github\.com/(?:{re.escape(REPOSITORY)}|kurtgav/Simula)"
+            r"/actions/runs/[0-9]+"
+        ),
     }
     raw = json.loads(command(["railway", "variable", "list", *railway_scope(target), "--json"]))
     previous: dict[str, str | None] = {}

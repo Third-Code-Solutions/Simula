@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from simula_core.runtime_admission import REQUIRED_DATABASE_MIGRATION_HEAD
+
 from tests.integration.test_restore_drill import _repository_migration_head
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,7 +14,8 @@ def test_restore_drill_tracks_the_exact_repository_migration_head() -> None:
     )
 
     assert _repository_migration_head() == expected
-    assert expected == "20260905104327"
+    assert expected == "20261010155547"
+    assert REQUIRED_DATABASE_MIGRATION_HEAD == expected
 
 
 def test_restore_drill_counts_every_current_application_table() -> None:

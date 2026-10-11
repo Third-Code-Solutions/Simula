@@ -135,6 +135,7 @@ export type CampaignLabSimulationResult = Readonly<{
   run_id: string;
   evidence_status: "Synthetic-only";
   result: Readonly<{
+    analysis_mode?: "synthetic_metrics" | "qualitative_public_service";
     sample_size: number;
     repetitions: number;
     overall_component_rankings: Readonly<Record<string, CampaignLabRanking>>;
@@ -153,11 +154,51 @@ export type CampaignLabSimulationResult = Readonly<{
       variants: ReadonlyArray<
         Readonly<{
           variant_key: string;
-          interviewable_agents: ReadonlyArray<Readonly<{ agent_id: string }>>;
+          interviewable_agents: ReadonlyArray<
+            Readonly<{
+              agent_id: string;
+              action_history?: ReadonlyArray<unknown>;
+              action_rationales?: ReadonlyArray<string>;
+              action_timestamps_ms?: ReadonlyArray<number>;
+              memory_entries?: ReadonlyArray<unknown>;
+            }>
+          >;
         }>
       >;
     }>;
+    provider_execution?: Readonly<{
+      provider: string;
+      model_name: string | null;
+      prompt_version: string;
+      provider_calls: number;
+      input_tokens: number;
+      output_tokens: number;
+      cost_microusd: number;
+      human_review_required: true;
+      receipts: ReadonlyArray<Readonly<Record<string, unknown>>>;
+    }>;
   }>;
+}>;
+export type CampaignLabProviderCapabilities = Readonly<{
+  live_available: boolean;
+  provider: "openai_compatible";
+  model_name: string | null;
+  prompt_version: "philippine_scenario_v1";
+  supported_languages: ReadonlyArray<"fil" | "taglish" | "en">;
+  supported_purposes: ReadonlyArray<
+    | "commercial_marketing"
+    | "brand_communication"
+    | "product_launch"
+    | "public_service"
+  >;
+  limits: Readonly<{
+    max_agents: number;
+    max_rounds: number;
+    max_repetitions: number;
+    max_calls: number;
+    max_cost_microusd: number;
+  }>;
+  unavailable_reason: string | null;
 }>;
 export type Stimulus = Schemas["StimulusResponse"];
 export type StimulusVersion = Schemas["StimulusVersionResponse"];
@@ -614,6 +655,15 @@ export function listCampaignLabCampaigns(
     domainV1Path(
       `/campaign-lab/campaigns?project_id=${encodeURIComponent(projectId)}${offset ? `&offset=${offset}` : ""}`,
     ),
+    { signal },
+  );
+}
+
+export function getCampaignLabProviderCapabilities(
+  signal?: AbortSignal,
+): Promise<CampaignLabProviderCapabilities> {
+  return request<CampaignLabProviderCapabilities>(
+    domainV1Path("/campaign-lab/provider-capabilities"),
     { signal },
   );
 }

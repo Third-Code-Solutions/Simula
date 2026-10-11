@@ -130,6 +130,17 @@
   font-family: monospace;
   margin-top: 0.5rem;
 }
+.choiceGroup {
+  display: grid;
+  gap: 0.6rem;
+  border: 1px solid var(--line, #d7dcd4);
+  padding: 1rem;
+  margin: 0;
+}
+.choiceGroup legend {
+  padding-inline: 0.35rem;
+  font-weight: 650;
+}
 @media (max-width: 720px) {
   .fields {
     grid-template-columns: minmax(0, 1fr);

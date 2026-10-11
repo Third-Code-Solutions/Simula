@@ -499,6 +499,7 @@ class ExternalStructuredProviderAdapter(MethodologyProvider):
         estimated_cost = (
             estimated_input_tokens * self.pricing.input_microusd_per_million_tokens
             + self.pricing.maximum_output_tokens * self.pricing.output_microusd_per_million_tokens
+            + 999_999
         ) // 1_000_000
         if estimated_cost > request.cost_ceiling_microusd:
             raise ValueError("provider estimated cost ceiling exceeded")
@@ -519,6 +520,7 @@ class ExternalStructuredProviderAdapter(MethodologyProvider):
         computed_cost = (
             response.usage.input_tokens * self.pricing.input_microusd_per_million_tokens
             + response.usage.output_tokens * self.pricing.output_microusd_per_million_tokens
+            + 999_999
         ) // 1_000_000
         if response.usage.cost_microusd != computed_cost:
             raise ValueError("provider cost does not match approved pricing")

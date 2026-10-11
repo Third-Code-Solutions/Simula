@@ -1440,7 +1440,7 @@ export class PgOrganizationGateway
         select
           readiness.migration_version::text as migration_version,
           readiness.rls_force_enabled
-        from private.runtime_schema_readiness_v5() as readiness
+        from private.runtime_schema_readiness_v6() as readiness
         `,
       );
       return (

@@ -29,6 +29,22 @@ vi.mock("@/lib/api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api")>()),
   getProject: vi.fn(async () => ({ organization_id: "org" })),
   getMethodologyRegistry: vi.fn(async () => ({ population_frames: [] })),
+  getCampaignLabProviderCapabilities: vi.fn(async () => ({
+    live_available: false,
+    provider: "openai_compatible",
+    model_name: null,
+    prompt_version: "philippine_scenario_v1",
+    supported_languages: ["fil", "taglish", "en"],
+    supported_purposes: ["commercial_marketing", "public_service"],
+    limits: {
+      max_agents: 10,
+      max_rounds: 1,
+      max_repetitions: 3,
+      max_calls: 100,
+      max_cost_microusd: 1_000_000,
+    },
+    unavailable_reason: "Live provider is not configured.",
+  })),
   listCampaignLabForecastDatasets: vi.fn(async () => ({ items: [] })),
   listCampaignLabRuns: mocks.history,
   getCampaignLabSimulationStatus: mocks.status,
@@ -162,6 +178,46 @@ describe("Campaign Lab request lifecycle", () => {
     expect(mocks.create).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Campaign name")).toHaveValue("");
+  });
+
+  it("creates the neutral public-service starter without a persuasion claim", async () => {
+    mocks.list.mockResolvedValue({ items: [] });
+    mocks.create.mockResolvedValue({
+      campaign_id: "public-one",
+      status: "draft",
+    });
+    render(<CampaignLabWorkspace projectId="project" />);
+    await screen.findByText(/No Campaign Lab workspace yet/);
+    fireEvent.change(screen.getByLabelText("Starter scenario"), {
+      target: { value: "public_service" },
+    });
+    fireEvent.change(screen.getByLabelText("Campaign name"), {
+      target: { value: "Public service explainer" },
+    });
+    fireEvent.change(screen.getByLabelText("Decision objective"), {
+      target: { value: "Check whether service instructions are clear" },
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Create message test" }),
+    );
+    await waitFor(() => expect(mocks.create).toHaveBeenCalledTimes(1));
+    expect(mocks.create.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({ purpose: "public_service" }),
+    );
+  });
+
+  it("keeps live execution disabled when server capabilities are unavailable", async () => {
+    mocks.list.mockResolvedValue({
+      items: [{ id: "one", name: "First campaign", status: "draft" }],
+    });
+    render(<CampaignLabWorkspace projectId="project" />);
+    const provider = await screen.findByLabelText("Simulation provider");
+    expect(provider).toHaveValue("deterministic");
+    expect(screen.getByRole("option", { name: "Live model" })).toBeDisabled();
+    expect(
+      await screen.findByText(/Live provider is not configured/),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Wika ng mensahe")).toHaveValue("taglish");
   });
 
   it("reuses the logical key after an uncertain creation failure", async () => {
@@ -331,6 +387,69 @@ describe("Campaign Lab request lifecycle", () => {
         name: "Repeated component findings",
       }),
     ).toBeInTheDocument();
+  });
+  it("shows public-service evidence without rankings or persuasion framing", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/?campaign=public-one&simulation=public-run#results",
+    );
+    mocks.list.mockResolvedValue({
+      items: [
+        {
+          id: "public-one",
+          name: "Service explainer",
+          purpose: "public_service",
+          status: "draft",
+        },
+      ],
+    });
+    mocks.status.mockResolvedValue({
+      ...queued,
+      id: "public-run",
+      campaign_id: "public-one",
+      status: "succeeded",
+    });
+    mocks.result.mockResolvedValue({
+      run_id: "public-run",
+      evidence_status: "Synthetic-only",
+      result: {
+        analysis_mode: "qualitative_public_service",
+        sample_size: 2,
+        repetitions: 1,
+        overall_component_rankings: {},
+        cohort_findings: [],
+        synthetic_observations: [],
+        behavioral_diagnostics: {
+          variants: [
+            {
+              variant_key: "control",
+              interviewable_agents: [
+                {
+                  agent_id: "agent-one",
+                  action_history: ["read_message", "ask_for_details"],
+                  action_rationales: ["Needed context", "Checked instructions"],
+                  action_timestamps_ms: [0, 120],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+    render(<CampaignLabWorkspace projectId="project" />);
+    expect(
+      await screen.findByRole("heading", {
+        name: "Mga tanong at simulation evidence",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Repeated component findings"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/top-rank probability/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Survey calibration")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText("Agent evidence agent-one"));
+    expect(screen.getByText(/Needed context/)).toBeInTheDocument();
   });
   it("shares initialization across StrictMode effect replay", async () => {
     mocks.list.mockResolvedValue({

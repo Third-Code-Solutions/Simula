@@ -21,6 +21,23 @@ SHA = "a" * 40
 REF = "refs/tags/v1.0.0-test"
 
 
+def test_release_identity_uses_current_repository() -> None:
+    assert REPOSITORY == "Third-Code-Solutions/Simula"
+    environment = promotion.release_environment(
+        {
+            "sha": SHA,
+            "migration_head": "20260101000000",
+            "bundle_sha256": "b" * 64,
+            "sigstore_sha256": "c" * 64,
+            "run_id": "123",
+        },
+        "018f274b-3c77-4b22-b749-c9274230ef9a",
+    )
+    assert environment["SIMULA_RELEASE_PROVENANCE_URL"] == (
+        "https://github.com/Third-Code-Solutions/Simula/actions/runs/123"
+    )
+
+
 def test_cleanup_lock_preserves_original_promotion_error(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
@@ -100,7 +117,7 @@ def fixture_bundle(path: Path, *, unsafe: bool = False, tamper: bool = False) ->
         archive_entry(archive, "../escape" if unsafe else "uv.lock", b"locked")
     manifest = {
         "version": 1,
-        "repository": "kurtgav/Simula",
+        "repository": REPOSITORY,
         "workflow": WORKFLOW,
         "sha": SHA,
         "ref": REF,
@@ -338,6 +355,9 @@ def test_previous_metadata_never_copies_unrelated_secrets(monkeypatch: pytest.Mo
             {
                 "DATABASE_URL": "synthetic-secret-must-not-be-retained",
                 "SIMULA_RELEASE_SHA": SHA,
+                "SIMULA_RELEASE_PROVENANCE_URL": (
+                    "https://github.com/kurtgav/Simula/actions/runs/12345678"
+                ),
             }
         ),
     )
@@ -345,6 +365,9 @@ def test_previous_metadata_never_copies_unrelated_secrets(monkeypatch: pytest.Mo
         {"project": "a" * 32, "environment": "b" * 32, "service": "c" * 32}
     )
     assert previous["SIMULA_RELEASE_SHA"] == SHA
+    assert previous["SIMULA_RELEASE_PROVENANCE_URL"] == (
+        "https://github.com/kurtgav/Simula/actions/runs/12345678"
+    )
     assert "DATABASE_URL" not in previous
     assert "synthetic-secret" not in json.dumps(previous)
 

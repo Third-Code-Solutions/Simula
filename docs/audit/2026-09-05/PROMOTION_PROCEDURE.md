@@ -15,6 +15,8 @@ unverified until separate smoke checks pass.
 
 - Use the exact successful final release run and its downloaded artifact. A
   diagnostic tag or locally passing tree is not a production release.
+- The release identity is `Third-Code-Solutions/Simula`; repository transfers
+  require updating and retesting both signing and runtime provenance admission.
 - Confirm current provider account/project/environment/service IDs against
   `RELEASE_TARGETS.md`; refresh the inventory because those records are snapshots.
 - Confirm database migration head and compatibility independently. The plan's

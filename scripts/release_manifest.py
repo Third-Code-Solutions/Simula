@@ -11,7 +11,7 @@ from pathlib import Path
 from shutil import which
 
 ROOT = Path(__file__).resolve().parents[1]
-REPOSITORY = "kurtgav/Simula"
+REPOSITORY = "Third-Code-Solutions/Simula"
 WORKFLOW = ".github/workflows/release.yml"
 
 

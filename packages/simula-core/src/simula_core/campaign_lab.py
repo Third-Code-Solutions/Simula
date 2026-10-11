@@ -28,6 +28,7 @@ from simula_core.methodology import (
     FrozenModel,
     Key,
     MethodologyEngine,
+    MethodologyProvider,
     MetricScore,
     PopulationFrameVersion,
     ReactionDistribution,
@@ -474,6 +475,7 @@ class CampaignLabBehavioralAgentEvidence(FrozenModel):
     repetition_index: int = Field(ge=0, le=29)
     exposure_history: tuple[str, ...] = Field(min_length=1, max_length=50)
     action_history: tuple[str, ...] = Field(min_length=1, max_length=50)
+    action_rationales: tuple[str, ...] = Field(default=(), max_length=50)
     action_timestamps_ms: tuple[int, ...] = Field(min_length=1, max_length=50)
     memory_entries: tuple[Mapping[str, Any], ...] = Field(max_length=32)
     evidence_event_ids: tuple[UUID, ...] = Field(min_length=1, max_length=100)
@@ -518,13 +520,15 @@ class CampaignLabBehavioralDiagnostics(FrozenModel):
 
 
 class CampaignLabSimulationResult(FrozenModel):
+    provider_execution: Mapping[str, Any] | None = None
+    analysis_mode: Literal["synthetic_metrics", "qualitative_public_service"] = "synthetic_metrics"
     schema_version: Literal[1] = 1
     campaign_id: UUID
     evidence_status: Literal["Synthetic-only"] = "Synthetic-only"
     methodology_version: str
     population_checksum_sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     configuration: CampaignLabSimulationConfiguration
-    variants: tuple[CampaignLabVariantResult, ...] = Field(min_length=2)
+    variants: tuple[CampaignLabVariantResult, ...]
     overall_component_rankings: Mapping[str, RepeatedVariantRankingResult]
     sample_size: int = Field(ge=10)
     repetitions: int = Field(ge=3)
@@ -536,8 +540,24 @@ class CampaignLabSimulationResult(FrozenModel):
         default=(), max_length=1000
     )
 
+    @model_validator(mode="after")
+    def analysis_contract(self) -> Self:
+        if self.analysis_mode == "synthetic_metrics" and len(self.variants) < 2:
+            raise ValueError("metric analysis requires at least two variants")
+        if self.analysis_mode == "qualitative_public_service" and (
+            self.variants
+            or self.overall_component_rankings
+            or self.cohort_findings
+            or self.synthetic_observations
+        ):
+            raise ValueError(
+                "public-service qualitative analysis cannot contain optimization metrics"
+            )
+        return self
+
 
 class SyntheticPersonaInterview(FrozenModel):
+    provider_execution: Mapping[str, Any] | None = None
     interview_id: UUID
     persona_id: str
     variant_key: Key
@@ -1219,6 +1239,7 @@ def _behavioral_agent_evidence(
                     for action in actions
                 ),
                 action_history=tuple(action.action for action in actions),
+                action_rationales=tuple(action.synthetic_rationale for action in actions),
                 action_timestamps_ms=tuple(action.action_timestamp_ms for action in actions),
                 memory_entries=tuple(entry.model_dump(mode="json") for entry in memory.entries),
                 evidence_event_ids=tuple(action.event_id for action in actions),
@@ -1233,6 +1254,8 @@ def _run_behavioral_diagnostics(
     request: CampaignLabSimulationRequest,
     *,
     check_deadline: Callable[[], None],
+    provider_factory: Callable[[CampaignLabVariant], behavioral.BehavioralDecisionProvider]
+    | None = None,
 ) -> CampaignLabBehavioralDiagnostics:
     """Run the replayable event engine over the same weighted aggregate design."""
 
@@ -1248,10 +1271,14 @@ def _run_behavioral_diagnostics(
         seed=request.configuration.random_seed,
         sparse_cell_threshold=request.configuration.sparse_cell_threshold,
     )
-    provider = behavioral.DeterministicTieredProvider()
     synthesizer = behavioral.DeterministicNarrativeSynthesizer()
     variant_diagnostics: list[CampaignLabBehavioralVariantDiagnostic] = []
     for variant in request.variants:
+        provider = (
+            provider_factory(variant)
+            if provider_factory
+            else behavioral.DeterministicTieredProvider()
+        )
         runs: list[behavioral.BehavioralRunResult] = []
         for repetition_index in range(request.configuration.repetitions):
             check_deadline()
@@ -1286,7 +1313,7 @@ def _run_behavioral_diagnostics(
                 psychographics=psychographics,
                 fleet_configuration=behavioral.AgentFleetConfiguration(
                     agent_count=agent_count,
-                    llm_agent_count=0,
+                    llm_agent_count=agent_count if provider_factory else 0,
                     minimum_per_cohort=1,
                     seed=request.configuration.random_seed,
                     network_topology=request.configuration.network_topology,
@@ -1410,6 +1437,11 @@ def run_campaign_lab_simulation(
     request: CampaignLabSimulationRequest,
     *,
     methodology_version: str = "campaign_lab_population_weighted_v1",
+    cohort_provider_factory: Callable[[CampaignLabVariant], MethodologyProvider] | None = None,
+    behavioral_provider_factory: Callable[
+        [CampaignLabVariant], behavioral.BehavioralDecisionProvider
+    ]
+    | None = None,
 ) -> CampaignLabSimulationResult:
     """Run all variants repeatedly over one frozen weighted aggregate frame."""
 
@@ -1419,7 +1451,10 @@ def run_campaign_lab_simulation(
         if monotonic() >= deadline_at:
             raise TimeoutError("Campaign Lab whole-job deadline exceeded")
 
-    engine = MethodologyEngine(DeterministicCohortProvider())
+    if request.configuration.provider != "deterministic" and (
+        cohort_provider_factory is None or behavioral_provider_factory is None
+    ):
+        raise ValueError("live provider requires both injected execution providers")
     sampling = SamplingConfiguration(
         sample_size=request.configuration.panel_size,
         minimum_per_cell=request.configuration.sampling_minimum_per_cell,
@@ -1433,7 +1468,15 @@ def run_campaign_lab_simulation(
         stability_tolerance=10.0,
     )
     repeated_by_variant: dict[str, RepeatedMethodologyResult] = {}
+    qualitative = request.purpose == "public_service"
     for variant in request.variants:
+        if qualitative:
+            break
+        engine = MethodologyEngine(
+            cohort_provider_factory(variant)
+            if cohort_provider_factory
+            else DeterministicCohortProvider()
+        )
         repeated_by_variant[variant.key] = run_repeated_methodology(
             engine,
             run_group_id=uuid5(request.campaign_id, f"campaign-lab:{variant.key}"),
@@ -1446,11 +1489,13 @@ def run_campaign_lab_simulation(
             repetition_configuration=repeated_configuration,
             check_deadline=check_deadline,
         )
-    rankings = _rankings(repeated_by_variant)
-    cohort_findings = _cohort_findings(request, repeated_by_variant)
+    rankings = {} if qualitative else _rankings(repeated_by_variant)
+    cohort_findings = () if qualitative else _cohort_findings(request, repeated_by_variant)
     check_deadline()
-    behavioral_diagnostics = _run_behavioral_diagnostics(request, check_deadline=check_deadline)
-    synthetic_observations = _synthetic_observations(repeated_by_variant)
+    behavioral_diagnostics = _run_behavioral_diagnostics(
+        request, check_deadline=check_deadline, provider_factory=behavioral_provider_factory
+    )
+    synthetic_observations = () if qualitative else _synthetic_observations(repeated_by_variant)
     variant_results = tuple(
         CampaignLabVariantResult(
             variant_key=variant.key,
@@ -1458,7 +1503,7 @@ def run_campaign_lab_simulation(
             component_rankings=rankings,
             cohort_weights=_population_weight_rows(request.cohort),
         )
-        for variant in request.variants
+        for variant in (() if qualitative else request.variants)
     )
     payload = {
         "campaign_id": str(request.campaign_id),
@@ -1474,6 +1519,7 @@ def run_campaign_lab_simulation(
     checksum = sha256(canonical_json_dumps(payload)).hexdigest()
     check_deadline()
     return CampaignLabSimulationResult(
+        analysis_mode="qualitative_public_service" if qualitative else "synthetic_metrics",
         campaign_id=request.campaign_id,
         methodology_version=methodology_version,
         population_checksum_sha256=request.cohort.population_frame.checksum_sha256,
@@ -1579,12 +1625,62 @@ def build_campaign_lab_report(
         ],
     }
     variant_component_evidence = _synthetic_variant_component_evidence(result)
+    qualitative = result.analysis_mode == "qualitative_public_service"
+    language = request.variants[0].language
+    summary = (
+        "This report explores synthetic questions and explanations about public-service "
+        "messages. It does not rank persuasion, estimate public support, or forecast votes."
+        if qualitative
+        else "This report compares synthetic responses across authored marketing variants. "
+        "Component metrics are experimental diagnostics, not measured customer behavior."
+    )
+    revisions = (
+        "Review the recorded explanations with a Filipino researcher.",
+        "Check comprehension with consenting participants before making decisions.",
+    )
+    if language == "fil":
+        summary = (
+            "Sinusuri ng ulat ang mga tanong at paliwanag na likha ng simulation tungkol sa "
+            "serbisyong publiko. Hindi nito sinusukat ang suporta ng publiko o hinuhulaan "
+            "ang boto. Walang ranggo sa panghihikayat."
+            if qualitative
+            else "Inihahambing ng ulat ang mga tugong likha ng simulation sa mga mensaheng "
+            "pangmarketing. Pansubok ang mga sukatan; hindi ito aktuwal na asal ng mamimili."
+        )
+        revisions = (
+            "Ipasuri sa Pilipinong mananaliksik ang mga naitalang paliwanag.",
+            "Suriin ang pag-unawa kasama ang mga kalahok na pumayag bago magpasya.",
+        )
+    elif language == "taglish":
+        summary = (
+            "Sinusuri ng report ang synthetic questions at explanations tungkol sa "
+            "public-service messages. Walang persuasion ranking, public-support estimate, "
+            "o vote forecast. Hindi ito sagot ng totoong respondents."
+            if qualitative
+            else "Kinukumpara ng report ang synthetic responses sa marketing variants. "
+            "Experimental ang metrics; hindi ito measured behavior ng totoong customers."
+        )
+        revisions = (
+            "I-review ang recorded explanations kasama ang Filipino researcher.",
+            "I-check ang comprehension sa consenting participants bago magdesisyon.",
+        )
+    qualitative_observations = tuple(
+        {
+            "variant_key": variant.variant_key,
+            "agent_id": str(agent.agent_id),
+            "explanations": list(agent.action_rationales),
+            "evidence_event_ids": [str(event_id) for event_id in agent.evidence_event_ids],
+            "evidence_status": "Synthetic-only",
+        }
+        for variant in (
+            result.behavioral_diagnostics.variants
+            if qualitative and result.behavioral_diagnostics is not None
+            else ()
+        )
+        for agent in variant.interviewable_agents
+    )
     return CampaignLabReport(
-        executive_summary=(
-            "This report compares aggregate, population-weighted synthetic runs across "
-            f"{len(request.variants)} authored variants. It contains component metrics and "
-            "stability diagnostics, not an LLM-invented viral score or vote-share forecast."
-        ),
+        executive_summary=summary,
         campaign_objective=request.objective,
         variants_tested=tuple(variant.key for variant in request.variants),
         audience_cohort_definition=request.cohort.model_dump(mode="json"),
@@ -1598,6 +1694,9 @@ def build_campaign_lab_report(
         model_and_prompt_versions=model_versions,
         overall_findings={
             **findings,
+            "analysis_mode": result.analysis_mode,
+            "qualitative_observations": qualitative_observations,
+            "provider_execution": result.provider_execution,
             "variant_component_evidence": variant_component_evidence,
             "evidence_status": "Synthetic-only",
         },
@@ -1654,12 +1753,7 @@ def build_campaign_lab_report(
             "stability": findings,
         },
         limitations=result.limitations,
-        recommended_revisions=(
-            "Review variant component metrics, sentiment categories, and risk indicators with "
-            "a human researcher; do not collapse them into one score.",
-            "Validate leading component findings with consented survey evidence.",
-            "Run a blind historical backtest before making consequential decisions.",
-        ),
+        recommended_revisions=revisions,
         required_real_world_validation=(
             "Human-reviewed Filipino and Taglish comprehension evaluation.",
             "Consent-based survey calibration with declared sampling and weighting.",

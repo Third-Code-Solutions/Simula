@@ -121,6 +121,7 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
     "/api/v1/campaign-lab/forecasts/{run_id}",
     "/api/v1/campaign-lab/interviews/runs/{run_id}",
     "/api/v1/campaign-lab/interviews/{artifact_id}",
+    "/api/v1/campaign-lab/provider-capabilities",
     "/api/v1/campaign-lab/reports/bound/runs/{run_id}",
     "/api/v1/campaign-lab/reports/bound/runs/{run_id}/export",
     "/api/v1/campaign-lab/reports/bound/runs/{run_id}/review",
@@ -181,6 +182,12 @@ test("P2-04 OpenAPI is generated from the FastAPI authority", async () => {
   assert.ok(document.paths["/api/v1/runs/{run_id}/result"].get);
   assert.ok(document.paths["/api/v1/reports/{report_id}/shares"].post);
   assert.ok(document.paths["/api/v1/shared-reports/{token}"].get);
+  assert.ok(document.paths["/api/v1/campaign-lab/provider-capabilities"].get);
+  assert.ok(document.components.schemas.InterviewCreate.properties.persona);
+  assert.equal(
+    document.components.schemas.InterviewCreate.required.includes("persona"),
+    false,
+  );
   assert.ok(
     document.paths["/api/v1/variant-groups/{variant_group_id}/comparison"].get,
   );

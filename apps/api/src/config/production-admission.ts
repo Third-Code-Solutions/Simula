@@ -1,6 +1,6 @@
 import type { RuntimeEnvironment } from "./redis-connection";
 
-export const REQUIRED_DATABASE_MIGRATION_HEAD = "20260905104327";
+export const REQUIRED_DATABASE_MIGRATION_HEAD = "20261010155547";
 
 export interface ProductionAdmission {
   readonly rolloutId: string;
@@ -47,7 +47,9 @@ function provenanceUrl(
     value.protocol !== "https:" ||
     value.hostname !== "github.com" ||
     value.port !== "" ||
-    !/^\/kurtgav\/Simula\/actions\/runs\/[0-9]+$/.test(value.pathname) ||
+    !/^\/Third-Code-Solutions\/Simula\/actions\/runs\/[0-9]+$/.test(
+      value.pathname,
+    ) ||
     value.username !== "" ||
     value.password !== "" ||
     value.search !== "" ||

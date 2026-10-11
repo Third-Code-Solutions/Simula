@@ -359,3 +359,29 @@ def test_simulation_uses_one_deadline_across_all_phases(
     with pytest.raises(TimeoutError, match="whole-job deadline exceeded"):
         run_campaign_lab_simulation(_request())
     assert calls == (2 if phase == "methodology" else 1)
+
+
+@pytest.mark.parametrize(
+    ("language", "summary_word"), [("fil", "Sinusuri"), ("taglish", "report"), ("en", "report")]
+)
+def test_public_service_report_is_localized_and_has_no_rankings(
+    language: str, summary_word: str
+) -> None:
+    original = _request()
+    request = original.model_copy(
+        update={
+            "purpose": "public_service",
+            "variants": tuple(
+                variant.model_copy(update={"language": language}) for variant in original.variants
+            ),
+        }
+    )
+    result = run_campaign_lab_simulation(request)
+    report = build_campaign_lab_report(request, result)
+    assert result.analysis_mode == "qualitative_public_service"
+    assert report.overall_findings["analysis_mode"] == "qualitative_public_service"
+    assert report.overall_findings["variant_component_evidence"] == {}
+    assert report.overall_findings["qualitative_observations"]
+    assert report.confidence_and_uncertainty["stability"] == {}
+    assert report.cohort_level_findings == ()
+    assert summary_word in report.executive_summary

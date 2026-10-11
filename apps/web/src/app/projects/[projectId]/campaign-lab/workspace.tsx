@@ -27,6 +27,7 @@ import {
   type CampaignLabResearchRun,
   type CampaignLabSimulationResult,
   type CampaignLabRunStatus,
+  type CampaignLabProviderCapabilities,
   createCampaignLabCampaign,
   createCampaignLabAggregateForecast,
   createCampaignLabComplianceReview,
@@ -45,6 +46,7 @@ import {
   getCampaignLabResearchRun,
   getCampaignLabSimulationResults,
   getCampaignLabSimulationStatus,
+  getCampaignLabProviderCapabilities,
   getCampaignLabSurveyImportRun,
   getMethodologyRegistry,
   getProject,
@@ -197,6 +199,10 @@ function officialPopulationFrame(
 function starterRequest(
   campaignId: string,
   selectedPopulationFrame?: PopulationFrameSelection,
+  language: "fil" | "taglish" | "en" = "taglish",
+  purpose: "commercial_marketing" | "public_service" = "commercial_marketing",
+  provider: "deterministic" | "openai_compatible" = "deterministic",
+  capabilities?: CampaignLabProviderCapabilities,
 ): Record<string, unknown> {
   const fixtureSource = {
     source_id: "philippine_population_frame",
@@ -275,8 +281,18 @@ function starterRequest(
   return {
     campaign_id: campaignId,
     objective:
-      "Compare two authored messages using aggregate population weighting.",
-    purpose: "commercial_marketing",
+      purpose === "public_service"
+        ? language === "en"
+          ? "Review whether two neutral public-service messages are clear and understandable."
+          : language === "taglish"
+            ? "I-check kung clear at madaling maintindihan ang dalawang neutral public-service messages."
+            : "Suriin kung malinaw at nauunawaan ang dalawang neutral na mensahe tungkol sa serbisyong pampubliko."
+        : language === "en"
+          ? "Compare the clarity and tone of two commercial messages."
+          : language === "taglish"
+            ? "I-compare ang clarity at dating ng dalawang commercial messages."
+            : "Ihambing ang linaw at dating ng dalawang mensaheng pang-komersyo.",
+    purpose,
     cohort: {
       cohort_id: "30000000-0000-4000-8000-000000000202",
       name: cohortName,
@@ -319,43 +335,77 @@ function starterRequest(
     variants: [
       {
         key: "control",
-        label: "Control message",
-        content: "A clear, evidence-led message for the community.",
-        language: "en",
+        label: purpose === "public_service" ? "Paliwanag A" : "Mensaheng A",
+        content:
+          purpose === "public_service"
+            ? language === "en"
+              ? "Learn the schedule, coverage, and process for accessing the public service in your area."
+              : language === "taglish"
+                ? "Alamin ang schedule, coverage, at process para makuha ang public service sa inyong lugar."
+                : "Alamin ang iskedyul, saklaw, at paraan ng pagkuha ng serbisyong pampubliko sa inyong lugar."
+            : language === "en"
+              ? "Practical value for daily life—review the clear details before choosing."
+              : language === "taglish"
+                ? "Sulit at practical para sa everyday use—check the clear details bago pumili."
+                : "Sulit at praktikal para sa araw-araw—tingnan ang malinaw na detalye bago pumili.",
+        language,
         content_type: "social_post",
       },
       {
         key: "variant_b",
-        label: "Variant B",
-        content: "A warmer message that explains the same community benefit.",
-        language: "en",
+        label: purpose === "public_service" ? "Paliwanag B" : "Mensaheng B",
+        content:
+          purpose === "public_service"
+            ? language === "en"
+              ? "Here is a neutral service guide: who is covered, which documents are needed, and where to ask questions."
+              : language === "taglish"
+                ? "Narito ang neutral service guide: sino ang covered, anong documents ang kailangan, at saan puwedeng magtanong."
+                : "Narito ang neutral na gabay sa serbisyo: sino ang sakop, anong dokumento ang kailangan, at saan maaaring magtanong."
+            : language === "en"
+              ? "Made for real life: simple benefits, clear terms, and details you can review."
+              : language === "taglish"
+                ? "Made for real life: simple benefits, malinaw na terms, at details na puwedeng i-check."
+                : "Gawa para sa tunay na buhay: payak na pakinabang, malinaw na tuntunin, at impormasyong maaaring suriin.",
+        language,
         content_type: "social_post",
       },
     ],
     configuration: {
       random_seed: 20260802,
-      panel_size: 10,
-      repetitions: 3,
+      panel_size: Math.min(10, capabilities?.limits.max_agents ?? 10),
+      repetitions: Math.min(3, capabilities?.limits.max_repetitions ?? 3),
       rounds: 1,
       network_topology: "independent",
-      provider: "deterministic",
-      model_name: "deterministic-methodology-engine",
+      provider,
+      model_name:
+        provider === "openai_compatible"
+          ? capabilities?.model_name
+          : "deterministic-methodology-engine",
       model_parameters: {},
-      prompt_version: "none-deterministic-v1",
+      prompt_version:
+        provider === "openai_compatible"
+          ? capabilities?.prompt_version
+          : "none-deterministic-v1",
       research_corpus_version: usingOfficialPopulationFrame
         ? "psa_openstat_cph_2020-table_1_9_2020"
         : "fixture-v1",
       persona_generation_version: "structured-persona-v1",
       scoring_version: "component-metrics-v1",
       simulation_engine_version: "campaign-lab-population-weighted-v1",
-      cost_ceiling_microusd: 0,
-      timeout_seconds: 30,
+      cost_ceiling_microusd:
+        provider === "openai_compatible"
+          ? Math.min(
+              1_000_000,
+              capabilities?.limits.max_cost_microusd ?? 1_000_000,
+            )
+          : 0,
+      timeout_seconds: provider === "openai_compatible" ? 600 : 30,
       sampling_minimum_per_cell: 1,
       sampling_maximum_cells: 10,
       sparse_cell_threshold: 1,
     },
     research_sources: [source],
-    ranking_metric: "clarity",
+    ...(purpose === "public_service" ? {} : { ranking_metric: "clarity" }),
   };
 }
 
@@ -590,6 +640,15 @@ function campaignId(campaign: CampaignLabCampaign): string {
 
 function percent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
+}
+
+function usdFromMicrousd(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 6,
+  }).format(value / 1_000_000);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -956,6 +1015,19 @@ function CampaignLabSession({
   const [result, setResult] = useState<CampaignLabSimulationResult>();
   const [resultLoadAttempt, setResultLoadAttempt] = useState(0);
   const [requestText, setRequestText] = useState("");
+  const [scenarioPurpose, setScenarioPurpose] = useState<
+    "commercial_marketing" | "public_service"
+  >("commercial_marketing");
+  const [scenarioLanguage, setScenarioLanguage] = useState<
+    "fil" | "taglish" | "en"
+  >("taglish");
+  const [simulationProvider, setSimulationProvider] = useState<
+    "deterministic" | "openai_compatible"
+  >("deterministic");
+  const [providerCapabilities, setProviderCapabilities] =
+    useState<CampaignLabProviderCapabilities>();
+  const [providerCapabilitiesLoaded, setProviderCapabilitiesLoaded] =
+    useState(false);
   const [selectedPopulationFrame, setSelectedPopulationFrame] =
     useState<PopulationFrameSelection>();
   const [error, setError] = useState<string>();
@@ -996,11 +1068,28 @@ function CampaignLabSession({
   const [interviewVariantKey, setInterviewVariantKey] = useState("control");
   const [interviewAgentId, setInterviewAgentId] = useState("");
   const [interviewQuestion, setInterviewQuestion] = useState(
-    "What happened in this simulation?",
+    "Ano ang naging reaksyon mo sa mensahe, at aling bahagi ng simulation trace ang pinagbabatayan mo?",
   );
   const [interviewRun, setInterviewRun] = useState<CampaignLabDurableRun>();
   const [busyStage, setBusyStage] = useState<string>();
   const [audit, setAudit] = useState<CampaignLabAuditPage>();
+
+  useEffect(() => {
+    let stale = false;
+    void getCampaignLabProviderCapabilities(viewSignal())
+      .then((capabilities) => {
+        if (!stale) setProviderCapabilities(capabilities);
+      })
+      .catch(() => {
+        if (!stale) setProviderCapabilities(undefined);
+      })
+      .finally(() => {
+        if (!stale) setProviderCapabilitiesLoaded(true);
+      });
+    return () => {
+      stale = true;
+    };
+  }, []);
 
   const adoptResearchRun = useCallback((nextRun: CampaignLabResearchRun) => {
     setResearchRun(nextRun);
@@ -1132,9 +1221,18 @@ function CampaignLabSession({
           ) ?? items[0];
         if (first) {
           const id = campaignId(first);
+          const purpose =
+            first.purpose === "public_service"
+              ? "public_service"
+              : "commercial_marketing";
+          setScenarioPurpose(purpose);
           setSelectedCampaignId(id);
           setRequestText(
-            JSON.stringify(starterRequest(id, nextPopulationFrame), null, 2),
+            JSON.stringify(
+              starterRequest(id, nextPopulationFrame, "taglish", purpose),
+              null,
+              2,
+            ),
           );
         }
       })
@@ -1359,7 +1457,13 @@ function CampaignLabSession({
     const form = new FormData(event.currentTarget);
     const name = form.get("name");
     const objective = form.get("objective");
-    if (typeof name !== "string" || typeof objective !== "string") return;
+    const purpose = form.get("purpose");
+    if (
+      typeof name !== "string" ||
+      typeof objective !== "string" ||
+      (purpose !== "commercial_marketing" && purpose !== "public_service")
+    )
+      return;
     setSaving(true);
     setError(undefined);
     try {
@@ -1367,7 +1471,7 @@ function CampaignLabSession({
         project_id: projectId,
         name,
         objective,
-        purpose: "commercial_marketing",
+        purpose,
         decision: { decision: "compare_authored_variants" },
       };
       const created = await createCampaignLabCampaign(
@@ -1385,7 +1489,7 @@ function CampaignLabSession({
         project_id: projectId,
         name,
         objective,
-        purpose: "commercial_marketing",
+        purpose,
         current_stage: "campaign_created",
         compliance_status: "pending",
         version: 1,
@@ -1395,7 +1499,18 @@ function CampaignLabSession({
       setCampaigns((current) => [next, ...current]);
       setSelectedCampaignId(id);
       setRequestText(
-        JSON.stringify(starterRequest(id, selectedPopulationFrame), null, 2),
+        JSON.stringify(
+          starterRequest(
+            id,
+            selectedPopulationFrame,
+            scenarioLanguage,
+            purpose,
+            simulationProvider,
+            providerCapabilities,
+          ),
+          null,
+          2,
+        ),
       );
       formElement.reset();
       onCampaignChange(id);
@@ -1801,6 +1916,13 @@ function CampaignLabSession({
     }
   }
 
+  const selectedCampaignPurpose = campaigns.find(
+    (campaign) => campaignId(campaign) === selectedCampaignId,
+  )?.purpose;
+  const qualitativePublicService =
+    result?.result.analysis_mode === "qualitative_public_service" ||
+    selectedCampaignPurpose === "public_service";
+
   return (
     <main
       className={`workspace-main workspace-main-wide ${styles.workspace}`}
@@ -1870,6 +1992,23 @@ function CampaignLabSession({
           <form className="form-stack" onSubmit={createCampaign}>
             <p className="eyebrow">01 / Campaign definition</p>
             <h2>Start a message test</h2>
+            <label htmlFor="campaign-purpose">Starter scenario</label>
+            <select
+              id="campaign-purpose"
+              name="purpose"
+              onChange={(event) =>
+                setScenarioPurpose(
+                  event.target.value as
+                    "commercial_marketing" | "public_service",
+                )
+              }
+              value={scenarioPurpose}
+            >
+              <option value="commercial_marketing">Komersyal na mensahe</option>
+              <option value="public_service">
+                Neutral na serbisyong pampubliko
+              </option>
+            </select>
             <label htmlFor="campaign-name">Campaign name</label>
             <input id="campaign-name" minLength={2} name="name" required />
             <label htmlFor="campaign-objective">Decision objective</label>
@@ -1878,6 +2017,11 @@ function CampaignLabSession({
               name="objective"
               required
               rows={4}
+              placeholder={
+                scenarioPurpose === "public_service"
+                  ? "Hal. Suriin kung malinaw ang impormasyon tungkol sa serbisyo."
+                  : "Hal. Ihambing ang linaw ng dalawang mensahe ng produkto."
+              }
             />
             <button disabled={saving} type="submit">
               {saving ? "Saving…" : "Create message test"}
@@ -2012,6 +2156,77 @@ function CampaignLabSession({
           >
             <p className="eyebrow">03 / Repeated simulation</p>
             <h2 id="simulation-config">Set up your message comparison</h2>
+            <fieldset className={styles.choiceGroup}>
+              <legend>Scenario settings</legend>
+              <label htmlFor="campaign-lab-language">Wika ng mensahe</label>
+              <select
+                id="campaign-lab-language"
+                onChange={(event) =>
+                  setScenarioLanguage(
+                    event.target.value as "fil" | "taglish" | "en",
+                  )
+                }
+                value={scenarioLanguage}
+              >
+                <option value="fil">Filipino</option>
+                <option value="taglish">Taglish</option>
+                <option value="en">English</option>
+              </select>
+              <label htmlFor="campaign-lab-provider">Simulation provider</label>
+              <select
+                id="campaign-lab-provider"
+                onChange={(event) =>
+                  setSimulationProvider(
+                    event.target.value as "deterministic" | "openai_compatible",
+                  )
+                }
+                value={simulationProvider}
+              >
+                <option value="deterministic">Deterministic demo</option>
+                <option
+                  disabled={!providerCapabilities?.live_available}
+                  value="openai_compatible"
+                >
+                  Live model
+                </option>
+              </select>
+              <p className="field-note" role="status">
+                {providerCapabilities?.live_available
+                  ? `Live: ${providerCapabilities.provider} · ${providerCapabilities.model_name ?? "model not disclosed"} · prompt ${providerCapabilities.prompt_version}. Limits: ${providerCapabilities.limits.max_agents} agents, ${providerCapabilities.limits.max_rounds} round, ${providerCapabilities.limits.max_repetitions} repetitions, ${providerCapabilities.limits.max_calls} calls, and ${usdFromMicrousd(providerCapabilities.limits.max_cost_microusd)}.`
+                  : providerCapabilitiesLoaded
+                    ? `Live model unavailable${providerCapabilities?.unavailable_reason ? `: ${providerCapabilities.unavailable_reason}` : "."} Deterministic demo remains synthetic fixture output.`
+                    : "Checking live model availability…"}
+              </p>
+              <button
+                className="button-quiet"
+                type="button"
+                onClick={() =>
+                  setRequestText(
+                    JSON.stringify(
+                      starterRequest(
+                        selectedCampaignId,
+                        selectedPopulationFrame,
+                        scenarioLanguage,
+                        selectedCampaignPurpose === "public_service"
+                          ? "public_service"
+                          : "commercial_marketing",
+                        simulationProvider,
+                        providerCapabilities,
+                      ),
+                      null,
+                      2,
+                    ),
+                  )
+                }
+              >
+                Load editable starter scenario
+              </button>
+              <p className="field-note">
+                Starter uses a small synthetic panel and limited aggregate
+                regional coverage. Edit the messages below; real cohort and
+                source requirements still apply.
+              </p>
+            </fieldset>
             <StructuredEditor
               id="campaign-lab-request"
               label="Message test settings"
@@ -2054,8 +2269,9 @@ function CampaignLabSession({
                 </p>
                 {run.status === "succeeded" ? (
                   <p className="success">
-                    Result persisted. Read component rankings with the run
-                    result and attach survey/backtest evidence before approval.
+                    {selectedCampaignPurpose === "public_service"
+                      ? "Result persisted. Review the qualitative action evidence and synthetic disclosure; no message is ranked or recommended."
+                      : "Result persisted. Read component rankings with the run result and attach survey/backtest evidence before approval."}
                   </p>
                 ) : null}
               </>
@@ -2068,7 +2284,84 @@ function CampaignLabSession({
           </div>
         </section>
       ) : null}
-      {result ? (
+      {result && qualitativePublicService ? (
+        <section
+          aria-labelledby="campaign-lab-results-title"
+          className="panel campaign-lab-results"
+          id="results"
+          data-step="simulate"
+        >
+          <p className="eyebrow">04 / Qualitative review</p>
+          <h2 id="campaign-lab-results-title">
+            Mga tanong at simulation evidence
+          </h2>
+          <p className="field-note">
+            Synthetic scenario discussion lamang ito. Walang ranking, persuasion
+            score, recommendation, o claim tungkol sa tunay na opinyon ng
+            publiko.
+          </p>
+          {result.result.provider_execution ? (
+            <p className="field-note">
+              Generated by {result.result.provider_execution.provider} · model{" "}
+              {result.result.provider_execution.model_name ?? "not disclosed"} ·
+              prompt {result.result.provider_execution.prompt_version} ·{" "}
+              {result.result.provider_execution.provider_calls} calls ·{" "}
+              {usdFromMicrousd(result.result.provider_execution.cost_microusd)}.
+              Human review required.
+            </p>
+          ) : (
+            <p className="field-note">
+              Deterministic fixture output. No live model generation receipt was
+              returned.
+            </p>
+          )}
+          {(result.result.behavioral_diagnostics?.variants ?? []).map(
+            (variant) => (
+              <article
+                className="campaign-lab-result-card"
+                key={variant.variant_key}
+              >
+                <h3>{variant.variant_key}</h3>
+                {variant.interviewable_agents.map((agent) => (
+                  <details key={agent.agent_id}>
+                    <summary>Agent evidence {agent.agent_id}</summary>
+                    <h4>Action history</h4>
+                    {agent.action_history?.length ? (
+                      <ol>
+                        {agent.action_history.map((entry, index) => (
+                          <li key={index}>
+                            <code>{JSON.stringify(entry)}</code>
+                            {agent.action_rationales?.[index]
+                              ? ` — ${agent.action_rationales[index]}`
+                              : null}
+                            {agent.action_timestamps_ms?.[index] !== undefined
+                              ? ` (${agent.action_timestamps_ms[index]} ms)`
+                              : null}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="field-note">No action history returned.</p>
+                    )}
+                    <h4>Memory evidence</h4>
+                    {agent.memory_entries?.length ? (
+                      <ol>
+                        {agent.memory_entries.map((entry, index) => (
+                          <li key={index}>
+                            <code>{JSON.stringify(entry)}</code>
+                          </li>
+                        ))}
+                      </ol>
+                    ) : (
+                      <p className="field-note">No memory entries returned.</p>
+                    )}
+                  </details>
+                ))}
+              </article>
+            ),
+          )}
+        </section>
+      ) : result ? (
         <section
           aria-labelledby="campaign-lab-results-title"
           className="panel campaign-lab-results"
@@ -2085,6 +2378,11 @@ function CampaignLabSession({
                 {result.result.sample_size} synthetic panel records ·{" "}
                 {result.result.repetitions} seeded repetitions · evidence status{" "}
                 <strong>{result.evidence_status}</strong>
+              </p>
+              <p className="field-note">
+                {result.result.provider_execution
+                  ? `Generated by ${result.result.provider_execution.provider} · model ${result.result.provider_execution.model_name ?? "not disclosed"} · prompt ${result.result.provider_execution.prompt_version} · ${usdFromMicrousd(result.result.provider_execution.cost_microusd)}. Human review required.`
+                  : "Deterministic fixture output; no live model generation receipt was returned."}
               </p>
             </div>
           </div>
@@ -2469,7 +2767,7 @@ function CampaignLabSession({
           ) : null}
         </section>
       ) : null}
-      {selectedCampaignId ? (
+      {selectedCampaignId && selectedCampaignPurpose !== "public_service" ? (
         <BoundCalibration campaignId={selectedCampaignId} />
       ) : null}
       {selectedCampaignId ? (

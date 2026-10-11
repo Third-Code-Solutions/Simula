@@ -1945,7 +1945,6 @@
           }
         },
         "required": [
-          "persona",
           "variant_key",
           "prompt_version"
         ],
@@ -2000,6 +1999,127 @@
         "type": "object"
       },
       "JsonValue": {},
+      "LiveProviderCapabilities": {
+        "additionalProperties": false,
+        "properties": {
+          "limits": {
+            "$ref": "#/components/schemas/LiveProviderLimits"
+          },
+          "live_available": {
+            "title": "Live Available",
+            "type": "boolean"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "prompt_version": {
+            "const": "philippine_scenario_v1",
+            "default": "philippine_scenario_v1",
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "provider": {
+            "const": "openai_compatible",
+            "default": "openai_compatible",
+            "title": "Provider",
+            "type": "string"
+          },
+          "supported_languages": {
+            "default": [
+              "fil",
+              "taglish",
+              "en"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Supported Languages",
+            "type": "array"
+          },
+          "supported_purposes": {
+            "default": [
+              "commercial_marketing",
+              "brand_communication",
+              "product_launch",
+              "public_service"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Supported Purposes",
+            "type": "array"
+          },
+          "unavailable_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unavailable Reason"
+          }
+        },
+        "required": [
+          "live_available",
+          "model_name",
+          "limits",
+          "unavailable_reason"
+        ],
+        "title": "LiveProviderCapabilities",
+        "type": "object"
+      },
+      "LiveProviderLimits": {
+        "additionalProperties": false,
+        "properties": {
+          "max_agents": {
+            "default": 10,
+            "maximum": 100.0,
+            "minimum": 10.0,
+            "title": "Max Agents",
+            "type": "integer"
+          },
+          "max_calls": {
+            "default": 100,
+            "maximum": 5000.0,
+            "minimum": 1.0,
+            "title": "Max Calls",
+            "type": "integer"
+          },
+          "max_cost_microusd": {
+            "default": 1000000,
+            "maximum": 100000000.0,
+            "minimum": 1.0,
+            "title": "Max Cost Microusd",
+            "type": "integer"
+          },
+          "max_repetitions": {
+            "default": 3,
+            "maximum": 10.0,
+            "minimum": 3.0,
+            "title": "Max Repetitions",
+            "type": "integer"
+          },
+          "max_rounds": {
+            "default": 1,
+            "maximum": 10.0,
+            "minimum": 1.0,
+            "title": "Max Rounds",
+            "type": "integer"
+          }
+        },
+        "title": "LiveProviderLimits",
+        "type": "object"
+      },
       "MeResponse": {
         "additionalProperties": false,
         "properties": {
@@ -40092,6 +40212,734 @@
           }
         ],
         "summary": "Get Interview"
+      }
+    },
+    "/api/v1/campaign-lab/provider-capabilities": {
+      "get": {
+        "description": "Advertise server admission without exporting worker credentials or URLs.",
+        "operationId": "get_campaign_lab_provider_capabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LiveProviderCapabilities"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
+                      "type": "string"
+                    },
+                    "correlation_id": {
+                      "format": "uuid",
+                      "title": "Correlation Id",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Errors"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "instance",
+                    "correlation_id"
+                  ],
+                  "title": "ProblemDocument",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Authentication is missing, expired, or invalid."
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
+                      "type": "string"
+                    },
+                    "correlation_id": {
+                      "format": "uuid",
+                      "title": "Correlation Id",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Errors"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "instance",
+                    "correlation_id"
+                  ],
+                  "title": "ProblemDocument",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The authenticated role cannot perform this action."
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
+                      "type": "string"
+                    },
+                    "correlation_id": {
+                      "format": "uuid",
+                      "title": "Correlation Id",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Errors"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "instance",
+                    "correlation_id"
+                  ],
+                  "title": "ProblemDocument",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The resource is absent or not visible to the caller."
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
+                      "type": "string"
+                    },
+                    "correlation_id": {
+                      "format": "uuid",
+                      "title": "Correlation Id",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Errors"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "instance",
+                    "correlation_id"
+                  ],
+                  "title": "ProblemDocument",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The request conflicts with current durable state."
+          },
+          "413": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
+                      "type": "string"
+                    },
+                    "correlation_id": {
+                      "format": "uuid",
+                      "title": "Correlation Id",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Errors"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "instance",
+                    "correlation_id"
+                  ],
+                  "title": "ProblemDocument",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The request exceeds the API body limit."
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
+                      "type": "string"
+                    },
+                    "correlation_id": {
+                      "format": "uuid",
+                      "title": "Correlation Id",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Errors"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "instance",
+                    "correlation_id"
+                  ],
+                  "title": "ProblemDocument",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "The request is invalid or outside the supported scope."
+          },
+          "429": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
+                      "type": "string"
+                    },
+                    "correlation_id": {
+                      "format": "uuid",
+                      "title": "Correlation Id",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Errors"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "instance",
+                    "correlation_id"
+                  ],
+                  "title": "ProblemDocument",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A durable quota or rate limit was reached."
+          },
+          "503": {
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "code": {
+                      "enum": [
+                        "dependency_unavailable",
+                        "forbidden",
+                        "idempotency_key_reused",
+                        "internal_error",
+                        "invalid_request",
+                        "method_not_allowed",
+                        "not_found",
+                        "queue_backpressure",
+                        "quota_exceeded",
+                        "rate_limited",
+                        "request_deadline_exceeded",
+                        "request_too_large",
+                        "run_not_cancelable",
+                        "unauthenticated",
+                        "unsupported_media_type",
+                        "unsupported_scope",
+                        "validation_error",
+                        "version_conflict"
+                      ],
+                      "type": "string"
+                    },
+                    "correlation_id": {
+                      "format": "uuid",
+                      "title": "Correlation Id",
+                      "type": "string"
+                    },
+                    "detail": {
+                      "title": "Detail",
+                      "type": "string"
+                    },
+                    "errors": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "type": "object"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "title": "Errors"
+                    },
+                    "instance": {
+                      "title": "Instance",
+                      "type": "string"
+                    },
+                    "status": {
+                      "title": "Status",
+                      "type": "integer"
+                    },
+                    "title": {
+                      "title": "Title",
+                      "type": "string"
+                    },
+                    "type": {
+                      "title": "Type",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "code",
+                    "detail",
+                    "instance",
+                    "correlation_id"
+                  ],
+                  "title": "ProblemDocument",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "A required dependency is temporarily unavailable."
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "summary": "Get Provider Capabilities"
       }
     },
     "/api/v1/campaign-lab/reports/bound/runs/{run_id}": {

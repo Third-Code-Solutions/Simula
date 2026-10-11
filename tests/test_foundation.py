@@ -71,6 +71,47 @@ def test_browser_gate_overrides_release_public_origins(
     assert web_environment["NEXT_PUBLIC_SIMULA_WEB_URL"] == "http://127.0.0.1:3100"
 
 
+def test_browser_gate_scrubs_production_config_and_gives_live_key_only_to_worker(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("SIMULA_DATABASE_URL", "postgresql://production.invalid/db")
+    monkeypatch.setenv("SIMULA_CURSOR_SECRET", "production-secret")
+    monkeypatch.setenv("SIMULA_LIVE_ENABLED", "true")
+    monkeypatch.setenv("SIMULA_LIVE_BASE_URL", "https://provider.test/v1")
+    monkeypatch.setenv("SIMULA_LIVE_API_KEY", "worker-only-key")
+    monkeypatch.setenv("SIMULA_LIVE_E2E", "true")
+    base = browser_gate.tool_environment()
+
+    assert "SIMULA_DATABASE_URL" not in base
+    assert "SIMULA_CURSOR_SECRET" not in base
+    assert "SIMULA_LIVE_API_KEY" not in base
+    assert base["SIMULA_LIVE_E2E"] == "true"
+
+    monkeypatch.setattr(browser_gate, "executable", lambda *_args, **_kwargs: "git")
+    monkeypatch.setattr(
+        browser_gate,
+        "run",
+        lambda command, **_kwargs: CompletedProcess(command, 0, stdout="a" * 40),
+    )
+    api, worker, web = browser_gate.runtime_environments(
+        base=base,
+        supabase=browser_gate.SupabaseRuntime(
+            api_url="http://127.0.0.1:54321",
+            publishable_key="local-public-key",
+        ),
+        api_credential="api-credential",
+        worker_credential="worker-credential",
+    )
+
+    assert api["SIMULA_LIVE_ENABLED"] == "true"
+    assert "SIMULA_LIVE_API_KEY" not in api
+    assert worker["SIMULA_LIVE_API_KEY"] == "worker-only-key"
+    assert "SIMULA_LIVE_ENABLED" not in web
+    assert "SIMULA_LIVE_API_KEY" not in web
+    assert api["SIMULA_DATABASE_URL"].startswith("postgresql://simula_api:")
+    assert worker["SIMULA_WORKER_DATABASE_URL"].startswith("postgresql://simula_worker:")
+
+
 def test_integration_redis_target_is_fixed_and_namespaced() -> None:
     settings = redis_test_settings()
 

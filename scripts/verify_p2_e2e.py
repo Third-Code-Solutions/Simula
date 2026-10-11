@@ -26,6 +26,23 @@ LOCAL_FIXTURE_OWNER_PASSWORD = "SimulaLocalOnly!2026"  # noqa: S105 - local seed
 API_URL = "http://127.0.0.1:8000/health/ready"
 WEB_URL = "http://127.0.0.1:3100/"
 START_TIMEOUT_SECONDS = 120
+LIVE_ENVIRONMENT_KEYS = frozenset(
+    {
+        "SIMULA_LIVE_ENABLED",
+        "SIMULA_LIVE_BASE_URL",
+        "SIMULA_LIVE_MODEL",
+        "SIMULA_LIVE_API_KEY",
+        "SIMULA_LIVE_INPUT_MICROUSD_PER_MILLION_TOKENS",
+        "SIMULA_LIVE_OUTPUT_MICROUSD_PER_MILLION_TOKENS",
+        "SIMULA_LIVE_MAX_AGENTS",
+        "SIMULA_LIVE_MAX_ROUNDS",
+        "SIMULA_LIVE_MAX_REPETITIONS",
+        "SIMULA_LIVE_MAX_CALLS",
+        "SIMULA_LIVE_MAX_COST_MICROUSD",
+        "SIMULA_LIVE_MAX_INPUT_TOKENS",
+        "SIMULA_LIVE_MAX_OUTPUT_TOKENS",
+    }
+)
 
 
 class BrowserGateError(RuntimeError):
@@ -41,7 +58,11 @@ class SupabaseRuntime:
 def tool_environment() -> dict[str, str]:
     """Use the repository's exact Node toolchain without replacing caller settings."""
 
-    environment = dict(os.environ)
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.startswith("SIMULA_") or key in {"SIMULA_E2E_GREP", "SIMULA_LIVE_E2E"}
+    }
     if os.name == "nt":
         additions = (NODE_TOOLCHAIN / "node-v24.18.1-win-x64", NODE_TOOLCHAIN / "bin")
         environment["PATH"] = os.pathsep.join(
@@ -221,9 +242,11 @@ def runtime_environments(
         "SIMULA_REDIS_URL": "redis://127.0.0.1:6379/0",
         "SIMULA_CORS_ORIGINS": "http://127.0.0.1:3100",
     }
+    live = {key: os.environ[key] for key in LIVE_ENVIRONMENT_KEYS if key in os.environ}
     api = {
         **base,
         **common,
+        **live,
         **public,
         "SIMULA_CURSOR_SECRET": secrets.token_hex(32),
         "SIMULA_RATE_LIMIT_KEY_PREFIX": f"simula:e2e:{secrets.token_hex(16)}",
@@ -237,12 +260,14 @@ def runtime_environments(
     worker = {
         **base,
         **common,
+        **live,
         "SIMULA_WORKER_DATABASE_URL": (
             "postgresql://simula_worker:"
             f"{worker_credential}@127.0.0.1:54322/postgres?sslmode=disable"
         ),
     }
     web = {**base, **public, "HOSTNAME": "127.0.0.1", "PORT": "3100"}
+    api.pop("SIMULA_LIVE_API_KEY", None)
     return api, worker, web
 
 
@@ -446,7 +471,7 @@ def main() -> None:
         run(
             test_command,
             environment=e2e_environment,
-            timeout_seconds=180,
+            timeout_seconds=4200 if environment.get("SIMULA_LIVE_E2E") == "true" else 180,
         )
     finally:
         for process in reversed(processes):

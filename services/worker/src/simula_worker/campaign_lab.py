@@ -47,6 +47,7 @@ from simula_core.historical_backtesting import (
     evaluate_historical_backtest,
 )
 from simula_core.isolated_evaluation import evaluate_isolated
+from simula_core.json_codec import canonical_json_dumps
 from simula_core.research_ingestion import (
     ResearchMediaType,
     ingest_research_document,
@@ -376,6 +377,12 @@ def _evaluate_interview(request: Mapping[str, object]) -> Mapping[str, object]:
         environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
     )
     simulation_result = CampaignLabSimulationResult.model_validate(request.get("simulation_result"))
+    if simulation_request.configuration.provider == "openai_compatible" and (
+        simulation_result.campaign_id != simulation_request.campaign_id
+        or simulation_result.configuration != simulation_request.configuration
+        or simulation_result.provider_execution is None
+    ):
+        raise ValueError("live interview requires matching persisted live simulation evidence")
     diagnostics = simulation_result.behavioral_diagnostics
     if diagnostics is None:
         raise ValueError("simulation has no behavioral interview evidence")
@@ -433,6 +440,70 @@ def _evaluate_interview(request: Mapping[str, object]) -> Mapping[str, object]:
             if isinstance(citation, Mapping) and isinstance(citation.get("citation_id"), str)
         ),
     )
+    if simulation_request.configuration.provider == "openai_compatible":
+        from simula_core.live_provider_settings import LiveProviderSettings
+
+        from simula_worker.native_provider import InterviewOutput, LiveSession
+
+        session = LiveSession(
+            LiveProviderSettings.from_environment(require_api_key=True), simulation_request
+        )
+        source_variant = next(
+            item for item in simulation_request.variants if item.key == variant_key_value
+        )
+        schema = InterviewOutput.model_json_schema()
+        allowed_references = {
+            field: [str(value) for value in getattr(interview, field)]
+            for field in ("evidence_event_ids", "research_source_ids", "research_citation_ids")
+        }
+        for field, values in allowed_references.items():
+            if values:
+                schema["properties"][field]["items"]["enum"] = values
+            else:
+                schema["properties"][field]["maxItems"] = 0
+        schema["examples"] = [
+            {
+                "evidence_event_ids": allowed_references["evidence_event_ids"][:1],
+                "research_source_ids": [],
+                "research_citation_ids": [],
+                "transcript": "<Explain the cited evidence in the requested language>",
+            }
+        ]
+        try:
+            content, _usage = session.complete(
+                source_variant,
+                {
+                    "question": interview.question,
+                    "evidence": evidence.model_dump(mode="json"),
+                    "research_knowledge": list(simulation_request.research_knowledge),
+                    "allowed_research_source_ids": list(interview.research_source_ids),
+                    "allowed_research_citation_ids": list(interview.research_citation_ids),
+                    "instruction": (
+                        "Explain only this persisted synthetic evidence. Cite only allowed "
+                        "identifiers. Disclose absent evidence and required human review. "
+                        "Return all four top-level fields: transcript, evidence_event_ids, "
+                        "research_source_ids, research_citation_ids. Include at least one exact "
+                        "evidence event identifier. Use [] for uncited research sources or "
+                        "citations; never omit the citation arrays."
+                    ),
+                },
+                schema,
+            )
+            answer = InterviewOutput.model_validate_json(canonical_json_dumps(content), strict=True)
+            for field, values in allowed_references.items():
+                if not set(getattr(answer, field)).issubset(values):
+                    raise ValueError("live interview invented an evidence reference")
+            interview = interview.model_copy(
+                update={
+                    "transcript": answer.transcript,
+                    "provider_execution": session.provenance(),
+                    "evidence_event_ids": tuple(UUID(value) for value in answer.evidence_event_ids),
+                    "research_source_ids": answer.research_source_ids,
+                    "research_citation_ids": answer.research_citation_ids,
+                }
+            )
+        finally:
+            session.close()
     return interview.model_dump(mode="json")
 
 
@@ -491,12 +562,43 @@ def _evaluate_report(request: Mapping[str, object]) -> Mapping[str, object]:
 
 
 def evaluate_campaign_lab_claim(claim: CampaignLabClaim) -> Mapping[str, object]:
+    configuration = claim.request.get("configuration", {})
+    simulation_request = claim.request.get("simulation_request", {})
+    if isinstance(simulation_request, Mapping):
+        configuration = simulation_request.get("configuration", configuration)
+    if (
+        isinstance(configuration, Mapping)
+        and configuration.get("provider") == "openai_compatible"
+        and claim.attempt_count > 1
+        and claim.run_type in {"repeated_simulation", "interview"}
+    ):
+        raise ValueError("live provider replay refused after potentially charged attempt")
     if claim.run_type == "repeated_simulation":
         request = CampaignLabSimulationRequest.model_validate(claim.request)
         validate_campaign_lab_population_admission(
             request,
             environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
         )
+        if request.configuration.provider == "openai_compatible":
+            from simula_core.live_provider_settings import LiveProviderSettings
+
+            from simula_worker.native_provider import LiveSession
+
+            session = LiveSession(
+                LiveProviderSettings.from_environment(require_api_key=True), request
+            )
+            try:
+                result = run_campaign_lab_simulation(
+                    request,
+                    methodology_version="campaign_lab_live_v1",
+                    cohort_provider_factory=session.cohort,
+                    behavioral_provider_factory=session.behavioral,
+                )
+                return result.model_copy(
+                    update={"provider_execution": session.provenance()}
+                ).model_dump(mode="json")
+            finally:
+                session.close()
         if request.configuration.provider != "deterministic":
             raise ValueError("unsupported_campaign_lab_provider")
         return run_campaign_lab_simulation(request).model_dump(mode="json")
@@ -612,7 +714,7 @@ async def process_campaign_lab_claim(
             claim.lease_token,
             "evaluating",
             55,
-            "Running deterministic repeated metrics or evidence comparison.",
+            "Running admitted scenario evaluation or evidence comparison.",
         ):
             return (
                 "canceled"

@@ -110,6 +110,76 @@ content.
 
 External deployment and hosted resource mutation require explicit authorization.
 
+## Filipino and Taglish Campaign Lab
+
+Campaign Lab reuses Simula's research ingestion, source registry, population
+cohorts, bounded behavioral engine, durable jobs, interviews, and reports. Its
+original implementation contains no imported MiroFish/AGPL source or dependency.
+Select Filipino, Taglish, or English and a Philippine marketing or
+public-service scenario. Demo output remains deterministic and synthetic. Live
+output is experimental model research; it is neither observed public opinion nor
+a sales or vote forecast.
+
+Live execution is disabled by default. Configure `SIMULA_LIVE_*` from
+`.env.example` on the API and worker; provision `SIMULA_LIVE_API_KEY` only on
+the worker. Set a server-approved HTTPS chat-completions endpoint and requested
+model identifier, plus current input/output token prices in micro-USD per
+million tokens. The provider must support JSON-object output, `max_tokens`, and
+token usage receipts. Enable only after both services are configured; the API
+capability response checks configuration, not the worker's secret or provider
+connectivity. Never use production credentials for local QA.
+
+The current example selects OpenCode Go's `deepseek-v4.1-flash` through
+`https://opencode.ai/zen/go/v1`. Its
+[published rates](https://docs.opencode.ai/docs/go/#usage-limits), checked
+2026-10-10, are USD 0.15 input and USD 0.60 output per million tokens off-peak,
+or USD 0.30 input and USD 1.20 output at peak. Configuration uses peak, uncached
+prices conservatively. Peak windows are weekdays 01:00–04:00 and 06:00–10:00
+UTC; weekends are off-peak. Go costs USD 10/month; Go Plus costs USD 40/month.
+Token costs count toward model-specific subscription allowances, so Simula's
+uncached token estimate is not an invoice or an account-quota check. Go's
+documented client expectations target coding-agent traffic. Live research QA
+requests were accepted; ongoing suitability for this workload is not confirmed.
+Simula identifies itself as `simula-research/1.0` and supplies a stable session
+header per job. The internal `openai_compatible` name describes the API format;
+OpenCode credentials and endpoint handle these requests. No OpenAI key is
+needed.
+
+DeepSeek uses non-thinking mode for these bounded structured decisions. Decision
+schemas explicitly bind agent, round, allowed evidence and discussion targets;
+evidence identifiers are sorted without changing their values. Duplicates,
+unknown references, invalid or overlong responses fail validation without a paid
+automatic retry. The example allows 8,192 output tokens so a ten-cohort response
+fits without truncation; the shared per-job spending limit still applies.
+Interviews receive allowed citation identifiers and an explicit four-field JSON
+example. Missing or invented references fail validation; the server never fills
+in citations omitted by the model.
+
+Default limits admit 10 agents, one round, three repetitions, 100 calls, and a 1
+USD maximum per job. A call reserves the configured maximum token cost before
+dispatch. Invalid output, missing usage, budget exhaustion, or timeout fails the
+run without substituting demo results. Unknown charged outcomes are not retried
+automatically, including reclaimed jobs. Receipts retain model/prompt identity,
+returned model identifiers, token usage, cost, and hashes; they do not promise
+identical output on replay.
+
+Live browser QA is opt-in: provide only the `SIMULA_LIVE_*` configuration in the
+process environment, set `SIMULA_LIVE_E2E=true` and
+`SIMULA_E2E_GREP="Campaign Lab live provider"`, then run `pnpm verify:p2:e2e`.
+This resets the disposable local Supabase database and makes paid provider calls
+for four Filipino/Taglish marketing/public-service journeys. It uses real local
+authentication, API, worker, persistence, interviews, and reports. The harness
+keeps the provider key on the worker and strips it from build/browser processes;
+never load hosted database credentials for this gate.
+
+Marketing runs retain separate experimental component metrics. Public-service
+runs retain qualitative explanations and evidence-linked interviews, with no
+persuasion ranking or public-support estimate. Research sources must be admitted
+and linked to the request. Interviews cite the persisted simulation events; they
+are synthetic explanations, never testimony from participants. Filipino/Taglish
+fluency, cultural interpretation, and consequential conclusions require human
+review and consent-based real-world validation.
+
 ## UX refactor verification — 2026-09-05
 
 Current implementation and its evidence are tracked in
@@ -132,3 +202,8 @@ source promotion boundary described in
 [the promotion procedure](docs/audit/2026-09-05/PROMOTION_PROCEDURE.md), using
 explicit existing provider targets and retained rollback identities. Provider
 SUCCESS alone does not establish application health or completed verification.
+
+The current runtime requires database migration `20261010155547` and uses V6
+readiness and observability functions. The migration preserves V5 and its
+`20260905104327` contract so previously deployed binaries remain healthy during
+rollout and application rollback.

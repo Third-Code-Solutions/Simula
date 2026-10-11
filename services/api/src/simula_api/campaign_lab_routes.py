@@ -45,6 +45,11 @@ from simula_core.cultural_evaluation import (
 )
 from simula_core.historical_backtesting import HistoricalBacktestProtocol, HistoricalOutcomeDataset
 from simula_core.json_codec import canonical_json_dumps
+from simula_core.live_provider_settings import (
+    LiveProviderCapabilities,
+    LiveProviderSettings,
+    live_provider_capabilities,
+)
 from simula_core.methodology import PopulationFrameVersion
 from simula_core.survey_binding import (
     evidence_digest,
@@ -178,11 +183,9 @@ class SimulationCreate(_LabModel):
     secret_payload: dict[str, Any] | None = Field(default=None, exclude=True)
 
     @model_validator(mode="after")
-    def deterministic_first_release(self) -> SimulationCreate:
-        if self.request.configuration.provider != "deterministic":
-            raise ValueError(
-                "the first deployable Campaign Lab release supports the deterministic provider only"
-            )
+    def admitted_provider(self) -> SimulationCreate:
+        if self.request.configuration.provider not in {"deterministic", "openai_compatible"}:
+            raise ValueError("the requested Campaign Lab provider is not supported")
         return self
 
 
@@ -220,7 +223,7 @@ class ResearchIngestionCreate(_LabModel):
 
 
 class InterviewCreate(_LabModel):
-    persona: dict[str, Any]
+    persona: dict[str, Any] = Field(default_factory=dict)
     source_run_id: UUID | None = None
     agent_id: UUID | None = None
     variant_key: str = Field(min_length=1, max_length=64)
@@ -1380,6 +1383,26 @@ async def create_variant(
     return result
 
 
+def _validate_live_configuration(simulation: CampaignLabSimulationRequest) -> None:
+    if simulation.configuration.provider != "openai_compatible":
+        return
+    try:
+        LiveProviderSettings.from_environment().validate_request(simulation)
+    except ValueError as error:
+        raise _invalid(
+            "Live provider is unavailable or the scenario exceeds its admitted limits.",
+            field="request.configuration",
+        ) from error
+
+
+@router.get("/provider-capabilities", operation_id="get_campaign_lab_provider_capabilities")
+async def get_provider_capabilities(
+    identity: Annotated[VerifiedIdentity, Depends(rate_limited_identity)],
+) -> LiveProviderCapabilities:
+    """Advertise server admission without exporting worker credentials or URLs."""
+    return live_provider_capabilities()
+
+
 @router.post(
     "/campaigns/{campaign_id}/simulations",
     status_code=202,
@@ -1397,6 +1420,10 @@ async def create_simulation(
         raise _invalid(
             "request.campaign_id must match the campaign path.", field="request.campaign_id"
         )
+    campaign = await _campaign_row(request, identity, campaign_id)
+    if campaign.get("purpose") != body.request.purpose:
+        raise _invalid("Scenario purpose must match the saved campaign.", field="request.purpose")
+    _validate_live_configuration(body.request)
     try:
         validate_campaign_lab_population_admission(
             body.request,
@@ -1628,6 +1655,12 @@ async def clone_simulation(
     campaign_id = cast(UUID, rows[0]["campaign_id"])
     try:
         clone_request = CampaignLabSimulationRequest.model_validate(payload)
+        campaign = await _campaign_row(request, identity, campaign_id)
+        if campaign.get("purpose") != clone_request.purpose:
+            raise _invalid(
+                "Scenario purpose must match the saved campaign.", field="request.purpose"
+            )
+        _validate_live_configuration(clone_request)
         validate_campaign_lab_population_admission(
             clone_request,
             environment=os.getenv("SIMULA_ENVIRONMENT", "local"),
@@ -1690,6 +1723,8 @@ async def create_interview(
             title="Interview source is not ready",
             detail="A persona interview requires a succeeded repeated simulation run.",
         )
+    simulation = CampaignLabSimulationRequest.model_validate(source_rows[0]["request"])
+    _validate_live_configuration(simulation)
     payload = {
         "source_run_id": str(body.source_run_id),
         "agent_id": str(body.agent_id),
