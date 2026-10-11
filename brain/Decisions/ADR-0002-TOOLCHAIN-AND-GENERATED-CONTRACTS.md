@@ -2,7 +2,7 @@
 title: ADR-0002 Toolchain and Generated Contracts
 status: accepted
 created: 2026-07-17
-updated: 2026-08-24
+updated: 2026-10-11
 owner: Architecture lead
 classification: PROPOSED
 source_of_truth: true
@@ -24,6 +24,10 @@ Current official/registry observations on 2026-07-17:
 
 Sources: [Node release table](https://nodejs.org/en/about/previous-releases), [Node 24.18.1](https://nodejs.org/en/blog/release/v24.18.1), [Python 3.14.7](https://www.python.org/downloads/release/python-3147/), [Next 16.2](https://nextjs.org/blog/next-16-2), [Supabase changelog](https://supabase.com/changelog.md), npm and PyPI registry metadata queried 2026-08-24.
 
+Security amendment, 2026-10-11: the exact Python pin advances to `3.14.8`, an
+expedited security release fixing CVE-2026-19445 and CVE-2026-19553. Source:
+[Python 3.14.8](https://www.python.org/downloads/release/python-3148/).
+
 Evidence ledger: E-4014, E-4015, E-4016, E-4017, E-4018, E-4026, E-4027.
 
 ## Decision
@@ -44,7 +48,7 @@ tests/                    cross-service, RLS, and E2E assets
 - JavaScript workspace/package manager: pnpm workspaces with Turborepo task orchestration.
 - Python workspace/package manager: uv workspace with PEP 621 projects and one lock.
 - Node pin: `24.18.1`; pnpm `11.13.1`; Turbo `2.10.5`.
-- Python pin: `3.14.7`; uv `0.11.19` minimum/CI pin.
+- Python pin: `3.14.8`; uv `0.11.19` minimum/CI pin.
 - Containers and CI use exact runtime patch versions. Developers may use another compatible patch only if lock/install/test output is identical.
 - Exact direct dependencies are committed. Transitives are locked by `pnpm-lock.yaml` and `uv.lock`; no wildcard, caret, tilde, URL branch, or unpinned action reference in release inputs.
 

@@ -67,7 +67,7 @@ jobs:
       - name: Install exact Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: 3.14.7
+          python-version: 3.14.8
 
       - name: Install exact pnpm
         run: |
@@ -79,6 +79,7 @@ jobs:
         run: |
           set -euo pipefail
           pnpm install --frozen-lockfile
+          uv lock --check
           uv sync --frozen --all-packages --all-groups
           pnpm toolchain:check
 
@@ -146,7 +147,7 @@ jobs:
           test "$(docker image inspect --format '{{.Config.User}}' simula-control-plane:release)" = "simula"
           test "$(docker image inspect --format '{{.Config.User}}' simula-worker:release)" = "simula"
           test "$(docker image inspect --format '{{.Config.User}}' simula-ai-engine:release)" = "simula"
-          docker run --rm simula-api:release python -c "import simula_api"
+          docker run --rm simula-api:release python -c "import platform, ssl, simula_api; assert platform.python_version() == '3.14.8'; print(ssl.OPENSSL_VERSION)"
           docker run --rm simula-control-plane:release node -e "require('./dist/application')"
           docker run --rm simula-worker:release python -m simula_worker --check
           docker run --rm simula-ai-engine:release python -c "import simula_ai_engine"

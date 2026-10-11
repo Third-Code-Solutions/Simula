@@ -1,7 +1,7 @@
 [project]
 name = "simula-workspace"
 version = "0.0.0"
-requires-python = "==3.14.7"
+requires-python = "==3.14.8"
 dependencies = [
     "simula-api==0.0.0",
     "simula-ai-engine==0.0.0",

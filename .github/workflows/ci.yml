@@ -84,7 +84,7 @@ jobs:
       - name: Install exact Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: 3.14.7
+          python-version: 3.14.8
 
       - name: Install exact pnpm
         run: |
@@ -94,6 +94,7 @@ jobs:
       - name: Install frozen dependencies
         run: |
           pnpm install --frozen-lockfile
+          uv lock --check
           uv sync --frozen --all-packages --all-groups
           pnpm toolchain:check
 
@@ -139,7 +140,7 @@ jobs:
       - name: Install exact Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
-          python-version: 3.14.7
+          python-version: 3.14.8
 
       - name: Install exact pnpm
         run: |
@@ -149,6 +150,7 @@ jobs:
       - name: Install frozen dependencies
         run: |
           pnpm install --frozen-lockfile
+          uv lock --check
           uv sync --frozen --all-packages --all-groups
           pnpm toolchain:check
 
@@ -256,7 +258,7 @@ jobs:
           test "$(docker image inspect --format '{{.Config.User}}' simula-control-plane:m0)" = "simula"
           test "$(docker image inspect --format '{{.Config.User}}' simula-worker:m0)" = "simula"
           test "$(docker image inspect --format '{{.Config.User}}' simula-ai-engine:m0)" = "simula"
-          docker run --rm simula-api:m0 python -c "import simula_api"
+          docker run --rm simula-api:m0 python -c "import platform, ssl, simula_api; assert platform.python_version() == '3.14.8'; print(ssl.OPENSSL_VERSION)"
           docker run --rm simula-control-plane:m0 node -e "require('./dist/application')"
           docker run --rm simula-worker:m0 python -m simula_worker --check
           docker run --rm simula-ai-engine:m0 python -c "import simula_ai_engine"

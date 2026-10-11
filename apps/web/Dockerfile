@@ -42,8 +42,9 @@ WORKDIR /app
 # blocks as fixable High (CVE-2026-86145 / CVE-2026-89157 / CVE-2026-89161).
 # The +deb12u1 revision is published only in bookworm-security, so upgrade it
 # from there rather than relaxing the gate.
+# Perl also needs the current bookworm security revision.
 RUN apt-get update \
-    && apt-get install --yes --only-upgrade --no-install-recommends libpcre2-8-0 \
+    && apt-get install --yes --only-upgrade --no-install-recommends libpcre2-8-0 perl-base \
     && rm -rf /var/lib/apt/lists/*
 
 RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \

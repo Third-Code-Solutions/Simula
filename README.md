@@ -28,7 +28,7 @@ and [remaining acceptance](docs/audit/2026-09-05/REMEDIATION_TRACKER.md).
 
 - Node.js `24.18.1`
 - pnpm `11.13.1` through Corepack
-- Python `3.14.7`, discovered and synchronized by uv
+- Python `3.14.8`, discovered and synchronized by uv
 - uv `0.11.19`
 - Docker with Redis `8.2.7-alpine`
 
@@ -41,8 +41,8 @@ pnpm contracts:generate
 pnpm check
 ```
 
-Install Python `3.14.7` from the signed PSF distribution or
-`uv python install 3.14.7` when the pinned uv catalog supports that patch. Put
+Install Python `3.14.8` from the signed PSF distribution or
+`uv python install 3.14.8` when the pinned uv catalog supports that patch. Put
 the exact interpreter on `PATH`; `pnpm toolchain:check` fails on drift.
 
 On the configured Windows workstation, isolate the pinned tools from ambient
