@@ -12,11 +12,12 @@ from fastapi import Request, Response
 from fastapi.routing import APIRoute
 from simula_api.auth import VerifiedIdentity
 from simula_api.problems import AppProblem
+from simula_api.routes import rate_limited_identity
 from simula_core.campaign_lab import CampaignLabSimulationRequest
 
 
 def _simulation_payload(*, provider: str = "deterministic") -> dict[str, Any]:
-    payload = json.loads(
+    payload: dict[str, Any] = json.loads(
         (Path(__file__).parent / "fixtures/calibration_simulation_request.json").read_text()
     )
     payload["configuration"].update(
@@ -47,7 +48,7 @@ def test_provider_capabilities_route_requires_authenticated_rate_limited_identit
     )
 
     assert [dependency.call for dependency in route.dependant.dependencies] == [
-        routes.rate_limited_identity
+        rate_limited_identity
     ]
 
 

@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from typing import Any
 from uuid import uuid4
 
 import httpx
 import pytest
 from simula_core.behavioral_engine import AgentDecisionRequest, DeterministicTieredProvider
-from simula_core.campaign_lab import run_campaign_lab_simulation
+from simula_core.campaign_lab import (
+    CampaignLabSimulationRequest,
+    CampaignLabVariant,
+    run_campaign_lab_simulation,
+)
 from simula_core.live_provider_settings import LiveProviderSettings
 from simula_core.methodology import (
     DeterministicCohortProvider,
@@ -21,7 +26,7 @@ from simula_worker.native_provider import LiveSession
 from test_campaign_lab import _request
 
 
-def _live_request(purpose: str = "commercial_marketing"):
+def _live_request(purpose: str = "commercial_marketing") -> CampaignLabSimulationRequest:
     original = _request()
     return original.model_copy(
         update={
@@ -42,7 +47,7 @@ def _live_request(purpose: str = "commercial_marketing"):
     )
 
 
-def _settings():
+def _settings() -> LiveProviderSettings:
     return LiveProviderSettings(
         base_url="https://model.test/v1",
         model="test-model",
@@ -53,7 +58,7 @@ def _settings():
     )
 
 
-def _envelope(content):
+def _envelope(content: dict[str, Any]) -> dict[str, Any]:
     return {
         "model": "test-model",
         "usage": {"prompt_tokens": 11, "completion_tokens": 7},
@@ -63,10 +68,12 @@ def _envelope(content):
 
 @pytest.mark.parametrize("language", ["fil", "taglish"])
 @pytest.mark.parametrize("evidence_mode", ["ordered", "reversed", "duplicate", "unknown"])
-def test_real_transport_wiring_public_service_has_no_optimization_metrics(language, evidence_mode):
+def test_real_transport_wiring_public_service_has_no_optimization_metrics(
+    language: str, evidence_mode: str
+) -> None:
     received = []
 
-    def handler(request):
+    def handler(request: httpx.Request) -> httpx.Response:
         body = json.loads(request.content)
         assert request.url == "https://model.test/v1/chat/completions"
         assert request.headers["Authorization"] == "Bearer test-secret"
@@ -129,13 +136,14 @@ def test_real_transport_wiring_public_service_has_no_optimization_metrics(langua
             "natural Filipino-English Taglish" if language == "taglish" else "natural Filipino"
         )
         assert all(expected_locale in call["messages"][0]["content"] for call in received)
+        assert result.behavioral_diagnostics is not None
         assert result.behavioral_diagnostics.variants[0].interviewable_agents[0].action_rationales
     finally:
         session.close()
 
 
 @pytest.mark.parametrize("language", ["fil", "taglish"])
-def test_commercial_calls_both_providers_and_binds_cohort_counts(language):
+def test_commercial_calls_both_providers_and_binds_cohort_counts(language: str) -> None:
     request = _live_request()
     request = request.model_copy(
         update={
@@ -161,7 +169,7 @@ def test_commercial_calls_both_providers_and_binds_cohort_counts(language):
     cohort_calls = 0
     agent_calls = 0
 
-    def handler(http_request):
+    def handler(http_request: httpx.Request) -> httpx.Response:
         nonlocal cohort_calls, agent_calls
         body = json.loads(http_request.content)
         payload = json.loads(body["messages"][1]["content"])["input"]
@@ -201,10 +209,10 @@ def test_commercial_calls_both_providers_and_binds_cohort_counts(language):
         session.close()
 
 
-def test_interview_required_fields_are_in_system_instructions():
+def test_interview_required_fields_are_in_system_instructions() -> None:
     from simula_worker.native_provider import InterviewOutput
 
-    def handler(http_request):
+    def handler(http_request: httpx.Request) -> httpx.Response:
         body = json.loads(http_request.content)
         prompt = body["messages"][0]["content"]
         for field in InterviewOutput.model_json_schema()["required"]:
@@ -219,10 +227,10 @@ def test_interview_required_fields_are_in_system_instructions():
         session.close()
 
 
-def test_opencode_go_session_headers_are_stable_and_identify_research():
+def test_opencode_go_session_headers_are_stable_and_identify_research() -> None:
     seen = []
 
-    def handler(request):
+    def handler(request: httpx.Request) -> httpx.Response:
         seen.append(request.headers)
         return httpx.Response(200, json=_envelope({}))
 
@@ -242,14 +250,14 @@ def test_opencode_go_session_headers_are_stable_and_identify_research():
 
 
 @pytest.mark.parametrize("selected_deepseek", [False, True])
-def test_selected_go_deepseek_uses_non_thinking_structured_output(selected_deepseek):
+def test_selected_go_deepseek_uses_non_thinking_structured_output(selected_deepseek: bool) -> None:
     model = "deepseek-v4.1-flash" if selected_deepseek else "test-model"
     request = _live_request()
     request = request.model_copy(
         update={"configuration": request.configuration.model_copy(update={"model_name": model})}
     )
 
-    def handler(http_request):
+    def handler(http_request: httpx.Request) -> httpx.Response:
         body = json.loads(http_request.content)
         assert body.get("thinking") == ({"type": "disabled"} if selected_deepseek else None)
         return httpx.Response(200, json=_envelope({}))
@@ -265,10 +273,10 @@ def test_selected_go_deepseek_uses_non_thinking_structured_output(selected_deeps
         session.close()
 
 
-def test_http_error_redacted_and_never_retried():
+def test_http_error_redacted_and_never_retried() -> None:
     count = 0
 
-    def handler(request):
+    def handler(request: httpx.Request) -> httpx.Response:
         nonlocal count
         count += 1
         raise httpx.ReadTimeout("test-secret provider raw body", request=request)
@@ -287,7 +295,7 @@ def test_http_error_redacted_and_never_retried():
 
 
 @pytest.mark.parametrize("mutation", ["model", "usage", "truncated"])
-def test_invalid_provider_envelope_fails_closed(mutation):
+def test_invalid_provider_envelope_fails_closed(mutation: str) -> None:
     envelope = _envelope({})
     if mutation == "model":
         envelope["model"] = ""
@@ -308,7 +316,7 @@ def test_invalid_provider_envelope_fails_closed(mutation):
         session.close()
 
 
-def test_budget_reserves_full_next_call_and_deadline_blocks_network():
+def test_budget_reserves_full_next_call_and_deadline_blocks_network() -> None:
     request = _live_request()
     session = LiveSession(
         _settings(),
@@ -330,7 +338,9 @@ def test_budget_reserves_full_next_call_and_deadline_blocks_network():
 
 
 @pytest.mark.parametrize("reference_mode", ["invented", "empty", "missing", "subset"])
-def test_live_interview_binds_exact_persisted_references(monkeypatch, reference_mode):
+def test_live_interview_binds_exact_persisted_references(
+    monkeypatch: pytest.MonkeyPatch, reference_mode: str
+) -> None:
     original = _request()
     result = run_campaign_lab_simulation(original)
     live = _live_request()
@@ -340,6 +350,7 @@ def test_live_interview_binds_exact_persisted_references(monkeypatch, reference_
             "provider_execution": {"provider": "openai_compatible"},
         }
     )
+    assert result.behavioral_diagnostics is not None
     evidence = result.behavioral_diagnostics.variants[0].interviewable_agents[0]
     returned_events = (
         [str(uuid4())]
@@ -350,7 +361,12 @@ def test_live_interview_binds_exact_persisted_references(monkeypatch, reference_
     )
     monkeypatch.setattr(LiveProviderSettings, "from_environment", lambda **_: _settings())
 
-    def complete(_session, _variant, payload, schema):
+    def complete(
+        _session: LiveSession,
+        _variant: CampaignLabVariant,
+        payload: dict[str, Any],
+        schema: dict[str, Any],
+    ) -> tuple[dict[str, Any], None]:
         assert schema["properties"]["evidence_event_ids"]["items"]["enum"] == [
             str(value) for value in evidence.evidence_event_ids
         ]
@@ -358,7 +374,7 @@ def test_live_interview_binds_exact_persisted_references(monkeypatch, reference_
         assert set(example) == set(schema["required"])
         assert example["evidence_event_ids"] == [str(evidence.evidence_event_ids[0])]
         assert "never omit the citation arrays" in payload["instruction"]
-        content = {"transcript": "Synthetic explanation requiring human review."}
+        content: dict[str, Any] = {"transcript": "Synthetic explanation requiring human review."}
         if reference_mode != "missing":
             content.update(
                 evidence_event_ids=returned_events,
@@ -387,7 +403,7 @@ def test_live_interview_binds_exact_persisted_references(monkeypatch, reference_
             _evaluate_interview(interview_request)
 
 
-def test_deterministic_public_service_is_also_qualitative():
+def test_deterministic_public_service_is_also_qualitative() -> None:
     request = _request().model_copy(update={"purpose": "public_service"})
     result = run_campaign_lab_simulation(request)
     assert result.analysis_mode == "qualitative_public_service"
@@ -395,7 +411,7 @@ def test_deterministic_public_service_is_also_qualitative():
     assert not result.cohort_findings and not result.synthetic_observations
 
 
-def test_live_durable_retry_refused_before_model_call():
+def test_live_durable_retry_refused_before_model_call() -> None:
     claim = CampaignLabClaim(
         run_id=uuid4(),
         run_type="repeated_simulation",
@@ -408,7 +424,7 @@ def test_live_durable_retry_refused_before_model_call():
         evaluate_campaign_lab_claim(claim)
 
 
-def test_fractional_microusd_rounded_up_from_envelope():
+def test_fractional_microusd_rounded_up_from_envelope() -> None:
     request = _live_request()
     settings = replace(
         _settings(), input_microusd_per_million_tokens=1, output_microusd_per_million_tokens=1
@@ -425,7 +441,7 @@ def test_fractional_microusd_rounded_up_from_envelope():
         session.close()
 
 
-def test_provider_model_snapshot_preserved_in_receipt():
+def test_provider_model_snapshot_preserved_in_receipt() -> None:
     request = _live_request()
     envelope = _envelope({})
     envelope["model"] = "test-model-2026-10-01"

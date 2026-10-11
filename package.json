@@ -33,7 +33,7 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop --no-backup",
     "supabase:test": "node scripts/run_supabase_tests.mjs",
-    "test": "node --test scripts/dev.test.mjs && turbo run test && uv run --frozen pytest -m \"not integration\"",
+    "test": "node --test scripts/dev.test.mjs scripts/next_eslint_glob.test.mjs && turbo run test && uv run --frozen pytest -m \"not integration\"",
     "test:e2e": "pnpm exec playwright test",
     "test:e2e:assets": "pnpm exec playwright test --config playwright.assets.config.ts",
     "test:integration": "pnpm redis:up && uv run --frozen pytest -m integration",

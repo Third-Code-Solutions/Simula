@@ -19,6 +19,7 @@ ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 RUN corepack enable && corepack install --global pnpm@11.13.1
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY patches patches
 COPY apps/web/package.json apps/web/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 RUN pnpm install --frozen-lockfile

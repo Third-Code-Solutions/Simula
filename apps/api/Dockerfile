@@ -7,6 +7,7 @@ WORKDIR /workspace
 RUN corepack enable && corepack install --global pnpm@11.13.1
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
+COPY patches patches
 COPY apps/api/package.json apps/api/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 RUN pnpm install --frozen-lockfile

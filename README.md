@@ -63,6 +63,14 @@ using an isolated full Python runtime with the locked pip-audit version. This
 fallback does not change the project interpreter requirement or omit packages
 from the audit.
 
+The pinned Next ESLint plugin patch replaces its directory globber with `glob`,
+removing the `fast-glob` → `micromatch` → `braces` dependency chain affected by
+GHSA-vfj7-8cjw-p6xm. All lint rules and the dependency audit remain enabled.
+`scripts/next_eslint_glob.test.mjs` checks directory discovery and the actual
+link rule for both apps. Revalidate or remove this version-specific patch when
+upgrading the plugin. Trailing slashes restrict matches to directories, and
+`follow: true` preserves symlink traversal.
+
 Start the local queue with `pnpm redis:up`. Supabase is managed separately with
 `pnpm supabase:start`; no hosted project is linked or mutated by these commands.
 With local Supabase running, `pnpm verify:m2-api` performs two clean resets,

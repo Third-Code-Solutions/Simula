@@ -5,13 +5,17 @@ import os
 import shutil
 import subprocess
 from dataclasses import dataclass
+from http.client import HTTPException
 from pathlib import Path
+from time import monotonic, sleep
 from typing import cast
 from urllib.error import HTTPError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 import pytest
+
+from scripts.verify_m0_runtime import AUTH_HEALTH_URL, probe_health
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_SQL = REPOSITORY_ROOT / "tests" / "database" / "runtime_adversarial.sql"
@@ -125,7 +129,27 @@ def _request_json(
     return status, cast(dict[str, object], parsed)
 
 
+def _wait_for_auth_ready() -> None:
+    # Database reset restarts Auth after the initial stack health check.
+    deadline = monotonic() + 60
+    last_result = "not probed"
+    while (remaining := deadline - monotonic()) > 0:
+        try:
+            status = probe_health(AUTH_HEALTH_URL, timeout_seconds=min(2, remaining))
+        except (OSError, HTTPException) as error:
+            last_result = type(error).__name__
+        else:
+            if status == 200:
+                return
+            last_result = f"HTTP {status}"
+            if status not in (502, 503, 504):
+                pytest.fail(f"local Supabase Auth readiness failed: {last_result}")
+        sleep(min(1, max(0, deadline - monotonic())))
+    pytest.fail(f"local Supabase Auth did not become ready within 60 seconds: {last_result}")
+
+
 def _sign_in(supabase: LocalSupabase, email: str) -> str:
+    _wait_for_auth_ready()
     query = urlencode({"grant_type": "password"})
     status, response = _request_json(
         method="POST",
@@ -136,7 +160,7 @@ def _sign_in(supabase: LocalSupabase, email: str) -> str:
         },
         payload={"email": email, "password": LOCAL_FIXTURE_PASSWORD},
     )
-    assert status == 200
+    assert status == 200, f"local Supabase Auth sign-in returned HTTP {status}"
     user = response.get("user")
     assert isinstance(user, dict)
     assert user.get("id") == LOCAL_USERS[email]

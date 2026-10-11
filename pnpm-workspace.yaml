@@ -12,19 +12,32 @@ strictPeerDependencies: true
 
 overrides:
   # Security floors. Remove only after upstream ranges resolve to patched versions.
-  "brace-expansion@1": 1.1.18
-  "brace-expansion@2": 2.1.4
-  "brace-expansion@5": 5.0.9
+  "@grpc/grpc-js": 1.14.5
+  "@next/eslint-plugin-next@16.3.8>fast-glob": "-"
+  "brace-expansion@1": 1.1.21
+  "brace-expansion@2": 2.1.7
+  "brace-expansion@5": 5.0.12
   baseline-browser-mapping: 2.11.25
   browserslist: 4.28.7
-  fast-uri: 3.1.6
+  fast-uri: 3.1.8
+  handlebars: 4.7.10
   js-yaml: 4.3.2
   multer: 2.4.0
   qs: 6.16.0
   nanoid: 3.3.18
   postcss: 8.5.23
-  sharp: 0.35.4
-  undici: 7.29.0
+  proxy-addr: 2.0.8
+  sharp: 0.35.5
+  source-map-js: 1.2.2
+  undici: 7.29.1
+
+packageExtensions:
+  "@next/eslint-plugin-next@16.3.8":
+    dependencies:
+      glob: 10.5.0
+
+patchedDependencies:
+  "@next/eslint-plugin-next@16.3.8": patches/@next__eslint-plugin-next@16.3.8.patch
 
 allowBuilds:
   # Native installers required by the pinned Next.js, Vite, and resolver toolchains.
@@ -61,16 +74,21 @@ minimumReleaseAgeExclude:
   - "@tailwindcss/postcss@4.3.3"
   - tailwindcss@4.3.3
   - vite@8.1.5
-  - brace-expansion@1.1.18
-  - brace-expansion@2.1.4
-  - brace-expansion@5.0.9
+  - "@grpc/grpc-js@1.14.5"
+  - brace-expansion@1.1.21
+  - brace-expansion@2.1.7
+  - brace-expansion@5.0.12
   - browserslist@4.28.7
-  - fast-uri@3.1.6
+  - fast-uri@3.1.8
+  - handlebars@4.7.10
   - qs@6.16.0
   - js-yaml@4.3.2
   - nanoid@3.3.18
   - postcss@8.5.23
-  - undici@7.29.0
+  - proxy-addr@2.0.8
+  - sharp@0.35.5
+  - source-map-js@1.2.2
+  - undici@7.29.1
   - "@sentry/core@10.69.0"
   - "@sentry/node-core@10.69.0"
   - "@sentry/node@10.69.0"
