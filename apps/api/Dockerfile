@@ -14,10 +14,11 @@ RUN pnpm install --frozen-lockfile
 
 COPY apps/api apps/api
 COPY packages/contracts packages/contracts
+# The API-only export omits Next's lint package and its workspace patch.
 RUN pnpm peers check \
     && pnpm --filter @simula/contracts build \
     && pnpm --filter @simula/api build \
-    && pnpm --config.strict-peer-dependencies=false --filter @simula/api deploy --prod --legacy /runtime
+    && pnpm --config.strict-peer-dependencies=false --config.allow-unused-patches=true --filter @simula/api deploy --prod --legacy /runtime
 
 FROM node:24.18.1-bookworm-slim@sha256:235600a8101ab264e117b1768e925532262668dc9b581ef1dd7d96ced463b8e7 AS runtime
 
