@@ -1355,6 +1355,8 @@ summary:focus-visible {
 }
 
 .auth-links a {
+  display: inline-block;
+  min-height: 1.5rem;
   color: var(--azure-text);
   font-weight: 600;
   text-underline-offset: 0.2em;
