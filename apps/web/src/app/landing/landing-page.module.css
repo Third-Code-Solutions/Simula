@@ -60,6 +60,10 @@
   margin: 0;
   max-width: 28rem;
 }
+.footer a {
+  display: inline-block;
+  min-height: 1.5rem;
+}
 @media (max-width: 76rem) {
   .closing,
   .footer {

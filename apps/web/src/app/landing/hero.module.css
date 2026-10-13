@@ -35,11 +35,14 @@
   font-size: 0.875rem;
 }
 .signInLink {
+  display: inline-block;
+  min-height: 1.5rem;
   text-underline-offset: 0.25em;
 }
 .workspaceLink {
   display: inline-flex;
   align-items: center;
+  min-height: 1.5rem;
   gap: 0.75rem;
   text-decoration: none;
   font-weight: 600;
@@ -98,6 +101,8 @@
   background: #194532;
 }
 .secondaryAction {
+  display: inline-block;
+  min-height: 1.5rem;
   font-size: 0.875rem;
   text-underline-offset: 0.3em;
 }
