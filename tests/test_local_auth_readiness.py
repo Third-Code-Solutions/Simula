@@ -64,9 +64,9 @@ def test_auth_readiness_timeout_fails_closed(
     monkeypatch: pytest.MonkeyPatch, clock: list[float], status: int
 ) -> None:
     monkeypatch.setattr(boundary, "probe_health", lambda *args, **kwargs: status)
-    with pytest.raises(pytest.fail.Exception, match=f"within 60 seconds: HTTP {status}"):
+    with pytest.raises(pytest.fail.Exception, match=f"within 180 seconds: HTTP {status}"):
         boundary._wait_for_auth_ready()
-    assert clock[0] == 60
+    assert clock[0] == 180
 
 
 def test_auth_readiness_configuration_error_is_not_retried(

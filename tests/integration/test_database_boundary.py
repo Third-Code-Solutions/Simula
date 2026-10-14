@@ -129,9 +129,14 @@ def _request_json(
     return status, cast(dict[str, object], parsed)
 
 
+AUTH_READY_DEADLINE_SECONDS = 180.0
+
+
 def _wait_for_auth_ready() -> None:
-    # Database reset restarts Auth after the initial stack health check.
-    deadline = monotonic() + 60
+    # Database reset restarts Auth after the initial stack health check; on
+    # cold CI runners the gateway keeps serving 502s while the container
+    # recovers, so wait patiently instead of failing the gate on a slow start.
+    deadline = monotonic() + AUTH_READY_DEADLINE_SECONDS
     last_result = "not probed"
     while (remaining := deadline - monotonic()) > 0:
         try:
@@ -145,7 +150,10 @@ def _wait_for_auth_ready() -> None:
             if status not in (502, 503, 504):
                 pytest.fail(f"local Supabase Auth readiness failed: {last_result}")
         sleep(min(1, max(0, deadline - monotonic())))
-    pytest.fail(f"local Supabase Auth did not become ready within 60 seconds: {last_result}")
+    pytest.fail(
+        "local Supabase Auth did not become ready within"
+        f" {AUTH_READY_DEADLINE_SECONDS:.0f} seconds: {last_result}"
+    )
 
 
 def _sign_in(supabase: LocalSupabase, email: str) -> str:
