@@ -35,17 +35,32 @@ updates:
         update-types: ["minor", "patch"]
       eslint:
         patterns:
-          ["eslint", "eslint-*", "@eslint/*", "@typescript-eslint/*", "typescript-eslint"]
+          [
+            "eslint",
+            "eslint-*",
+            "@eslint/*",
+            "@typescript-eslint/*",
+            "typescript-eslint",
+          ]
         update-types: ["minor", "patch"]
       typescript:
         patterns: ["typescript", "ts-jest", "ts-node", "@types/node"]
         update-types: ["minor", "patch"]
       testing:
         patterns:
-          ["jest", "jest-*", "@jest/*", "vitest", "@vitest/*", "@playwright/test", "axe-core"]
+          [
+            "jest",
+            "jest-*",
+            "@jest/*",
+            "vitest",
+            "@vitest/*",
+            "@playwright/test",
+            "axe-core",
+          ]
         update-types: ["minor", "patch"]
       build:
-        patterns: ["vite", "@vitejs/*", "tailwindcss", "@tailwindcss/*", "turbo"]
+        patterns:
+          ["vite", "@vitejs/*", "tailwindcss", "@tailwindcss/*", "turbo"]
         update-types: ["minor", "patch"]
       other:
         patterns: ["*"]
