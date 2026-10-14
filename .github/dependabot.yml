@@ -1,4 +1,18 @@
 # Dependabot keeps npm (pnpm workspace) and GitHub Actions dependencies patched.
+#
+# Hard-won invariants (sweep 2026-10-14-22-27, run 38433219175):
+#  * Coupled ecosystems (NestJS, Supabase, React/Next, ESLint, TypeScript)
+#    must land as one grouped PR or not at all. Ungrouped same-day majors
+#    from these ecosystems do not resolve together under pnpm's strict
+#    peer-dependency resolution (`dependency_file_not_resolvable`) and fail
+#    the whole scheduled update job with zero PRs created.
+#  * eslint-config-next / @next/eslint-plugin-next are keyed to an exact
+#    version by patches/@next__eslint-plugin-next@16.3.8.patch + the pnpm
+#    `overrides` and `packageExtensions` entries. Any bump leaves that patch
+#    unused and fails (unknown_error), so they stay frozen until the patch is
+#    rebased in lockstep with a `next` major upgrade.
+#  * Ecosystem majors land by hand (lockstep, CI run locally first). Dependabot
+#    only proposes minor/patch for them.
 version: 2
 updates:
   - package-ecosystem: "npm"
@@ -6,7 +20,74 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    groups:
+      nestjs:
+        patterns: ["@nestjs/*"]
+        update-types: ["minor", "patch"]
+      supabase:
+        patterns: ["@supabase/*"]
+        update-types: ["minor", "patch"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+        update-types: ["minor", "patch"]
+      next:
+        patterns: ["next", "@next/*"]
+        update-types: ["minor", "patch"]
+      eslint:
+        patterns:
+          ["eslint", "eslint-*", "@eslint/*", "@typescript-eslint/*", "typescript-eslint"]
+        update-types: ["minor", "patch"]
+      typescript:
+        patterns: ["typescript", "ts-jest", "ts-node", "@types/node"]
+        update-types: ["minor", "patch"]
+      testing:
+        patterns:
+          ["jest", "jest-*", "@jest/*", "vitest", "@vitest/*", "@playwright/test", "axe-core"]
+        update-types: ["minor", "patch"]
+      build:
+        patterns: ["vite", "@vitejs/*", "tailwindcss", "@tailwindcss/*", "turbo"]
+        update-types: ["minor", "patch"]
+      other:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+    ignore:
+      # Frozen: version-keyed local patch + overrides (see header comment).
+      - dependency-name: "eslint-config-next"
+      - dependency-name: "@next/eslint-plugin-next"
+      - dependency-name: "next"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@next/*"
+        update-types: ["version-update:semver-major"]
+      # Coupled ecosystems: majors land by hand, in lockstep.
+      - dependency-name: "@nestjs/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@nestjs/bullmq"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@supabase/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "bullmq"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@typescript-eslint/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript-eslint"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@types/react-dom"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      actions:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
