@@ -48,7 +48,7 @@
     "verify:p2:e2e": "uv run --frozen python -m scripts.verify_p2_e2e"
   },
   "devDependencies": {
-    "@axe-core/playwright": "4.12.1",
+    "@axe-core/playwright": "4.13.0",
     "@playwright/test": "1.61.1",
     "prettier": "3.9.5",
     "supabase": "2.109.1",
